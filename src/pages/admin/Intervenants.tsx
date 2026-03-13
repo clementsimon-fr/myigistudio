@@ -109,7 +109,7 @@ export default function AdminIntervenants() {
 
   const save = async () => {
     const cleanUrls = form.urls.filter(u => u.trim() !== "");
-    const payload = { ...form, urls: cleanUrls };
+    const payload = { ...form, urls: cleanUrls, photo_url: form.photo_url };
     if (editingId) {
       await supabase.from("instructors").update(payload as any).eq("id", editingId);
       toast({ title: "Intervenant modifié" });
