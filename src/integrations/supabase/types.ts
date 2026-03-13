@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      course_schedules: {
+        Row: {
+          course_id: string
+          created_at: string
+          day: string
+          end_time: string
+          id: string
+          time: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          day: string
+          end_time?: string
+          id?: string
+          time: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          day?: string
+          end_time?: string
+          id?: string
+          time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_schedules_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           category: string
