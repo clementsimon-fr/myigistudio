@@ -8,72 +8,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ChevronLeft, ChevronRight, Clock, Users, User, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import ActivityFilterBar, { type FilterCategory, CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 
-interface Course {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  instructor: string;
-}
-
-interface Schedule {
-  id: string;
-  course_id: string;
-  day: string;
-  time: string;
-  end_time: string;
-  spots: number;
-  spots_left: number;
-}
-
-interface Workshop {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  date: string;
-  time: string;
-  end_time: string;
-  duration: string;
-  price: number;
-  spots: number;
-  spots_left: number;
-}
+interface Course { id: string; name: string; description: string; category: string; instructor: string; }
+interface Schedule { id: string; course_id: string; day: string; time: string; end_time: string; spots: number; spots_left: number; }
+interface Workshop { id: string; name: string; description: string; category: string; date: string; time: string; end_time: string; duration: string; price: number; spots: number; spots_left: number; }
 
 interface ActivityBlock {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  time: string;
-  end_time: string;
-  type: "course" | "workshop";
-  instructor: string;
-  spots: number;
-  spotsLeft: number;
-  sourceId: string;
-  scheduleId?: string;
-  price?: number;
+  id: string; title: string; description: string; category: string;
+  time: string; end_time: string; type: "course" | "workshop";
+  instructor: string; spots: number; spotsLeft: number;
+  sourceId: string; scheduleId?: string; price?: number;
 }
 
-const DAY_MAP: Record<number, string> = {
-  0: "Dimanche", 1: "Lundi", 2: "Mardi", 3: "Mercredi",
-  4: "Jeudi", 5: "Vendredi", 6: "Samedi",
-};
-
-const CATEGORY_FILTERS = [
-  { value: "all", label: "Toutes les activités" },
-  { value: "yoga", label: "Yoga & Pilates" },
-  { value: "poterie", label: "Poterie" },
-  { value: "bien-etre", label: "Bien-être" },
-];
-
-const CATEGORY_STYLES: Record<string, { block: string; dot: string }> = {
-  yoga: { block: "bg-primary/10 border-primary/30 text-primary-dark", dot: "bg-primary" },
-  poterie: { block: "bg-secondary/20 border-secondary/40 text-secondary-foreground", dot: "bg-secondary" },
-  "bien-etre": { block: "bg-accent/15 border-accent/35 text-accent-foreground", dot: "bg-accent" },
-};
+const DAY_MAP: Record<number, string> = { 0: "Dimanche", 1: "Lundi", 2: "Mardi", 3: "Mercredi", 4: "Jeudi", 5: "Vendredi", 6: "Samedi" };
 
 function calcDuration(start: string, end: string): string {
   if (!start || !end) return "";
@@ -95,11 +43,7 @@ function getWeekDays(baseDate: Date): Date[] {
   const monday = new Date(d.setDate(diff));
   monday.setHours(0, 0, 0, 0);
   const days: Date[] = [];
-  for (let i = 0; i < 7; i++) {
-    const dd = new Date(monday);
-    dd.setDate(monday.getDate() + i);
-    days.push(dd);
-  }
+  for (let i = 0; i < 7; i++) { const dd = new Date(monday); dd.setDate(monday.getDate() + i); days.push(dd); }
   return days;
 }
 
@@ -113,7 +57,7 @@ export default function Calendrier() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState<FilterCategory>("all");
   const [selectedEvent, setSelectedEvent] = useState<ActivityBlock | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const now = new Date();
@@ -150,49 +94,31 @@ export default function Calendrier() {
     return weekDays.map(date => {
       const blocks: ActivityBlock[] = [];
       if (date < today) return { date, blocks };
-
       const dayName = DAY_MAP[date.getDay()];
       const dateStr = formatDateStr(date);
 
-      // Recurring courses
       for (const sched of schedules) {
         if (sched.day !== dayName) continue;
         const course = courses.find(c => c.id === sched.course_id);
         if (!course) continue;
-        if (filter !== "all" && course.category !== filter) continue;
+        const effectiveFilter = filter === "all" ? filter : filter;
+        if (effectiveFilter !== "all" && course.category !== effectiveFilter) continue;
         blocks.push({
-          id: `${sched.id}-${dateStr}`,
-          title: course.name,
-          description: course.description || "",
-          category: course.category,
-          time: sched.time,
-          end_time: sched.end_time,
-          type: "course",
-          instructor: course.instructor || "Élodie",
-          spots: sched.spots,
-          spotsLeft: sched.spots_left,
-          sourceId: course.id,
-          scheduleId: sched.id,
+          id: `${sched.id}-${dateStr}`, title: course.name, description: course.description || "",
+          category: course.category, time: sched.time, end_time: sched.end_time,
+          type: "course", instructor: course.instructor || "Élodie",
+          spots: sched.spots, spotsLeft: sched.spots_left, sourceId: course.id, scheduleId: sched.id,
         });
       }
 
-      // Workshops
       for (const ws of workshops) {
         if (ws.date !== dateStr) continue;
         if (filter !== "all" && ws.category !== filter) continue;
         blocks.push({
-          id: ws.id,
-          title: ws.name,
-          description: ws.description || "",
-          category: ws.category,
-          time: ws.time,
-          end_time: ws.end_time,
-          type: "workshop",
-          instructor: "Élodie",
-          spots: ws.spots,
-          spotsLeft: ws.spots_left,
-          sourceId: ws.id,
-          price: ws.price,
+          id: ws.id, title: ws.name, description: ws.description || "",
+          category: ws.category, time: ws.time, end_time: ws.end_time,
+          type: "workshop", instructor: "Élodie",
+          spots: ws.spots, spotsLeft: ws.spots_left, sourceId: ws.id, price: ws.price,
         });
       }
 
@@ -201,30 +127,11 @@ export default function Calendrier() {
     });
   }, [weekDays, courses, schedules, workshops, filter]);
 
-  const prevWeek = () => {
-    const d = new Date(currentWeekStart);
-    d.setDate(d.getDate() - 7);
-    setCurrentWeekStart(d);
-  };
-  const nextWeek = () => {
-    const d = new Date(currentWeekStart);
-    d.setDate(d.getDate() + 7);
-    setCurrentWeekStart(d);
-  };
-  const goThisWeek = () => {
-    const now = new Date();
-    const day = now.getDay();
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(now);
-    monday.setDate(diff);
-    monday.setHours(0, 0, 0, 0);
-    setCurrentWeekStart(monday);
-  };
+  const prevWeek = () => { const d = new Date(currentWeekStart); d.setDate(d.getDate() - 7); setCurrentWeekStart(d); };
+  const nextWeek = () => { const d = new Date(currentWeekStart); d.setDate(d.getDate() + 7); setCurrentWeekStart(d); };
+  const goThisWeek = () => { const now = new Date(); const day = now.getDay(); const diff = now.getDate() - day + (day === 0 ? -6 : 1); const m = new Date(now); m.setDate(diff); m.setHours(0, 0, 0, 0); setCurrentWeekStart(m); };
 
-  const handleBook = (event: ActivityBlock) => {
-    const type = event.type;
-    navigate(`/reserver?type=${type}&id=${event.sourceId}`);
-  };
+  const handleBook = (event: ActivityBlock) => navigate(`/reserver?type=${event.type}&id=${event.sourceId}`);
 
   const todayStr = formatDateStr(new Date());
   const isThisWeek = weekDays.some(d => formatDateStr(d) === todayStr);
@@ -233,9 +140,7 @@ export default function Calendrier() {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        <main className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </main>
+        <main className="flex-1 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></main>
         <Footer />
       </div>
     );
@@ -244,44 +149,30 @@ export default function Calendrier() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 py-8">
-        <div className="container max-w-5xl">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-display font-bold text-primary-dark mb-2">Planning des activités</h1>
-            <p className="text-muted-foreground">Retrouvez toutes nos activités et réservez en un clic</p>
+      <main className="flex-1">
+        <div className="container max-w-5xl pt-6 pb-2">
+          <div className="text-center mb-4">
+            <h1 className="text-2xl md:text-4xl font-display font-bold text-primary-dark mb-1">Planning des activités</h1>
+            <p className="text-sm text-muted-foreground">Retrouvez toutes nos activités et réservez en un clic</p>
           </div>
+        </div>
 
-          {/* Category filters */}
-          <div className="flex flex-wrap justify-center gap-2 mb-6">
-            {CATEGORY_FILTERS.map(f => (
-              <Button
-                key={f.value}
-                variant={filter === f.value ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFilter(f.value)}
-              >
-                {f.value !== "all" && (
-                  <div className={`w-2.5 h-2.5 rounded-full mr-1.5 ${CATEGORY_STYLES[f.value]?.dot || ""}`} />
-                )}
-                {f.label}
-              </Button>
-            ))}
-          </div>
+        {/* ─── Sticky filters ─── */}
+        <ActivityFilterBar filter={filter} onFilterChange={setFilter} />
 
+        <div className="container max-w-5xl py-6">
           {/* Week navigation */}
           <div className="flex items-center justify-between mb-6">
             <Button variant="outline" size="icon" onClick={prevWeek} disabled={isThisWeek}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="text-center">
-              <h3 className="text-lg font-semibold">
+              <h3 className="text-sm md:text-lg font-semibold">
                 Semaine du {weekDays[0].toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
                 {" "} au {weekDays[6].toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
               </h3>
               {!isThisWeek && (
-                <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-0.5" onClick={goThisWeek}>
-                  Revenir à cette semaine
-                </Button>
+                <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-0.5" onClick={goThisWeek}>Revenir à cette semaine</Button>
               )}
             </div>
             <Button variant="outline" size="icon" onClick={nextWeek}>
@@ -289,7 +180,7 @@ export default function Calendrier() {
             </Button>
           </div>
 
-          {/* Week view - day columns */}
+          {/* Week view */}
           <div className="space-y-4">
             {dayBlocks.filter(({ date }) => date >= new Date(new Date().setHours(0, 0, 0, 0))).map(({ date, blocks }) => {
               const isToday = formatDateStr(date) === todayStr;
@@ -303,42 +194,23 @@ export default function Calendrier() {
                   </div>
 
                   {blocks.length === 0 ? (
-                    <div className="rounded-lg border border-dashed bg-muted/10 p-4 text-center text-sm text-muted-foreground">
-                      Aucune activité
-                    </div>
+                    <div className="rounded-lg border border-dashed bg-muted/10 p-4 text-center text-sm text-muted-foreground">Aucune activité</div>
                   ) : (
                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                       {blocks.map(block => {
                         const style = CATEGORY_STYLES[block.category] || { block: "bg-muted border-border text-foreground", dot: "bg-muted-foreground" };
                         return (
-                          <div
-                            key={block.id}
-                            className={`rounded-xl border-2 p-4 cursor-pointer transition-all hover:shadow-md ${style.block} ${block.spotsLeft === 0 ? "opacity-60" : ""}`}
-                            onClick={() => setSelectedEvent(block)}
-                          >
+                          <div key={block.id} className={`rounded-xl border-2 p-4 cursor-pointer transition-all hover:shadow-md ${style.block} ${block.spotsLeft === 0 ? "opacity-60" : ""}`} onClick={() => setSelectedEvent(block)}>
                             <div className="flex items-start justify-between mb-2">
                               <h4 className="font-semibold text-sm">{block.title}</h4>
-                              {block.spotsLeft === 0 && (
-                                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Complet</Badge>
-                              )}
+                              {block.spotsLeft === 0 && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Complet</Badge>}
                             </div>
                             <div className="flex items-center gap-3 text-xs opacity-80">
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {block.time} - {block.end_time}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Users className="h-3 w-3" />
-                                {block.spotsLeft === 0 ? "Complet" : `${block.spotsLeft} place${block.spotsLeft > 1 ? "s" : ""}`}
-                              </span>
+                              <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{block.time} - {block.end_time}</span>
+                              <span className="flex items-center gap-1"><Users className="h-3 w-3" />{block.spotsLeft === 0 ? "Complet" : `${block.spotsLeft} place${block.spotsLeft > 1 ? "s" : ""}`}</span>
                             </div>
-                            <div className="flex items-center gap-1 mt-1.5 text-xs opacity-70">
-                              <User className="h-3 w-3" />
-                              {block.instructor}
-                            </div>
-                            {block.price !== undefined && block.price > 0 && (
-                              <div className="mt-1.5 text-sm font-bold">{block.price}€</div>
-                            )}
+                            <div className="flex items-center gap-1 mt-1.5 text-xs opacity-70"><User className="h-3 w-3" />{block.instructor}</div>
+                            {block.price !== undefined && block.price > 0 && <div className="mt-1.5 text-sm font-bold">{block.price}€</div>}
                           </div>
                         );
                       })}
@@ -375,35 +247,17 @@ export default function Calendrier() {
                 <DialogTitle className="font-display text-xl mt-2">{selectedEvent.title}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-2">
-                {selectedEvent.description && (
-                  <p className="text-sm text-muted-foreground leading-relaxed">{selectedEvent.description}</p>
-                )}
+                {selectedEvent.description && <p className="text-sm text-muted-foreground leading-relaxed">{selectedEvent.description}</p>}
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>{selectedEvent.time} - {selectedEvent.end_time} · {calcDuration(selectedEvent.time, selectedEvent.end_time)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span>{selectedEvent.instructor}</span>
-                  </div>
+                  <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" /><span>{selectedEvent.time} - {selectedEvent.end_time} · {calcDuration(selectedEvent.time, selectedEvent.end_time)}</span></div>
+                  <div className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /><span>{selectedEvent.instructor}</span></div>
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-muted-foreground" />
-                    {selectedEvent.spotsLeft === 0 ? (
-                      <span className="text-destructive font-medium">Complet</span>
-                    ) : (
-                      <span>{selectedEvent.spotsLeft} place{selectedEvent.spotsLeft > 1 ? "s" : ""} disponible{selectedEvent.spotsLeft > 1 ? "s" : ""}</span>
-                    )}
+                    {selectedEvent.spotsLeft === 0 ? <span className="text-destructive font-medium">Complet</span> : <span>{selectedEvent.spotsLeft} place{selectedEvent.spotsLeft > 1 ? "s" : ""} disponible{selectedEvent.spotsLeft > 1 ? "s" : ""}</span>}
                   </div>
-                  {selectedEvent.price !== undefined && selectedEvent.price > 0 && (
-                    <div className="text-lg font-bold text-primary-dark">{selectedEvent.price}€</div>
-                  )}
+                  {selectedEvent.price !== undefined && selectedEvent.price > 0 && <div className="text-lg font-bold text-primary-dark">{selectedEvent.price}€</div>}
                 </div>
-                <Button
-                  className="w-full gap-1.5"
-                  disabled={selectedEvent.spotsLeft === 0}
-                  onClick={() => { setSelectedEvent(null); handleBook(selectedEvent); }}
-                >
+                <Button className="w-full gap-1.5" disabled={selectedEvent.spotsLeft === 0} onClick={() => { setSelectedEvent(null); handleBook(selectedEvent); }}>
                   {selectedEvent.spotsLeft === 0 ? "Complet" : (<>Réserver <ArrowRight className="h-4 w-4" /></>)}
                 </Button>
               </div>
