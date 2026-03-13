@@ -5,7 +5,7 @@ import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Clock, Users, MapPin, ArrowRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Users, User, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
@@ -15,7 +15,6 @@ interface Course {
   description: string;
   category: string;
   instructor: string;
-  spots: number;
 }
 
 interface Schedule {
@@ -42,7 +41,7 @@ interface Workshop {
   spots_left: number;
 }
 
-interface CalendarEvent {
+interface ActivityBlock {
   id: string;
   title: string;
   description: string;
@@ -58,31 +57,22 @@ interface CalendarEvent {
   price?: number;
 }
 
-interface CalendarDay {
-  date: Date;
-  isCurrentMonth: boolean;
-  isToday: boolean;
-  events: CalendarEvent[];
-}
-
-const DAY_NAMES = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-const MONTH_NAMES = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
 const DAY_MAP: Record<number, string> = {
   0: "Dimanche", 1: "Lundi", 2: "Mardi", 3: "Mercredi",
   4: "Jeudi", 5: "Vendredi", 6: "Samedi",
 };
 
 const CATEGORY_FILTERS = [
-  { value: "all", label: "Toutes" },
+  { value: "all", label: "Toutes les activités" },
   { value: "yoga", label: "Yoga & Pilates" },
   { value: "poterie", label: "Poterie" },
   { value: "bien-etre", label: "Bien-être" },
 ];
 
-const CATEGORY_COLORS: Record<string, string> = {
-  yoga: "bg-primary/15 text-primary-dark border-primary/20",
-  poterie: "bg-secondary/30 text-secondary-foreground border-secondary/40",
-  "bien-etre": "bg-accent/20 text-accent-foreground border-accent/30",
+const CATEGORY_STYLES: Record<string, { block: string; dot: string }> = {
+  yoga: { block: "bg-primary/10 border-primary/30 text-primary-dark", dot: "bg-primary" },
+  poterie: { block: "bg-secondary/20 border-secondary/40 text-secondary-foreground", dot: "bg-secondary" },
+  "bien-etre": { block: "bg-accent/15 border-accent/35 text-accent-foreground", dot: "bg-accent" },
 };
 
 function calcDuration(start: string, end: string): string {
@@ -98,39 +88,42 @@ function calcDuration(start: string, end: string): string {
   return `${h}h${m.toString().padStart(2, "0")}`;
 }
 
-function getMonthDays(year: number, month: number): CalendarDay[] {
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const days: CalendarDay[] = [];
-  let jsDay = firstDay.getDay();
-  let startOffset = jsDay === 0 ? 6 : jsDay - 1;
-  for (let i = -startOffset; i <= lastDay.getDate() + 6; i++) {
-    const d = new Date(year, month, i + 1);
-    if (days.length >= 42) break;
-    days.push({ date: d, isCurrentMonth: d.getMonth() === month, isToday: d.getTime() === today.getTime(), events: [] });
-  }
-  while (days.length % 7 !== 0 && days.length < 42) {
-    const last = days[days.length - 1].date;
-    const d = new Date(last); d.setDate(d.getDate() + 1);
-    days.push({ date: d, isCurrentMonth: false, isToday: false, events: [] });
+function getWeekDays(baseDate: Date): Date[] {
+  const d = new Date(baseDate);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  const days: Date[] = [];
+  for (let i = 0; i < 7; i++) {
+    const dd = new Date(monday);
+    dd.setDate(monday.getDate() + i);
+    days.push(dd);
   }
   return days;
 }
 
+function formatDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export default function Calendrier() {
   const navigate = useNavigate();
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [courses, setCourses] = useState<Course[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
+  const [selectedEvent, setSelectedEvent] = useState<ActivityBlock | null>(null);
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(now);
+    monday.setDate(diff);
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  });
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -148,13 +141,18 @@ export default function Calendrier() {
     fetchAll();
   }, []);
 
-  const calendarDays = useMemo(() => {
-    const days = getMonthDays(year, month);
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+  const weekDays = useMemo(() => getWeekDays(currentWeekStart), [currentWeekStart]);
 
-    for (const day of days) {
-      if (day.date < today) continue;
-      const dayName = DAY_MAP[day.date.getDay()];
+  const dayBlocks: { date: Date; blocks: ActivityBlock[] }[] = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return weekDays.map(date => {
+      const blocks: ActivityBlock[] = [];
+      if (date < today) return { date, blocks };
+
+      const dayName = DAY_MAP[date.getDay()];
+      const dateStr = formatDateStr(date);
 
       // Recurring courses
       for (const sched of schedules) {
@@ -162,8 +160,8 @@ export default function Calendrier() {
         const course = courses.find(c => c.id === sched.course_id);
         if (!course) continue;
         if (filter !== "all" && course.category !== filter) continue;
-        day.events.push({
-          id: `${sched.id}-${day.date.toISOString()}`,
+        blocks.push({
+          id: `${sched.id}-${dateStr}`,
           title: course.name,
           description: course.description || "",
           category: course.category,
@@ -179,11 +177,10 @@ export default function Calendrier() {
       }
 
       // Workshops
-      const dateStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, "0")}-${String(day.date.getDate()).padStart(2, "0")}`;
       for (const ws of workshops) {
         if (ws.date !== dateStr) continue;
         if (filter !== "all" && ws.category !== filter) continue;
-        day.events.push({
+        blocks.push({
           id: ws.id,
           title: ws.name,
           description: ws.description || "",
@@ -199,18 +196,39 @@ export default function Calendrier() {
         });
       }
 
-      day.events.sort((a, b) => a.time.localeCompare(b.time));
-    }
+      blocks.sort((a, b) => a.time.localeCompare(b.time));
+      return { date, blocks };
+    });
+  }, [weekDays, courses, schedules, workshops, filter]);
 
-    return days;
-  }, [year, month, courses, schedules, workshops, filter]);
+  const prevWeek = () => {
+    const d = new Date(currentWeekStart);
+    d.setDate(d.getDate() - 7);
+    setCurrentWeekStart(d);
+  };
+  const nextWeek = () => {
+    const d = new Date(currentWeekStart);
+    d.setDate(d.getDate() + 7);
+    setCurrentWeekStart(d);
+  };
+  const goThisWeek = () => {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(now);
+    monday.setDate(diff);
+    monday.setHours(0, 0, 0, 0);
+    setCurrentWeekStart(monday);
+  };
 
-  const handleBook = (event: CalendarEvent) => {
-    // Navigate to reservation page with pre-selection
+  const handleBook = (event: ActivityBlock) => {
     const categoryMap: Record<string, string> = { yoga: "yoga", poterie: "poterie", "bien-etre": "ateliers" };
     const service = categoryMap[event.category] || "yoga";
     navigate(`/reserver?service=${service}&activity=${event.sourceId}`);
   };
+
+  const todayStr = formatDateStr(new Date());
+  const isThisWeek = weekDays.some(d => formatDateStr(d) === todayStr);
 
   if (loading) {
     return (
@@ -228,13 +246,13 @@ export default function Calendrier() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1 py-8">
-        <div className="container">
+        <div className="container max-w-5xl">
           <div className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-display font-bold text-primary-dark mb-2">Planning des activités</h1>
             <p className="text-muted-foreground">Retrouvez toutes nos activités et réservez en un clic</p>
           </div>
 
-          {/* Filters */}
+          {/* Category filters */}
           <div className="flex flex-wrap justify-center gap-2 mb-6">
             {CATEGORY_FILTERS.map(f => (
               <Button
@@ -243,78 +261,110 @@ export default function Calendrier() {
                 size="sm"
                 onClick={() => setFilter(f.value)}
               >
+                {f.value !== "all" && (
+                  <div className={`w-2.5 h-2.5 rounded-full mr-1.5 ${CATEGORY_STYLES[f.value]?.dot || ""}`} />
+                )}
                 {f.label}
               </Button>
             ))}
           </div>
 
-          {/* Month nav */}
-          <div className="flex items-center justify-between mb-4">
-            <Button variant="outline" size="icon" onClick={() => setCurrentDate(new Date(year, month - 1, 1))}>
+          {/* Week navigation */}
+          <div className="flex items-center justify-between mb-6">
+            <Button variant="outline" size="icon" onClick={prevWeek}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <h3 className="text-lg font-semibold capitalize">{MONTH_NAMES[month]} {year}</h3>
-            <Button variant="outline" size="icon" onClick={() => setCurrentDate(new Date(year, month + 1, 1))}>
+            <div className="text-center">
+              <h3 className="text-lg font-semibold">
+                Semaine du {weekDays[0].toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+                {" "} au {weekDays[6].toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+              </h3>
+              {!isThisWeek && (
+                <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-0.5" onClick={goThisWeek}>
+                  Revenir à cette semaine
+                </Button>
+              )}
+            </div>
+            <Button variant="outline" size="icon" onClick={nextWeek}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
 
-          {/* Calendar grid */}
-          <div className="rounded-xl border bg-card overflow-hidden">
-            <div className="grid grid-cols-7 border-b bg-muted/30">
-              {DAY_NAMES.map(d => (
-                <div key={d} className="p-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7">
-              {calendarDays.map((day, i) => (
-                <div
-                  key={i}
-                  className={`min-h-[90px] md:min-h-[110px] border-b border-r p-1.5 transition-colors ${
-                    !day.isCurrentMonth ? "bg-muted/5 text-muted-foreground/40" : ""
-                  } ${day.isToday ? "bg-accent/10" : ""}`}
-                >
-                  <div className={`text-xs font-medium mb-1 ${day.isToday ? "text-primary font-bold" : ""}`}>
-                    {day.date.getDate()}
+          {/* Week view - day columns */}
+          <div className="space-y-4">
+            {dayBlocks.map(({ date, blocks }) => {
+              const isToday = formatDateStr(date) === todayStr;
+              const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
+              return (
+                <div key={formatDateStr(date)} className={`${isPast ? "opacity-40" : ""}`}>
+                  <div className={`flex items-center gap-3 mb-2 ${isToday ? "text-primary-dark" : "text-foreground"}`}>
+                    <div className={`text-sm font-semibold capitalize ${isToday ? "bg-primary-dark text-primary-dark-foreground px-3 py-1 rounded-full" : ""}`}>
+                      {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                    </div>
+                    {isToday && <Badge variant="outline" className="text-xs">Aujourd'hui</Badge>}
                   </div>
-                  <div className="space-y-0.5">
-                    {day.events.slice(0, 3).map(ev => (
-                      <div
-                        key={ev.id}
-                        className={`text-[10px] leading-tight rounded px-1 py-0.5 truncate cursor-pointer border transition-all hover:shadow-sm ${
-                          CATEGORY_COLORS[ev.category] || "bg-muted text-foreground border-border"
-                        } ${ev.spotsLeft === 0 ? "opacity-50" : ""}`}
-                        onClick={() => setSelectedEvent(ev)}
-                      >
-                        <span className="font-medium">{ev.time}</span> {ev.title}
-                      </div>
-                    ))}
-                    {day.events.length > 3 && (
-                      <div className="text-[10px] text-muted-foreground pl-1">+{day.events.length - 3}</div>
-                    )}
-                  </div>
+
+                  {blocks.length === 0 ? (
+                    <div className="rounded-lg border border-dashed bg-muted/10 p-4 text-center text-sm text-muted-foreground">
+                      Aucune activité
+                    </div>
+                  ) : (
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {blocks.map(block => {
+                        const style = CATEGORY_STYLES[block.category] || { block: "bg-muted border-border text-foreground", dot: "bg-muted-foreground" };
+                        return (
+                          <div
+                            key={block.id}
+                            className={`rounded-xl border-2 p-4 cursor-pointer transition-all hover:shadow-md ${style.block} ${block.spotsLeft === 0 ? "opacity-60" : ""}`}
+                            onClick={() => setSelectedEvent(block)}
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-semibold text-sm">{block.title}</h4>
+                              {block.spotsLeft === 0 && (
+                                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Complet</Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs opacity-80">
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {block.time} - {block.end_time}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                {block.spotsLeft}/{block.spots}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 mt-1.5 text-xs opacity-70">
+                              <User className="h-3 w-3" />
+                              {block.instructor}
+                            </div>
+                            {block.price !== undefined && block.price > 0 && (
+                              <div className="mt-1.5 text-sm font-bold">{block.price}€</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap gap-4 mt-4 text-xs text-muted-foreground justify-center">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-primary/15 border border-primary/20" /> Yoga & Pilates
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-secondary/30 border border-secondary/40" /> Poterie
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-accent/20 border border-accent/30" /> Bien-être
-            </div>
+          <div className="flex flex-wrap gap-4 mt-8 text-xs text-muted-foreground justify-center">
+            {Object.entries(CATEGORY_STYLES).map(([key, val]) => (
+              <div key={key} className="flex items-center gap-1.5">
+                <div className={`w-3 h-3 rounded-full ${val.dot}`} />
+                {key === "yoga" ? "Yoga & Pilates" : key === "poterie" ? "Poterie" : "Bien-être"}
+              </div>
+            ))}
           </div>
         </div>
       </main>
       <Footer />
 
-      {/* Event detail dialog */}
+      {/* Detail dialog */}
       <Dialog open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEvent(null)}>
         <DialogContent className="sm:max-w-md">
           {selectedEvent && (
@@ -330,14 +380,13 @@ export default function Calendrier() {
                 {selectedEvent.description && (
                   <p className="text-sm text-muted-foreground leading-relaxed">{selectedEvent.description}</p>
                 )}
-
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <span>{selectedEvent.time} - {selectedEvent.end_time} · {calcDuration(selectedEvent.time, selectedEvent.end_time)}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <User className="h-4 w-4 text-muted-foreground" />
                     <span>{selectedEvent.instructor}</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -349,23 +398,15 @@ export default function Calendrier() {
                     )}
                   </div>
                   {selectedEvent.price !== undefined && selectedEvent.price > 0 && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-primary-dark">{selectedEvent.price}€</span>
-                    </div>
+                    <div className="text-lg font-bold text-primary-dark">{selectedEvent.price}€</div>
                   )}
                 </div>
-
                 <Button
                   className="w-full gap-1.5"
                   disabled={selectedEvent.spotsLeft === 0}
-                  onClick={() => {
-                    setSelectedEvent(null);
-                    handleBook(selectedEvent);
-                  }}
+                  onClick={() => { setSelectedEvent(null); handleBook(selectedEvent); }}
                 >
-                  {selectedEvent.spotsLeft === 0 ? "Complet" : (
-                    <>Réserver <ArrowRight className="h-4 w-4" /></>
-                  )}
+                  {selectedEvent.spotsLeft === 0 ? "Complet" : (<>Réserver <ArrowRight className="h-4 w-4" /></>)}
                 </Button>
               </div>
             </>
