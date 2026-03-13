@@ -539,6 +539,11 @@ export default function AdminActivites() {
                 </div>
               </div>
               <div><Label>Image URL</Label><Input value={courseForm.image} onChange={e => setCourseForm({ ...courseForm, image: e.target.value })} placeholder="https://images.unsplash.com/..." /></div>
+              <div>
+                <Label>📧 Modèle de rappel (e-mail)</Label>
+                <Textarea value={courseForm.reminder_template} onChange={e => setCourseForm({ ...courseForm, reminder_template: e.target.value })} rows={4} placeholder="Bonjour {nom}, nous avons hâte de vous retrouver pour votre séance de {activité} le {date} à {heure}. Pensez à apporter votre tapis et une tenue confortable. À bientôt !" />
+                <p className="text-xs text-muted-foreground mt-1">Variables : {"{nom}"}, {"{activité}"}, {"{date}"}, {"{heure}"}</p>
+              </div>
               <Button className="w-full" onClick={saveCourse} disabled={!courseForm.name || courseForm.schedules.length === 0}>{editingId ? "Enregistrer" : "Créer le cours"}</Button>
             </div>
           ) : (
