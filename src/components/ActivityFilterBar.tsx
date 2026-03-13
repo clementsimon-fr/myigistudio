@@ -23,7 +23,7 @@ interface ActivityFilterBarProps {
 
 export default function ActivityFilterBar({ filter, onFilterChange, extraContent }: ActivityFilterBarProps) {
   return (
-    <div className="py-3 border-b sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <div className="py-3 border-b sticky top-16 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="container">
         <div className="flex flex-wrap items-center justify-center gap-2">
           {CATEGORY_FILTERS.map(f => (

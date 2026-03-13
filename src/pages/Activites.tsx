@@ -155,31 +155,10 @@ export default function Activites() {
                             <img src={course.image || PLACEHOLDER_IMG} alt={course.name} className="w-full h-full object-cover" loading="lazy" />
                           </div>
                           <div className="p-4 md:p-5">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <h3 className="font-display font-semibold text-base md:text-lg text-primary-dark leading-tight">{course.name}</h3>
-                              <Badge variant={totalSpotsLeft === 0 ? "destructive" : "secondary"} className="text-[10px] md:text-xs shrink-0">
-                                {totalSpotsLeft === 0 ? "Complet" : `${totalSpotsLeft} place${totalSpotsLeft > 1 ? "s" : ""}`}
-                              </Badge>
-                            </div>
+                            <h3 className="font-display font-semibold text-base md:text-lg text-primary-dark leading-tight mb-2">{course.name}</h3>
                             {course.description && <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{course.description}</p>}
-                            <div className="space-y-1 text-xs md:text-sm text-muted-foreground mb-3">
-                              {visible.map((s, idx) => (
-                                <div key={idx} className="flex items-center gap-1.5">
-                                  <Clock className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
-                                  <Badge variant="outline" className="text-[10px] md:text-xs font-normal px-1.5 py-0">{s.day.slice(0, 3)}</Badge>
-                                  <span>{s.time}{s.end_time ? ` - ${s.end_time}` : ""}</span>
-                                  {s.time && s.end_time && <span className="text-muted-foreground/60 text-[10px]">· {calcDuration(s.time, s.end_time)}</span>}
-                                </div>
-                              ))}
-                              {hasMore && (
-                                <button onClick={() => toggleExpand(course.id)} className="flex items-center gap-1 text-xs text-primary hover:underline">
-                                  {isExpanded ? <><ChevronUp className="h-3 w-3" /> Réduire</> : <><ChevronDown className="h-3 w-3" /> +{course.schedules.length - MAX_VISIBLE_SCHEDULES} créneaux</>}
-                                </button>
-                              )}
-                            </div>
                             <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
                               <InstructorBadge instructor={course.instructor} photo={photo} />
-                              <div className="flex items-center gap-1"><Users className="h-3 w-3" />{course.schedules[0]?.spots || course.spots} max</div>
                             </div>
                             <div className="flex gap-2">
                               {(course.long_description || course.description) && (
@@ -187,8 +166,8 @@ export default function Activites() {
                                   <Info className="h-3 w-3" /> Description
                                 </Button>
                               )}
-                              <Link to={`/reserver?type=course&id=${course.id}`} className="flex-1">
-                                <Button size="sm" className="w-full text-xs" disabled={totalSpotsLeft === 0}>{totalSpotsLeft === 0 ? "Complet" : "Réserver"}</Button>
+                              <Link to="/calendrier?filter=yoga" className="flex-1">
+                                <Button size="sm" className="w-full text-xs">Réserver</Button>
                               </Link>
                             </div>
                           </div>
@@ -258,7 +237,7 @@ export default function Activites() {
                   <InstructorBadge instructor={descriptionCourse.instructor} photo={getInstructorPhoto(descriptionCourse.instructor_id, descriptionCourse.instructor)} />
                   <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionCourse.schedules[0]?.spots || descriptionCourse.spots} places max</div>
                 </div>
-                <Link to={`/reserver?type=course&id=${descriptionCourse.id}`}><Button className="w-full">Réserver</Button></Link>
+                <Link to="/calendrier?filter=yoga"><Button className="w-full">Réserver</Button></Link>
               </div>
             </>
           )}
@@ -279,7 +258,7 @@ export default function Activites() {
                   <div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {descriptionWs.duration}</div>
                   <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionWs.spots} places max</div>
                 </div>
-                <Link to={`/reserver?type=workshop&id=${descriptionWs.id}`}><Button className="w-full">Réserver</Button></Link>
+                <Link to={`/calendrier?filter=${descriptionWs.category}`}><Button className="w-full">Réserver</Button></Link>
               </div>
             </>
           )}
@@ -296,27 +275,25 @@ function WorkshopCard({ ws, i, onDescription, instructorPhoto }: { ws: Workshop;
         <img src={ws.image || "/placeholder.svg"} alt={ws.name} className="w-full h-full object-cover" loading="lazy" />
       </div>
       <div className="p-4 md:p-5">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className="font-display font-semibold text-base md:text-lg text-primary-dark leading-tight">{ws.name}</h3>
-          <Badge variant={ws.spots_left <= 2 ? "destructive" : "secondary"} className="text-[10px] md:text-xs shrink-0">
-            {ws.spots_left} place{ws.spots_left > 1 ? "s" : ""}
-          </Badge>
-        </div>
+        <h3 className="font-display font-semibold text-base md:text-lg text-primary-dark leading-tight mb-2">{ws.name}</h3>
         <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{ws.description}</p>
-        <div className="grid grid-cols-2 gap-1.5 text-xs md:text-sm text-muted-foreground mb-3">
-          <div className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(ws.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</div>
-          <div className="flex items-center gap-1"><Clock className="h-3 w-3" />{ws.time}{ws.end_time ? `-${ws.end_time}` : ""}</div>
-          <div className="flex items-center gap-1"><Users className="h-3 w-3" />{ws.spots} max</div>
-          <div className="flex items-center gap-1"><Euro className="h-3 w-3" />{ws.price}€</div>
+        <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
+          {instructorPhoto && (
+            <div className="flex items-center gap-1.5">
+              <Avatar className="h-5 w-5">
+                <AvatarImage src={instructorPhoto} />
+                <AvatarFallback className="text-[9px] bg-primary/10 text-primary">I</AvatarFallback>
+              </Avatar>
+            </div>
+          )}
         </div>
-        {ws.frequency && ws.frequency !== "ponctuel" && <Badge variant="outline" className="text-[10px] capitalize mb-2">{ws.frequency}</Badge>}
         <div className="flex gap-2">
           {(ws.long_description || ws.description) && (
             <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => onDescription(ws)}>
               <Info className="h-3 w-3" /> Description
             </Button>
           )}
-          <Link to={`/reserver?type=workshop&id=${ws.id}`} className="flex-1">
+          <Link to={`/calendrier?filter=${ws.category}`} className="flex-1">
             <Button size="sm" className="w-full text-xs">Réserver</Button>
           </Link>
         </div>

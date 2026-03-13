@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ChevronLeft, ChevronRight, Clock, Users, User, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
-import ActivityFilterBar, { type FilterCategory, CATEGORY_STYLES } from "@/components/ActivityFilterBar";
+import ActivityFilterBar, { type FilterCategory, CATEGORY_STYLES, CATEGORY_FILTERS } from "@/components/ActivityFilterBar";
 
 interface Course { id: string; name: string; description: string; category: string; instructor: string; }
 interface Schedule { id: string; course_id: string; day: string; time: string; end_time: string; spots: number; spots_left: number; }
@@ -57,7 +57,11 @@ export default function Calendrier() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<FilterCategory>("all");
+  const [searchParams] = useSearchParams();
+  const initialFilter = searchParams.get("filter") as FilterCategory | null;
+  const [filter, setFilter] = useState<FilterCategory>(
+    initialFilter && CATEGORY_FILTERS.some(f => f.value === initialFilter) ? initialFilter : "all"
+  );
   const [selectedEvent, setSelectedEvent] = useState<ActivityBlock | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const now = new Date();
@@ -131,7 +135,16 @@ export default function Calendrier() {
   const nextWeek = () => { const d = new Date(currentWeekStart); d.setDate(d.getDate() + 7); setCurrentWeekStart(d); };
   const goThisWeek = () => { const now = new Date(); const day = now.getDay(); const diff = now.getDate() - day + (day === 0 ? -6 : 1); const m = new Date(now); m.setDate(diff); m.setHours(0, 0, 0, 0); setCurrentWeekStart(m); };
 
-  const handleBook = (event: ActivityBlock) => navigate(`/reserver?type=${event.type}&id=${event.sourceId}`);
+  const handleBook = (event: ActivityBlock, date: Date) => {
+    const dateStr = formatDateStr(date);
+    const params = new URLSearchParams({
+      type: event.type,
+      id: event.sourceId,
+      date: dateStr,
+    });
+    if (event.scheduleId) params.set("scheduleId", event.scheduleId);
+    navigate(`/reserver?${params.toString()}`);
+  };
 
   const todayStr = formatDateStr(new Date());
   const isThisWeek = weekDays.some(d => formatDateStr(d) === todayStr);
@@ -257,7 +270,11 @@ export default function Calendrier() {
                   </div>
                   {selectedEvent.price !== undefined && selectedEvent.price > 0 && <div className="text-lg font-bold text-primary-dark">{selectedEvent.price}€</div>}
                 </div>
-                <Button className="w-full gap-1.5" disabled={selectedEvent.spotsLeft === 0} onClick={() => { setSelectedEvent(null); handleBook(selectedEvent); }}>
+                <Button className="w-full gap-1.5" disabled={selectedEvent.spotsLeft === 0} onClick={() => {
+                  const eventDate = dayBlocks.find(db => db.blocks.some(b => b.id === selectedEvent.id))?.date || new Date();
+                  setSelectedEvent(null);
+                  handleBook(selectedEvent, eventDate);
+                }}>
                   {selectedEvent.spotsLeft === 0 ? "Complet" : (<>Réserver <ArrowRight className="h-4 w-4" /></>)}
                 </Button>
               </div>
