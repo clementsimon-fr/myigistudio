@@ -21,6 +21,7 @@ interface Instructor {
   urls: string[];
   bio: string;
   active: boolean;
+  photo_url: string;
   created_at: string;
 }
 
@@ -60,7 +61,8 @@ export default function AdminIntervenants() {
   const [workshops, setWorkshops] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
 
-  const emptyForm = { name: "", email: "", phone: "", specialties: [] as string[], urls: [""] as string[], bio: "", active: true };
+  const emptyForm = { name: "", email: "", phone: "", specialties: [] as string[], urls: [""] as string[], bio: "", active: true, photo_url: "" };
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
 
@@ -100,14 +102,14 @@ export default function AdminIntervenants() {
   const openNew = () => { setEditingId(null); setForm(emptyForm); setSelectedCategory(""); setDialogOpen(true); };
   const openEdit = (i: Instructor) => {
     setEditingId(i.id);
-    setForm({ name: i.name, email: i.email, phone: i.phone, specialties: i.specialties || [], urls: (i.urls && i.urls.length > 0) ? i.urls : [""], bio: i.bio, active: i.active });
+    setForm({ name: i.name, email: i.email, phone: i.phone, specialties: i.specialties || [], urls: (i.urls && i.urls.length > 0) ? i.urls : [""], bio: i.bio, active: i.active, photo_url: i.photo_url || "" });
     setSelectedCategory("");
     setDialogOpen(true);
   };
 
   const save = async () => {
     const cleanUrls = form.urls.filter(u => u.trim() !== "");
-    const payload = { ...form, urls: cleanUrls };
+    const payload = { ...form, urls: cleanUrls, photo_url: form.photo_url };
     if (editingId) {
       await supabase.from("instructors").update(payload as any).eq("id", editingId);
       toast({ title: "Intervenant modifié" });
@@ -170,9 +172,13 @@ export default function AdminIntervenants() {
             <div key={inst.id} className="rounded-xl border bg-card p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/15 flex items-center justify-center">
-                    <User className="h-5 w-5 text-primary-dark" />
-                  </div>
+                  {inst.photo_url ? (
+                    <img src={inst.photo_url} alt={inst.name} className="h-10 w-10 rounded-full object-cover" />
+                  ) : (
+                    <div className="h-10 w-10 rounded-full bg-primary/15 flex items-center justify-center">
+                      <User className="h-5 w-5 text-primary-dark" />
+                    </div>
+                  )}
                   <div>
                     <h3 className="font-semibold">{inst.name}</h3>
                     {inst.email && <p className="text-xs text-muted-foreground">{inst.email}</p>}
@@ -312,8 +318,48 @@ export default function AdminIntervenants() {
               </div>
             </div>
 
+            {/* Photo upload */}
+            <div>
+              <Label>Photo</Label>
+              <div className="flex items-center gap-3 mt-1.5">
+                {form.photo_url ? (
+                  <img src={form.photo_url} alt="Photo" className="h-16 w-16 rounded-full object-cover" />
+                ) : (
+                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="h-8 w-8 text-primary-dark/30" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploading}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploading(true);
+                      const ext = file.name.split(".").pop();
+                      const path = `${Date.now()}.${ext}`;
+                      const { error } = await supabase.storage.from("instructor-photos").upload(path, file);
+                      if (!error) {
+                        const { data: urlData } = supabase.storage.from("instructor-photos").getPublicUrl(path);
+                        setForm(prev => ({ ...prev, photo_url: urlData.publicUrl }));
+                      }
+                      setUploading(false);
+                    }}
+                    className="text-xs"
+                  />
+                  {form.photo_url && (
+                    <Button type="button" variant="link" size="sm" className="text-xs text-destructive p-0 h-auto" onClick={() => setForm(prev => ({ ...prev, photo_url: "" }))}>
+                      Supprimer la photo
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div><Label>Bio</Label><Textarea value={form.bio} onChange={e => setForm({ ...form, bio: e.target.value })} rows={3} placeholder="Présentation courte..." /></div>
-            <Button className="w-full" onClick={save} disabled={!form.name}>{editingId ? "Enregistrer" : "Créer l'intervenant"}</Button>
+            <Button className="w-full" onClick={save} disabled={!form.name || uploading}>{editingId ? "Enregistrer" : "Créer l'intervenant"}</Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -1,4 +1,4 @@
-import { LayoutDashboard, CalendarDays, BookOpen, Users, UserCircle, CreditCard, LogOut } from "lucide-react";
+import { LayoutDashboard, CalendarDays, BookOpen, Users, UserCircle, CreditCard, FileText, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -20,6 +20,7 @@ const items = [
   { title: "Intervenants", url: "/admin/intervenants", icon: UserCircle },
   { title: "Clients", url: "/admin/clients", icon: Users },
   { title: "Tarifs", url: "/admin/tarifs", icon: CreditCard },
+  { title: "Contenu du site", url: "/admin/contenu", icon: FileText },
 ];
 
 export default function AdminSidebar() {

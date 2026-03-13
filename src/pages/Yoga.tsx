@@ -26,6 +26,7 @@ interface Course {
   instructor: string;
   spots: number;
   spots_left: number;
+  image: string;
   schedules: Schedule[];
 }
 
@@ -74,6 +75,7 @@ export default function Yoga() {
           instructor: c.instructor,
           spots: c.spots,
           spots_left: c.spots_left,
+          image: c.image || "",
           schedules: schedulesMap[c.id] || [{ day: c.day, time: c.time, end_time: c.end_time || "", spots: c.spots, spots_left: c.spots_left }],
         })));
       }
@@ -133,6 +135,11 @@ export default function Yoga() {
                       transition={{ delay: i * 0.1 }}
                       className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow"
                     >
+                      {course.image && (
+                        <div className="aspect-[4/3] overflow-hidden">
+                          <img src={course.image} alt={course.name} className="w-full h-full object-cover" loading="lazy" />
+                        </div>
+                      )}
                       <div className="p-5">
                         <div className="flex items-start justify-between mb-2">
                           <h3 className="font-display font-semibold text-lg text-primary-dark">{course.name}</h3>
@@ -141,7 +148,7 @@ export default function Yoga() {
                           </Badge>
                         </div>
                         {course.description && (
-                          <p className="text-sm text-muted-foreground mb-4">{course.description}</p>
+                          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{course.description}</p>
                         )}
 
                         {/* Schedule rollup */}
@@ -225,6 +232,9 @@ export default function Yoga() {
                 <DialogTitle className="font-display">{descriptionCourse.name}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-2">
+                {descriptionCourse.image && (
+                  <img src={descriptionCourse.image} alt={descriptionCourse.name} className="w-full rounded-lg object-cover max-h-64" />
+                )}
                 <div className="text-sm text-muted-foreground whitespace-pre-line">
                   {descriptionCourse.long_description || descriptionCourse.description}
                 </div>

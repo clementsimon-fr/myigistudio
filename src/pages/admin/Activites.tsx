@@ -97,7 +97,7 @@ export default function AdminActivites() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  const emptyCourseForm = { name: "", description: "", long_description: "", category: "yoga", frequency: "hebdomadaire", instructor: "Élodie", spots: 12, schedules: [{ day: "Mardi", time: "09:00", end_time: "10:00" }] as Schedule[] };
+  const emptyCourseForm = { name: "", description: "", long_description: "", category: "yoga", frequency: "hebdomadaire", instructor: "Élodie", spots: 12, image: "", schedules: [{ day: "Mardi", time: "09:00", end_time: "10:00" }] as Schedule[] };
   const [courseForm, setCourseForm] = useState(emptyCourseForm);
 
   const emptyWorkshopForm = { name: "", description: "", long_description: "", category: "poterie", dates: [""] as string[], time: "14:00", end_time: "16:00", frequency: "ponctuel", price: 0, spots: 8, image: "" };
@@ -175,6 +175,7 @@ export default function AdminActivites() {
       frequency: c.frequency || "hebdomadaire",
       instructor: c.instructor,
       spots: c.spots,
+      image: (c as any).image || "",
       schedules: c.schedules && c.schedules.length > 0
         ? c.schedules.map(s => ({ id: s.id, day: s.day, time: s.time, end_time: s.end_time }))
         : [{ day: c.day, time: c.time, end_time: c.end_time || "" }],
@@ -196,6 +197,7 @@ export default function AdminActivites() {
       frequency: courseForm.frequency,
       instructor: courseForm.instructor,
       spots: courseForm.spots,
+      image: courseForm.image,
       day: firstSchedule.day,
       time: firstSchedule.time,
       end_time: firstSchedule.end_time,
@@ -534,6 +536,7 @@ export default function AdminActivites() {
                   )}
                 </div>
               </div>
+              <div><Label>Image URL</Label><Input value={courseForm.image} onChange={e => setCourseForm({ ...courseForm, image: e.target.value })} placeholder="https://images.unsplash.com/..." /></div>
               <Button className="w-full" onClick={saveCourse} disabled={!courseForm.name || courseForm.schedules.length === 0}>{editingId ? "Enregistrer" : "Créer le cours"}</Button>
             </div>
           ) : (

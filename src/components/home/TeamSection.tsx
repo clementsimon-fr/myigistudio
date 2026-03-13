@@ -1,7 +1,27 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { teamMembers } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
+import { User } from "lucide-react";
+
+interface Instructor {
+  id: string;
+  name: string;
+  bio: string;
+  photo_url: string;
+  specialties: string[];
+}
 
 export default function TeamSection() {
+  const [team, setTeam] = useState<Instructor[]>([]);
+
+  useEffect(() => {
+    supabase.from("instructors").select("id, name, bio, photo_url, specialties").eq("active", true).order("name").then(({ data }) => {
+      if (data) setTeam(data as unknown as Instructor[]);
+    });
+  }, []);
+
+  if (team.length === 0) return null;
+
   return (
     <section className="py-20">
       <div className="container">
@@ -14,29 +34,39 @@ export default function TeamSection() {
           </p>
         </div>
 
-        <div className="flex justify-center">
-          {teamMembers.map((member, i) => (
+        <div className="flex flex-wrap justify-center gap-10">
+          {team.map((member, i) => (
             <motion.div
               key={member.id}
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.15 }}
-              className="text-center max-w-sm"
+              className="text-center max-w-xs"
             >
               <div className="w-40 h-40 mx-auto mb-4 rounded-full overflow-hidden border-4 border-secondary">
-                <img
-                  src={member.image}
-                  alt={member.name}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
+                {member.photo_url ? (
+                  <img
+                    src={member.photo_url}
+                    alt={member.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                    <User className="h-16 w-16 text-primary-dark/30" />
+                  </div>
+                )}
               </div>
               <h3 className="text-xl font-display font-semibold text-primary-dark">
                 {member.name}
               </h3>
-              <p className="text-sm font-medium text-primary mb-2">{member.role}</p>
-              <p className="text-sm text-muted-foreground leading-relaxed">{member.bio}</p>
+              {member.specialties?.length > 0 && (
+                <p className="text-sm font-medium text-primary mb-2">
+                  {member.specialties.slice(0, 3).join(" · ")}
+                </p>
+              )}
+              {member.bio && <p className="text-sm text-muted-foreground leading-relaxed">{member.bio}</p>}
             </motion.div>
           ))}
         </div>
