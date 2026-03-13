@@ -127,6 +127,7 @@ export default function AdminActivites() {
       })));
     }
     if (workshopsRes.data) setWorkshops(workshopsRes.data as unknown as Workshop[]);
+    if (instrRes.data) setInstructorsList(instrRes.data as { id: string; name: string }[]);
     setLoading(false);
   };
 
