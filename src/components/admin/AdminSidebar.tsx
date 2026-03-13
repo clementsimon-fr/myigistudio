@@ -19,6 +19,7 @@ const items = [
   { title: "Activités", url: "/admin/activites", icon: BookOpen },
   { title: "Intervenants", url: "/admin/intervenants", icon: UserCircle },
   { title: "Clients", url: "/admin/clients", icon: Users },
+  { title: "Tarifs", url: "/admin/tarifs", icon: CreditCard },
 ];
 
 export default function AdminSidebar() {
