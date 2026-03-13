@@ -61,10 +61,13 @@ export default function Reserver() {
 
   const activityType = searchParams.get("type") as "course" | "workshop" | null;
   const activityId = searchParams.get("id");
+  const preselectedDate = searchParams.get("date");
+  const preselectedScheduleId = searchParams.get("scheduleId");
 
   const [activity, setActivity] = useState<any>(null);
   const [schedules, setSchedules] = useState<CourseScheduleRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [directBooking, setDirectBooking] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedSlot, setSelectedSlot] = useState<string>("");
