@@ -1,17 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, ArrowUpDown, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+interface Schedule {
+  id?: string;
+  day: string;
+  time: string;
+  end_time: string;
+}
 
 interface Course {
   id: string;
@@ -27,6 +33,7 @@ interface Course {
   instructor: string;
   spots: number;
   spots_left: number;
+  schedules?: Schedule[];
 }
 
 interface Workshop {
@@ -46,6 +53,7 @@ interface Workshop {
 }
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+const DAY_ORDER: Record<string, number> = { Lundi: 1, Mardi: 2, Mercredi: 3, Jeudi: 4, Vendredi: 5, Samedi: 6, Dimanche: 7 };
 const FREQUENCIES = [
   { value: "hebdomadaire", label: "Hebdomadaire" },
   { value: "mensuel", label: "Mensuel" },
@@ -65,6 +73,9 @@ function calcDuration(start: string, end: string): string {
   return `${h}h${m.toString().padStart(2, "0")}`;
 }
 
+type SortKey = "name" | "day" | "spots" | "instructor" | "frequency";
+type SortDir = "asc" | "desc";
+
 export default function AdminActivites() {
   const { toast } = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
@@ -75,7 +86,11 @@ export default function AdminActivites() {
   const [dialogType, setDialogType] = useState<"course" | "workshop">("course");
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const emptyCourseForm = { name: "", description: "", category: "yoga", day: "Mardi", days: [] as string[], time: "09:00", end_time: "10:00", frequency: "hebdomadaire", instructor: "Élodie", spots: 12 };
+  // Sorting
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const emptyCourseForm = { name: "", description: "", category: "yoga", frequency: "hebdomadaire", instructor: "Élodie", spots: 12, schedules: [{ day: "Mardi", time: "09:00", end_time: "10:00" }] as Schedule[] };
   const [courseForm, setCourseForm] = useState(emptyCourseForm);
 
   const emptyWorkshopForm = { name: "", description: "", category: "poterie", date: "", time: "14:00", end_time: "16:00", frequency: "ponctuel", price: 0, spots: 8, image: "" };
@@ -83,16 +98,56 @@ export default function AdminActivites() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [coursesRes, workshopsRes] = await Promise.all([
-      supabase.from("courses").select("*").order("day").order("time"),
+    const [coursesRes, workshopsRes, schedulesRes] = await Promise.all([
+      supabase.from("courses").select("*"),
       supabase.from("workshops").select("*").order("date"),
+      supabase.from("course_schedules").select("*"),
     ]);
-    if (coursesRes.data) setCourses(coursesRes.data as unknown as Course[]);
+
+    const schedulesMap: Record<string, Schedule[]> = {};
+    if (schedulesRes.data) {
+      for (const s of schedulesRes.data) {
+        if (!schedulesMap[s.course_id]) schedulesMap[s.course_id] = [];
+        schedulesMap[s.course_id].push({ id: s.id, day: s.day, time: s.time, end_time: s.end_time });
+      }
+    }
+
+    if (coursesRes.data) {
+      setCourses((coursesRes.data as unknown as Course[]).map(c => ({
+        ...c,
+        schedules: schedulesMap[c.id] || [],
+      })));
+    }
     if (workshopsRes.data) setWorkshops(workshopsRes.data as unknown as Workshop[]);
     setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  // Sorting logic
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir("asc"); }
+  };
+
+  const sortedCourses = useMemo(() => {
+    return [...courses].sort((a, b) => {
+      let cmp = 0;
+      switch (sortKey) {
+        case "name": cmp = a.name.localeCompare(b.name); break;
+        case "day": {
+          const aDay = a.schedules?.[0]?.day || a.day || "";
+          const bDay = b.schedules?.[0]?.day || b.day || "";
+          cmp = (DAY_ORDER[aDay] || 99) - (DAY_ORDER[bDay] || 99);
+          break;
+        }
+        case "spots": cmp = a.spots_left - b.spots_left; break;
+        case "instructor": cmp = a.instructor.localeCompare(b.instructor); break;
+        case "frequency": cmp = (a.frequency || "").localeCompare(b.frequency || ""); break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [courses, sortKey, sortDir]);
 
   // === COURSE CRUD ===
   const openNewCourse = () => {
@@ -103,27 +158,92 @@ export default function AdminActivites() {
   };
   const openEditCourse = (c: Course) => {
     setEditingId(c.id);
-    setCourseForm({ name: c.name, description: c.description || "", category: c.category, day: c.day, days: c.days || [], time: c.time, end_time: c.end_time || "", frequency: c.frequency || "hebdomadaire", instructor: c.instructor, spots: c.spots });
+    setCourseForm({
+      name: c.name,
+      description: c.description || "",
+      category: c.category,
+      frequency: c.frequency || "hebdomadaire",
+      instructor: c.instructor,
+      spots: c.spots,
+      schedules: c.schedules && c.schedules.length > 0
+        ? c.schedules.map(s => ({ id: s.id, day: s.day, time: s.time, end_time: s.end_time }))
+        : [{ day: c.day, time: c.time, end_time: c.end_time || "" }],
+    });
     setDialogType("course");
     setDialogOpen(true);
   };
+
   const saveCourse = async () => {
-    const duration = calcDuration(courseForm.time, courseForm.end_time);
-    const payload = { ...courseForm, duration };
+    const firstSchedule = courseForm.schedules[0] || { day: "Lundi", time: "09:00", end_time: "10:00" };
+    const duration = calcDuration(firstSchedule.time, firstSchedule.end_time);
+    const days = [...new Set(courseForm.schedules.map(s => s.day))];
+
+    const payload = {
+      name: courseForm.name,
+      description: courseForm.description,
+      category: courseForm.category,
+      frequency: courseForm.frequency,
+      instructor: courseForm.instructor,
+      spots: courseForm.spots,
+      day: firstSchedule.day,
+      time: firstSchedule.time,
+      end_time: firstSchedule.end_time,
+      duration,
+      days,
+    };
+
+    let courseId = editingId;
+
     if (editingId) {
       await supabase.from("courses").update(payload).eq("id", editingId);
+      // Replace schedules
+      await supabase.from("course_schedules").delete().eq("course_id", editingId);
       toast({ title: "Cours modifié" });
     } else {
-      await supabase.from("courses").insert({ ...payload, spots_left: courseForm.spots });
+      const { data } = await supabase.from("courses").insert({ ...payload, spots_left: courseForm.spots }).select("id").single();
+      if (data) courseId = data.id;
       toast({ title: "Cours créé" });
     }
+
+    // Insert schedules
+    if (courseId) {
+      const scheduleRows = courseForm.schedules.map(s => ({
+        course_id: courseId!,
+        day: s.day,
+        time: s.time,
+        end_time: s.end_time,
+      }));
+      await supabase.from("course_schedules").insert(scheduleRows);
+    }
+
     setDialogOpen(false);
     fetchData();
   };
+
   const deleteCourse = async (id: string) => {
     await supabase.from("courses").delete().eq("id", id);
     toast({ title: "Cours supprimé", variant: "destructive" });
     fetchData();
+  };
+
+  // Schedule form helpers
+  const addScheduleSlot = () => {
+    setCourseForm(prev => ({
+      ...prev,
+      schedules: [...prev.schedules, { day: "Lundi", time: "09:00", end_time: "10:00" }],
+    }));
+  };
+  const removeScheduleSlot = (idx: number) => {
+    setCourseForm(prev => ({
+      ...prev,
+      schedules: prev.schedules.filter((_, i) => i !== idx),
+    }));
+  };
+  const updateScheduleSlot = (idx: number, field: keyof Schedule, value: string) => {
+    setCourseForm(prev => ({
+      ...prev,
+      schedules: prev.schedules.map((s, i) => i === idx ? { ...s, [field]: value } : s),
+    }));
   };
 
   // === WORKSHOP CRUD ===
@@ -158,18 +278,21 @@ export default function AdminActivites() {
     fetchData();
   };
 
-  const toggleDay = (day: string) => {
-    setCourseForm(prev => ({
-      ...prev,
-      days: prev.days.includes(day) ? prev.days.filter(d => d !== day) : [...prev.days, day],
-    }));
-  };
-
-  const courseDuration = calcDuration(courseForm.time, courseForm.end_time);
   const workshopDuration = calcDuration(workshopForm.time, workshopForm.end_time);
-
   const potteryWorkshops = workshops.filter(w => w.category === "poterie");
   const wellbeingWorkshops = workshops.filter(w => w.category === "bien-etre");
+
+  const SortHeader = ({ label, field }: { label: string; field: SortKey }) => (
+    <th
+      className="text-left p-3 font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
+      onClick={() => toggleSort(field)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        <ArrowUpDown className={`h-3 w-3 ${sortKey === field ? "text-foreground" : "text-muted-foreground/40"}`} />
+      </span>
+    </th>
+  );
 
   if (loading) {
     return (
@@ -202,32 +325,38 @@ export default function AdminActivites() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/30">
-                  <th className="text-left p-3 font-medium text-muted-foreground">Cours</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Jours</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Horaires</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Durée</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Fréquence</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Places</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Intervenant</th>
+                  <SortHeader label="Cours" field="name" />
+                  <SortHeader label="Créneaux" field="day" />
+                  <SortHeader label="Fréquence" field="frequency" />
+                  <SortHeader label="Places" field="spots" />
+                  <SortHeader label="Intervenant" field="instructor" />
                   <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {courses.map((c) => (
+                {sortedCourses.map((c) => (
                   <tr key={c.id} className="border-b last:border-0 hover:bg-muted/10">
                     <td className="p-3">
                       <div className="font-medium">{c.name}</div>
                       {c.description && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{c.description}</div>}
                     </td>
                     <td className="p-3">
-                      {c.days && c.days.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {c.days.map(d => <Badge key={d} variant="outline" className="text-xs">{d.slice(0, 3)}</Badge>)}
+                      {c.schedules && c.schedules.length > 0 ? (
+                        <div className="space-y-1">
+                          {c.schedules.map((s, i) => (
+                            <div key={i} className="flex items-center gap-1.5 text-xs">
+                              <Badge variant="outline" className="text-xs font-normal">{s.day.slice(0, 3)}</Badge>
+                              <span className="text-muted-foreground">{s.time}{s.end_time ? ` - ${s.end_time}` : ""}</span>
+                              {s.time && s.end_time && (
+                                <span className="text-muted-foreground/60">· {calcDuration(s.time, s.end_time)}</span>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                      ) : c.day}
+                      ) : (
+                        <span>{c.day} {c.time}{c.end_time ? ` - ${c.end_time}` : ""}</span>
+                      )}
                     </td>
-                    <td className="p-3">{c.time}{c.end_time ? ` - ${c.end_time}` : ""}</td>
-                    <td className="p-3">{c.duration}</td>
                     <td className="p-3">
                       <Badge variant="outline" className="text-xs capitalize">{c.frequency || "hebdomadaire"}</Badge>
                     </td>
@@ -275,7 +404,7 @@ export default function AdminActivites() {
 
       {/* === DIALOG === */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display">
               {editingId ? "Modifier" : "Nouveau"} {dialogType === "course" ? "cours" : "atelier"}
@@ -295,29 +424,45 @@ export default function AdminActivites() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* === SCHEDULE SLOTS === */}
               <div>
-                <Label className="mb-2 block">Jours</Label>
-                <div className="flex flex-wrap gap-2">
-                  {DAYS.map(d => (
-                    <label key={d} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                      <Checkbox checked={courseForm.days.includes(d)} onCheckedChange={() => toggleDay(d)} />
-                      {d}
-                    </label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="mb-0">Créneaux horaires</Label>
+                  <Button type="button" size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={addScheduleSlot}>
+                    <Plus className="h-3 w-3" /> Ajouter un créneau
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {courseForm.schedules.map((slot, idx) => (
+                    <div key={idx} className="flex items-center gap-2 rounded-lg border bg-muted/20 p-2">
+                      <Select value={slot.day} onValueChange={v => updateScheduleSlot(idx, "day", v)}>
+                        <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Input type="time" className="w-[100px] h-8 text-xs" value={slot.time} onChange={e => updateScheduleSlot(idx, "time", e.target.value)} />
+                      <span className="text-muted-foreground text-xs">→</span>
+                      <Input type="time" className="w-[100px] h-8 text-xs" value={slot.end_time} onChange={e => updateScheduleSlot(idx, "end_time", e.target.value)} />
+                      {slot.time && slot.end_time && (
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">{calcDuration(slot.time, slot.end_time)}</span>
+                      )}
+                      {courseForm.schedules.length > 1 && (
+                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => removeScheduleSlot(idx)}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Heure de début</Label><Input type="time" value={courseForm.time} onChange={e => setCourseForm({ ...courseForm, time: e.target.value })} /></div>
-                <div><Label>Heure de fin</Label><Input type="time" value={courseForm.end_time} onChange={e => setCourseForm({ ...courseForm, end_time: e.target.value })} /></div>
-              </div>
-              {courseDuration && (
-                <div className="text-sm text-muted-foreground">Durée calculée : <span className="font-medium text-foreground">{courseDuration}</span></div>
-              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Places</Label><Input type="number" value={courseForm.spots} onChange={e => setCourseForm({ ...courseForm, spots: Number(e.target.value) })} /></div>
                 <div><Label>Intervenant</Label><Input value={courseForm.instructor} onChange={e => setCourseForm({ ...courseForm, instructor: e.target.value })} /></div>
               </div>
-              <Button className="w-full" onClick={saveCourse} disabled={!courseForm.name}>{editingId ? "Enregistrer" : "Créer le cours"}</Button>
+              <Button className="w-full" onClick={saveCourse} disabled={!courseForm.name || courseForm.schedules.length === 0}>{editingId ? "Enregistrer" : "Créer le cours"}</Button>
             </div>
           ) : (
             <div className="space-y-4 pt-2">
