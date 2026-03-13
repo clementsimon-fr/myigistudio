@@ -104,6 +104,21 @@ export default function Reserver() {
 
   useEffect(() => { fetchAll(); }, []);
 
+  // Handle pre-selection from calendar page
+  useEffect(() => {
+    const serviceParam = searchParams.get("service");
+    const activityParam = searchParams.get("activity");
+    if (serviceParam && !selectedService) {
+      setSelectedService(serviceParam);
+      if (activityParam) {
+        setSelectedSubActivity(activityParam);
+        setStep(3);
+      } else {
+        setStep(2);
+      }
+    }
+  }, [searchParams, courses, workshops]);
+
   const subActivities: SubActivity[] = useMemo(() => {
     if (selectedService === "yoga") {
       return courses
