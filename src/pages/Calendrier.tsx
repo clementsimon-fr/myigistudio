@@ -291,11 +291,10 @@ export default function Calendrier() {
 
           {/* Week view - day columns */}
           <div className="space-y-4">
-            {dayBlocks.map(({ date, blocks }) => {
+            {dayBlocks.filter(({ date }) => date >= new Date(new Date().setHours(0, 0, 0, 0))).map(({ date, blocks }) => {
               const isToday = formatDateStr(date) === todayStr;
-              const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
               return (
-                <div key={formatDateStr(date)} className={`${isPast ? "opacity-40" : ""}`}>
+                <div key={formatDateStr(date)}>
                   <div className={`flex items-center gap-3 mb-2 ${isToday ? "text-primary-dark" : "text-foreground"}`}>
                     <div className={`text-sm font-semibold capitalize ${isToday ? "bg-primary-dark text-primary-dark-foreground px-3 py-1 rounded-full" : ""}`}>
                       {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
