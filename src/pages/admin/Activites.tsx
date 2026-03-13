@@ -82,6 +82,7 @@ export default function AdminActivites() {
   const { toast } = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
+  const [instructorsList, setInstructorsList] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
 
@@ -104,10 +105,11 @@ export default function AdminActivites() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [coursesRes, workshopsRes, schedulesRes] = await Promise.all([
+    const [coursesRes, workshopsRes, schedulesRes, instrRes] = await Promise.all([
       supabase.from("courses").select("*"),
       supabase.from("workshops").select("*").order("date"),
       supabase.from("course_schedules").select("*"),
+      supabase.from("instructors").select("id, name").eq("active", true).order("name"),
     ]);
 
     const schedulesMap: Record<string, Schedule[]> = {};
@@ -125,6 +127,7 @@ export default function AdminActivites() {
       })));
     }
     if (workshopsRes.data) setWorkshops(workshopsRes.data as unknown as Workshop[]);
+    if (instrRes.data) setInstructorsList(instrRes.data as { id: string; name: string }[]);
     setLoading(false);
   };
 
@@ -513,7 +516,20 @@ export default function AdminActivites() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Places</Label><Input type="number" value={courseForm.spots} onChange={e => setCourseForm({ ...courseForm, spots: Number(e.target.value) })} /></div>
-                <div><Label>Intervenant</Label><Input value={courseForm.instructor} onChange={e => setCourseForm({ ...courseForm, instructor: e.target.value })} /></div>
+                <div>
+                  <Label>Intervenant</Label>
+                  {instructorsList.length > 0 ? (
+                    <Select value={courseForm.instructor} onValueChange={v => setCourseForm({ ...courseForm, instructor: v })}>
+                      <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                      <SelectContent>
+                        {instructorsList.map(i => <SelectItem key={i.id} value={i.name}>{i.name}</SelectItem>)}
+                        <SelectItem value="Élodie">Élodie (par défaut)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input value={courseForm.instructor} onChange={e => setCourseForm({ ...courseForm, instructor: e.target.value })} />
+                  )}
+                </div>
               </div>
               <Button className="w-full" onClick={saveCourse} disabled={!courseForm.name || courseForm.schedules.length === 0}>{editingId ? "Enregistrer" : "Créer le cours"}</Button>
             </div>

@@ -67,6 +67,7 @@ export type Database = {
           frequency: string
           id: string
           instructor: string
+          instructor_id: string | null
           name: string
           spots: number
           spots_left: number
@@ -83,6 +84,7 @@ export type Database = {
           frequency?: string
           id?: string
           instructor?: string
+          instructor_id?: string | null
           name: string
           spots?: number
           spots_left?: number
@@ -99,10 +101,52 @@ export type Database = {
           frequency?: string
           id?: string
           instructor?: string
+          instructor_id?: string | null
           name?: string
           spots?: number
           spots_left?: number
           time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courses_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instructors: {
+        Row: {
+          active: boolean
+          bio: string
+          created_at: string
+          email: string
+          id: string
+          name: string
+          phone: string
+          specialties: string[]
+        }
+        Insert: {
+          active?: boolean
+          bio?: string
+          created_at?: string
+          email?: string
+          id?: string
+          name: string
+          phone?: string
+          specialties?: string[]
+        }
+        Update: {
+          active?: boolean
+          bio?: string
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          phone?: string
+          specialties?: string[]
         }
         Relationships: []
       }
@@ -241,6 +285,7 @@ export type Database = {
           frequency: string
           id: string
           image: string
+          instructor_id: string | null
           name: string
           price: number
           spots: number
@@ -257,6 +302,7 @@ export type Database = {
           frequency?: string
           id?: string
           image?: string
+          instructor_id?: string | null
           name: string
           price?: number
           spots?: number
@@ -273,13 +319,22 @@ export type Database = {
           frequency?: string
           id?: string
           image?: string
+          instructor_id?: string | null
           name?: string
           price?: number
           spots?: number
           spots_left?: number
           time?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "workshops_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
