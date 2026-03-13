@@ -218,7 +218,7 @@ export default function ActivityCalendar() {
     if (sessionForm.source === "course" && sessionForm.sourceId) payload.course_id = sessionForm.sourceId;
     if (sessionForm.source === "workshop" && sessionForm.sourceId) payload.workshop_id = sessionForm.sourceId;
 
-    await supabase.from("planned_sessions").insert(payload);
+    await supabase.from("planned_sessions").insert(payload as { title: string; date: string; time: string; end_time: string; notes: string; course_id?: string; workshop_id?: string });
     toast({ title: "Séance ajoutée" });
     setDialogOpen(false);
     fetchData();
