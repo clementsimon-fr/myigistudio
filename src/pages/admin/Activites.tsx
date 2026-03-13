@@ -197,6 +197,7 @@ export default function AdminActivites() {
       frequency: courseForm.frequency,
       instructor: courseForm.instructor,
       spots: courseForm.spots,
+      image: courseForm.image,
       day: firstSchedule.day,
       time: firstSchedule.time,
       end_time: firstSchedule.end_time,
