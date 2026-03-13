@@ -266,22 +266,45 @@ export default function AdminActivites() {
   };
   const openEditWorkshop = (w: Workshop) => {
     setEditingId(w.id);
-    setWorkshopForm({ name: w.name, description: w.description, category: w.category, date: w.date, time: w.time, end_time: w.end_time || "", frequency: w.frequency || "ponctuel", price: w.price, spots: w.spots, image: w.image });
+    setWorkshopForm({ name: w.name, description: w.description, category: w.category, dates: [w.date], time: w.time, end_time: w.end_time || "", frequency: w.frequency || "ponctuel", price: w.price, spots: w.spots, image: w.image });
     setDialogType("workshop");
     setDialogOpen(true);
   };
   const saveWorkshop = async () => {
     const duration = calcDuration(workshopForm.time, workshopForm.end_time);
-    const payload = { ...workshopForm, duration };
+    const validDates = workshopForm.dates.filter(d => d.trim() !== "");
+    if (validDates.length === 0) return;
+
     if (editingId) {
-      await supabase.from("workshops").update(payload).eq("id", editingId);
+      // Update existing with first date
+      const { dates, ...rest } = workshopForm;
+      await supabase.from("workshops").update({ ...rest, date: validDates[0], duration }).eq("id", editingId);
+      // Create additional dates as new workshops
+      for (let i = 1; i < validDates.length; i++) {
+        const { dates: _d, ...payload } = workshopForm;
+        await supabase.from("workshops").insert({ ...payload, date: validDates[i], duration, spots_left: workshopForm.spots });
+      }
       toast({ title: "Atelier modifié" });
     } else {
-      await supabase.from("workshops").insert({ ...payload, spots_left: workshopForm.spots });
-      toast({ title: "Atelier créé" });
+      // Create one workshop per date
+      for (const date of validDates) {
+        const { dates, ...payload } = workshopForm;
+        await supabase.from("workshops").insert({ ...payload, date, duration, spots_left: workshopForm.spots });
+      }
+      toast({ title: `${validDates.length > 1 ? validDates.length + " ateliers créés" : "Atelier créé"}` });
     }
     setDialogOpen(false);
     fetchData();
+  };
+
+  const addWorkshopDate = () => {
+    setWorkshopForm(prev => ({ ...prev, dates: [...prev.dates, ""] }));
+  };
+  const removeWorkshopDate = (idx: number) => {
+    setWorkshopForm(prev => ({ ...prev, dates: prev.dates.filter((_, i) => i !== idx) }));
+  };
+  const updateWorkshopDate = (idx: number, value: string) => {
+    setWorkshopForm(prev => ({ ...prev, dates: prev.dates.map((d, i) => i === idx ? value : d) }));
   };
 
   const workshopDuration = calcDuration(workshopForm.time, workshopForm.end_time);
