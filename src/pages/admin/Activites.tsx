@@ -82,6 +82,7 @@ export default function AdminActivites() {
   const { toast } = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
+  const [instructorsList, setInstructorsList] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
 
