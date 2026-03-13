@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ChevronLeft, ChevronRight, Clock, Users, User, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
-import ActivityFilterBar, { type FilterCategory, CATEGORY_STYLES } from "@/components/ActivityFilterBar";
+import ActivityFilterBar, { type FilterCategory, CATEGORY_STYLES, CATEGORY_FILTERS } from "@/components/ActivityFilterBar";
 
 interface Course { id: string; name: string; description: string; category: string; instructor: string; }
 interface Schedule { id: string; course_id: string; day: string; time: string; end_time: string; spots: number; spots_left: number; }
