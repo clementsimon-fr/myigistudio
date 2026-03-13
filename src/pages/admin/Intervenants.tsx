@@ -76,6 +76,8 @@ export default function AdminIntervenants() {
   const [form, setForm] = useState(emptyForm);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
 
+  const CATEGORY_SERVICES = useMemo(() => buildSpecialtiesFromActivities(courses, workshops), [courses, workshops]);
+
   const fetchData = async () => {
     setLoading(true);
     const [instrRes, coursesRes, workshopsRes, schedsRes] = await Promise.all([
