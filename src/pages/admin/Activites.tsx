@@ -275,7 +275,8 @@ export default function AdminActivites() {
   };
   const openEditWorkshop = (w: Workshop) => {
     setEditingId(w.id);
-    setWorkshopForm({ name: w.name, description: w.description, long_description: (w as any).long_description || "", category: w.category, dates: [w.date], time: w.time, end_time: w.end_time || "", frequency: w.frequency || "ponctuel", price: w.price, spots: w.spots, image: w.image, reminder_template: (w as any).reminder_template || "" });
+    const instrName = w.instructor_id ? instructorsList.find(i => i.id === w.instructor_id)?.name || "Élodie" : "Élodie";
+    setWorkshopForm({ name: w.name, description: w.description, long_description: (w as any).long_description || "", category: w.category, dates: [w.date], time: w.time, end_time: w.end_time || "", frequency: w.frequency || "ponctuel", price: w.price, spots: w.spots, image: w.image, reminder_template: (w as any).reminder_template || "", instructor: instrName });
     setDialogType("workshop");
     setDialogOpen(true);
   };
