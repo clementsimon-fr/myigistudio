@@ -6,7 +6,7 @@ import { Clock, Users, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { pricingCards } from "@/data/mockData";
+import PricingSection from "@/components/home/PricingSection";
 import { supabase } from "@/integrations/supabase/client";
 
 const days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
