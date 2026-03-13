@@ -602,6 +602,11 @@ export default function AdminActivites() {
                 <div><Label>Places</Label><Input type="number" value={workshopForm.spots} onChange={e => setWorkshopForm({ ...workshopForm, spots: Number(e.target.value) })} /></div>
               </div>
               <div><Label>Image URL</Label><Input value={workshopForm.image} onChange={e => setWorkshopForm({ ...workshopForm, image: e.target.value })} placeholder="https://..." /></div>
+              <div>
+                <Label>📧 Modèle de rappel (e-mail)</Label>
+                <Textarea value={workshopForm.reminder_template} onChange={e => setWorkshopForm({ ...workshopForm, reminder_template: e.target.value })} rows={4} placeholder="Bonjour {nom}, votre atelier {activité} approche ! Rendez-vous le {date} à {heure}. Tout le matériel est fourni. À très vite !" />
+                <p className="text-xs text-muted-foreground mt-1">Variables : {"{nom}"}, {"{activité}"}, {"{date}"}, {"{heure}"}</p>
+              </div>
               <Button className="w-full" onClick={saveWorkshop} disabled={!workshopForm.name || workshopForm.dates.every(d => !d)}>{editingId ? "Enregistrer" : `Créer ${workshopForm.dates.filter(d => d).length > 1 ? workshopForm.dates.filter(d => d).length + " ateliers" : "l'atelier"}`}</Button>
             </div>
           )}
