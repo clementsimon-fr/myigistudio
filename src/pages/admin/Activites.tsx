@@ -170,6 +170,7 @@ export default function AdminActivites() {
     setCourseForm({
       name: c.name,
       description: c.description || "",
+      long_description: (c as any).long_description || "",
       category: c.category,
       frequency: c.frequency || "hebdomadaire",
       instructor: c.instructor,
