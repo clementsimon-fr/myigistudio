@@ -11,19 +11,34 @@ import { supabase } from "@/integrations/supabase/client";
 
 const days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 
+interface Schedule {
+  day: string;
+  time: string;
+  end_time: string;
+}
+
 interface Course {
   id: string;
   name: string;
   description: string;
-  day: string;
-  days: string[];
-  time: string;
-  end_time: string;
-  duration: string;
-  frequency: string;
   instructor: string;
   spots: number;
   spots_left: number;
+  frequency: string;
+  schedules: Schedule[];
+}
+
+function calcDuration(start: string, end: string): string {
+  if (!start || !end) return "";
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  let diffMin = (eh * 60 + em) - (sh * 60 + sm);
+  if (diffMin <= 0) return "";
+  const h = Math.floor(diffMin / 60);
+  const m = diffMin % 60;
+  if (h === 0) return `${m}min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h${m.toString().padStart(2, "0")}`;
 }
 
 export default function Yoga() {
@@ -31,18 +46,48 @@ export default function Yoga() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.from("courses").select("*").order("time").then(({ data }) => {
-      if (data) setCourses(data as unknown as Course[]);
+    const load = async () => {
+      const [coursesRes, schedulesRes] = await Promise.all([
+        supabase.from("courses").select("*"),
+        supabase.from("course_schedules").select("*"),
+      ]);
+
+      const schedulesMap: Record<string, Schedule[]> = {};
+      if (schedulesRes.data) {
+        for (const s of schedulesRes.data) {
+          if (!schedulesMap[s.course_id]) schedulesMap[s.course_id] = [];
+          schedulesMap[s.course_id].push({ day: s.day, time: s.time, end_time: s.end_time });
+        }
+      }
+
+      if (coursesRes.data) {
+        setCourses(coursesRes.data.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          description: c.description || "",
+          instructor: c.instructor,
+          spots: c.spots,
+          spots_left: c.spots_left,
+          frequency: c.frequency || "hebdomadaire",
+          schedules: schedulesMap[c.id] || [{ day: c.day, time: c.time, end_time: c.end_time || "" }],
+        })));
+      }
       setLoading(false);
-    });
+    };
+    load();
   }, []);
 
-  // Expand courses with multiple days into per-day entries for display
-  const expandedByDay = (day: string) => {
-    return courses.filter(c => {
-      if (c.days && c.days.length > 0) return c.days.includes(day);
-      return c.day === day;
-    });
+  // Get courses that have a schedule on a given day, with the specific time for that day
+  const getCoursesForDay = (day: string) => {
+    const result: { course: Course; schedule: Schedule }[] = [];
+    for (const course of courses) {
+      for (const schedule of course.schedules) {
+        if (schedule.day === day) {
+          result.push({ course, schedule });
+        }
+      }
+    }
+    return result.sort((a, b) => a.schedule.time.localeCompare(b.schedule.time));
   };
 
   return (
@@ -74,8 +119,8 @@ export default function Yoga() {
             ) : (
               <div className="grid gap-6">
                 {days.map((day) => {
-                  const dayCourses = expandedByDay(day);
-                  if (dayCourses.length === 0) return null;
+                  const dayEntries = getCoursesForDay(day);
+                  if (dayEntries.length === 0) return null;
                   return (
                     <motion.div
                       key={day}
@@ -85,9 +130,9 @@ export default function Yoga() {
                     >
                       <h3 className="text-lg font-semibold text-primary-dark mb-3 font-display">{day}</h3>
                       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {dayCourses.map((course) => (
+                        {dayEntries.map(({ course, schedule }) => (
                           <div
-                            key={`${course.id}-${day}`}
+                            key={`${course.id}-${day}-${schedule.time}`}
                             className="rounded-lg border bg-card p-4 hover:shadow-md transition-shadow"
                           >
                             <div className="flex items-start justify-between mb-2">
@@ -107,7 +152,8 @@ export default function Yoga() {
                             <div className="space-y-1 text-sm text-muted-foreground">
                               <div className="flex items-center gap-2">
                                 <Clock className="h-3.5 w-3.5" />
-                                {course.time}{course.end_time ? ` - ${course.end_time}` : ""} · {course.duration}
+                                {schedule.time}{schedule.end_time ? ` - ${schedule.end_time}` : ""}
+                                {schedule.time && schedule.end_time && ` · ${calcDuration(schedule.time, schedule.end_time)}`}
                               </div>
                               <div className="flex items-center gap-2">
                                 <Users className="h-3.5 w-3.5" />
