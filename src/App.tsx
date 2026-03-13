@@ -15,6 +15,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminReservations from "./pages/admin/Reservations";
 import AdminClients from "./pages/admin/Clients";
 import AdminActivites from "./pages/admin/Activites";
+import Calendrier from "./pages/Calendrier";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/register" element={<Register />} />
           <Route path="/mon-espace" element={<MonEspace />} />
           <Route path="/reserver" element={<Reserver />} />
+          <Route path="/calendrier" element={<Calendrier />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/reservations" element={<AdminReservations />} />
           <Route path="/admin/activites" element={<AdminActivites />} />

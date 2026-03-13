@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -73,6 +73,7 @@ const DAY_NAMES_MAP: Record<number, string> = {
 };
 
 export default function Reserver() {
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState("");
@@ -102,6 +103,21 @@ export default function Reserver() {
   };
 
   useEffect(() => { fetchAll(); }, []);
+
+  // Handle pre-selection from calendar page
+  useEffect(() => {
+    const serviceParam = searchParams.get("service");
+    const activityParam = searchParams.get("activity");
+    if (serviceParam && !selectedService) {
+      setSelectedService(serviceParam);
+      if (activityParam) {
+        setSelectedSubActivity(activityParam);
+        setStep(3);
+      } else {
+        setStep(2);
+      }
+    }
+  }, [searchParams, courses, workshops]);
 
   const subActivities: SubActivity[] = useMemo(() => {
     if (selectedService === "yoga") {

@@ -99,7 +99,7 @@ export default function AdminActivites() {
   const emptyCourseForm = { name: "", description: "", category: "yoga", frequency: "hebdomadaire", instructor: "Élodie", spots: 12, schedules: [{ day: "Mardi", time: "09:00", end_time: "10:00" }] as Schedule[] };
   const [courseForm, setCourseForm] = useState(emptyCourseForm);
 
-  const emptyWorkshopForm = { name: "", description: "", category: "poterie", date: "", time: "14:00", end_time: "16:00", frequency: "ponctuel", price: 0, spots: 8, image: "" };
+  const emptyWorkshopForm = { name: "", description: "", category: "poterie", dates: [""] as string[], time: "14:00", end_time: "16:00", frequency: "ponctuel", price: 0, spots: 8, image: "" };
   const [workshopForm, setWorkshopForm] = useState(emptyWorkshopForm);
 
   const fetchData = async () => {
@@ -266,22 +266,45 @@ export default function AdminActivites() {
   };
   const openEditWorkshop = (w: Workshop) => {
     setEditingId(w.id);
-    setWorkshopForm({ name: w.name, description: w.description, category: w.category, date: w.date, time: w.time, end_time: w.end_time || "", frequency: w.frequency || "ponctuel", price: w.price, spots: w.spots, image: w.image });
+    setWorkshopForm({ name: w.name, description: w.description, category: w.category, dates: [w.date], time: w.time, end_time: w.end_time || "", frequency: w.frequency || "ponctuel", price: w.price, spots: w.spots, image: w.image });
     setDialogType("workshop");
     setDialogOpen(true);
   };
   const saveWorkshop = async () => {
     const duration = calcDuration(workshopForm.time, workshopForm.end_time);
-    const payload = { ...workshopForm, duration };
+    const validDates = workshopForm.dates.filter(d => d.trim() !== "");
+    if (validDates.length === 0) return;
+
     if (editingId) {
-      await supabase.from("workshops").update(payload).eq("id", editingId);
+      // Update existing with first date
+      const { dates, ...rest } = workshopForm;
+      await supabase.from("workshops").update({ ...rest, date: validDates[0], duration }).eq("id", editingId);
+      // Create additional dates as new workshops
+      for (let i = 1; i < validDates.length; i++) {
+        const { dates: _d, ...payload } = workshopForm;
+        await supabase.from("workshops").insert({ ...payload, date: validDates[i], duration, spots_left: workshopForm.spots });
+      }
       toast({ title: "Atelier modifié" });
     } else {
-      await supabase.from("workshops").insert({ ...payload, spots_left: workshopForm.spots });
-      toast({ title: "Atelier créé" });
+      // Create one workshop per date
+      for (const date of validDates) {
+        const { dates, ...payload } = workshopForm;
+        await supabase.from("workshops").insert({ ...payload, date, duration, spots_left: workshopForm.spots });
+      }
+      toast({ title: `${validDates.length > 1 ? validDates.length + " ateliers créés" : "Atelier créé"}` });
     }
     setDialogOpen(false);
     fetchData();
+  };
+
+  const addWorkshopDate = () => {
+    setWorkshopForm(prev => ({ ...prev, dates: [...prev.dates, ""] }));
+  };
+  const removeWorkshopDate = (idx: number) => {
+    setWorkshopForm(prev => ({ ...prev, dates: prev.dates.filter((_, i) => i !== idx) }));
+  };
+  const updateWorkshopDate = (idx: number, value: string) => {
+    setWorkshopForm(prev => ({ ...prev, dates: prev.dates.map((d, i) => i === idx ? value : d) }));
   };
 
   const workshopDuration = calcDuration(workshopForm.time, workshopForm.end_time);
@@ -517,7 +540,26 @@ export default function AdminActivites() {
                   </Select>
                 </div>
               </div>
-              <div><Label>Date</Label><Input type="date" value={workshopForm.date} onChange={e => setWorkshopForm({ ...workshopForm, date: e.target.value })} /></div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="mb-0">Date(s)</Label>
+                  <Button type="button" size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={addWorkshopDate}>
+                    <Plus className="h-3 w-3" /> Ajouter une date
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {workshopForm.dates.map((date, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Input type="date" value={date} onChange={e => updateWorkshopDate(idx, e.target.value)} className="flex-1" />
+                      {workshopForm.dates.length > 1 && (
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => removeWorkshopDate(idx)}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Heure de début</Label><Input type="time" value={workshopForm.time} onChange={e => setWorkshopForm({ ...workshopForm, time: e.target.value })} /></div>
                 <div><Label>Heure de fin</Label><Input type="time" value={workshopForm.end_time} onChange={e => setWorkshopForm({ ...workshopForm, end_time: e.target.value })} /></div>
@@ -530,7 +572,7 @@ export default function AdminActivites() {
                 <div><Label>Places</Label><Input type="number" value={workshopForm.spots} onChange={e => setWorkshopForm({ ...workshopForm, spots: Number(e.target.value) })} /></div>
               </div>
               <div><Label>Image URL</Label><Input value={workshopForm.image} onChange={e => setWorkshopForm({ ...workshopForm, image: e.target.value })} placeholder="https://..." /></div>
-              <Button className="w-full" onClick={saveWorkshop} disabled={!workshopForm.name || !workshopForm.date}>{editingId ? "Enregistrer" : "Créer l'atelier"}</Button>
+              <Button className="w-full" onClick={saveWorkshop} disabled={!workshopForm.name || workshopForm.dates.every(d => !d)}>{editingId ? "Enregistrer" : `Créer ${workshopForm.dates.filter(d => d).length > 1 ? workshopForm.dates.filter(d => d).length + " ateliers" : "l'atelier"}`}</Button>
             </div>
           )}
         </DialogContent>
