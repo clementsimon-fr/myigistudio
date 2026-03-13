@@ -13,9 +13,8 @@ import MonEspace from "./pages/MonEspace";
 import Reserver from "./pages/Reserver";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminReservations from "./pages/admin/Reservations";
-import AdminCours from "./pages/admin/Cours";
 import AdminClients from "./pages/admin/Clients";
-import AteliersAdmin from "./pages/admin/AteliersAdmin";
+import AdminActivites from "./pages/admin/Activites";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
