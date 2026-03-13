@@ -329,7 +329,7 @@ export default function Calendrier() {
                               </span>
                               <span className="flex items-center gap-1">
                                 <Users className="h-3 w-3" />
-                                {block.spotsLeft}/{block.spots}
+                                {block.spotsLeft === 0 ? "Complet" : `${block.spotsLeft} place${block.spotsLeft > 1 ? "s" : ""}`}
                               </span>
                             </div>
                             <div className="flex items-center gap-1 mt-1.5 text-xs opacity-70">
