@@ -175,6 +175,7 @@ export default function AdminActivites() {
       frequency: c.frequency || "hebdomadaire",
       instructor: c.instructor,
       spots: c.spots,
+      image: (c as any).image || "",
       schedules: c.schedules && c.schedules.length > 0
         ? c.schedules.map(s => ({ id: s.id, day: s.day, time: s.time, end_time: s.end_time }))
         : [{ day: c.day, time: c.time, end_time: c.end_time || "" }],
