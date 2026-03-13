@@ -40,13 +40,23 @@ interface WorkshopAssignment {
   time: string;
 }
 
-// Category -> services mapping
-const CATEGORY_SERVICES: Record<string, string[]> = {
-  "Yoga": ["Vinyasa", "Yin", "Hatha", "Prénatal", "Ashtanga", "Restauratif"],
-  "Pilates": ["Mat Pilates", "Pilates Flow", "Pilates Doux"],
-  "Poterie": ["Tour", "Modelage", "Émaillage", "Peinture sur céramique"],
-  "Bien-être": ["Qi Gong", "Méditation", "Breathwork", "Wim Hof", "Cérémonie Cacao"],
-};
+// Will be dynamically built from courses/workshops
+function buildSpecialtiesFromActivities(courses: any[], workshops: any[]): Record<string, string[]> {
+  const map: Record<string, Set<string>> = {};
+  for (const c of courses) {
+    const cat = c.category === "yoga" ? "Yoga & Pilates" : c.category;
+    if (!map[cat]) map[cat] = new Set();
+    map[cat].add(c.name);
+  }
+  for (const w of workshops) {
+    const cat = w.category === "poterie" ? "Poterie" : w.category === "bien-etre" ? "Bien-être" : w.category;
+    if (!map[cat]) map[cat] = new Set();
+    map[cat].add(w.name);
+  }
+  const result: Record<string, string[]> = {};
+  for (const [k, v] of Object.entries(map)) result[k] = [...v].sort();
+  return result;
+}
 
 export default function AdminIntervenants() {
   const { toast } = useToast();
