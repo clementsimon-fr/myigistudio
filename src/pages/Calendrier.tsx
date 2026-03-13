@@ -222,9 +222,8 @@ export default function Calendrier() {
   };
 
   const handleBook = (event: ActivityBlock) => {
-    const categoryMap: Record<string, string> = { yoga: "yoga", poterie: "poterie", "bien-etre": "ateliers" };
-    const service = categoryMap[event.category] || "yoga";
-    navigate(`/reserver?service=${service}&activity=${event.sourceId}`);
+    const type = event.type;
+    navigate(`/reserver?type=${type}&id=${event.sourceId}`);
   };
 
   const todayStr = formatDateStr(new Date());

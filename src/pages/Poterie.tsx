@@ -103,7 +103,7 @@ export default function Poterie() {
                       {ws.frequency && ws.frequency !== "ponctuel" && (
                         <Badge variant="outline" className="text-xs capitalize mb-3">{ws.frequency}</Badge>
                       )}
-                      <Link to="/reserver">
+                      <Link to={`/reserver?type=workshop&id=${ws.id}`}>
                         <Button size="sm" className="w-full">Réserver</Button>
                       </Link>
                     </div>
