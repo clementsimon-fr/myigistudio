@@ -73,6 +73,7 @@ const DAY_NAMES_MAP: Record<number, string> = {
 };
 
 export default function Reserver() {
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState("");
