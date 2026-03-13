@@ -616,6 +616,7 @@ export default function AdminActivites() {
                   <Input value={workshopForm.instructor} onChange={e => setWorkshopForm({ ...workshopForm, instructor: e.target.value })} />
                 )}
               </div>
+              <div><Label>Image URL</Label><Input value={workshopForm.image} onChange={e => setWorkshopForm({ ...workshopForm, image: e.target.value })} placeholder="https://..." /></div>
               <div>
                 <Label>📧 Modèle de rappel (e-mail)</Label>
                 <Textarea value={workshopForm.reminder_template} onChange={e => setWorkshopForm({ ...workshopForm, reminder_template: e.target.value })} rows={4} placeholder="Bonjour {nom}, votre atelier {activité} approche ! Rendez-vous le {date} à {heure}. Tout le matériel est fourni. À très vite !" />
