@@ -5,7 +5,6 @@ export default function Footer() {
   return (
     <footer className="bg-primary-dark text-primary-dark-foreground">
       <div className="container py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Brand */}
         <div>
           <h3 className="text-xl font-display font-bold mb-3">
             MyIgi<span className="text-secondary">Studio</span>
@@ -15,18 +14,15 @@ export default function Footer() {
           </p>
         </div>
 
-        {/* Navigation */}
         <div>
           <h4 className="font-semibold mb-3 text-sm uppercase tracking-wider opacity-70">Navigation</h4>
           <div className="space-y-2 text-sm">
-            <Link to="/yoga" className="block opacity-80 hover:opacity-100 transition-opacity">Yoga & Pilates</Link>
-            <Link to="/poterie" className="block opacity-80 hover:opacity-100 transition-opacity">Poterie</Link>
-            <Link to="/ateliers" className="block opacity-80 hover:opacity-100 transition-opacity">Ateliers & Stages</Link>
+            <Link to="/" className="block opacity-80 hover:opacity-100 transition-opacity">Activités</Link>
+            <Link to="/calendrier" className="block opacity-80 hover:opacity-100 transition-opacity">Planning & réservation</Link>
             <Link to="/login" className="block opacity-80 hover:opacity-100 transition-opacity">Mon Espace</Link>
           </div>
         </div>
 
-        {/* Contact */}
         <div>
           <h4 className="font-semibold mb-3 text-sm uppercase tracking-wider opacity-70">Contact</h4>
           <div className="space-y-2 text-sm">
