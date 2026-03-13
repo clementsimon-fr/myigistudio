@@ -516,7 +516,20 @@ export default function AdminActivites() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Places</Label><Input type="number" value={courseForm.spots} onChange={e => setCourseForm({ ...courseForm, spots: Number(e.target.value) })} /></div>
-                <div><Label>Intervenant</Label><Input value={courseForm.instructor} onChange={e => setCourseForm({ ...courseForm, instructor: e.target.value })} /></div>
+                <div>
+                  <Label>Intervenant</Label>
+                  {instructorsList.length > 0 ? (
+                    <Select value={courseForm.instructor} onValueChange={v => setCourseForm({ ...courseForm, instructor: v })}>
+                      <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                      <SelectContent>
+                        {instructorsList.map(i => <SelectItem key={i.id} value={i.name}>{i.name}</SelectItem>)}
+                        <SelectItem value="Élodie">Élodie (par défaut)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input value={courseForm.instructor} onChange={e => setCourseForm({ ...courseForm, instructor: e.target.value })} />
+                  )}
+                </div>
               </div>
               <Button className="w-full" onClick={saveCourse} disabled={!courseForm.name || courseForm.schedules.length === 0}>{editingId ? "Enregistrer" : "Créer le cours"}</Button>
             </div>
