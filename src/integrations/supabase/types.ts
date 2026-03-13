@@ -14,7 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      courses: {
+        Row: {
+          category: string
+          created_at: string
+          day: string
+          duration: string
+          id: string
+          instructor: string
+          name: string
+          spots: number
+          spots_left: number
+          time: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          day: string
+          duration: string
+          id?: string
+          instructor?: string
+          name: string
+          spots?: number
+          spots_left?: number
+          time: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          day?: string
+          duration?: string
+          id?: string
+          instructor?: string
+          name?: string
+          spots?: number
+          spots_left?: number
+          time?: string
+        }
+        Relationships: []
+      }
+      workshops: {
+        Row: {
+          category: string
+          created_at: string
+          date: string
+          description: string
+          duration: string
+          id: string
+          image: string
+          name: string
+          price: number
+          spots: number
+          spots_left: number
+          time: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          date: string
+          description?: string
+          duration?: string
+          id?: string
+          image?: string
+          name: string
+          price?: number
+          spots?: number
+          spots_left?: number
+          time?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          date?: string
+          description?: string
+          duration?: string
+          id?: string
+          image?: string
+          name?: string
+          price?: number
+          spots?: number
+          spots_left?: number
+          time?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
