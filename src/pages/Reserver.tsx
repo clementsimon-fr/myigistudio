@@ -168,10 +168,26 @@ export default function Reserver() {
       return;
     }
 
+    // Update spots
     if (selectedSlotData.scheduleId) {
       await supabase.from("course_schedules").update({ spots_left: selectedSlotData.spotsLeft - participants }).eq("id", selectedSlotData.scheduleId);
     } else if (selectedSlotData.type === "workshop") {
       await supabase.from("workshops").update({ spots_left: selectedSlotData.spotsLeft - participants }).eq("id", selectedSlotData.sourceId);
+    }
+
+    // Decrement credit from oldest active card
+    const { data: activeCards } = await supabase
+      .from("client_cards")
+      .select("*")
+      .eq("client_name", "Sophie")
+      .gte("expires_at", new Date().toISOString().split("T")[0])
+      .order("expires_at", { ascending: true });
+
+    if (activeCards && activeCards.length > 0) {
+      const card = (activeCards as any[]).find(c => c.used_sessions < c.total_sessions);
+      if (card) {
+        await supabase.from("client_cards").update({ used_sessions: card.used_sessions + 1 } as any).eq("id", card.id);
+      }
     }
 
     setSubmitting(false);

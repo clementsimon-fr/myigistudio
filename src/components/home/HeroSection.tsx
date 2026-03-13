@@ -46,13 +46,13 @@ export default function HeroSection() {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <Link to="/reserver">
+            <Link to="/calendrier">
               <Button size="lg" className="bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-2 px-8">
                 Réserver un cours
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link to="/yoga">
+            <Link to="/calendrier">
               <Button size="lg" variant="outline" className="border-primary-dark text-primary-dark hover:bg-primary-dark/5 px-8">
                 Découvrir le planning
               </Button>
