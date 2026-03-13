@@ -1,19 +1,9 @@
-import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Shield, User } from "lucide-react";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Simulated login — navigate to client space
-    navigate("/mon-espace");
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
@@ -22,44 +12,26 @@ export default function Login() {
           <Link to="/" className="text-3xl font-display font-bold text-primary-dark">
             MyIgi<span className="text-primary italic">Studio</span>
           </Link>
-          <p className="mt-2 text-muted-foreground">Connectez-vous à votre espace</p>
+          <p className="mt-2 text-muted-foreground">Choisissez votre espace</p>
         </div>
 
-        <div className="rounded-xl border bg-card p-6 shadow-sm">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="votre@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="password">Mot de passe</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
-              Se connecter
-            </Button>
-          </form>
+        <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
+          <Button
+            onClick={() => navigate("/mon-espace")}
+            className="w-full h-14 text-base gap-3 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90"
+          >
+            <User className="h-5 w-5" />
+            Accéder en tant que Client
+          </Button>
 
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            Pas encore de compte ?{" "}
-            <Link to="/register" className="text-primary-dark font-medium hover:underline">
-              S'inscrire
-            </Link>
-          </div>
+          <Button
+            onClick={() => navigate("/admin")}
+            variant="outline"
+            className="w-full h-14 text-base gap-3 border-primary-dark text-primary-dark hover:bg-primary-dark/10"
+          >
+            <Shield className="h-5 w-5" />
+            Accéder en tant qu'Admin
+          </Button>
         </div>
 
         <div className="mt-4 text-center">
