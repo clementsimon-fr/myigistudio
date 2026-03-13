@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,10 +16,14 @@ import { useToast } from "@/hooks/use-toast";
 interface Course {
   id: string;
   name: string;
+  description: string;
   category: string;
   day: string;
+  days: string[];
   time: string;
+  end_time: string;
   duration: string;
+  frequency: string;
   instructor: string;
   spots: number;
   spots_left: number;
@@ -31,7 +36,9 @@ interface Workshop {
   category: string;
   date: string;
   time: string;
+  end_time: string;
   duration: string;
+  frequency: string;
   price: number;
   spots: number;
   spots_left: number;
@@ -39,6 +46,24 @@ interface Workshop {
 }
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+const FREQUENCIES = [
+  { value: "hebdomadaire", label: "Hebdomadaire" },
+  { value: "mensuel", label: "Mensuel" },
+  { value: "ponctuel", label: "Ponctuel" },
+];
+
+function calcDuration(start: string, end: string): string {
+  if (!start || !end) return "";
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  let diffMin = (eh * 60 + em) - (sh * 60 + sm);
+  if (diffMin <= 0) return "";
+  const h = Math.floor(diffMin / 60);
+  const m = diffMin % 60;
+  if (h === 0) return `${m}min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h${m.toString().padStart(2, "0")}`;
+}
 
 export default function AdminActivites() {
   const { toast } = useToast();
@@ -46,17 +71,14 @@ export default function AdminActivites() {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<"course" | "workshop">("course");
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Course form
-  const emptyCourseForm = { name: "", category: "yoga", day: "Mardi", time: "09:00", duration: "1h", instructor: "Élodie", spots: 12 };
+  const emptyCourseForm = { name: "", description: "", category: "yoga", day: "Mardi", days: [] as string[], time: "09:00", end_time: "10:00", frequency: "hebdomadaire", instructor: "Élodie", spots: 12 };
   const [courseForm, setCourseForm] = useState(emptyCourseForm);
 
-  // Workshop form
-  const emptyWorkshopForm = { name: "", description: "", category: "poterie", date: "", time: "14:00", duration: "2h", price: 0, spots: 8, image: "" };
+  const emptyWorkshopForm = { name: "", description: "", category: "poterie", date: "", time: "14:00", end_time: "16:00", frequency: "ponctuel", price: 0, spots: 8, image: "" };
   const [workshopForm, setWorkshopForm] = useState(emptyWorkshopForm);
 
   const fetchData = async () => {
@@ -65,8 +87,8 @@ export default function AdminActivites() {
       supabase.from("courses").select("*").order("day").order("time"),
       supabase.from("workshops").select("*").order("date"),
     ]);
-    if (coursesRes.data) setCourses(coursesRes.data as Course[]);
-    if (workshopsRes.data) setWorkshops(workshopsRes.data as Workshop[]);
+    if (coursesRes.data) setCourses(coursesRes.data as unknown as Course[]);
+    if (workshopsRes.data) setWorkshops(workshopsRes.data as unknown as Workshop[]);
     setLoading(false);
   };
 
@@ -81,16 +103,18 @@ export default function AdminActivites() {
   };
   const openEditCourse = (c: Course) => {
     setEditingId(c.id);
-    setCourseForm({ name: c.name, category: c.category, day: c.day, time: c.time, duration: c.duration, instructor: c.instructor, spots: c.spots });
+    setCourseForm({ name: c.name, description: c.description || "", category: c.category, day: c.day, days: c.days || [], time: c.time, end_time: c.end_time || "", frequency: c.frequency || "hebdomadaire", instructor: c.instructor, spots: c.spots });
     setDialogType("course");
     setDialogOpen(true);
   };
   const saveCourse = async () => {
+    const duration = calcDuration(courseForm.time, courseForm.end_time);
+    const payload = { ...courseForm, duration };
     if (editingId) {
-      await supabase.from("courses").update(courseForm).eq("id", editingId);
+      await supabase.from("courses").update(payload).eq("id", editingId);
       toast({ title: "Cours modifié" });
     } else {
-      await supabase.from("courses").insert({ ...courseForm, spots_left: courseForm.spots });
+      await supabase.from("courses").insert({ ...payload, spots_left: courseForm.spots });
       toast({ title: "Cours créé" });
     }
     setDialogOpen(false);
@@ -111,16 +135,18 @@ export default function AdminActivites() {
   };
   const openEditWorkshop = (w: Workshop) => {
     setEditingId(w.id);
-    setWorkshopForm({ name: w.name, description: w.description, category: w.category, date: w.date, time: w.time, duration: w.duration, price: w.price, spots: w.spots, image: w.image });
+    setWorkshopForm({ name: w.name, description: w.description, category: w.category, date: w.date, time: w.time, end_time: w.end_time || "", frequency: w.frequency || "ponctuel", price: w.price, spots: w.spots, image: w.image });
     setDialogType("workshop");
     setDialogOpen(true);
   };
   const saveWorkshop = async () => {
+    const duration = calcDuration(workshopForm.time, workshopForm.end_time);
+    const payload = { ...workshopForm, duration };
     if (editingId) {
-      await supabase.from("workshops").update(workshopForm).eq("id", editingId);
+      await supabase.from("workshops").update(payload).eq("id", editingId);
       toast({ title: "Atelier modifié" });
     } else {
-      await supabase.from("workshops").insert({ ...workshopForm, spots_left: workshopForm.spots });
+      await supabase.from("workshops").insert({ ...payload, spots_left: workshopForm.spots });
       toast({ title: "Atelier créé" });
     }
     setDialogOpen(false);
@@ -131,6 +157,16 @@ export default function AdminActivites() {
     toast({ title: "Atelier supprimé", variant: "destructive" });
     fetchData();
   };
+
+  const toggleDay = (day: string) => {
+    setCourseForm(prev => ({
+      ...prev,
+      days: prev.days.includes(day) ? prev.days.filter(d => d !== day) : [...prev.days, day],
+    }));
+  };
+
+  const courseDuration = calcDuration(courseForm.time, courseForm.end_time);
+  const workshopDuration = calcDuration(workshopForm.time, workshopForm.end_time);
 
   const potteryWorkshops = workshops.filter(w => w.category === "poterie");
   const wellbeingWorkshops = workshops.filter(w => w.category === "bien-etre");
@@ -167,21 +203,34 @@ export default function AdminActivites() {
               <thead>
                 <tr className="border-b bg-muted/30">
                   <th className="text-left p-3 font-medium text-muted-foreground">Cours</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Jour</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Heure</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Jours</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Horaires</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">Durée</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Fréquence</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">Places</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Instructeur</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Intervenant</th>
                   <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {courses.map((c) => (
                   <tr key={c.id} className="border-b last:border-0 hover:bg-muted/10">
-                    <td className="p-3 font-medium">{c.name}</td>
-                    <td className="p-3">{c.day}</td>
-                    <td className="p-3">{c.time}</td>
+                    <td className="p-3">
+                      <div className="font-medium">{c.name}</div>
+                      {c.description && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{c.description}</div>}
+                    </td>
+                    <td className="p-3">
+                      {c.days && c.days.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {c.days.map(d => <Badge key={d} variant="outline" className="text-xs">{d.slice(0, 3)}</Badge>)}
+                        </div>
+                      ) : c.day}
+                    </td>
+                    <td className="p-3">{c.time}{c.end_time ? ` - ${c.end_time}` : ""}</td>
                     <td className="p-3">{c.duration}</td>
+                    <td className="p-3">
+                      <Badge variant="outline" className="text-xs capitalize">{c.frequency || "hebdomadaire"}</Badge>
+                    </td>
                     <td className="p-3">
                       <Badge variant={c.spots_left === 0 ? "destructive" : "secondary"} className="text-xs">
                         {c.spots_left}/{c.spots}
@@ -236,20 +285,38 @@ export default function AdminActivites() {
           {dialogType === "course" ? (
             <div className="space-y-4 pt-2">
               <div><Label>Nom du cours</Label><Input value={courseForm.name} onChange={e => setCourseForm({ ...courseForm, name: e.target.value })} placeholder="Vinyasa Flow" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Jour</Label>
-                  <Select value={courseForm.day} onValueChange={v => setCourseForm({ ...courseForm, day: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
-                  </Select>
+              <div><Label>Description</Label><Textarea value={courseForm.description} onChange={e => setCourseForm({ ...courseForm, description: e.target.value })} rows={2} placeholder="Description du cours visible sur le site..." /></div>
+              <div>
+                <Label>Fréquence</Label>
+                <Select value={courseForm.frequency} onValueChange={v => setCourseForm({ ...courseForm, frequency: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {FREQUENCIES.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="mb-2 block">Jours</Label>
+                <div className="flex flex-wrap gap-2">
+                  {DAYS.map(d => (
+                    <label key={d} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                      <Checkbox checked={courseForm.days.includes(d)} onCheckedChange={() => toggleDay(d)} />
+                      {d}
+                    </label>
+                  ))}
                 </div>
-                <div><Label>Heure</Label><Input type="time" value={courseForm.time} onChange={e => setCourseForm({ ...courseForm, time: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>Durée</Label><Input value={courseForm.duration} onChange={e => setCourseForm({ ...courseForm, duration: e.target.value })} placeholder="1h15" /></div>
-                <div><Label>Places</Label><Input type="number" value={courseForm.spots} onChange={e => setCourseForm({ ...courseForm, spots: Number(e.target.value) })} /></div>
+                <div><Label>Heure de début</Label><Input type="time" value={courseForm.time} onChange={e => setCourseForm({ ...courseForm, time: e.target.value })} /></div>
+                <div><Label>Heure de fin</Label><Input type="time" value={courseForm.end_time} onChange={e => setCourseForm({ ...courseForm, end_time: e.target.value })} /></div>
               </div>
-              <div><Label>Instructeur</Label><Input value={courseForm.instructor} onChange={e => setCourseForm({ ...courseForm, instructor: e.target.value })} /></div>
+              {courseDuration && (
+                <div className="text-sm text-muted-foreground">Durée calculée : <span className="font-medium text-foreground">{courseDuration}</span></div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Places</Label><Input type="number" value={courseForm.spots} onChange={e => setCourseForm({ ...courseForm, spots: Number(e.target.value) })} /></div>
+                <div><Label>Intervenant</Label><Input value={courseForm.instructor} onChange={e => setCourseForm({ ...courseForm, instructor: e.target.value })} /></div>
+              </div>
               <Button className="w-full" onClick={saveCourse} disabled={!courseForm.name}>{editingId ? "Enregistrer" : "Créer le cours"}</Button>
             </div>
           ) : (
@@ -266,14 +333,27 @@ export default function AdminActivites() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label>Date</Label><Input type="date" value={workshopForm.date} onChange={e => setWorkshopForm({ ...workshopForm, date: e.target.value })} /></div>
+                <div><Label>Fréquence</Label>
+                  <Select value={workshopForm.frequency} onValueChange={v => setWorkshopForm({ ...workshopForm, frequency: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {FREQUENCIES.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div><Label>Heure</Label><Input type="time" value={workshopForm.time} onChange={e => setWorkshopForm({ ...workshopForm, time: e.target.value })} /></div>
-                <div><Label>Durée</Label><Input value={workshopForm.duration} onChange={e => setWorkshopForm({ ...workshopForm, duration: e.target.value })} /></div>
+              <div><Label>Date</Label><Input type="date" value={workshopForm.date} onChange={e => setWorkshopForm({ ...workshopForm, date: e.target.value })} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Heure de début</Label><Input type="time" value={workshopForm.time} onChange={e => setWorkshopForm({ ...workshopForm, time: e.target.value })} /></div>
+                <div><Label>Heure de fin</Label><Input type="time" value={workshopForm.end_time} onChange={e => setWorkshopForm({ ...workshopForm, end_time: e.target.value })} /></div>
+              </div>
+              {workshopDuration && (
+                <div className="text-sm text-muted-foreground">Durée calculée : <span className="font-medium text-foreground">{workshopDuration}</span></div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
                 <div><Label>Prix (€)</Label><Input type="number" value={workshopForm.price} onChange={e => setWorkshopForm({ ...workshopForm, price: Number(e.target.value) })} /></div>
+                <div><Label>Places</Label><Input type="number" value={workshopForm.spots} onChange={e => setWorkshopForm({ ...workshopForm, spots: Number(e.target.value) })} /></div>
               </div>
-              <div><Label>Places</Label><Input type="number" value={workshopForm.spots} onChange={e => setWorkshopForm({ ...workshopForm, spots: Number(e.target.value) })} /></div>
               <div><Label>Image URL</Label><Input value={workshopForm.image} onChange={e => setWorkshopForm({ ...workshopForm, image: e.target.value })} placeholder="https://..." /></div>
               <Button className="w-full" onClick={saveWorkshop} disabled={!workshopForm.name || !workshopForm.date}>{editingId ? "Enregistrer" : "Créer l'atelier"}</Button>
             </div>
@@ -292,6 +372,8 @@ function WorkshopTable({ workshops, onEdit, onDelete }: { workshops: Workshop[];
           <tr className="border-b bg-muted/30">
             <th className="text-left p-3 font-medium text-muted-foreground">Atelier</th>
             <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
+            <th className="text-left p-3 font-medium text-muted-foreground">Horaires</th>
+            <th className="text-left p-3 font-medium text-muted-foreground">Fréquence</th>
             <th className="text-left p-3 font-medium text-muted-foreground">Prix</th>
             <th className="text-left p-3 font-medium text-muted-foreground">Places</th>
             <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
@@ -300,8 +382,15 @@ function WorkshopTable({ workshops, onEdit, onDelete }: { workshops: Workshop[];
         <tbody>
           {workshops.map((w) => (
             <tr key={w.id} className="border-b last:border-0 hover:bg-muted/10">
-              <td className="p-3 font-medium">{w.name}</td>
+              <td className="p-3">
+                <div className="font-medium">{w.name}</div>
+                {w.description && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{w.description}</div>}
+              </td>
               <td className="p-3">{new Date(w.date).toLocaleDateString("fr-FR")}</td>
+              <td className="p-3">{w.time}{w.end_time ? ` - ${w.end_time}` : ""} · {w.duration}</td>
+              <td className="p-3">
+                <Badge variant="outline" className="text-xs capitalize">{w.frequency || "ponctuel"}</Badge>
+              </td>
               <td className="p-3">{w.price}€</td>
               <td className="p-3">
                 <Badge variant={w.spots_left === 0 ? "destructive" : "secondary"} className="text-xs">

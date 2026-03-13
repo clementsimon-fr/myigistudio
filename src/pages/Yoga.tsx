@@ -14,9 +14,13 @@ const days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dima
 interface Course {
   id: string;
   name: string;
+  description: string;
   day: string;
+  days: string[];
   time: string;
+  end_time: string;
   duration: string;
+  frequency: string;
   instructor: string;
   spots: number;
   spots_left: number;
@@ -28,16 +32,23 @@ export default function Yoga() {
 
   useEffect(() => {
     supabase.from("courses").select("*").order("time").then(({ data }) => {
-      if (data) setCourses(data as Course[]);
+      if (data) setCourses(data as unknown as Course[]);
       setLoading(false);
     });
   }, []);
+
+  // Expand courses with multiple days into per-day entries for display
+  const expandedByDay = (day: string) => {
+    return courses.filter(c => {
+      if (c.days && c.days.length > 0) return c.days.includes(day);
+      return c.day === day;
+    });
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1">
-        {/* Hero */}
         <section className="bg-secondary/30 py-16">
           <div className="container text-center">
             <motion.h1
@@ -48,12 +59,11 @@ export default function Yoga() {
               Yoga & Pilates
             </motion.h1>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Vinyasa, Yin, Pilates, Prénatal… Trouvez le cours qui vous correspond parmi nos 20+ créneaux hebdomadaires.
+              Vinyasa, Yin, Pilates, Prénatal… Trouvez le cours qui vous correspond parmi nos créneaux hebdomadaires.
             </p>
           </div>
         </section>
 
-        {/* Planning */}
         <section className="py-16">
           <div className="container">
             <h2 className="text-2xl md:text-3xl font-display font-bold text-primary-dark mb-8 text-center">
@@ -64,7 +74,7 @@ export default function Yoga() {
             ) : (
               <div className="grid gap-6">
                 {days.map((day) => {
-                  const dayCourses = courses.filter((c) => c.day === day);
+                  const dayCourses = expandedByDay(day);
                   if (dayCourses.length === 0) return null;
                   return (
                     <motion.div
@@ -77,7 +87,7 @@ export default function Yoga() {
                       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {dayCourses.map((course) => (
                           <div
-                            key={course.id}
+                            key={`${course.id}-${day}`}
                             className="rounded-lg border bg-card p-4 hover:shadow-md transition-shadow"
                           >
                             <div className="flex items-start justify-between mb-2">
@@ -91,10 +101,13 @@ export default function Yoga() {
                                   : `${course.spots_left} place${course.spots_left > 1 ? "s" : ""}`}
                               </Badge>
                             </div>
+                            {course.description && (
+                              <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{course.description}</p>
+                            )}
                             <div className="space-y-1 text-sm text-muted-foreground">
                               <div className="flex items-center gap-2">
                                 <Clock className="h-3.5 w-3.5" />
-                                {course.time} · {course.duration}
+                                {course.time}{course.end_time ? ` - ${course.end_time}` : ""} · {course.duration}
                               </div>
                               <div className="flex items-center gap-2">
                                 <Users className="h-3.5 w-3.5" />
@@ -122,7 +135,6 @@ export default function Yoga() {
           </div>
         </section>
 
-        {/* Tarifs */}
         <section className="py-16 bg-muted/40">
           <div className="container">
             <h2 className="text-2xl md:text-3xl font-display font-bold text-primary-dark mb-8 text-center">
@@ -149,7 +161,6 @@ export default function Yoga() {
           </div>
         </section>
 
-        {/* Infos pratiques */}
         <section className="py-16">
           <div className="container max-w-2xl text-center">
             <h2 className="text-2xl font-display font-bold text-primary-dark mb-4">Infos Pratiques</h2>
