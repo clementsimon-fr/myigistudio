@@ -18,6 +18,7 @@ import AdminActivites from "./pages/admin/Activites";
 import Calendrier from "./pages/Calendrier";
 import AdminIntervenants from "./pages/admin/Intervenants";
 import AdminTarifs from "./pages/admin/Tarifs";
+import AdminContenu from "./pages/admin/Contenu";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
