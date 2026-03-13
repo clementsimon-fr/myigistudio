@@ -19,7 +19,11 @@ export type Database = {
           category: string
           created_at: string
           day: string
+          days: string[]
+          description: string
           duration: string
+          end_time: string
+          frequency: string
           id: string
           instructor: string
           name: string
@@ -31,7 +35,11 @@ export type Database = {
           category?: string
           created_at?: string
           day: string
+          days?: string[]
+          description?: string
           duration: string
+          end_time?: string
+          frequency?: string
           id?: string
           instructor?: string
           name: string
@@ -43,7 +51,11 @@ export type Database = {
           category?: string
           created_at?: string
           day?: string
+          days?: string[]
+          description?: string
           duration?: string
+          end_time?: string
+          frequency?: string
           id?: string
           instructor?: string
           name?: string
@@ -60,6 +72,8 @@ export type Database = {
           date: string
           description: string
           duration: string
+          end_time: string
+          frequency: string
           id: string
           image: string
           name: string
@@ -74,6 +88,8 @@ export type Database = {
           date: string
           description?: string
           duration?: string
+          end_time?: string
+          frequency?: string
           id?: string
           image?: string
           name: string
@@ -88,6 +104,8 @@ export type Database = {
           date?: string
           description?: string
           duration?: string
+          end_time?: string
+          frequency?: string
           id?: string
           image?: string
           name?: string
