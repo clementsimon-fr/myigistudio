@@ -8,9 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Loader2, ArrowUpDown, X } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Plus, Pencil, Trash2, Loader2, ArrowUpDown, X, List, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import ActivityCalendar from "@/components/admin/ActivityCalendar";
 
 interface Schedule {
   id?: string;
@@ -81,10 +83,14 @@ export default function AdminActivites() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<"course" | "workshop">("course");
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Delete confirmation
+  const [deletingItem, setDeletingItem] = useState<{ id: string; type: "course" | "workshop" } | null>(null);
 
   // Sorting
   const [sortKey, setSortKey] = useState<SortKey>("name");
@@ -196,7 +202,6 @@ export default function AdminActivites() {
 
     if (editingId) {
       await supabase.from("courses").update(payload).eq("id", editingId);
-      // Replace schedules
       await supabase.from("course_schedules").delete().eq("course_id", editingId);
       toast({ title: "Cours modifié" });
     } else {
@@ -205,7 +210,6 @@ export default function AdminActivites() {
       toast({ title: "Cours créé" });
     }
 
-    // Insert schedules
     if (courseId) {
       const scheduleRows = courseForm.schedules.map(s => ({
         course_id: courseId!,
@@ -220,9 +224,16 @@ export default function AdminActivites() {
     fetchData();
   };
 
-  const deleteCourse = async (id: string) => {
-    await supabase.from("courses").delete().eq("id", id);
-    toast({ title: "Cours supprimé", variant: "destructive" });
+  const executeDelete = async () => {
+    if (!deletingItem) return;
+    if (deletingItem.type === "course") {
+      await supabase.from("courses").delete().eq("id", deletingItem.id);
+      toast({ title: "Cours supprimé", variant: "destructive" });
+    } else {
+      await supabase.from("workshops").delete().eq("id", deletingItem.id);
+      toast({ title: "Atelier supprimé", variant: "destructive" });
+    }
+    setDeletingItem(null);
     fetchData();
   };
 
@@ -272,11 +283,6 @@ export default function AdminActivites() {
     setDialogOpen(false);
     fetchData();
   };
-  const deleteWorkshop = async (id: string) => {
-    await supabase.from("workshops").delete().eq("id", id);
-    toast({ title: "Atelier supprimé", variant: "destructive" });
-    fetchData();
-  };
 
   const workshopDuration = calcDuration(workshopForm.time, workshopForm.end_time);
   const potteryWorkshops = workshops.filter(w => w.category === "poterie");
@@ -306,101 +312,125 @@ export default function AdminActivites() {
 
   return (
     <AdminLayout title="Activités">
-      <Tabs defaultValue="yoga" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
-          <TabsTrigger value="yoga">Yoga & Pilates</TabsTrigger>
-          <TabsTrigger value="poterie">Poterie</TabsTrigger>
-          <TabsTrigger value="ateliers">Ateliers</TabsTrigger>
-        </TabsList>
+      {/* View mode toggle */}
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          variant={viewMode === "list" ? "default" : "outline"}
+          size="sm"
+          className="gap-1.5"
+          onClick={() => setViewMode("list")}
+        >
+          <List className="h-4 w-4" /> Liste
+        </Button>
+        <Button
+          variant={viewMode === "calendar" ? "default" : "outline"}
+          size="sm"
+          className="gap-1.5"
+          onClick={() => setViewMode("calendar")}
+        >
+          <CalendarDays className="h-4 w-4" /> Calendrier
+        </Button>
+      </div>
 
-        {/* === YOGA TAB === */}
-        <TabsContent value="yoga" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">{courses.length} cours programmés</p>
-            <Button size="sm" className="gap-1.5" onClick={openNewCourse}>
-              <Plus className="h-4 w-4" /> Ajouter un cours
-            </Button>
-          </div>
-          <div className="rounded-xl border bg-card overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <SortHeader label="Cours" field="name" />
-                  <SortHeader label="Créneaux" field="day" />
-                  <SortHeader label="Fréquence" field="frequency" />
-                  <SortHeader label="Places" field="spots" />
-                  <SortHeader label="Intervenant" field="instructor" />
-                  <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedCourses.map((c) => (
-                  <tr key={c.id} className="border-b last:border-0 hover:bg-muted/10">
-                    <td className="p-3">
-                      <div className="font-medium">{c.name}</div>
-                      {c.description && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{c.description}</div>}
-                    </td>
-                    <td className="p-3">
-                      {c.schedules && c.schedules.length > 0 ? (
-                        <div className="space-y-1">
-                          {c.schedules.map((s, i) => (
-                            <div key={i} className="flex items-center gap-1.5 text-xs">
-                              <Badge variant="outline" className="text-xs font-normal">{s.day.slice(0, 3)}</Badge>
-                              <span className="text-muted-foreground">{s.time}{s.end_time ? ` - ${s.end_time}` : ""}</span>
-                              {s.time && s.end_time && (
-                                <span className="text-muted-foreground/60">· {calcDuration(s.time, s.end_time)}</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span>{c.day} {c.time}{c.end_time ? ` - ${c.end_time}` : ""}</span>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      <Badge variant="outline" className="text-xs capitalize">{c.frequency || "hebdomadaire"}</Badge>
-                    </td>
-                    <td className="p-3">
-                      <Badge variant={c.spots_left === 0 ? "destructive" : "secondary"} className="text-xs">
-                        {c.spots_left}/{c.spots}
-                      </Badge>
-                    </td>
-                    <td className="p-3">{c.instructor}</td>
-                    <td className="p-3 text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button size="icon" variant="ghost" onClick={() => openEditCourse(c)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => deleteCourse(c.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-                      </div>
-                    </td>
+      {viewMode === "calendar" ? (
+        <ActivityCalendar />
+      ) : (
+        <Tabs defaultValue="yoga" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3 max-w-md">
+            <TabsTrigger value="yoga">Yoga & Pilates</TabsTrigger>
+            <TabsTrigger value="poterie">Poterie</TabsTrigger>
+            <TabsTrigger value="ateliers">Ateliers</TabsTrigger>
+          </TabsList>
+
+          {/* === YOGA TAB === */}
+          <TabsContent value="yoga" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">{courses.length} cours programmés</p>
+              <Button size="sm" className="gap-1.5" onClick={openNewCourse}>
+                <Plus className="h-4 w-4" /> Ajouter un cours
+              </Button>
+            </div>
+            <div className="rounded-xl border bg-card overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <SortHeader label="Cours" field="name" />
+                    <SortHeader label="Créneaux" field="day" />
+                    <SortHeader label="Fréquence" field="frequency" />
+                    <SortHeader label="Places" field="spots" />
+                    <SortHeader label="Intervenant" field="instructor" />
+                    <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </TabsContent>
+                </thead>
+                <tbody>
+                  {sortedCourses.map((c) => (
+                    <tr key={c.id} className="border-b last:border-0 hover:bg-muted/10">
+                      <td className="p-3">
+                        <div className="font-medium">{c.name}</div>
+                        {c.description && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{c.description}</div>}
+                      </td>
+                      <td className="p-3">
+                        {c.schedules && c.schedules.length > 0 ? (
+                          <div className="space-y-1">
+                            {c.schedules.map((s, i) => (
+                              <div key={i} className="flex items-center gap-1.5 text-xs">
+                                <Badge variant="outline" className="text-xs font-normal">{s.day.slice(0, 3)}</Badge>
+                                <span className="text-muted-foreground">{s.time}{s.end_time ? ` - ${s.end_time}` : ""}</span>
+                                {s.time && s.end_time && (
+                                  <span className="text-muted-foreground/60">· {calcDuration(s.time, s.end_time)}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span>{c.day} {c.time}{c.end_time ? ` - ${c.end_time}` : ""}</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <Badge variant="outline" className="text-xs capitalize">{c.frequency || "hebdomadaire"}</Badge>
+                      </td>
+                      <td className="p-3">
+                        <Badge variant={c.spots_left === 0 ? "destructive" : "secondary"} className="text-xs">
+                          {c.spots_left}/{c.spots}
+                        </Badge>
+                      </td>
+                      <td className="p-3">{c.instructor}</td>
+                      <td className="p-3 text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button size="icon" variant="ghost" onClick={() => openEditCourse(c)}><Pencil className="h-3.5 w-3.5" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => setDeletingItem({ id: c.id, type: "course" })} className="text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </TabsContent>
 
-        {/* === POTERIE TAB === */}
-        <TabsContent value="poterie" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">{potteryWorkshops.length} ateliers poterie</p>
-            <Button size="sm" className="gap-1.5" onClick={() => openNewWorkshop("poterie")}>
-              <Plus className="h-4 w-4" /> Ajouter un atelier
-            </Button>
-          </div>
-          <WorkshopTable workshops={potteryWorkshops} onEdit={openEditWorkshop} onDelete={deleteWorkshop} />
-        </TabsContent>
+          {/* === POTERIE TAB === */}
+          <TabsContent value="poterie" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">{potteryWorkshops.length} ateliers poterie</p>
+              <Button size="sm" className="gap-1.5" onClick={() => openNewWorkshop("poterie")}>
+                <Plus className="h-4 w-4" /> Ajouter un atelier
+              </Button>
+            </div>
+            <WorkshopTable workshops={potteryWorkshops} onEdit={openEditWorkshop} onDelete={(id) => setDeletingItem({ id, type: "workshop" })} />
+          </TabsContent>
 
-        {/* === ATELIERS TAB === */}
-        <TabsContent value="ateliers" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">{wellbeingWorkshops.length} ateliers bien-être</p>
-            <Button size="sm" className="gap-1.5" onClick={() => openNewWorkshop("bien-etre")}>
-              <Plus className="h-4 w-4" /> Ajouter un atelier
-            </Button>
-          </div>
-          <WorkshopTable workshops={wellbeingWorkshops} onEdit={openEditWorkshop} onDelete={deleteWorkshop} />
-        </TabsContent>
-      </Tabs>
+          {/* === ATELIERS TAB === */}
+          <TabsContent value="ateliers" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">{wellbeingWorkshops.length} ateliers bien-être</p>
+              <Button size="sm" className="gap-1.5" onClick={() => openNewWorkshop("bien-etre")}>
+                <Plus className="h-4 w-4" /> Ajouter un atelier
+              </Button>
+            </div>
+            <WorkshopTable workshops={wellbeingWorkshops} onEdit={openEditWorkshop} onDelete={(id) => setDeletingItem({ id, type: "workshop" })} />
+          </TabsContent>
+        </Tabs>
+      )}
 
       {/* === DIALOG === */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -505,6 +535,24 @@ export default function AdminActivites() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* === DELETE CONFIRMATION === */}
+      <AlertDialog open={!!deletingItem} onOpenChange={(open) => !open && setDeletingItem(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. {deletingItem?.type === "course" ? "Le cours" : "L'atelier"} sera définitivement supprimé.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={executeDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }
