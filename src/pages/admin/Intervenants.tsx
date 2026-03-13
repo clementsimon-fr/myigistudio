@@ -21,6 +21,7 @@ interface Instructor {
   urls: string[];
   bio: string;
   active: boolean;
+  photo_url: string;
   created_at: string;
 }
 
