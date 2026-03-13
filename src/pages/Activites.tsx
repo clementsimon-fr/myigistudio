@@ -258,7 +258,7 @@ export default function Activites() {
                   <div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {descriptionWs.duration}</div>
                   <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionWs.spots} places max</div>
                 </div>
-                <Link to={`/reserver?type=workshop&id=${descriptionWs.id}`}><Button className="w-full">Réserver</Button></Link>
+                <Link to={`/calendrier?filter=${descriptionWs.category}`}><Button className="w-full">Réserver</Button></Link>
               </div>
             </>
           )}

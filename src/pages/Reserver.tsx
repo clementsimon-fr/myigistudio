@@ -314,6 +314,7 @@ export default function Reserver() {
                 </p>
               )}
             </div>
+            )}
 
             {/* Slot + participants + confirm */}
             <div className="space-y-4">

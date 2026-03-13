@@ -270,7 +270,11 @@ export default function Calendrier() {
                   </div>
                   {selectedEvent.price !== undefined && selectedEvent.price > 0 && <div className="text-lg font-bold text-primary-dark">{selectedEvent.price}€</div>}
                 </div>
-                <Button className="w-full gap-1.5" disabled={selectedEvent.spotsLeft === 0} onClick={() => { setSelectedEvent(null); handleBook(selectedEvent); }}>
+                <Button className="w-full gap-1.5" disabled={selectedEvent.spotsLeft === 0} onClick={() => {
+                  const eventDate = dayBlocks.find(db => db.blocks.some(b => b.id === selectedEvent.id))?.date || new Date();
+                  setSelectedEvent(null);
+                  handleBook(selectedEvent, eventDate);
+                }}>
                   {selectedEvent.spotsLeft === 0 ? "Complet" : (<>Réserver <ArrowRight className="h-4 w-4" /></>)}
                 </Button>
               </div>
