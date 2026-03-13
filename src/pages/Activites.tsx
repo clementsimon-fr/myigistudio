@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Clock, Users, User, Euro, Calendar, Loader2, ChevronDown, ChevronUp, Info, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Link } from "react-router-dom";
 import PricingSection from "@/components/home/PricingSection";
@@ -20,12 +21,19 @@ interface Schedule {
   spots_left: number;
 }
 
+interface Instructor {
+  id: string;
+  name: string;
+  photo_url: string;
+}
+
 interface Course {
   id: string;
   name: string;
   description: string;
   long_description: string;
   instructor: string;
+  instructor_id: string | null;
   spots: number;
   spots_left: number;
   image: string;
@@ -47,6 +55,7 @@ interface Workshop {
   spots_left: number;
   image: string;
   category: string;
+  instructor_id: string | null;
 }
 
 // ─── Helpers ─────────────────────────────────────
@@ -63,6 +72,7 @@ function calcDuration(start: string, end: string): string {
   return `${h}h${m.toString().padStart(2, "0")}`;
 }
 
+const PLACEHOLDER_IMG = "/placeholder.svg";
 const MAX_VISIBLE_SCHEDULES = 3;
 
 type FilterCategory = "all" | "yoga" | "poterie" | "ateliers";
@@ -74,9 +84,22 @@ const FILTERS: { value: FilterCategory; label: string }[] = [
   { value: "ateliers", label: "Ateliers & Stages" },
 ];
 
+function InstructorBadge({ instructor, photo }: { instructor: string; photo?: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <Avatar className="h-5 w-5">
+        {photo ? <AvatarImage src={photo} alt={instructor} /> : null}
+        <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{instructor.charAt(0)}</AvatarFallback>
+      </Avatar>
+      <span>{instructor}</span>
+    </div>
+  );
+}
+
 export default function Activites() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
+  const [instructors, setInstructors] = useState<Record<string, Instructor>>({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterCategory>("all");
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
@@ -85,11 +108,21 @@ export default function Activites() {
 
   useEffect(() => {
     const load = async () => {
-      const [coursesRes, schedulesRes, workshopsRes] = await Promise.all([
+      const [coursesRes, schedulesRes, workshopsRes, instructorsRes] = await Promise.all([
         supabase.from("courses").select("*").eq("category", "yoga"),
         supabase.from("course_schedules").select("*"),
         supabase.from("workshops").select("*").order("date"),
+        supabase.from("instructors").select("id, name, photo_url").eq("active", true),
       ]);
+
+      // Build instructors map
+      const instrMap: Record<string, Instructor> = {};
+      if (instructorsRes.data) {
+        for (const inst of instructorsRes.data) {
+          instrMap[inst.id] = { id: inst.id, name: inst.name, photo_url: inst.photo_url };
+        }
+      }
+      setInstructors(instrMap);
 
       const schedulesMap: Record<string, Schedule[]> = {};
       if (schedulesRes.data) {
@@ -106,6 +139,7 @@ export default function Activites() {
           description: c.description || "",
           long_description: c.long_description || "",
           instructor: c.instructor,
+          instructor_id: c.instructor_id || null,
           spots: c.spots,
           spots_left: c.spots_left,
           image: c.image || "",
@@ -127,6 +161,16 @@ export default function Activites() {
     });
   };
 
+  const getInstructorPhoto = (instructorId: string | null, instructorName?: string): string | undefined => {
+    if (instructorId && instructors[instructorId]?.photo_url) return instructors[instructorId].photo_url;
+    // Fallback: match by name
+    if (instructorName) {
+      const match = Object.values(instructors).find(i => i.name === instructorName);
+      if (match?.photo_url) return match.photo_url;
+    }
+    return undefined;
+  };
+
   const potteryWorkshops = workshops.filter(w => w.category === "poterie");
   const wellbeingWorkshops = workshops.filter(w => w.category === "bien-etre");
 
@@ -144,41 +188,20 @@ export default function Activites() {
           <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-accent/10 blur-3xl" />
           <div className="container relative">
             <div className="max-w-2xl mx-auto text-center">
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="text-sm font-medium uppercase tracking-widest text-primary-dark mb-4"
-              >
+              <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-sm font-medium uppercase tracking-widest text-primary-dark mb-4">
                 Bienvenue chez
               </motion.p>
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="text-5xl md:text-7xl font-display font-bold text-primary-dark mb-6"
-              >
+              <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="text-5xl md:text-7xl font-display font-bold text-primary-dark mb-6">
                 MyIgi<span className="text-primary italic">Studio</span>
               </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed"
-              >
+              <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed">
                 Yoga, Pilates, Poterie & Bien-être.<br />
                 Réservez vos cours et ateliers en quelques clics.
               </motion.p>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                className="flex flex-col sm:flex-row gap-4 justify-center"
-              >
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link to="/calendrier">
                   <Button size="lg" className="bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-2 px-8">
-                    Planning & réservation
-                    <ArrowRight className="h-4 w-4" />
+                    Planning & réservation <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
               </motion.div>
@@ -186,21 +209,20 @@ export default function Activites() {
           </div>
         </section>
 
-        {/* ─── Category filter ─── */}
-        <section className="py-8 border-b">
+        {/* ─── Sticky filter bar (mobile) ─── */}
+        <section className="py-4 border-b sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="container">
             <div className="flex flex-wrap justify-center gap-2">
               {FILTERS.map(f => (
-                <Button
-                  key={f.value}
-                  variant={filter === f.value ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilter(f.value)}
-                  className="rounded-full"
-                >
+                <Button key={f.value} variant={filter === f.value ? "default" : "outline"} size="sm" onClick={() => setFilter(f.value)} className="rounded-full">
                   {f.label}
                 </Button>
               ))}
+              <Link to="/calendrier" className="md:hidden">
+                <Button size="sm" variant="secondary" className="rounded-full gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" /> Planning
+                </Button>
+              </Link>
             </div>
           </div>
         </section>
@@ -213,30 +235,20 @@ export default function Activites() {
             {showYoga && courses.length > 0 && (
               <section className="py-16">
                 <div className="container">
-                  <h2 className="text-2xl md:text-3xl font-display font-bold text-primary-dark mb-8 text-center">
-                    Yoga & Pilates
-                  </h2>
+                  <h2 className="text-2xl md:text-3xl font-display font-bold text-primary-dark mb-8 text-center">Yoga & Pilates</h2>
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {courses.map((course, i) => {
                       const totalSpotsLeft = course.schedules.reduce((sum, s) => sum + s.spots_left, 0);
                       const isExpanded = expandedCards.has(course.id);
                       const hasMore = course.schedules.length > MAX_VISIBLE_SCHEDULES;
                       const visible = isExpanded ? course.schedules : course.schedules.slice(0, MAX_VISIBLE_SCHEDULES);
+                      const photo = getInstructorPhoto(course.instructor_id, course.instructor);
 
                       return (
-                        <motion.div
-                          key={course.id}
-                          initial={{ opacity: 0, y: 30 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          viewport={{ once: true }}
-                          transition={{ delay: i * 0.1 }}
-                          className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow"
-                        >
-                          {course.image && (
-                            <div className="aspect-[4/3] overflow-hidden">
-                              <img src={course.image} alt={course.name} className="w-full h-full object-cover" loading="lazy" />
-                            </div>
-                          )}
+                        <motion.div key={course.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow">
+                          <div className="aspect-[4/3] overflow-hidden bg-muted">
+                            <img src={course.image || PLACEHOLDER_IMG} alt={course.name} className="w-full h-full object-cover" loading="lazy" />
+                          </div>
                           <div className="p-5">
                             <div className="flex items-start justify-between mb-2">
                               <h3 className="font-display font-semibold text-lg text-primary-dark">{course.name}</h3>
@@ -263,7 +275,7 @@ export default function Activites() {
                             </div>
 
                             <div className="flex items-center gap-3 text-sm text-muted-foreground mb-4">
-                              <div className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" />{course.instructor}</div>
+                              <InstructorBadge instructor={course.instructor} photo={photo} />
                               <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />{course.schedules[0]?.spots || course.spots} places max</div>
                             </div>
 
@@ -290,12 +302,10 @@ export default function Activites() {
             {showPoterie && potteryWorkshops.length > 0 && (
               <section className={`py-16 ${showYoga && courses.length > 0 ? "bg-secondary/10" : ""}`}>
                 <div className="container">
-                  <h2 className="text-2xl md:text-3xl font-display font-bold text-primary-dark mb-8 text-center">
-                    Poterie
-                  </h2>
+                  <h2 className="text-2xl md:text-3xl font-display font-bold text-primary-dark mb-8 text-center">Poterie</h2>
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {potteryWorkshops.map((ws, i) => (
-                      <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} />
+                      <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} />
                     ))}
                   </div>
                 </div>
@@ -306,12 +316,10 @@ export default function Activites() {
             {showAteliers && wellbeingWorkshops.length > 0 && (
               <section className="py-16">
                 <div className="container">
-                  <h2 className="text-2xl md:text-3xl font-display font-bold text-primary-dark mb-8 text-center">
-                    Ateliers & Stages
-                  </h2>
+                  <h2 className="text-2xl md:text-3xl font-display font-bold text-primary-dark mb-8 text-center">Ateliers & Stages</h2>
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {wellbeingWorkshops.map((ws, i) => (
-                      <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} />
+                      <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} />
                     ))}
                   </div>
                 </div>
@@ -342,10 +350,10 @@ export default function Activites() {
             <>
               <DialogHeader><DialogTitle className="font-display">{descriptionCourse.name}</DialogTitle></DialogHeader>
               <div className="space-y-4 pt-2">
-                {descriptionCourse.image && <img src={descriptionCourse.image} alt={descriptionCourse.name} className="w-full rounded-lg object-cover max-h-64" />}
+                <img src={descriptionCourse.image || PLACEHOLDER_IMG} alt={descriptionCourse.name} className="w-full rounded-lg object-cover max-h-64" />
                 <div className="text-sm text-muted-foreground whitespace-pre-line">{descriptionCourse.long_description || descriptionCourse.description}</div>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> {descriptionCourse.instructor}</div>
+                  <InstructorBadge instructor={descriptionCourse.instructor} photo={getInstructorPhoto(descriptionCourse.instructor_id, descriptionCourse.instructor)} />
                   <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionCourse.schedules[0]?.spots || descriptionCourse.spots} places max</div>
                 </div>
                 <Link to={`/reserver?type=course&id=${descriptionCourse.id}`}><Button className="w-full">Réserver</Button></Link>
@@ -362,7 +370,7 @@ export default function Activites() {
             <>
               <DialogHeader><DialogTitle className="font-display">{descriptionWs.name}</DialogTitle></DialogHeader>
               <div className="space-y-4 pt-2">
-                {descriptionWs.image && <img src={descriptionWs.image} alt={descriptionWs.name} className="w-full rounded-lg object-cover max-h-64" />}
+                <img src={descriptionWs.image || PLACEHOLDER_IMG} alt={descriptionWs.name} className="w-full rounded-lg object-cover max-h-64" />
                 <div className="text-sm text-muted-foreground whitespace-pre-line">{descriptionWs.long_description || descriptionWs.description}</div>
                 <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1.5"><Euro className="h-3.5 w-3.5" /> {descriptionWs.price}€</div>
@@ -380,7 +388,7 @@ export default function Activites() {
 }
 
 // ─── Workshop Card component ─────────────────────
-function WorkshopCard({ ws, i, onDescription }: { ws: Workshop; i: number; onDescription: (w: Workshop) => void }) {
+function WorkshopCard({ ws, i, onDescription, instructorPhoto }: { ws: Workshop; i: number; onDescription: (w: Workshop) => void; instructorPhoto?: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -389,11 +397,9 @@ function WorkshopCard({ ws, i, onDescription }: { ws: Workshop; i: number; onDes
       transition={{ delay: i * 0.1 }}
       className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow"
     >
-      {ws.image && (
-        <div className="aspect-[4/3] overflow-hidden">
-          <img src={ws.image} alt={ws.name} className="w-full h-full object-cover" loading="lazy" />
-        </div>
-      )}
+      <div className="aspect-[4/3] overflow-hidden bg-muted">
+        <img src={ws.image || PLACEHOLDER_IMG} alt={ws.name} className="w-full h-full object-cover" loading="lazy" />
+      </div>
       <div className="p-5">
         <div className="flex items-start justify-between mb-2">
           <h3 className="font-display font-semibold text-lg text-primary-dark">{ws.name}</h3>
