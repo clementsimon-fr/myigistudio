@@ -470,7 +470,8 @@ export default function AdminActivites() {
           {dialogType === "course" ? (
             <div className="space-y-4 pt-2">
               <div><Label>Nom du cours</Label><Input value={courseForm.name} onChange={e => setCourseForm({ ...courseForm, name: e.target.value })} placeholder="Vinyasa Flow" /></div>
-              <div><Label>Description</Label><Textarea value={courseForm.description} onChange={e => setCourseForm({ ...courseForm, description: e.target.value })} rows={2} placeholder="Description du cours visible sur le site..." /></div>
+              <div><Label>Description courte</Label><Textarea value={courseForm.description} onChange={e => setCourseForm({ ...courseForm, description: e.target.value })} rows={2} placeholder="Résumé affiché sur la carte..." /></div>
+              <div><Label>Fiche produit (description longue)</Label><Textarea value={courseForm.long_description} onChange={e => setCourseForm({ ...courseForm, long_description: e.target.value })} rows={5} placeholder="Description détaillée visible quand le client clique sur 'Description'... Bénéfices, déroulé, public visé, etc." /></div>
               <div>
                 <Label>Fréquence</Label>
                 <Select value={courseForm.frequency} onValueChange={v => setCourseForm({ ...courseForm, frequency: v })}>
