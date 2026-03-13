@@ -1,13 +1,14 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Loader2, User, CalendarDays, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, User, CalendarDays, Clock, Link2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,6 +18,7 @@ interface Instructor {
   email: string;
   phone: string;
   specialties: string[];
+  urls: string[];
   bio: string;
   active: boolean;
   created_at: string;
@@ -37,7 +39,13 @@ interface WorkshopAssignment {
   time: string;
 }
 
-const SPECIALTY_OPTIONS = ["Yoga", "Pilates", "Poterie", "Bien-être", "Méditation", "Vinyasa", "Yin", "Hatha"];
+// Category -> services mapping
+const CATEGORY_SERVICES: Record<string, string[]> = {
+  "Yoga": ["Vinyasa", "Yin", "Hatha", "Prénatal", "Ashtanga", "Restauratif"],
+  "Pilates": ["Mat Pilates", "Pilates Flow", "Pilates Doux"],
+  "Poterie": ["Tour", "Modelage", "Émaillage", "Peinture sur céramique"],
+  "Bien-être": ["Qi Gong", "Méditation", "Breathwork", "Wim Hof", "Cérémonie Cacao"],
+};
 
 export default function AdminIntervenants() {
   const { toast } = useToast();
@@ -48,13 +56,13 @@ export default function AdminIntervenants() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedInstructor, setSelectedInstructor] = useState<Instructor | null>(null);
 
-  // Assignments
   const [courses, setCourses] = useState<any[]>([]);
   const [workshops, setWorkshops] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
 
-  const emptyForm = { name: "", email: "", phone: "", specialties: [] as string[], bio: "", active: true };
+  const emptyForm = { name: "", email: "", phone: "", specialties: [] as string[], urls: [""] as string[], bio: "", active: true };
   const [form, setForm] = useState(emptyForm);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
 
   const fetchData = async () => {
     setLoading(true);
@@ -74,41 +82,37 @@ export default function AdminIntervenants() {
   useEffect(() => { fetchData(); }, []);
 
   const getAssignments = (instructorId: string, instructorName: string) => {
-    // Match by instructor_id or by instructor name (backward compat)
     const assignedCourses = courses.filter(c => c.instructor_id === instructorId || c.instructor === instructorName);
     const assignedWorkshops = workshops.filter(w => w.instructor_id === instructorId);
 
     const courseAssignments: CourseAssignment[] = assignedCourses.map(c => ({
-      id: c.id,
-      name: c.name,
-      category: c.category,
+      id: c.id, name: c.name, category: c.category,
       schedules: schedules.filter(s => s.course_id === c.id).map((s: any) => ({ day: s.day, time: s.time, end_time: s.end_time })),
     }));
 
     const workshopAssignments: WorkshopAssignment[] = assignedWorkshops.map(w => ({
-      id: w.id,
-      name: w.name,
-      category: w.category,
-      date: w.date,
-      time: w.time,
+      id: w.id, name: w.name, category: w.category, date: w.date, time: w.time,
     }));
 
     return { courses: courseAssignments, workshops: workshopAssignments };
   };
 
-  const openNew = () => { setEditingId(null); setForm(emptyForm); setDialogOpen(true); };
+  const openNew = () => { setEditingId(null); setForm(emptyForm); setSelectedCategory(""); setDialogOpen(true); };
   const openEdit = (i: Instructor) => {
     setEditingId(i.id);
-    setForm({ name: i.name, email: i.email, phone: i.phone, specialties: i.specialties || [], bio: i.bio, active: i.active });
+    setForm({ name: i.name, email: i.email, phone: i.phone, specialties: i.specialties || [], urls: (i.urls && i.urls.length > 0) ? i.urls : [""], bio: i.bio, active: i.active });
+    setSelectedCategory("");
     setDialogOpen(true);
   };
 
   const save = async () => {
+    const cleanUrls = form.urls.filter(u => u.trim() !== "");
+    const payload = { ...form, urls: cleanUrls };
     if (editingId) {
-      await supabase.from("instructors").update(form as any).eq("id", editingId);
+      await supabase.from("instructors").update(payload as any).eq("id", editingId);
       toast({ title: "Intervenant modifié" });
     } else {
-      await supabase.from("instructors").insert(form as any);
+      await supabase.from("instructors").insert(payload as any);
       toast({ title: "Intervenant créé" });
     }
     setDialogOpen(false);
@@ -123,14 +127,20 @@ export default function AdminIntervenants() {
     fetchData();
   };
 
-  const toggleSpecialty = (spec: string) => {
-    setForm(prev => ({
-      ...prev,
-      specialties: prev.specialties.includes(spec)
-        ? prev.specialties.filter(s => s !== spec)
-        : [...prev.specialties, spec],
-    }));
+  const addSpecialty = (service: string) => {
+    const label = selectedCategory ? `${selectedCategory} — ${service}` : service;
+    if (!form.specialties.includes(label)) {
+      setForm(prev => ({ ...prev, specialties: [...prev.specialties, label] }));
+    }
   };
+
+  const removeSpecialty = (spec: string) => {
+    setForm(prev => ({ ...prev, specialties: prev.specialties.filter(s => s !== spec) }));
+  };
+
+  const addUrl = () => setForm(prev => ({ ...prev, urls: [...prev.urls, ""] }));
+  const removeUrl = (idx: number) => setForm(prev => ({ ...prev, urls: prev.urls.filter((_, i) => i !== idx) }));
+  const updateUrl = (idx: number, value: string) => setForm(prev => ({ ...prev, urls: prev.urls.map((u, i) => i === idx ? value : u) }));
 
   if (loading) {
     return (
@@ -151,7 +161,6 @@ export default function AdminIntervenants() {
         </Button>
       </div>
 
-      {/* Instructor cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {instructors.map(inst => {
           const assignments = getAssignments(inst.id, inst.name);
@@ -187,6 +196,17 @@ export default function AdminIntervenants() {
                 </div>
               )}
 
+              {inst.urls && inst.urls.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {inst.urls.map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                      <Link2 className="h-3 w-3" />
+                      {(() => { try { return new URL(url).hostname; } catch { return url; } })()}
+                    </a>
+                  ))}
+                </div>
+              )}
+
               {inst.bio && <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{inst.bio}</p>}
 
               <div className="border-t pt-3">
@@ -203,9 +223,7 @@ export default function AdminIntervenants() {
                     <CalendarDays className="h-3 w-3" />
                     <span>{c.name}</span>
                     {c.schedules.length > 0 && (
-                      <span className="text-muted-foreground/60">
-                        · {c.schedules.map(s => s.day.slice(0, 3)).join(", ")}
-                      </span>
+                      <span className="text-muted-foreground/60">· {c.schedules.map(s => s.day.slice(0, 3)).join(", ")}</span>
                     )}
                   </div>
                 ))}
@@ -214,9 +232,7 @@ export default function AdminIntervenants() {
                 )}
               </div>
 
-              {!inst.active && (
-                <Badge variant="secondary" className="mt-2 text-xs">Inactif</Badge>
-              )}
+              {!inst.active && <Badge variant="secondary" className="mt-2 text-xs">Inactif</Badge>}
             </div>
           );
         })}
@@ -234,21 +250,68 @@ export default function AdminIntervenants() {
               <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="email@..." /></div>
               <div><Label>Téléphone</Label><Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="06..." /></div>
             </div>
+
+            {/* Specialties: category + service */}
             <div>
               <Label>Spécialités</Label>
-              <div className="flex flex-wrap gap-1.5 mt-1.5">
-                {SPECIALTY_OPTIONS.map(spec => (
-                  <Badge
-                    key={spec}
-                    variant={form.specialties.includes(spec) ? "default" : "outline"}
-                    className="cursor-pointer text-xs"
-                    onClick={() => toggleSpecialty(spec)}
-                  >
-                    {spec}
-                  </Badge>
+              {form.specialties.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1.5 mb-2">
+                  {form.specialties.map(spec => (
+                    <Badge key={spec} variant="default" className="text-xs gap-1">
+                      {spec}
+                      <button onClick={() => removeSpecialty(spec)} className="ml-0.5 hover:text-destructive"><X className="h-3 w-3" /></button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2 mt-1.5">
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Activité..." /></SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(CATEGORY_SERVICES).map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedCategory && (
+                  <div className="flex flex-wrap gap-1">
+                    {CATEGORY_SERVICES[selectedCategory]?.map(service => (
+                      <Badge
+                        key={service}
+                        variant={form.specialties.includes(`${selectedCategory} — ${service}`) ? "secondary" : "outline"}
+                        className="cursor-pointer text-xs"
+                        onClick={() => addSpecialty(service)}
+                      >
+                        {service}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* URLs */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label className="mb-0">Liens (site web, réseaux...)</Label>
+                <Button type="button" size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={addUrl}>
+                  <Plus className="h-3 w-3" /> Ajouter
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {form.urls.map((url, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Input value={url} onChange={e => updateUrl(idx, e.target.value)} placeholder="https://..." className="flex-1 h-8 text-sm" />
+                    {form.urls.length > 1 && (
+                      <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => removeUrl(idx)}>
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
+
             <div><Label>Bio</Label><Textarea value={form.bio} onChange={e => setForm({ ...form, bio: e.target.value })} rows={3} placeholder="Présentation courte..." /></div>
             <Button className="w-full" onClick={save} disabled={!form.name}>{editingId ? "Enregistrer" : "Créer l'intervenant"}</Button>
           </div>

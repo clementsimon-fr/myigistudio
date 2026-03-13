@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { motion } from "framer-motion";
-import { Clock, Users, User, Loader2 } from "lucide-react";
+import { Clock, Users, User, Loader2, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Link } from "react-router-dom";
 import PricingSection from "@/components/home/PricingSection";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +22,7 @@ interface Course {
   id: string;
   name: string;
   description: string;
+  long_description: string;
   instructor: string;
   spots: number;
   spots_left: number;
@@ -40,9 +42,13 @@ function calcDuration(start: string, end: string): string {
   return `${h}h${m.toString().padStart(2, "0")}`;
 }
 
+const MAX_VISIBLE_SCHEDULES = 3;
+
 export default function Yoga() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -64,6 +70,7 @@ export default function Yoga() {
           id: c.id,
           name: c.name,
           description: c.description || "",
+          long_description: c.long_description || "",
           instructor: c.instructor,
           spots: c.spots,
           spots_left: c.spots_left,
@@ -75,9 +82,12 @@ export default function Yoga() {
     load();
   }, []);
 
-  // Summarize schedule for display
-  const formatScheduleSummary = (schedules: Schedule[]) => {
-    return schedules.map(s => `${s.day} ${s.time}${s.end_time ? `-${s.end_time}` : ""}`).join(" · ");
+  const toggleExpand = (id: string) => {
+    setExpandedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
   return (
@@ -110,6 +120,10 @@ export default function Yoga() {
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {courses.map((course, i) => {
                   const totalSpotsLeft = course.schedules.reduce((sum, s) => sum + s.spots_left, 0);
+                  const isExpanded = expandedCards.has(course.id);
+                  const hasMoreSchedules = course.schedules.length > MAX_VISIBLE_SCHEDULES;
+                  const visibleSchedules = isExpanded ? course.schedules : course.schedules.slice(0, MAX_VISIBLE_SCHEDULES);
+
                   return (
                     <motion.div
                       key={course.id}
@@ -129,16 +143,34 @@ export default function Yoga() {
                         {course.description && (
                           <p className="text-sm text-muted-foreground mb-4">{course.description}</p>
                         )}
-                        <div className="space-y-2 text-sm text-muted-foreground mb-4">
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="h-3.5 w-3.5" />
-                            {formatScheduleSummary(course.schedules)}
-                          </div>
-                          {course.schedules.length > 0 && course.schedules[0].time && course.schedules[0].end_time && (
-                            <div className="text-xs text-muted-foreground">
-                              Durée : {calcDuration(course.schedules[0].time, course.schedules[0].end_time)}
+
+                        {/* Schedule rollup */}
+                        <div className="space-y-1.5 text-sm text-muted-foreground mb-3">
+                          {visibleSchedules.map((s, idx) => (
+                            <div key={idx} className="flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 shrink-0" />
+                              <Badge variant="outline" className="text-xs font-normal px-1.5 py-0">{s.day.slice(0, 3)}</Badge>
+                              <span>{s.time}{s.end_time ? ` - ${s.end_time}` : ""}</span>
+                              {s.time && s.end_time && (
+                                <span className="text-muted-foreground/60 text-xs">· {calcDuration(s.time, s.end_time)}</span>
+                              )}
                             </div>
+                          ))}
+                          {hasMoreSchedules && (
+                            <button
+                              onClick={() => toggleExpand(course.id)}
+                              className="flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              {isExpanded ? (
+                                <><ChevronUp className="h-3 w-3" /> Réduire</>
+                              ) : (
+                                <><ChevronDown className="h-3 w-3" /> +{course.schedules.length - MAX_VISIBLE_SCHEDULES} autres créneaux</>
+                              )}
+                            </button>
                           )}
+                        </div>
+
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground mb-4">
                           <div className="flex items-center gap-1.5">
                             <User className="h-3.5 w-3.5" />
                             {course.instructor}
@@ -148,11 +180,19 @@ export default function Yoga() {
                             {course.schedules[0]?.spots || course.spots} places max
                           </div>
                         </div>
-                        <Link to={`/reserver?type=course&id=${course.id}`}>
-                          <Button size="sm" className="w-full" disabled={totalSpotsLeft === 0}>
-                            {totalSpotsLeft === 0 ? "Complet" : "Réserver"}
-                          </Button>
-                        </Link>
+
+                        <div className="flex gap-2">
+                          {(course.long_description || course.description) && (
+                            <Button size="sm" variant="outline" className="flex-1 gap-1.5" onClick={() => setDescriptionCourse(course)}>
+                              <Info className="h-3.5 w-3.5" /> Description
+                            </Button>
+                          )}
+                          <Link to={`/reserver?type=course&id=${course.id}`} className="flex-1">
+                            <Button size="sm" className="w-full" disabled={totalSpotsLeft === 0}>
+                              {totalSpotsLeft === 0 ? "Complet" : "Réserver"}
+                            </Button>
+                          </Link>
+                        </div>
                       </div>
                     </motion.div>
                   );
@@ -175,6 +215,31 @@ export default function Yoga() {
         </section>
       </main>
       <Footer />
+
+      {/* Description dialog */}
+      <Dialog open={!!descriptionCourse} onOpenChange={(open) => !open && setDescriptionCourse(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          {descriptionCourse && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-display">{descriptionCourse.name}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                <div className="text-sm text-muted-foreground whitespace-pre-line">
+                  {descriptionCourse.long_description || descriptionCourse.description}
+                </div>
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> {descriptionCourse.instructor}</div>
+                  <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionCourse.schedules[0]?.spots || descriptionCourse.spots} places max</div>
+                </div>
+                <Link to={`/reserver?type=course&id=${descriptionCourse.id}`}>
+                  <Button className="w-full">Réserver</Button>
+                </Link>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

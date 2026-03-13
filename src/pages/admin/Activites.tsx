@@ -97,10 +97,10 @@ export default function AdminActivites() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  const emptyCourseForm = { name: "", description: "", category: "yoga", frequency: "hebdomadaire", instructor: "Élodie", spots: 12, schedules: [{ day: "Mardi", time: "09:00", end_time: "10:00" }] as Schedule[] };
+  const emptyCourseForm = { name: "", description: "", long_description: "", category: "yoga", frequency: "hebdomadaire", instructor: "Élodie", spots: 12, schedules: [{ day: "Mardi", time: "09:00", end_time: "10:00" }] as Schedule[] };
   const [courseForm, setCourseForm] = useState(emptyCourseForm);
 
-  const emptyWorkshopForm = { name: "", description: "", category: "poterie", dates: [""] as string[], time: "14:00", end_time: "16:00", frequency: "ponctuel", price: 0, spots: 8, image: "" };
+  const emptyWorkshopForm = { name: "", description: "", long_description: "", category: "poterie", dates: [""] as string[], time: "14:00", end_time: "16:00", frequency: "ponctuel", price: 0, spots: 8, image: "" };
   const [workshopForm, setWorkshopForm] = useState(emptyWorkshopForm);
 
   const fetchData = async () => {
@@ -170,6 +170,7 @@ export default function AdminActivites() {
     setCourseForm({
       name: c.name,
       description: c.description || "",
+      long_description: (c as any).long_description || "",
       category: c.category,
       frequency: c.frequency || "hebdomadaire",
       instructor: c.instructor,
@@ -190,6 +191,7 @@ export default function AdminActivites() {
     const payload = {
       name: courseForm.name,
       description: courseForm.description,
+      long_description: courseForm.long_description,
       category: courseForm.category,
       frequency: courseForm.frequency,
       instructor: courseForm.instructor,
@@ -269,7 +271,7 @@ export default function AdminActivites() {
   };
   const openEditWorkshop = (w: Workshop) => {
     setEditingId(w.id);
-    setWorkshopForm({ name: w.name, description: w.description, category: w.category, dates: [w.date], time: w.time, end_time: w.end_time || "", frequency: w.frequency || "ponctuel", price: w.price, spots: w.spots, image: w.image });
+    setWorkshopForm({ name: w.name, description: w.description, long_description: (w as any).long_description || "", category: w.category, dates: [w.date], time: w.time, end_time: w.end_time || "", frequency: w.frequency || "ponctuel", price: w.price, spots: w.spots, image: w.image });
     setDialogType("workshop");
     setDialogOpen(true);
   };
@@ -470,7 +472,8 @@ export default function AdminActivites() {
           {dialogType === "course" ? (
             <div className="space-y-4 pt-2">
               <div><Label>Nom du cours</Label><Input value={courseForm.name} onChange={e => setCourseForm({ ...courseForm, name: e.target.value })} placeholder="Vinyasa Flow" /></div>
-              <div><Label>Description</Label><Textarea value={courseForm.description} onChange={e => setCourseForm({ ...courseForm, description: e.target.value })} rows={2} placeholder="Description du cours visible sur le site..." /></div>
+              <div><Label>Description courte</Label><Textarea value={courseForm.description} onChange={e => setCourseForm({ ...courseForm, description: e.target.value })} rows={2} placeholder="Résumé affiché sur la carte..." /></div>
+              <div><Label>Fiche produit (description longue)</Label><Textarea value={courseForm.long_description} onChange={e => setCourseForm({ ...courseForm, long_description: e.target.value })} rows={5} placeholder="Description détaillée visible quand le client clique sur 'Description'... Bénéfices, déroulé, public visé, etc." /></div>
               <div>
                 <Label>Fréquence</Label>
                 <Select value={courseForm.frequency} onValueChange={v => setCourseForm({ ...courseForm, frequency: v })}>
@@ -536,7 +539,8 @@ export default function AdminActivites() {
           ) : (
             <div className="space-y-4 pt-2">
               <div><Label>Nom</Label><Input value={workshopForm.name} onChange={e => setWorkshopForm({ ...workshopForm, name: e.target.value })} /></div>
-              <div><Label>Description</Label><Textarea value={workshopForm.description} onChange={e => setWorkshopForm({ ...workshopForm, description: e.target.value })} rows={3} /></div>
+              <div><Label>Description courte</Label><Textarea value={workshopForm.description} onChange={e => setWorkshopForm({ ...workshopForm, description: e.target.value })} rows={2} placeholder="Résumé affiché sur la carte..." /></div>
+              <div><Label>Fiche produit (description longue)</Label><Textarea value={workshopForm.long_description} onChange={e => setWorkshopForm({ ...workshopForm, long_description: e.target.value })} rows={5} placeholder="Description détaillée : déroulé, matériel fourni, public visé, ce que le participant repart avec..." /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Catégorie</Label>
                   <Select value={workshopForm.category} onValueChange={v => setWorkshopForm({ ...workshopForm, category: v })}>

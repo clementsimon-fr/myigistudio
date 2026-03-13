@@ -68,6 +68,7 @@ export type Database = {
           id: string
           instructor: string
           instructor_id: string | null
+          long_description: string
           name: string
           spots: number
           spots_left: number
@@ -85,6 +86,7 @@ export type Database = {
           id?: string
           instructor?: string
           instructor_id?: string | null
+          long_description?: string
           name: string
           spots?: number
           spots_left?: number
@@ -102,6 +104,7 @@ export type Database = {
           id?: string
           instructor?: string
           instructor_id?: string | null
+          long_description?: string
           name?: string
           spots?: number
           spots_left?: number
@@ -127,6 +130,7 @@ export type Database = {
           name: string
           phone: string
           specialties: string[]
+          urls: string[]
         }
         Insert: {
           active?: boolean
@@ -137,6 +141,7 @@ export type Database = {
           name: string
           phone?: string
           specialties?: string[]
+          urls?: string[]
         }
         Update: {
           active?: boolean
@@ -147,6 +152,7 @@ export type Database = {
           name?: string
           phone?: string
           specialties?: string[]
+          urls?: string[]
         }
         Relationships: []
       }
@@ -343,6 +349,7 @@ export type Database = {
           id: string
           image: string
           instructor_id: string | null
+          long_description: string
           name: string
           price: number
           spots: number
@@ -360,6 +367,7 @@ export type Database = {
           id?: string
           image?: string
           instructor_id?: string | null
+          long_description?: string
           name: string
           price?: number
           spots?: number
@@ -377,6 +385,7 @@ export type Database = {
           id?: string
           image?: string
           instructor_id?: string | null
+          long_description?: string
           name?: string
           price?: number
           spots?: number
