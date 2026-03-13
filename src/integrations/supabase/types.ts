@@ -153,6 +153,78 @@ export type Database = {
           },
         ]
       }
+      forum_posts: {
+        Row: {
+          author_name: string
+          category: string
+          content: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          author_name: string
+          category?: string
+          content: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          author_name?: string
+          category?: string
+          content?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      gift_vouchers: {
+        Row: {
+          amount: number
+          beneficiary_name: string
+          buyer_name: string
+          card_name: string
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          message: string
+          sessions: number
+          type: string
+          used: boolean
+          used_at: string | null
+        }
+        Insert: {
+          amount?: number
+          beneficiary_name?: string
+          buyer_name?: string
+          card_name?: string
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          message?: string
+          sessions?: number
+          type?: string
+          used?: boolean
+          used_at?: string | null
+        }
+        Update: {
+          amount?: number
+          beneficiary_name?: string
+          buyer_name?: string
+          card_name?: string
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          message?: string
+          sessions?: number
+          type?: string
+          used?: boolean
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       instructors: {
         Row: {
           active: boolean
@@ -276,6 +348,33 @@ export type Database = {
           sessions?: number
           sort_order?: number
           validity?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string
+          bio: string
+          created_at: string
+          id: string
+          show_in_community: boolean
+          user_name: string
+        }
+        Insert: {
+          avatar_url?: string
+          bio?: string
+          created_at?: string
+          id?: string
+          show_in_community?: boolean
+          user_name: string
+        }
+        Update: {
+          avatar_url?: string
+          bio?: string
+          created_at?: string
+          id?: string
+          show_in_community?: boolean
+          user_name?: string
         }
         Relationships: []
       }

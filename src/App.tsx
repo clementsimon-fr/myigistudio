@@ -16,6 +16,7 @@ import Calendrier from "./pages/Calendrier";
 import AdminIntervenants from "./pages/admin/Intervenants";
 import AdminTarifs from "./pages/admin/Tarifs";
 import AdminContenu from "./pages/admin/Contenu";
+import AdminBonsCadeaux from "./pages/admin/BonsCadeaux";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,7 @@ const App = () => (
           <Route path="/admin/intervenants" element={<AdminIntervenants />} />
           <Route path="/admin/tarifs" element={<AdminTarifs />} />
           <Route path="/admin/contenu" element={<AdminContenu />} />
+          <Route path="/admin/bons-cadeaux" element={<AdminBonsCadeaux />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
