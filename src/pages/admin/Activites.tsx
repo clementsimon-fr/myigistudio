@@ -105,10 +105,11 @@ export default function AdminActivites() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [coursesRes, workshopsRes, schedulesRes] = await Promise.all([
+    const [coursesRes, workshopsRes, schedulesRes, instrRes] = await Promise.all([
       supabase.from("courses").select("*"),
       supabase.from("workshops").select("*").order("date"),
       supabase.from("course_schedules").select("*"),
+      supabase.from("instructors").select("id, name").eq("active", true).order("name"),
     ]);
 
     const schedulesMap: Record<string, Schedule[]> = {};
