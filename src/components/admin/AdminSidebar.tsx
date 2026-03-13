@@ -16,9 +16,8 @@ import {
 const items = [
   { title: "Tableau de bord", url: "/admin", icon: LayoutDashboard },
   { title: "Réservations", url: "/admin/reservations", icon: CalendarDays },
-  { title: "Cours", url: "/admin/cours", icon: BookOpen },
+  { title: "Activités", url: "/admin/activites", icon: BookOpen },
   { title: "Clients", url: "/admin/clients", icon: Users },
-  { title: "Ateliers", url: "/admin/ateliers", icon: Palette },
 ];
 
 export default function AdminSidebar() {
