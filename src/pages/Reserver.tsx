@@ -85,15 +85,33 @@ export default function Reserver() {
           supabase.from("course_schedules").select("*").eq("course_id", activityId),
         ]);
         if (courseRes.data) setActivity({ ...courseRes.data, type: "course" });
-        if (schedRes.data) setSchedules(schedRes.data as unknown as CourseScheduleRow[]);
+        if (schedRes.data) {
+          const scheds = schedRes.data as unknown as CourseScheduleRow[];
+          setSchedules(scheds);
+          // Direct booking: pre-select date and slot
+          if (preselectedDate && preselectedScheduleId) {
+            const d = new Date(preselectedDate + "T00:00:00");
+            setSelectedDate(d);
+            setSelectedSlot(preselectedScheduleId);
+            setDirectBooking(true);
+          }
+        }
       } else {
         const res = await supabase.from("workshops").select("*").eq("id", activityId).single();
-        if (res.data) setActivity({ ...res.data, type: "workshop" });
+        if (res.data) {
+          setActivity({ ...res.data, type: "workshop" });
+          if (preselectedDate) {
+            const d = new Date(preselectedDate + "T00:00:00");
+            setSelectedDate(d);
+            setSelectedSlot(res.data.id);
+            setDirectBooking(true);
+          }
+        }
       }
       setLoading(false);
     };
     load();
-  }, [activityType, activityId]);
+  }, [activityType, activityId, preselectedDate, preselectedScheduleId]);
 
   // Available days for courses
   const availableDays = useMemo(() => {
