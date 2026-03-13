@@ -383,7 +383,35 @@ export default function AdminActivites() {
                 <Plus className="h-4 w-4" /> Ajouter un cours
               </Button>
             </div>
-            <div className="rounded-xl border bg-card overflow-x-auto">
+            {/* Mobile card view */}
+            <div className="space-y-3 md:hidden">
+              {sortedCourses.map(c => (
+                <div key={c.id} className="rounded-xl border bg-card p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h4 className="font-medium text-sm">{c.name}</h4>
+                      {c.description && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{c.description}</p>}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditCourse(c)}><Pencil className="h-3 w-3" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeletingItem({ id: c.id, type: "course" })}><Trash2 className="h-3 w-3" /></Button>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {(c.schedules || []).map((s, i) => (
+                      <Badge key={i} variant="outline" className="text-[10px] font-normal">{s.day.slice(0, 3)} {s.time}-{s.end_time}</Badge>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <Badge variant="outline" className="text-[10px] capitalize">{c.frequency || "hebdo"}</Badge>
+                    <Badge variant={c.spots_left === 0 ? "destructive" : "secondary"} className="text-[10px]">{c.spots_left}/{c.spots}</Badge>
+                    <span>{c.instructor}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop table view */}
+            <div className="rounded-xl border bg-card overflow-x-auto hidden md:block">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/30">
@@ -409,9 +437,7 @@ export default function AdminActivites() {
                               <div key={i} className="flex items-center gap-1.5 text-xs">
                                 <Badge variant="outline" className="text-xs font-normal">{s.day.slice(0, 3)}</Badge>
                                 <span className="text-muted-foreground">{s.time}{s.end_time ? ` - ${s.end_time}` : ""}</span>
-                                {s.time && s.end_time && (
-                                  <span className="text-muted-foreground/60">· {calcDuration(s.time, s.end_time)}</span>
-                                )}
+                                {s.time && s.end_time && <span className="text-muted-foreground/60">· {calcDuration(s.time, s.end_time)}</span>}
                               </div>
                             ))}
                           </div>
@@ -419,14 +445,8 @@ export default function AdminActivites() {
                           <span>{c.day} {c.time}{c.end_time ? ` - ${c.end_time}` : ""}</span>
                         )}
                       </td>
-                      <td className="p-3">
-                        <Badge variant="outline" className="text-xs capitalize">{c.frequency || "hebdomadaire"}</Badge>
-                      </td>
-                      <td className="p-3">
-                        <Badge variant={c.spots_left === 0 ? "destructive" : "secondary"} className="text-xs">
-                          {c.spots_left}/{c.spots}
-                        </Badge>
-                      </td>
+                      <td className="p-3"><Badge variant="outline" className="text-xs capitalize">{c.frequency || "hebdomadaire"}</Badge></td>
+                      <td className="p-3"><Badge variant={c.spots_left === 0 ? "destructive" : "secondary"} className="text-xs">{c.spots_left}/{c.spots}</Badge></td>
                       <td className="p-3">{c.instructor}</td>
                       <td className="p-3 text-right">
                         <div className="flex justify-end gap-1">
