@@ -536,6 +536,7 @@ export default function AdminActivites() {
                   )}
                 </div>
               </div>
+              <div><Label>Image URL</Label><Input value={courseForm.image} onChange={e => setCourseForm({ ...courseForm, image: e.target.value })} placeholder="https://images.unsplash.com/..." /></div>
               <Button className="w-full" onClick={saveCourse} disabled={!courseForm.name || courseForm.schedules.length === 0}>{editingId ? "Enregistrer" : "Créer le cours"}</Button>
             </div>
           ) : (

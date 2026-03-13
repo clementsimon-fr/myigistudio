@@ -318,8 +318,48 @@ export default function AdminIntervenants() {
               </div>
             </div>
 
+            {/* Photo upload */}
+            <div>
+              <Label>Photo</Label>
+              <div className="flex items-center gap-3 mt-1.5">
+                {form.photo_url ? (
+                  <img src={form.photo_url} alt="Photo" className="h-16 w-16 rounded-full object-cover" />
+                ) : (
+                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="h-8 w-8 text-primary-dark/30" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploading}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploading(true);
+                      const ext = file.name.split(".").pop();
+                      const path = `${Date.now()}.${ext}`;
+                      const { error } = await supabase.storage.from("instructor-photos").upload(path, file);
+                      if (!error) {
+                        const { data: urlData } = supabase.storage.from("instructor-photos").getPublicUrl(path);
+                        setForm(prev => ({ ...prev, photo_url: urlData.publicUrl }));
+                      }
+                      setUploading(false);
+                    }}
+                    className="text-xs"
+                  />
+                  {form.photo_url && (
+                    <Button type="button" variant="link" size="sm" className="text-xs text-destructive p-0 h-auto" onClick={() => setForm(prev => ({ ...prev, photo_url: "" }))}>
+                      Supprimer la photo
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div><Label>Bio</Label><Textarea value={form.bio} onChange={e => setForm({ ...form, bio: e.target.value })} rows={3} placeholder="Présentation courte..." /></div>
-            <Button className="w-full" onClick={save} disabled={!form.name}>{editingId ? "Enregistrer" : "Créer l'intervenant"}</Button>
+            <Button className="w-full" onClick={save} disabled={!form.name || uploading}>{editingId ? "Enregistrer" : "Créer l'intervenant"}</Button>
           </div>
         </DialogContent>
       </Dialog>
