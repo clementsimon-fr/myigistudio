@@ -270,7 +270,7 @@ export default function Calendrier() {
 
           {/* Week navigation */}
           <div className="flex items-center justify-between mb-6">
-            <Button variant="outline" size="icon" onClick={prevWeek}>
+            <Button variant="outline" size="icon" onClick={prevWeek} disabled={isThisWeek}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="text-center">
