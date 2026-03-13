@@ -52,6 +52,7 @@ interface Workshop {
   spots: number;
   spots_left: number;
   image: string;
+  instructor_id: string | null;
 }
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
