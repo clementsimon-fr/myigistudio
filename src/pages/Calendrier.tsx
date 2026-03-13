@@ -270,7 +270,7 @@ export default function Calendrier() {
 
           {/* Week navigation */}
           <div className="flex items-center justify-between mb-6">
-            <Button variant="outline" size="icon" onClick={prevWeek}>
+            <Button variant="outline" size="icon" onClick={prevWeek} disabled={isThisWeek}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="text-center">
@@ -291,11 +291,10 @@ export default function Calendrier() {
 
           {/* Week view - day columns */}
           <div className="space-y-4">
-            {dayBlocks.map(({ date, blocks }) => {
+            {dayBlocks.filter(({ date }) => date >= new Date(new Date().setHours(0, 0, 0, 0))).map(({ date, blocks }) => {
               const isToday = formatDateStr(date) === todayStr;
-              const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
               return (
-                <div key={formatDateStr(date)} className={`${isPast ? "opacity-40" : ""}`}>
+                <div key={formatDateStr(date)}>
                   <div className={`flex items-center gap-3 mb-2 ${isToday ? "text-primary-dark" : "text-foreground"}`}>
                     <div className={`text-sm font-semibold capitalize ${isToday ? "bg-primary-dark text-primary-dark-foreground px-3 py-1 rounded-full" : ""}`}>
                       {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
@@ -330,7 +329,7 @@ export default function Calendrier() {
                               </span>
                               <span className="flex items-center gap-1">
                                 <Users className="h-3 w-3" />
-                                {block.spotsLeft}/{block.spots}
+                                {block.spotsLeft === 0 ? "Complet" : `${block.spotsLeft} place${block.spotsLeft > 1 ? "s" : ""}`}
                               </span>
                             </div>
                             <div className="flex items-center gap-1 mt-1.5 text-xs opacity-70">

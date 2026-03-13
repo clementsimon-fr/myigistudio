@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Check, Star } from "lucide-react";
+import { Check, Star, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,20 +13,25 @@ interface PricingCard {
   validity: string;
   popular: boolean;
   sort_order: number;
+  payment_info: string;
 }
 
 export default function PricingSection() {
   const [cards, setCards] = useState<PricingCard[]>([]);
+  const [pricingNotes, setPricingNotes] = useState("");
 
   useEffect(() => {
-    supabase.from("pricing_cards").select("*").order("sort_order").then(({ data }) => {
-      if (data) setCards(data as unknown as PricingCard[]);
+    Promise.all([
+      supabase.from("pricing_cards").select("*").order("sort_order"),
+      supabase.from("site_settings").select("*").eq("key", "pricing_notes").single(),
+    ]).then(([cardsRes, notesRes]) => {
+      if (cardsRes.data) setCards(cardsRes.data as unknown as PricingCard[]);
+      if (notesRes.data) setPricingNotes((notesRes.data as any).value || "");
     });
   }, []);
 
   if (cards.length === 0) return null;
 
-  // Find the unit price card to compute savings
   const unitCard = cards.find(c => c.sessions === 1);
   const unitPrice = unitCard ? unitCard.price : null;
 
@@ -76,9 +81,8 @@ export default function PricingSection() {
                   {card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`} · {card.validity}
                 </p>
 
-                {/* Per session price + savings */}
                 {perSession !== null && (
-                  <p className="text-xs text-muted-foreground mb-4">
+                  <p className="text-xs text-muted-foreground mb-1">
                     {perSession.toFixed(2)}€ / cours
                     {savingsPercent && savingsPercent > 0 && (
                       <span className="ml-1.5 text-primary font-semibold">-{savingsPercent}%</span>
@@ -86,7 +90,11 @@ export default function PricingSection() {
                   </p>
                 )}
                 {card.sessions >= 9999 && (
-                  <p className="text-xs text-muted-foreground mb-4">Accès illimité</p>
+                  <p className="text-xs text-muted-foreground mb-1">Accès illimité</p>
+                )}
+
+                {card.payment_info && (
+                  <p className="text-xs text-primary italic mb-3">{card.payment_info}</p>
                 )}
 
                 <ul className="space-y-2 mb-6 flex-1">
@@ -118,6 +126,19 @@ export default function PricingSection() {
             );
           })}
         </div>
+
+        {pricingNotes && (
+          <div className="max-w-2xl mx-auto mt-8 text-center">
+            <div className="flex items-start gap-2 justify-center text-sm text-muted-foreground">
+              <Info className="h-4 w-4 mt-0.5 shrink-0" />
+              <div className="text-left space-y-1">
+                {pricingNotes.split("\n").filter(Boolean).map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
