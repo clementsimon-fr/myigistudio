@@ -15,7 +15,7 @@ export default function AteliersAdmin() {
   const [editing, setEditing] = useState<Workshop | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
-  const emptyForm = { name: "", description: "", date: "", time: "14:00", duration: "2h", price: 0, spots: 8, category: "poterie" as const, image: "" };
+  const emptyForm = { name: "", description: "", date: "", time: "14:00", duration: "2h", price: 0, spots: 8, category: "poterie" as "poterie" | "bien-etre", image: "" };
   const [form, setForm] = useState(emptyForm);
 
   const openNew = () => { setEditing(null); setForm(emptyForm); setIsOpen(true); };
