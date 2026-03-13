@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -8,60 +8,262 @@ import { Calendar } from "@/components/ui/calendar";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, ArrowRight, Check, Clock, Users } from "lucide-react";
-import { services, yogaSchedule, workshops } from "@/data/mockData";
+import { ArrowLeft, ArrowRight, Check, Clock, Users, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { fr } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { services } from "@/data/mockData";
 
 type Step = 1 | 2 | 3 | 4;
 
 const steps = [
   { num: 1, label: "Prestation" },
-  { num: 2, label: "Date & Créneau" },
-  { num: 3, label: "Participants" },
-  { num: 4, label: "Confirmation" },
+  { num: 2, label: "Activité" },
+  { num: 3, label: "Date & Créneau" },
+  { num: 4, label: "Participants" },
+  { num: 5, label: "Confirmation" },
 ];
 
+interface SubActivity {
+  id: string;
+  name: string;
+  description: string;
+  type: "course" | "workshop";
+}
+
+interface AvailableSlot {
+  id: string;
+  name: string;
+  time: string;
+  end_time: string;
+  duration: string;
+  instructor: string;
+  spots: number;
+  spotsLeft: number;
+  type: "course" | "workshop";
+  sourceId: string;
+}
+
+interface CourseSchedule {
+  id: string;
+  course_id: string;
+  day: string;
+  time: string;
+  end_time: string;
+}
+
+function calcDuration(start: string, end: string): string {
+  if (!start || !end) return "";
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  let diffMin = (eh * 60 + em) - (sh * 60 + sm);
+  if (diffMin <= 0) return "";
+  const h = Math.floor(diffMin / 60);
+  const m = diffMin % 60;
+  if (h === 0) return `${m}min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h${m.toString().padStart(2, "0")}`;
+}
+
+const DAY_NAMES_MAP: Record<number, string> = {
+  0: "Dimanche", 1: "Lundi", 2: "Mardi", 3: "Mercredi",
+  4: "Jeudi", 5: "Vendredi", 6: "Samedi",
+};
+
 export default function Reserver() {
-  const [step, setStep] = useState<Step>(1);
+  const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState("");
+  const [selectedSubActivity, setSelectedSubActivity] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedSlot, setSelectedSlot] = useState("");
   const [participants, setParticipants] = useState(1);
   const [confirmed, setConfirmed] = useState(false);
 
-  // Get available slots based on selected service and date
-  const getSlots = () => {
-    if (!selectedDate) return [];
-    const dayName = selectedDate.toLocaleDateString("fr-FR", { weekday: "long" });
-    const dayCapitalized = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+  // Supabase data
+  const [courses, setCourses] = useState<any[]>([]);
+  const [workshops, setWorkshops] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<CourseSchedule[]>([]);
+  const [plannedSessions, setPlannedSessions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const fetchAll = async () => {
+      setLoading(true);
+      const [c, w, s, ps] = await Promise.all([
+        supabase.from("courses").select("*"),
+        supabase.from("workshops").select("*"),
+        supabase.from("course_schedules").select("*"),
+        supabase.from("planned_sessions").select("*"),
+      ]);
+      if (c.data) setCourses(c.data);
+      if (w.data) setWorkshops(w.data);
+      if (s.data) setSchedules(s.data as CourseSchedule[]);
+      if (ps.data) setPlannedSessions(ps.data);
+      setLoading(false);
+    };
+    fetchAll();
+  }, []);
+
+  // Sub-activities based on selected service
+  const subActivities: SubActivity[] = useMemo(() => {
     if (selectedService === "yoga") {
-      return yogaSchedule.filter((c) => c.day === dayCapitalized);
+      // Unique course names for yoga category
+      const uniqueCourses = new Map<string, SubActivity>();
+      courses
+        .filter(c => c.category === "yoga")
+        .forEach(c => {
+          if (!uniqueCourses.has(c.id)) {
+            uniqueCourses.set(c.id, { id: c.id, name: c.name, description: c.description || "", type: "course" });
+          }
+        });
+      return Array.from(uniqueCourses.values());
     }
-    if (selectedService === "poterie" || selectedService === "ateliers") {
+    if (selectedService === "poterie") {
+      const uniqueWorkshops = new Map<string, SubActivity>();
+      workshops
+        .filter(w => w.category === "poterie")
+        .forEach(w => {
+          if (!uniqueWorkshops.has(w.id)) {
+            uniqueWorkshops.set(w.id, { id: w.id, name: w.name, description: w.description || "", type: "workshop" });
+          }
+        });
+      return Array.from(uniqueWorkshops.values());
+    }
+    if (selectedService === "ateliers") {
+      const uniqueWorkshops = new Map<string, SubActivity>();
+      workshops
+        .filter(w => w.category === "bien-etre")
+        .forEach(w => {
+          if (!uniqueWorkshops.has(w.id)) {
+            uniqueWorkshops.set(w.id, { id: w.id, name: w.name, description: w.description || "", type: "workshop" });
+          }
+        });
+      return Array.from(uniqueWorkshops.values());
+    }
+    return [];
+  }, [selectedService, courses, workshops]);
+
+  const selectedSubData = subActivities.find(s => s.id === selectedSubActivity);
+
+  // Available days for the selected sub-activity (to highlight in calendar)
+  const availableDays = useMemo(() => {
+    if (!selectedSubData) return new Set<string>();
+
+    if (selectedSubData.type === "course") {
+      // Get days of week when this course runs
+      return new Set(
+        schedules
+          .filter(s => s.course_id === selectedSubData.id)
+          .map(s => s.day)
+      );
+    }
+    return new Set<string>();
+  }, [selectedSubData, schedules]);
+
+  // For workshops, get specific dates
+  const workshopDates = useMemo(() => {
+    if (!selectedSubData || selectedSubData.type !== "workshop") return new Set<string>();
+    const w = workshops.find(w => w.id === selectedSubData.id);
+    if (!w) return new Set<string>();
+    const dates = new Set<string>();
+    dates.add(w.date);
+    // Also check planned sessions linked to this workshop
+    plannedSessions
+      .filter(ps => ps.workshop_id === selectedSubData.id)
+      .forEach(ps => dates.add(ps.date));
+    return dates;
+  }, [selectedSubData, workshops, plannedSessions]);
+
+  // Determine if a date should be disabled
+  const isDateDisabled = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (date < today) return true;
+
+    if (!selectedSubData) return true;
+
+    if (selectedSubData.type === "course") {
+      const dayName = DAY_NAMES_MAP[date.getDay()];
+      return !availableDays.has(dayName);
+    }
+
+    if (selectedSubData.type === "workshop") {
+      const dateStr = date.toISOString().split("T")[0];
+      return !workshopDates.has(dateStr);
+    }
+
+    return true;
+  };
+
+  // Get slots for selected date + sub-activity
+  const slots: AvailableSlot[] = useMemo(() => {
+    if (!selectedDate || !selectedSubData) return [];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today) return [];
+
+    if (selectedSubData.type === "course") {
+      const dayName = DAY_NAMES_MAP[selectedDate.getDay()];
+      const course = courses.find(c => c.id === selectedSubData.id);
+      if (!course) return [];
+
+      return schedules
+        .filter(s => s.course_id === selectedSubData.id && s.day === dayName)
+        .map(s => ({
+          id: s.id,
+          name: course.name,
+          time: s.time,
+          end_time: s.end_time,
+          duration: calcDuration(s.time, s.end_time),
+          instructor: course.instructor || "Élodie",
+          spots: course.spots,
+          spotsLeft: course.spots_left,
+          type: "course" as const,
+          sourceId: course.id,
+        }));
+    }
+
+    if (selectedSubData.type === "workshop") {
+      const w = workshops.find(w => w.id === selectedSubData.id);
+      if (!w) return [];
       const dateStr = selectedDate.toISOString().split("T")[0];
-      return workshops
-        .filter((w) => w.date === dateStr)
-        .map((w) => ({
+      if (w.date === dateStr) {
+        return [{
           id: w.id,
           name: w.name,
           time: w.time,
-          duration: w.duration,
+          end_time: w.end_time || "",
+          duration: calcDuration(w.time, w.end_time || "") || w.duration,
           instructor: "Élodie",
           spots: w.spots,
-          spotsLeft: w.spotsLeft,
-          day: "",
-        }));
+          spotsLeft: w.spots_left,
+          type: "workshop" as const,
+          sourceId: w.id,
+        }];
+      }
     }
-    return [];
-  };
 
-  const slots = getSlots();
-  const selectedSlotData = slots.find((s) => s.id === selectedSlot);
+    return [];
+  }, [selectedDate, selectedSubData, courses, schedules, workshops]);
+
+  const selectedSlotData = slots.find(s => s.id === selectedSlot);
 
   const handleConfirm = () => {
     setConfirmed(true);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (confirmed) {
     return (
@@ -73,9 +275,10 @@ export default function Reserver() {
               <Check className="h-8 w-8 text-primary-dark" />
             </div>
             <h1 className="text-2xl font-display font-bold text-primary-dark mb-3">Réservation confirmée !</h1>
-            <p className="text-muted-foreground mb-6">
-              Votre réservation a été enregistrée. Vous recevrez un email de confirmation.
+            <p className="text-muted-foreground mb-2">
+              Votre réservation a été enregistrée pour <strong>Sophie</strong>.
             </p>
+            <p className="text-sm text-muted-foreground mb-6">Vous recevrez un email de confirmation.</p>
             <div className="flex gap-3 justify-center">
               <Link to="/mon-espace">
                 <Button>Voir mes réservations</Button>
@@ -96,7 +299,10 @@ export default function Reserver() {
       <Navbar />
       <main className="flex-1 py-8">
         <div className="container max-w-3xl">
-          <h1 className="text-2xl md:text-3xl font-display font-bold text-primary-dark mb-6">Réserver</h1>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl md:text-3xl font-display font-bold text-primary-dark">Réserver</h1>
+            <Badge variant="outline" className="text-sm">Client : Sophie</Badge>
+          </div>
 
           {/* Stepper */}
           <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
@@ -121,11 +327,11 @@ export default function Reserver() {
             ))}
           </div>
 
-          {/* Step 1: Choix prestation */}
+          {/* Step 1: Choix catégorie */}
           {step === 1 && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-primary-dark">Choisissez une prestation</h2>
-              <RadioGroup value={selectedService} onValueChange={setSelectedService}>
+              <RadioGroup value={selectedService} onValueChange={(v) => { setSelectedService(v); setSelectedSubActivity(""); setSelectedDate(undefined); setSelectedSlot(""); }}>
                 {services.map((s) => (
                   <div key={s.id} className="flex items-center gap-4 rounded-lg border bg-card p-4 cursor-pointer hover:border-primary-dark transition-colors">
                     <RadioGroupItem value={s.id} id={s.id} />
@@ -144,10 +350,42 @@ export default function Reserver() {
             </div>
           )}
 
-          {/* Step 2: Date & Créneau */}
+          {/* Step 2: Choix sous-activité */}
           {step === 2 && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-primary-dark">Choisissez votre activité</h2>
+              {subActivities.length === 0 ? (
+                <p className="text-muted-foreground py-8 text-center">Aucune activité disponible dans cette catégorie.</p>
+              ) : (
+                <RadioGroup value={selectedSubActivity} onValueChange={(v) => { setSelectedSubActivity(v); setSelectedDate(undefined); setSelectedSlot(""); }}>
+                  {subActivities.map((sa) => (
+                    <div key={sa.id} className="flex items-center gap-4 rounded-lg border bg-card p-4 cursor-pointer hover:border-primary-dark transition-colors">
+                      <RadioGroupItem value={sa.id} id={`sub-${sa.id}`} />
+                      <Label htmlFor={`sub-${sa.id}`} className="flex-1 cursor-pointer">
+                        <p className="font-medium">{sa.name}</p>
+                        {sa.description && <p className="text-sm text-muted-foreground line-clamp-2">{sa.description}</p>}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              )}
+              <div className="flex justify-between pt-4">
+                <Button variant="outline" onClick={() => setStep(1)} className="gap-1.5">
+                  <ArrowLeft className="h-4 w-4" /> Retour
+                </Button>
+                <Button onClick={() => setStep(3)} disabled={!selectedSubActivity} className="gap-1.5">
+                  Suivant <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Date & Créneau */}
+          {step === 3 && (
             <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-primary-dark">Choisissez une date et un créneau</h2>
+              <h2 className="text-lg font-semibold text-primary-dark">
+                Choisissez une date pour <span className="text-primary">{selectedSubData?.name}</span>
+              </h2>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="rounded-xl border bg-card p-4 flex justify-center">
                   <Calendar
@@ -155,7 +393,8 @@ export default function Reserver() {
                     selected={selectedDate}
                     onSelect={(d) => { setSelectedDate(d); setSelectedSlot(""); }}
                     locale={fr}
-                    disabled={{ before: new Date() }}
+                    disabled={isDateDisabled}
+                    className={cn("p-3 pointer-events-auto")}
                   />
                 </div>
                 <div>
@@ -173,7 +412,7 @@ export default function Reserver() {
                             <Label htmlFor={`slot-${slot.id}`} className="flex-1 cursor-pointer">
                               <p className="font-medium text-sm">{slot.name}</p>
                               <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {slot.time} · {slot.duration}</span>
+                                <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {slot.time}{slot.end_time ? ` - ${slot.end_time}` : ""} · {slot.duration}</span>
                                 <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {slot.spotsLeft} place{slot.spotsLeft > 1 ? "s" : ""}</span>
                               </div>
                             </Label>
@@ -184,23 +423,30 @@ export default function Reserver() {
                       <p className="text-sm text-muted-foreground py-8 text-center">Aucun créneau disponible pour cette date.</p>
                     )
                   ) : (
-                    <p className="text-sm text-muted-foreground py-8 text-center">Sélectionnez une date dans le calendrier.</p>
+                    <div className="py-8 text-center">
+                      <p className="text-sm text-muted-foreground">Sélectionnez une date dans le calendrier.</p>
+                      {selectedSubData?.type === "course" && availableDays.size > 0 && (
+                        <p className="text-xs text-muted-foreground/70 mt-2">
+                          Disponible : {Array.from(availableDays).join(", ")}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
               <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={() => setStep(1)} className="gap-1.5">
+                <Button variant="outline" onClick={() => setStep(2)} className="gap-1.5">
                   <ArrowLeft className="h-4 w-4" /> Retour
                 </Button>
-                <Button onClick={() => setStep(3)} disabled={!selectedSlot} className="gap-1.5">
+                <Button onClick={() => setStep(4)} disabled={!selectedSlot} className="gap-1.5">
                   Suivant <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Step 3: Participants */}
-          {step === 3 && (
+          {/* Step 4: Participants */}
+          {step === 4 && (
             <div className="space-y-6">
               <h2 className="text-lg font-semibold text-primary-dark">Pour combien de personnes ?</h2>
               <div className="rounded-xl border bg-card p-6 max-w-sm">
@@ -223,24 +469,32 @@ export default function Reserver() {
                 </p>
               </div>
               <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={() => setStep(2)} className="gap-1.5">
+                <Button variant="outline" onClick={() => setStep(3)} className="gap-1.5">
                   <ArrowLeft className="h-4 w-4" /> Retour
                 </Button>
-                <Button onClick={() => setStep(4)} className="gap-1.5">
+                <Button onClick={() => setStep(5)} className="gap-1.5">
                   Suivant <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Step 4: Récapitulatif */}
-          {step === 4 && (
+          {/* Step 5: Récapitulatif */}
+          {step === 5 && (
             <div className="space-y-6">
               <h2 className="text-lg font-semibold text-primary-dark">Récapitulatif</h2>
               <div className="rounded-xl border bg-card p-6 space-y-4">
                 <div className="flex justify-between">
+                  <span className="text-muted-foreground">Client</span>
+                  <span className="font-medium">Sophie</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-muted-foreground">Prestation</span>
-                  <span className="font-medium">{services.find((s) => s.id === selectedService)?.name}</span>
+                  <span className="font-medium">{services.find(s => s.id === selectedService)?.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Activité</span>
+                  <span className="font-medium">{selectedSubData?.name}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Date</span>
@@ -250,7 +504,7 @@ export default function Reserver() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Créneau</span>
-                  <span className="font-medium">{selectedSlotData?.name} · {selectedSlotData?.time}</span>
+                  <span className="font-medium">{selectedSlotData?.time}{selectedSlotData?.end_time ? ` - ${selectedSlotData.end_time}` : ""} · {selectedSlotData?.duration}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Participants</span>
@@ -262,7 +516,7 @@ export default function Reserver() {
                 </div>
               </div>
               <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={() => setStep(3)} className="gap-1.5">
+                <Button variant="outline" onClick={() => setStep(4)} className="gap-1.5">
                   <ArrowLeft className="h-4 w-4" /> Retour
                 </Button>
                 <Button onClick={handleConfirm} className="bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-1.5">
