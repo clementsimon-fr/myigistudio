@@ -13,9 +13,8 @@ import MonEspace from "./pages/MonEspace";
 import Reserver from "./pages/Reserver";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminReservations from "./pages/admin/Reservations";
-import AdminCours from "./pages/admin/Cours";
 import AdminClients from "./pages/admin/Clients";
-import AteliersAdmin from "./pages/admin/AteliersAdmin";
+import AdminActivites from "./pages/admin/Activites";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,9 +36,8 @@ const App = () => (
           <Route path="/reserver" element={<Reserver />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/reservations" element={<AdminReservations />} />
-          <Route path="/admin/cours" element={<AdminCours />} />
+          <Route path="/admin/activites" element={<AdminActivites />} />
           <Route path="/admin/clients" element={<AdminClients />} />
-          <Route path="/admin/ateliers" element={<AteliersAdmin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
