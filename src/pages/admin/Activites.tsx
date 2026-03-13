@@ -540,7 +540,26 @@ export default function AdminActivites() {
                   </Select>
                 </div>
               </div>
-              <div><Label>Date</Label><Input type="date" value={workshopForm.date} onChange={e => setWorkshopForm({ ...workshopForm, date: e.target.value })} /></div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="mb-0">Date(s)</Label>
+                  <Button type="button" size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={addWorkshopDate}>
+                    <Plus className="h-3 w-3" /> Ajouter une date
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {workshopForm.dates.map((date, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Input type="date" value={date} onChange={e => updateWorkshopDate(idx, e.target.value)} className="flex-1" />
+                      {workshopForm.dates.length > 1 && (
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => removeWorkshopDate(idx)}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Heure de début</Label><Input type="time" value={workshopForm.time} onChange={e => setWorkshopForm({ ...workshopForm, time: e.target.value })} /></div>
                 <div><Label>Heure de fin</Label><Input type="time" value={workshopForm.end_time} onChange={e => setWorkshopForm({ ...workshopForm, end_time: e.target.value })} /></div>
