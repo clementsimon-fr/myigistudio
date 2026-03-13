@@ -293,8 +293,9 @@ export default function Reserver() {
             )}
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Calendar */}
+          <div className={`grid ${directBooking ? "" : "md:grid-cols-2"} gap-6`}>
+            {/* Calendar - hidden in direct booking mode */}
+            {!directBooking && (
             <div>
               <h2 className="text-sm font-semibold text-primary-dark mb-3">Choisissez une date</h2>
               <div className="rounded-xl border bg-card p-4 flex justify-center">
