@@ -201,6 +201,39 @@ export type Database = {
           },
         ]
       }
+      pricing_cards: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          popular: boolean
+          price: number
+          sessions: number
+          sort_order: number
+          validity: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          popular?: boolean
+          price?: number
+          sessions?: number
+          sort_order?: number
+          validity?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          popular?: boolean
+          price?: number
+          sessions?: number
+          sort_order?: number
+          validity?: string
+        }
+        Relationships: []
+      }
       reservations: {
         Row: {
           activity_name: string

@@ -6,7 +6,7 @@ import { Clock, Users, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { pricingCards } from "@/data/mockData";
+import PricingSection from "@/components/home/PricingSection";
 import { supabase } from "@/integrations/supabase/client";
 
 const days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
@@ -160,7 +160,7 @@ export default function Yoga() {
                                 {course.instructor}
                               </div>
                             </div>
-                            <Link to="/reserver" className="mt-3 block">
+                            <Link to={`/reserver?type=course&id=${course.id}`} className="mt-3 block">
                               <Button
                                 size="sm"
                                 className="w-full"
@@ -181,31 +181,7 @@ export default function Yoga() {
           </div>
         </section>
 
-        <section className="py-16 bg-muted/40">
-          <div className="container">
-            <h2 className="text-2xl md:text-3xl font-display font-bold text-primary-dark mb-8 text-center">
-              Tarifs
-            </h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
-              {pricingCards.map((card) => (
-                <div
-                  key={card.id}
-                  className={`rounded-xl border p-5 bg-card ${
-                    card.popular ? "border-primary-dark ring-2 ring-primary-dark/20" : ""
-                  }`}
-                >
-                  <h3 className="font-display font-semibold text-primary-dark">{card.name}</h3>
-                  <div className="mt-2">
-                    <span className="text-2xl font-bold">{card.price}€</span>
-                    <span className="text-sm text-muted-foreground ml-1">
-                      · {typeof card.sessions === "number" ? `${card.sessions} cours` : card.sessions} · {card.validity}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <PricingSection />
 
         <section className="py-16">
           <div className="container max-w-2xl text-center">

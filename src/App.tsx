@@ -17,6 +17,7 @@ import AdminClients from "./pages/admin/Clients";
 import AdminActivites from "./pages/admin/Activites";
 import Calendrier from "./pages/Calendrier";
 import AdminIntervenants from "./pages/admin/Intervenants";
+import AdminTarifs from "./pages/admin/Tarifs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
           <Route path="/admin/activites" element={<AdminActivites />} />
           <Route path="/admin/clients" element={<AdminClients />} />
           <Route path="/admin/intervenants" element={<AdminIntervenants />} />
+          <Route path="/admin/tarifs" element={<AdminTarifs />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
