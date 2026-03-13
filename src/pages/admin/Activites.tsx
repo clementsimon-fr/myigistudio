@@ -671,47 +671,68 @@ export default function AdminActivites() {
 
 function WorkshopTable({ workshops, onEdit, onDelete }: { workshops: Workshop[]; onEdit: (w: Workshop) => void; onDelete: (id: string) => void }) {
   return (
-    <div className="rounded-xl border bg-card overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted/30">
-            <th className="text-left p-3 font-medium text-muted-foreground">Atelier</th>
-            <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
-            <th className="text-left p-3 font-medium text-muted-foreground">Horaires</th>
-            <th className="text-left p-3 font-medium text-muted-foreground">Fréquence</th>
-            <th className="text-left p-3 font-medium text-muted-foreground">Prix</th>
-            <th className="text-left p-3 font-medium text-muted-foreground">Places</th>
-            <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {workshops.map((w) => (
-            <tr key={w.id} className="border-b last:border-0 hover:bg-muted/10">
-              <td className="p-3">
-                <div className="font-medium">{w.name}</div>
-                {w.description && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{w.description}</div>}
-              </td>
-              <td className="p-3">{new Date(w.date).toLocaleDateString("fr-FR")}</td>
-              <td className="p-3">{w.time}{w.end_time ? ` - ${w.end_time}` : ""} · {w.duration}</td>
-              <td className="p-3">
-                <Badge variant="outline" className="text-xs capitalize">{w.frequency || "ponctuel"}</Badge>
-              </td>
-              <td className="p-3">{w.price}€</td>
-              <td className="p-3">
-                <Badge variant={w.spots_left === 0 ? "destructive" : "secondary"} className="text-xs">
-                  {w.spots_left}/{w.spots}
-                </Badge>
-              </td>
-              <td className="p-3 text-right">
-                <div className="flex justify-end gap-1">
-                  <Button size="icon" variant="ghost" onClick={() => onEdit(w)}><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => onDelete(w.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-                </div>
-              </td>
+    <>
+      {/* Mobile cards */}
+      <div className="space-y-3 md:hidden">
+        {workshops.map(w => (
+          <div key={w.id} className="rounded-xl border bg-card p-4">
+            <div className="flex items-start justify-between mb-2">
+              <div>
+                <h4 className="font-medium text-sm">{w.name}</h4>
+                {w.description && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{w.description}</p>}
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit(w)}><Pencil className="h-3 w-3" /></Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => onDelete(w.id)}><Trash2 className="h-3 w-3" /></Button>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline" className="text-[10px]">{new Date(w.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</Badge>
+              <span>{w.time}{w.end_time ? `-${w.end_time}` : ""} · {w.duration}</span>
+              <Badge variant="outline" className="text-[10px] capitalize">{w.frequency || "ponctuel"}</Badge>
+              <span className="font-medium text-foreground">{w.price}€</span>
+              <Badge variant={w.spots_left === 0 ? "destructive" : "secondary"} className="text-[10px]">{w.spots_left}/{w.spots}</Badge>
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Desktop table */}
+      <div className="rounded-xl border bg-card overflow-x-auto hidden md:block">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-muted/30">
+              <th className="text-left p-3 font-medium text-muted-foreground">Atelier</th>
+              <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
+              <th className="text-left p-3 font-medium text-muted-foreground">Horaires</th>
+              <th className="text-left p-3 font-medium text-muted-foreground">Fréquence</th>
+              <th className="text-left p-3 font-medium text-muted-foreground">Prix</th>
+              <th className="text-left p-3 font-medium text-muted-foreground">Places</th>
+              <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {workshops.map((w) => (
+              <tr key={w.id} className="border-b last:border-0 hover:bg-muted/10">
+                <td className="p-3">
+                  <div className="font-medium">{w.name}</div>
+                  {w.description && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{w.description}</div>}
+                </td>
+                <td className="p-3">{new Date(w.date).toLocaleDateString("fr-FR")}</td>
+                <td className="p-3">{w.time}{w.end_time ? ` - ${w.end_time}` : ""} · {w.duration}</td>
+                <td className="p-3"><Badge variant="outline" className="text-xs capitalize">{w.frequency || "ponctuel"}</Badge></td>
+                <td className="p-3">{w.price}€</td>
+                <td className="p-3"><Badge variant={w.spots_left === 0 ? "destructive" : "secondary"} className="text-xs">{w.spots_left}/{w.spots}</Badge></td>
+                <td className="p-3 text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => onEdit(w)}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => onDelete(w.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
