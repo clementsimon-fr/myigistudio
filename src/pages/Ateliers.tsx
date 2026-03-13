@@ -14,7 +14,9 @@ interface Workshop {
   description: string;
   date: string;
   time: string;
+  end_time: string;
   duration: string;
+  frequency: string;
   price: number;
   spots: number;
   spots_left: number;
@@ -27,7 +29,7 @@ export default function Ateliers() {
 
   useEffect(() => {
     supabase.from("workshops").select("*").eq("category", "bien-etre").order("date").then(({ data }) => {
-      if (data) setWorkshops(data as Workshop[]);
+      if (data) setWorkshops(data as unknown as Workshop[]);
       setLoading(false);
     });
   }, []);
@@ -87,7 +89,7 @@ export default function Ateliers() {
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Clock className="h-3.5 w-3.5" />
-                          {ws.time} · {ws.duration}
+                          {ws.time}{ws.end_time ? ` - ${ws.end_time}` : ""} · {ws.duration}
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Users className="h-3.5 w-3.5" />
@@ -98,6 +100,9 @@ export default function Ateliers() {
                           {ws.price}€
                         </div>
                       </div>
+                      {ws.frequency && ws.frequency !== "ponctuel" && (
+                        <Badge variant="outline" className="text-xs capitalize mb-3">{ws.frequency}</Badge>
+                      )}
                       <Link to="/reserver">
                         <Button size="sm" className="w-full">Réserver</Button>
                       </Link>
