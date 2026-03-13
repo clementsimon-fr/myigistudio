@@ -1,12 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index";
-import Yoga from "./pages/Yoga";
-import Poterie from "./pages/Poterie";
-import Ateliers from "./pages/Ateliers";
+import Activites from "./pages/Activites";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import MonEspace from "./pages/MonEspace";
@@ -30,10 +27,12 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/yoga" element={<Yoga />} />
-          <Route path="/poterie" element={<Poterie />} />
-          <Route path="/ateliers" element={<Ateliers />} />
+          <Route path="/" element={<Activites />} />
+          <Route path="/activites" element={<Activites />} />
+          {/* Legacy redirects */}
+          <Route path="/yoga" element={<Navigate to="/" replace />} />
+          <Route path="/poterie" element={<Navigate to="/" replace />} />
+          <Route path="/ateliers" element={<Navigate to="/" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/mon-espace" element={<MonEspace />} />
