@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      client_cards: {
+        Row: {
+          card_name: string
+          client_name: string
+          created_at: string
+          expires_at: string
+          id: string
+          total_sessions: number
+          used_sessions: number
+        }
+        Insert: {
+          card_name: string
+          client_name: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          total_sessions?: number
+          used_sessions?: number
+        }
+        Update: {
+          card_name?: string
+          client_name?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          total_sessions?: number
+          used_sessions?: number
+        }
+        Relationships: []
+      }
       course_schedules: {
         Row: {
           course_id: string
