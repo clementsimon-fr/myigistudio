@@ -1,4 +1,4 @@
-import { LayoutDashboard, CalendarDays, BookOpen, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, CalendarDays, BookOpen, Users, UserCircle, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -17,6 +17,7 @@ const items = [
   { title: "Tableau de bord", url: "/admin", icon: LayoutDashboard },
   { title: "Réservations", url: "/admin/reservations", icon: CalendarDays },
   { title: "Activités", url: "/admin/activites", icon: BookOpen },
+  { title: "Intervenants", url: "/admin/intervenants", icon: UserCircle },
   { title: "Clients", url: "/admin/clients", icon: Users },
 ];
 

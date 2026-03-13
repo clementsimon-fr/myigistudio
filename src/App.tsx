@@ -41,6 +41,7 @@ const App = () => (
           <Route path="/admin/reservations" element={<AdminReservations />} />
           <Route path="/admin/activites" element={<AdminActivites />} />
           <Route path="/admin/clients" element={<AdminClients />} />
+          <Route path="/admin/intervenants" element={<AdminIntervenants />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
