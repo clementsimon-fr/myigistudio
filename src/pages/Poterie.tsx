@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { motion } from "framer-motion";
-import { Clock, Users, Euro, Calendar, Loader2 } from "lucide-react";
+import { Clock, Users, Euro, Calendar, Loader2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -12,6 +13,7 @@ interface Workshop {
   id: string;
   name: string;
   description: string;
+  long_description: string;
   date: string;
   time: string;
   end_time: string;
@@ -26,6 +28,7 @@ interface Workshop {
 export default function Poterie() {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
+  const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
 
   useEffect(() => {
     supabase.from("workshops").select("*").eq("category", "poterie").order("date").then(({ data }) => {
@@ -71,9 +74,11 @@ export default function Poterie() {
                     transition={{ delay: i * 0.1 }}
                     className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow"
                   >
-                    <div className="aspect-[4/3] overflow-hidden">
-                      <img src={ws.image} alt={ws.name} className="w-full h-full object-cover" loading="lazy" />
-                    </div>
+                    {ws.image && (
+                      <div className="aspect-[4/3] overflow-hidden">
+                        <img src={ws.image} alt={ws.name} className="w-full h-full object-cover" loading="lazy" />
+                      </div>
+                    )}
                     <div className="p-5">
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="font-display font-semibold text-lg text-primary-dark">{ws.name}</h3>
@@ -81,7 +86,7 @@ export default function Poterie() {
                           {ws.spots_left} place{ws.spots_left > 1 ? "s" : ""}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-4">{ws.description}</p>
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{ws.description}</p>
                       <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground mb-4">
                         <div className="flex items-center gap-1.5">
                           <Calendar className="h-3.5 w-3.5" />
@@ -103,9 +108,16 @@ export default function Poterie() {
                       {ws.frequency && ws.frequency !== "ponctuel" && (
                         <Badge variant="outline" className="text-xs capitalize mb-3">{ws.frequency}</Badge>
                       )}
-                      <Link to={`/reserver?type=workshop&id=${ws.id}`}>
-                        <Button size="sm" className="w-full">Réserver</Button>
-                      </Link>
+                      <div className="flex gap-2">
+                        {(ws.long_description || ws.description) && (
+                          <Button size="sm" variant="outline" className="flex-1 gap-1.5" onClick={() => setDescriptionWs(ws)}>
+                            <Info className="h-3.5 w-3.5" /> Description
+                          </Button>
+                        )}
+                        <Link to={`/reserver?type=workshop&id=${ws.id}`} className="flex-1">
+                          <Button size="sm" className="w-full">Réserver</Button>
+                        </Link>
+                      </div>
                     </div>
                   </motion.div>
                 ))}
@@ -115,6 +127,34 @@ export default function Poterie() {
         </section>
       </main>
       <Footer />
+
+      <Dialog open={!!descriptionWs} onOpenChange={(open) => !open && setDescriptionWs(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          {descriptionWs && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-display">{descriptionWs.name}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                {descriptionWs.image && (
+                  <img src={descriptionWs.image} alt={descriptionWs.name} className="w-full rounded-lg object-cover max-h-64" />
+                )}
+                <div className="text-sm text-muted-foreground whitespace-pre-line">
+                  {descriptionWs.long_description || descriptionWs.description}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1.5"><Euro className="h-3.5 w-3.5" /> {descriptionWs.price}€</div>
+                  <div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {descriptionWs.duration}</div>
+                  <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionWs.spots} places max</div>
+                </div>
+                <Link to={`/reserver?type=workshop&id=${descriptionWs.id}`}>
+                  <Button className="w-full">Réserver</Button>
+                </Link>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
