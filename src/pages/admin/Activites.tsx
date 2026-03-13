@@ -286,21 +286,20 @@ export default function AdminActivites() {
     const validDates = workshopForm.dates.filter(d => d.trim() !== "");
     if (validDates.length === 0) return;
 
+    const instrId = instructorsList.find(i => i.name === workshopForm.instructor)?.id || null;
+
     if (editingId) {
-      // Update existing with first date
-      const { dates, ...rest } = workshopForm;
-      await supabase.from("workshops").update({ ...rest, date: validDates[0], duration }).eq("id", editingId);
-      // Create additional dates as new workshops
+      const { dates, instructor, ...rest } = workshopForm;
+      await supabase.from("workshops").update({ ...rest, date: validDates[0], duration, instructor_id: instrId }).eq("id", editingId);
       for (let i = 1; i < validDates.length; i++) {
-        const { dates: _d, ...payload } = workshopForm;
-        await supabase.from("workshops").insert({ ...payload, date: validDates[i], duration, spots_left: workshopForm.spots });
+        const { dates: _d, instructor: _i, ...payload } = workshopForm;
+        await supabase.from("workshops").insert({ ...payload, date: validDates[i], duration, spots_left: workshopForm.spots, instructor_id: instrId });
       }
       toast({ title: "Atelier modifié" });
     } else {
-      // Create one workshop per date
       for (const date of validDates) {
-        const { dates, ...payload } = workshopForm;
-        await supabase.from("workshops").insert({ ...payload, date, duration, spots_left: workshopForm.spots });
+        const { dates, instructor, ...payload } = workshopForm;
+        await supabase.from("workshops").insert({ ...payload, date, duration, spots_left: workshopForm.spots, instructor_id: instrId });
       }
       toast({ title: `${validDates.length > 1 ? validDates.length + " ateliers créés" : "Atelier créé"}` });
     }
