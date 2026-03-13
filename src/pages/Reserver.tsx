@@ -13,8 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { services } from "@/data/mockData";
-
-type Step = 1 | 2 | 3 | 4;
+import { useToast } from "@/hooks/use-toast";
 
 const steps = [
   { num: 1, label: "Prestation" },
@@ -42,14 +41,17 @@ interface AvailableSlot {
   spotsLeft: number;
   type: "course" | "workshop";
   sourceId: string;
+  scheduleId?: string;
 }
 
-interface CourseSchedule {
+interface CourseScheduleRow {
   id: string;
   course_id: string;
   day: string;
   time: string;
   end_time: string;
+  spots: number;
+  spots_left: number;
 }
 
 function calcDuration(start: string, end: string): string {
@@ -71,6 +73,7 @@ const DAY_NAMES_MAP: Record<number, string> = {
 };
 
 export default function Reserver() {
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState("");
   const [selectedSubActivity, setSelectedSubActivity] = useState("");
@@ -78,127 +81,85 @@ export default function Reserver() {
   const [selectedSlot, setSelectedSlot] = useState("");
   const [participants, setParticipants] = useState(1);
   const [confirmed, setConfirmed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Supabase data
   const [courses, setCourses] = useState<any[]>([]);
   const [workshops, setWorkshops] = useState<any[]>([]);
-  const [schedules, setSchedules] = useState<CourseSchedule[]>([]);
-  const [plannedSessions, setPlannedSessions] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<CourseScheduleRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchAll = async () => {
-      setLoading(true);
-      const [c, w, s, ps] = await Promise.all([
-        supabase.from("courses").select("*"),
-        supabase.from("workshops").select("*"),
-        supabase.from("course_schedules").select("*"),
-        supabase.from("planned_sessions").select("*"),
-      ]);
-      if (c.data) setCourses(c.data);
-      if (w.data) setWorkshops(w.data);
-      if (s.data) setSchedules(s.data as CourseSchedule[]);
-      if (ps.data) setPlannedSessions(ps.data);
-      setLoading(false);
-    };
-    fetchAll();
-  }, []);
+  const fetchAll = async () => {
+    setLoading(true);
+    const [c, w, s] = await Promise.all([
+      supabase.from("courses").select("*"),
+      supabase.from("workshops").select("*"),
+      supabase.from("course_schedules").select("*"),
+    ]);
+    if (c.data) setCourses(c.data);
+    if (w.data) setWorkshops(w.data);
+    if (s.data) setSchedules(s.data as unknown as CourseScheduleRow[]);
+    setLoading(false);
+  };
 
-  // Sub-activities based on selected service
+  useEffect(() => { fetchAll(); }, []);
+
   const subActivities: SubActivity[] = useMemo(() => {
     if (selectedService === "yoga") {
-      // Unique course names for yoga category
-      const uniqueCourses = new Map<string, SubActivity>();
-      courses
+      return courses
         .filter(c => c.category === "yoga")
-        .forEach(c => {
-          if (!uniqueCourses.has(c.id)) {
-            uniqueCourses.set(c.id, { id: c.id, name: c.name, description: c.description || "", type: "course" });
-          }
-        });
-      return Array.from(uniqueCourses.values());
+        .map(c => ({ id: c.id, name: c.name, description: c.description || "", type: "course" as const }));
     }
     if (selectedService === "poterie") {
-      const uniqueWorkshops = new Map<string, SubActivity>();
-      workshops
+      return workshops
         .filter(w => w.category === "poterie")
-        .forEach(w => {
-          if (!uniqueWorkshops.has(w.id)) {
-            uniqueWorkshops.set(w.id, { id: w.id, name: w.name, description: w.description || "", type: "workshop" });
-          }
-        });
-      return Array.from(uniqueWorkshops.values());
+        .map(w => ({ id: w.id, name: w.name, description: w.description || "", type: "workshop" as const }));
     }
     if (selectedService === "ateliers") {
-      const uniqueWorkshops = new Map<string, SubActivity>();
-      workshops
+      return workshops
         .filter(w => w.category === "bien-etre")
-        .forEach(w => {
-          if (!uniqueWorkshops.has(w.id)) {
-            uniqueWorkshops.set(w.id, { id: w.id, name: w.name, description: w.description || "", type: "workshop" });
-          }
-        });
-      return Array.from(uniqueWorkshops.values());
+        .map(w => ({ id: w.id, name: w.name, description: w.description || "", type: "workshop" as const }));
     }
     return [];
   }, [selectedService, courses, workshops]);
 
   const selectedSubData = subActivities.find(s => s.id === selectedSubActivity);
 
-  // Available days for the selected sub-activity (to highlight in calendar)
   const availableDays = useMemo(() => {
-    if (!selectedSubData) return new Set<string>();
-
-    if (selectedSubData.type === "course") {
-      // Get days of week when this course runs
-      return new Set(
-        schedules
-          .filter(s => s.course_id === selectedSubData.id)
-          .map(s => s.day)
-      );
-    }
-    return new Set<string>();
+    if (!selectedSubData || selectedSubData.type !== "course") return new Set<string>();
+    return new Set(
+      schedules
+        .filter(s => s.course_id === selectedSubData.id && s.spots_left > 0)
+        .map(s => s.day)
+    );
   }, [selectedSubData, schedules]);
 
-  // For workshops, get specific dates
   const workshopDates = useMemo(() => {
     if (!selectedSubData || selectedSubData.type !== "workshop") return new Set<string>();
     const w = workshops.find(w => w.id === selectedSubData.id);
-    if (!w) return new Set<string>();
-    const dates = new Set<string>();
-    dates.add(w.date);
-    // Also check planned sessions linked to this workshop
-    plannedSessions
-      .filter(ps => ps.workshop_id === selectedSubData.id)
-      .forEach(ps => dates.add(ps.date));
-    return dates;
-  }, [selectedSubData, workshops, plannedSessions]);
+    if (!w || w.spots_left <= 0) return new Set<string>();
+    const today = new Date().toISOString().split("T")[0];
+    if (w.date < today) return new Set<string>();
+    return new Set([w.date]);
+  }, [selectedSubData, workshops]);
 
-  // Determine if a date should be disabled
   const isDateDisabled = (date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (date < today) return true;
-
     if (!selectedSubData) return true;
-
     if (selectedSubData.type === "course") {
       const dayName = DAY_NAMES_MAP[date.getDay()];
       return !availableDays.has(dayName);
     }
-
     if (selectedSubData.type === "workshop") {
       const dateStr = date.toISOString().split("T")[0];
       return !workshopDates.has(dateStr);
     }
-
     return true;
   };
 
-  // Get slots for selected date + sub-activity
   const slots: AvailableSlot[] = useMemo(() => {
     if (!selectedDate || !selectedSubData) return [];
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (selectedDate < today) return [];
@@ -207,7 +168,6 @@ export default function Reserver() {
       const dayName = DAY_NAMES_MAP[selectedDate.getDay()];
       const course = courses.find(c => c.id === selectedSubData.id);
       if (!course) return [];
-
       return schedules
         .filter(s => s.course_id === selectedSubData.id && s.day === dayName)
         .map(s => ({
@@ -217,10 +177,11 @@ export default function Reserver() {
           end_time: s.end_time,
           duration: calcDuration(s.time, s.end_time),
           instructor: course.instructor || "Élodie",
-          spots: course.spots,
-          spotsLeft: course.spots_left,
+          spots: s.spots,
+          spotsLeft: s.spots_left,
           type: "course" as const,
           sourceId: course.id,
+          scheduleId: s.id,
         }));
     }
 
@@ -243,13 +204,52 @@ export default function Reserver() {
         }];
       }
     }
-
     return [];
   }, [selectedDate, selectedSubData, courses, schedules, workshops]);
 
   const selectedSlotData = slots.find(s => s.id === selectedSlot);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (!selectedSlotData || !selectedDate) return;
+    setSubmitting(true);
+
+    const dateStr = selectedDate.toISOString().split("T")[0];
+
+    // Create reservation
+    const resPayload = {
+      client_name: "Sophie",
+      activity_name: selectedSlotData.name,
+      activity_type: selectedSlotData.type,
+      course_id: selectedSlotData.type === "course" ? selectedSlotData.sourceId : null,
+      workshop_id: selectedSlotData.type === "workshop" ? selectedSlotData.sourceId : null,
+      schedule_id: selectedSlotData.scheduleId || null,
+      date: dateStr,
+      time: selectedSlotData.time,
+      end_time: selectedSlotData.end_time,
+      participants,
+      status: "confirmé",
+    };
+
+    const { error } = await supabase.from("reservations").insert(resPayload as any);
+
+    if (error) {
+      toast({ title: "Erreur lors de la réservation", variant: "destructive" });
+      setSubmitting(false);
+      return;
+    }
+
+    // Decrement spots on the schedule slot or workshop
+    if (selectedSlotData.scheduleId) {
+      await supabase.from("course_schedules")
+        .update({ spots_left: selectedSlotData.spotsLeft - participants })
+        .eq("id", selectedSlotData.scheduleId);
+    } else if (selectedSlotData.type === "workshop") {
+      await supabase.from("workshops")
+        .update({ spots_left: selectedSlotData.spotsLeft - participants })
+        .eq("id", selectedSlotData.sourceId);
+    }
+
+    setSubmitting(false);
     setConfirmed(true);
   };
 
@@ -276,9 +276,11 @@ export default function Reserver() {
             </div>
             <h1 className="text-2xl font-display font-bold text-primary-dark mb-3">Réservation confirmée !</h1>
             <p className="text-muted-foreground mb-2">
-              Votre réservation a été enregistrée pour <strong>Sophie</strong>.
+              Votre réservation pour <strong>{selectedSlotData?.name}</strong> a été enregistrée pour <strong>Sophie</strong>.
             </p>
-            <p className="text-sm text-muted-foreground mb-6">Vous recevrez un email de confirmation.</p>
+            <p className="text-sm text-muted-foreground mb-6">
+              {selectedDate?.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} à {selectedSlotData?.time}
+            </p>
             <div className="flex gap-3 justify-center">
               <Link to="/mon-espace">
                 <Button>Voir mes réservations</Button>
@@ -327,7 +329,7 @@ export default function Reserver() {
             ))}
           </div>
 
-          {/* Step 1: Choix catégorie */}
+          {/* Step 1 */}
           {step === 1 && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-primary-dark">Choisissez une prestation</h2>
@@ -350,7 +352,7 @@ export default function Reserver() {
             </div>
           )}
 
-          {/* Step 2: Choix sous-activité */}
+          {/* Step 2 */}
           {step === 2 && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-primary-dark">Choisissez votre activité</h2>
@@ -380,7 +382,7 @@ export default function Reserver() {
             </div>
           )}
 
-          {/* Step 3: Date & Créneau */}
+          {/* Step 3 */}
           {step === 3 && (
             <div className="space-y-6">
               <h2 className="text-lg font-semibold text-primary-dark">
@@ -413,7 +415,14 @@ export default function Reserver() {
                               <p className="font-medium text-sm">{slot.name}</p>
                               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                 <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {slot.time}{slot.end_time ? ` - ${slot.end_time}` : ""} · {slot.duration}</span>
-                                <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {slot.spotsLeft} place{slot.spotsLeft > 1 ? "s" : ""}</span>
+                                <span className="flex items-center gap-1">
+                                  <Users className="h-3 w-3" />
+                                  {slot.spotsLeft === 0 ? (
+                                    <span className="text-destructive font-medium">Complet</span>
+                                  ) : (
+                                    <>{slot.spotsLeft}/{slot.spots} place{slot.spotsLeft > 1 ? "s" : ""}</>
+                                  )}
+                                </span>
                               </div>
                             </Label>
                           </div>
@@ -445,7 +454,7 @@ export default function Reserver() {
             </div>
           )}
 
-          {/* Step 4: Participants */}
+          {/* Step 4 */}
           {step === 4 && (
             <div className="space-y-6">
               <h2 className="text-lg font-semibold text-primary-dark">Pour combien de personnes ?</h2>
@@ -459,7 +468,7 @@ export default function Reserver() {
                     min={1}
                     max={selectedSlotData?.spotsLeft || 10}
                     value={participants}
-                    onChange={(e) => setParticipants(Number(e.target.value))}
+                    onChange={(e) => setParticipants(Math.min(Number(e.target.value), selectedSlotData?.spotsLeft || 10))}
                     className="w-20 text-center"
                   />
                   <Button size="icon" variant="outline" onClick={() => setParticipants(Math.min(selectedSlotData?.spotsLeft || 10, participants + 1))}>+</Button>
@@ -479,7 +488,7 @@ export default function Reserver() {
             </div>
           )}
 
-          {/* Step 5: Récapitulatif */}
+          {/* Step 5 */}
           {step === 5 && (
             <div className="space-y-6">
               <h2 className="text-lg font-semibold text-primary-dark">Récapitulatif</h2>
@@ -511,16 +520,17 @@ export default function Reserver() {
                   <span className="font-medium">{participants} personne{participants > 1 ? "s" : ""}</span>
                 </div>
                 <div className="border-t pt-3 flex justify-between">
-                  <span className="text-muted-foreground">Crédits utilisés</span>
-                  <Badge className="bg-primary-dark text-primary-dark-foreground">{participants} crédit{participants > 1 ? "s" : ""}</Badge>
+                  <span className="text-muted-foreground">Places restantes après réservation</span>
+                  <Badge variant="secondary">{(selectedSlotData?.spotsLeft || 0) - participants}</Badge>
                 </div>
               </div>
               <div className="flex justify-between pt-4">
                 <Button variant="outline" onClick={() => setStep(4)} className="gap-1.5">
                   <ArrowLeft className="h-4 w-4" /> Retour
                 </Button>
-                <Button onClick={handleConfirm} className="bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-1.5">
-                  <Check className="h-4 w-4" /> Confirmer la réservation
+                <Button onClick={handleConfirm} disabled={submitting} className="bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-1.5">
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  Confirmer la réservation
                 </Button>
               </div>
             </div>
