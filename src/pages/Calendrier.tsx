@@ -135,7 +135,16 @@ export default function Calendrier() {
   const nextWeek = () => { const d = new Date(currentWeekStart); d.setDate(d.getDate() + 7); setCurrentWeekStart(d); };
   const goThisWeek = () => { const now = new Date(); const day = now.getDay(); const diff = now.getDate() - day + (day === 0 ? -6 : 1); const m = new Date(now); m.setDate(diff); m.setHours(0, 0, 0, 0); setCurrentWeekStart(m); };
 
-  const handleBook = (event: ActivityBlock) => navigate(`/reserver?type=${event.type}&id=${event.sourceId}`);
+  const handleBook = (event: ActivityBlock, date: Date) => {
+    const dateStr = formatDateStr(date);
+    const params = new URLSearchParams({
+      type: event.type,
+      id: event.sourceId,
+      date: dateStr,
+    });
+    if (event.scheduleId) params.set("scheduleId", event.scheduleId);
+    navigate(`/reserver?${params.toString()}`);
+  };
 
   const todayStr = formatDateStr(new Date());
   const isThisWeek = weekDays.some(d => formatDateStr(d) === todayStr);
