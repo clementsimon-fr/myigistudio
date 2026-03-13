@@ -52,6 +52,7 @@ interface Workshop {
   spots: number;
   spots_left: number;
   image: string;
+  instructor_id: string | null;
 }
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
@@ -100,7 +101,7 @@ export default function AdminActivites() {
   const emptyCourseForm = { name: "", description: "", long_description: "", category: "yoga", frequency: "hebdomadaire", instructor: "Élodie", spots: 12, image: "", reminder_template: "", schedules: [{ day: "Mardi", time: "09:00", end_time: "10:00" }] as Schedule[] };
   const [courseForm, setCourseForm] = useState(emptyCourseForm);
 
-  const emptyWorkshopForm = { name: "", description: "", long_description: "", category: "poterie", dates: [""] as string[], time: "14:00", end_time: "16:00", frequency: "ponctuel", price: 0, spots: 8, image: "", reminder_template: "" };
+  const emptyWorkshopForm = { name: "", description: "", long_description: "", category: "poterie", dates: [""] as string[], time: "14:00", end_time: "16:00", frequency: "ponctuel", price: 0, spots: 8, image: "", reminder_template: "", instructor: "Élodie" };
   const [workshopForm, setWorkshopForm] = useState(emptyWorkshopForm);
 
   const fetchData = async () => {
@@ -275,7 +276,8 @@ export default function AdminActivites() {
   };
   const openEditWorkshop = (w: Workshop) => {
     setEditingId(w.id);
-    setWorkshopForm({ name: w.name, description: w.description, long_description: (w as any).long_description || "", category: w.category, dates: [w.date], time: w.time, end_time: w.end_time || "", frequency: w.frequency || "ponctuel", price: w.price, spots: w.spots, image: w.image, reminder_template: (w as any).reminder_template || "" });
+    const instrName = w.instructor_id ? instructorsList.find(i => i.id === w.instructor_id)?.name || "Élodie" : "Élodie";
+    setWorkshopForm({ name: w.name, description: w.description, long_description: (w as any).long_description || "", category: w.category, dates: [w.date], time: w.time, end_time: w.end_time || "", frequency: w.frequency || "ponctuel", price: w.price, spots: w.spots, image: w.image, reminder_template: (w as any).reminder_template || "", instructor: instrName });
     setDialogType("workshop");
     setDialogOpen(true);
   };
@@ -284,21 +286,20 @@ export default function AdminActivites() {
     const validDates = workshopForm.dates.filter(d => d.trim() !== "");
     if (validDates.length === 0) return;
 
+    const instrId = instructorsList.find(i => i.name === workshopForm.instructor)?.id || null;
+
     if (editingId) {
-      // Update existing with first date
-      const { dates, ...rest } = workshopForm;
-      await supabase.from("workshops").update({ ...rest, date: validDates[0], duration }).eq("id", editingId);
-      // Create additional dates as new workshops
+      const { dates, instructor, ...rest } = workshopForm;
+      await supabase.from("workshops").update({ ...rest, date: validDates[0], duration, instructor_id: instrId }).eq("id", editingId);
       for (let i = 1; i < validDates.length; i++) {
-        const { dates: _d, ...payload } = workshopForm;
-        await supabase.from("workshops").insert({ ...payload, date: validDates[i], duration, spots_left: workshopForm.spots });
+        const { dates: _d, instructor: _i, ...payload } = workshopForm;
+        await supabase.from("workshops").insert({ ...payload, date: validDates[i], duration, spots_left: workshopForm.spots, instructor_id: instrId });
       }
       toast({ title: "Atelier modifié" });
     } else {
-      // Create one workshop per date
       for (const date of validDates) {
-        const { dates, ...payload } = workshopForm;
-        await supabase.from("workshops").insert({ ...payload, date, duration, spots_left: workshopForm.spots });
+        const { dates, instructor, ...payload } = workshopForm;
+        await supabase.from("workshops").insert({ ...payload, date, duration, spots_left: workshopForm.spots, instructor_id: instrId });
       }
       toast({ title: `${validDates.length > 1 ? validDates.length + " ateliers créés" : "Atelier créé"}` });
     }
@@ -382,7 +383,35 @@ export default function AdminActivites() {
                 <Plus className="h-4 w-4" /> Ajouter un cours
               </Button>
             </div>
-            <div className="rounded-xl border bg-card overflow-x-auto">
+            {/* Mobile card view */}
+            <div className="space-y-3 md:hidden">
+              {sortedCourses.map(c => (
+                <div key={c.id} className="rounded-xl border bg-card p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h4 className="font-medium text-sm">{c.name}</h4>
+                      {c.description && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{c.description}</p>}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditCourse(c)}><Pencil className="h-3 w-3" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeletingItem({ id: c.id, type: "course" })}><Trash2 className="h-3 w-3" /></Button>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {(c.schedules || []).map((s, i) => (
+                      <Badge key={i} variant="outline" className="text-[10px] font-normal">{s.day.slice(0, 3)} {s.time}-{s.end_time}</Badge>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <Badge variant="outline" className="text-[10px] capitalize">{c.frequency || "hebdo"}</Badge>
+                    <Badge variant={c.spots_left === 0 ? "destructive" : "secondary"} className="text-[10px]">{c.spots_left}/{c.spots}</Badge>
+                    <span>{c.instructor}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop table view */}
+            <div className="rounded-xl border bg-card overflow-x-auto hidden md:block">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/30">
@@ -408,9 +437,7 @@ export default function AdminActivites() {
                               <div key={i} className="flex items-center gap-1.5 text-xs">
                                 <Badge variant="outline" className="text-xs font-normal">{s.day.slice(0, 3)}</Badge>
                                 <span className="text-muted-foreground">{s.time}{s.end_time ? ` - ${s.end_time}` : ""}</span>
-                                {s.time && s.end_time && (
-                                  <span className="text-muted-foreground/60">· {calcDuration(s.time, s.end_time)}</span>
-                                )}
+                                {s.time && s.end_time && <span className="text-muted-foreground/60">· {calcDuration(s.time, s.end_time)}</span>}
                               </div>
                             ))}
                           </div>
@@ -418,14 +445,8 @@ export default function AdminActivites() {
                           <span>{c.day} {c.time}{c.end_time ? ` - ${c.end_time}` : ""}</span>
                         )}
                       </td>
-                      <td className="p-3">
-                        <Badge variant="outline" className="text-xs capitalize">{c.frequency || "hebdomadaire"}</Badge>
-                      </td>
-                      <td className="p-3">
-                        <Badge variant={c.spots_left === 0 ? "destructive" : "secondary"} className="text-xs">
-                          {c.spots_left}/{c.spots}
-                        </Badge>
-                      </td>
+                      <td className="p-3"><Badge variant="outline" className="text-xs capitalize">{c.frequency || "hebdomadaire"}</Badge></td>
+                      <td className="p-3"><Badge variant={c.spots_left === 0 ? "destructive" : "secondary"} className="text-xs">{c.spots_left}/{c.spots}</Badge></td>
                       <td className="p-3">{c.instructor}</td>
                       <td className="p-3 text-right">
                         <div className="flex justify-end gap-1">
@@ -601,6 +622,20 @@ export default function AdminActivites() {
                 <div><Label>Prix (€)</Label><Input type="number" value={workshopForm.price} onChange={e => setWorkshopForm({ ...workshopForm, price: Number(e.target.value) })} /></div>
                 <div><Label>Places</Label><Input type="number" value={workshopForm.spots} onChange={e => setWorkshopForm({ ...workshopForm, spots: Number(e.target.value) })} /></div>
               </div>
+              <div>
+                <Label>Intervenant</Label>
+                {instructorsList.length > 0 ? (
+                  <Select value={workshopForm.instructor} onValueChange={v => setWorkshopForm({ ...workshopForm, instructor: v })}>
+                    <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                    <SelectContent>
+                      {instructorsList.map(i => <SelectItem key={i.id} value={i.name}>{i.name}</SelectItem>)}
+                      <SelectItem value="Élodie">Élodie (par défaut)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={workshopForm.instructor} onChange={e => setWorkshopForm({ ...workshopForm, instructor: e.target.value })} />
+                )}
+              </div>
               <div><Label>Image URL</Label><Input value={workshopForm.image} onChange={e => setWorkshopForm({ ...workshopForm, image: e.target.value })} placeholder="https://..." /></div>
               <div>
                 <Label>📧 Modèle de rappel (e-mail)</Label>
@@ -636,47 +671,68 @@ export default function AdminActivites() {
 
 function WorkshopTable({ workshops, onEdit, onDelete }: { workshops: Workshop[]; onEdit: (w: Workshop) => void; onDelete: (id: string) => void }) {
   return (
-    <div className="rounded-xl border bg-card overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted/30">
-            <th className="text-left p-3 font-medium text-muted-foreground">Atelier</th>
-            <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
-            <th className="text-left p-3 font-medium text-muted-foreground">Horaires</th>
-            <th className="text-left p-3 font-medium text-muted-foreground">Fréquence</th>
-            <th className="text-left p-3 font-medium text-muted-foreground">Prix</th>
-            <th className="text-left p-3 font-medium text-muted-foreground">Places</th>
-            <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {workshops.map((w) => (
-            <tr key={w.id} className="border-b last:border-0 hover:bg-muted/10">
-              <td className="p-3">
-                <div className="font-medium">{w.name}</div>
-                {w.description && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{w.description}</div>}
-              </td>
-              <td className="p-3">{new Date(w.date).toLocaleDateString("fr-FR")}</td>
-              <td className="p-3">{w.time}{w.end_time ? ` - ${w.end_time}` : ""} · {w.duration}</td>
-              <td className="p-3">
-                <Badge variant="outline" className="text-xs capitalize">{w.frequency || "ponctuel"}</Badge>
-              </td>
-              <td className="p-3">{w.price}€</td>
-              <td className="p-3">
-                <Badge variant={w.spots_left === 0 ? "destructive" : "secondary"} className="text-xs">
-                  {w.spots_left}/{w.spots}
-                </Badge>
-              </td>
-              <td className="p-3 text-right">
-                <div className="flex justify-end gap-1">
-                  <Button size="icon" variant="ghost" onClick={() => onEdit(w)}><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => onDelete(w.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-                </div>
-              </td>
+    <>
+      {/* Mobile cards */}
+      <div className="space-y-3 md:hidden">
+        {workshops.map(w => (
+          <div key={w.id} className="rounded-xl border bg-card p-4">
+            <div className="flex items-start justify-between mb-2">
+              <div>
+                <h4 className="font-medium text-sm">{w.name}</h4>
+                {w.description && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{w.description}</p>}
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit(w)}><Pencil className="h-3 w-3" /></Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => onDelete(w.id)}><Trash2 className="h-3 w-3" /></Button>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline" className="text-[10px]">{new Date(w.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</Badge>
+              <span>{w.time}{w.end_time ? `-${w.end_time}` : ""} · {w.duration}</span>
+              <Badge variant="outline" className="text-[10px] capitalize">{w.frequency || "ponctuel"}</Badge>
+              <span className="font-medium text-foreground">{w.price}€</span>
+              <Badge variant={w.spots_left === 0 ? "destructive" : "secondary"} className="text-[10px]">{w.spots_left}/{w.spots}</Badge>
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Desktop table */}
+      <div className="rounded-xl border bg-card overflow-x-auto hidden md:block">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-muted/30">
+              <th className="text-left p-3 font-medium text-muted-foreground">Atelier</th>
+              <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
+              <th className="text-left p-3 font-medium text-muted-foreground">Horaires</th>
+              <th className="text-left p-3 font-medium text-muted-foreground">Fréquence</th>
+              <th className="text-left p-3 font-medium text-muted-foreground">Prix</th>
+              <th className="text-left p-3 font-medium text-muted-foreground">Places</th>
+              <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {workshops.map((w) => (
+              <tr key={w.id} className="border-b last:border-0 hover:bg-muted/10">
+                <td className="p-3">
+                  <div className="font-medium">{w.name}</div>
+                  {w.description && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{w.description}</div>}
+                </td>
+                <td className="p-3">{new Date(w.date).toLocaleDateString("fr-FR")}</td>
+                <td className="p-3">{w.time}{w.end_time ? ` - ${w.end_time}` : ""} · {w.duration}</td>
+                <td className="p-3"><Badge variant="outline" className="text-xs capitalize">{w.frequency || "ponctuel"}</Badge></td>
+                <td className="p-3">{w.price}€</td>
+                <td className="p-3"><Badge variant={w.spots_left === 0 ? "destructive" : "secondary"} className="text-xs">{w.spots_left}/{w.spots}</Badge></td>
+                <td className="p-3 text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => onEdit(w)}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => onDelete(w.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
