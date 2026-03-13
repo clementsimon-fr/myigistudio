@@ -539,7 +539,8 @@ export default function AdminActivites() {
           ) : (
             <div className="space-y-4 pt-2">
               <div><Label>Nom</Label><Input value={workshopForm.name} onChange={e => setWorkshopForm({ ...workshopForm, name: e.target.value })} /></div>
-              <div><Label>Description</Label><Textarea value={workshopForm.description} onChange={e => setWorkshopForm({ ...workshopForm, description: e.target.value })} rows={3} /></div>
+              <div><Label>Description courte</Label><Textarea value={workshopForm.description} onChange={e => setWorkshopForm({ ...workshopForm, description: e.target.value })} rows={2} placeholder="Résumé affiché sur la carte..." /></div>
+              <div><Label>Fiche produit (description longue)</Label><Textarea value={workshopForm.long_description} onChange={e => setWorkshopForm({ ...workshopForm, long_description: e.target.value })} rows={5} placeholder="Description détaillée : déroulé, matériel fourni, public visé, ce que le participant repart avec..." /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Catégorie</Label>
                   <Select value={workshopForm.category} onValueChange={v => setWorkshopForm({ ...workshopForm, category: v })}>
