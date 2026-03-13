@@ -1,4 +1,4 @@
-import { LayoutDashboard, CalendarDays, BookOpen, Users, UserCircle, CreditCard, FileText, LogOut } from "lucide-react";
+import { LayoutDashboard, CalendarDays, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
