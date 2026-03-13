@@ -96,6 +96,7 @@ export type Database = {
           end_time: string
           frequency: string
           id: string
+          image: string
           instructor: string
           instructor_id: string | null
           long_description: string
@@ -114,6 +115,7 @@ export type Database = {
           end_time?: string
           frequency?: string
           id?: string
+          image?: string
           instructor?: string
           instructor_id?: string | null
           long_description?: string
@@ -132,6 +134,7 @@ export type Database = {
           end_time?: string
           frequency?: string
           id?: string
+          image?: string
           instructor?: string
           instructor_id?: string | null
           long_description?: string
@@ -159,6 +162,7 @@ export type Database = {
           id: string
           name: string
           phone: string
+          photo_url: string
           specialties: string[]
           urls: string[]
         }
@@ -170,6 +174,7 @@ export type Database = {
           id?: string
           name: string
           phone?: string
+          photo_url?: string
           specialties?: string[]
           urls?: string[]
         }
@@ -181,6 +186,7 @@ export type Database = {
           id?: string
           name?: string
           phone?: string
+          photo_url?: string
           specialties?: string[]
           urls?: string[]
         }
