@@ -57,7 +57,11 @@ export default function Calendrier() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<FilterCategory>("all");
+  const [searchParams] = useSearchParams();
+  const initialFilter = searchParams.get("filter") as FilterCategory | null;
+  const [filter, setFilter] = useState<FilterCategory>(
+    initialFilter && CATEGORY_FILTERS.some(f => f.value === initialFilter) ? initialFilter : "all"
+  );
   const [selectedEvent, setSelectedEvent] = useState<ActivityBlock | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const now = new Date();
