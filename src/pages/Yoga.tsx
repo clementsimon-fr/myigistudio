@@ -160,7 +160,7 @@ export default function Yoga() {
                                 {course.instructor}
                               </div>
                             </div>
-                            <Link to="/reserver" className="mt-3 block">
+                            <Link to={`/reserver?type=course&id=${course.id}`} className="mt-3 block">
                               <Button
                                 size="sm"
                                 className="w-full"
