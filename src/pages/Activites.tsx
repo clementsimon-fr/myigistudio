@@ -155,31 +155,10 @@ export default function Activites() {
                             <img src={course.image || PLACEHOLDER_IMG} alt={course.name} className="w-full h-full object-cover" loading="lazy" />
                           </div>
                           <div className="p-4 md:p-5">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <h3 className="font-display font-semibold text-base md:text-lg text-primary-dark leading-tight">{course.name}</h3>
-                              <Badge variant={totalSpotsLeft === 0 ? "destructive" : "secondary"} className="text-[10px] md:text-xs shrink-0">
-                                {totalSpotsLeft === 0 ? "Complet" : `${totalSpotsLeft} place${totalSpotsLeft > 1 ? "s" : ""}`}
-                              </Badge>
-                            </div>
+                            <h3 className="font-display font-semibold text-base md:text-lg text-primary-dark leading-tight mb-2">{course.name}</h3>
                             {course.description && <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{course.description}</p>}
-                            <div className="space-y-1 text-xs md:text-sm text-muted-foreground mb-3">
-                              {visible.map((s, idx) => (
-                                <div key={idx} className="flex items-center gap-1.5">
-                                  <Clock className="h-3 w-3 md:h-3.5 md:w-3.5 shrink-0" />
-                                  <Badge variant="outline" className="text-[10px] md:text-xs font-normal px-1.5 py-0">{s.day.slice(0, 3)}</Badge>
-                                  <span>{s.time}{s.end_time ? ` - ${s.end_time}` : ""}</span>
-                                  {s.time && s.end_time && <span className="text-muted-foreground/60 text-[10px]">· {calcDuration(s.time, s.end_time)}</span>}
-                                </div>
-                              ))}
-                              {hasMore && (
-                                <button onClick={() => toggleExpand(course.id)} className="flex items-center gap-1 text-xs text-primary hover:underline">
-                                  {isExpanded ? <><ChevronUp className="h-3 w-3" /> Réduire</> : <><ChevronDown className="h-3 w-3" /> +{course.schedules.length - MAX_VISIBLE_SCHEDULES} créneaux</>}
-                                </button>
-                              )}
-                            </div>
                             <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
                               <InstructorBadge instructor={course.instructor} photo={photo} />
-                              <div className="flex items-center gap-1"><Users className="h-3 w-3" />{course.schedules[0]?.spots || course.spots} max</div>
                             </div>
                             <div className="flex gap-2">
                               {(course.long_description || course.description) && (
@@ -187,8 +166,8 @@ export default function Activites() {
                                   <Info className="h-3 w-3" /> Description
                                 </Button>
                               )}
-                              <Link to={`/reserver?type=course&id=${course.id}`} className="flex-1">
-                                <Button size="sm" className="w-full text-xs" disabled={totalSpotsLeft === 0}>{totalSpotsLeft === 0 ? "Complet" : "Réserver"}</Button>
+                              <Link to="/calendrier?filter=yoga" className="flex-1">
+                                <Button size="sm" className="w-full text-xs">Réserver</Button>
                               </Link>
                             </div>
                           </div>
