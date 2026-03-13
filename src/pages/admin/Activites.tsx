@@ -199,6 +199,7 @@ export default function AdminActivites() {
       instructor: courseForm.instructor,
       spots: courseForm.spots,
       image: courseForm.image,
+      reminder_template: courseForm.reminder_template,
       day: firstSchedule.day,
       time: firstSchedule.time,
       end_time: firstSchedule.end_time,
