@@ -97,7 +97,7 @@ export default function AdminActivites() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  const emptyCourseForm = { name: "", description: "", long_description: "", category: "yoga", frequency: "hebdomadaire", instructor: "Élodie", spots: 12, image: "", schedules: [{ day: "Mardi", time: "09:00", end_time: "10:00" }] as Schedule[] };
+  const emptyCourseForm = { name: "", description: "", long_description: "", category: "yoga", frequency: "hebdomadaire", instructor: "Élodie", spots: 12, image: "", reminder_template: "", schedules: [{ day: "Mardi", time: "09:00", end_time: "10:00" }] as Schedule[] };
   const [courseForm, setCourseForm] = useState(emptyCourseForm);
 
   const emptyWorkshopForm = { name: "", description: "", long_description: "", category: "poterie", dates: [""] as string[], time: "14:00", end_time: "16:00", frequency: "ponctuel", price: 0, spots: 8, image: "" };
