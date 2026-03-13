@@ -572,7 +572,7 @@ export default function AdminActivites() {
                 <div><Label>Places</Label><Input type="number" value={workshopForm.spots} onChange={e => setWorkshopForm({ ...workshopForm, spots: Number(e.target.value) })} /></div>
               </div>
               <div><Label>Image URL</Label><Input value={workshopForm.image} onChange={e => setWorkshopForm({ ...workshopForm, image: e.target.value })} placeholder="https://..." /></div>
-              <Button className="w-full" onClick={saveWorkshop} disabled={!workshopForm.name || !workshopForm.date}>{editingId ? "Enregistrer" : "Créer l'atelier"}</Button>
+              <Button className="w-full" onClick={saveWorkshop} disabled={!workshopForm.name || workshopForm.dates.every(d => !d)}>{editingId ? "Enregistrer" : `Créer ${workshopForm.dates.filter(d => d).length > 1 ? workshopForm.dates.filter(d => d).length + " ateliers" : "l'atelier"}`}</Button>
             </div>
           )}
         </DialogContent>

@@ -8,6 +8,7 @@ const navLinks = [
   { label: "Yoga & Pilates", to: "/yoga" },
   { label: "Poterie", to: "/poterie" },
   { label: "Ateliers", to: "/ateliers" },
+  { label: "Planning", to: "/calendrier" },
 ];
 
 export default function Navbar() {

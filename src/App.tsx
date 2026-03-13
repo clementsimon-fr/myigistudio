@@ -35,6 +35,7 @@ const App = () => (
           <Route path="/register" element={<Register />} />
           <Route path="/mon-espace" element={<MonEspace />} />
           <Route path="/reserver" element={<Reserver />} />
+          <Route path="/calendrier" element={<Calendrier />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/reservations" element={<AdminReservations />} />
           <Route path="/admin/activites" element={<AdminActivites />} />
