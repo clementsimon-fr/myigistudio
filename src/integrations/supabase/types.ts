@@ -206,6 +206,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          payment_info: string
           popular: boolean
           price: number
           sessions: number
@@ -216,6 +217,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          payment_info?: string
           popular?: boolean
           price?: number
           sessions?: number
@@ -226,6 +228,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          payment_info?: string
           popular?: boolean
           price?: number
           sessions?: number
@@ -306,6 +309,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      site_settings: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          value?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          value?: string
+        }
+        Relationships: []
       }
       workshops: {
         Row: {
