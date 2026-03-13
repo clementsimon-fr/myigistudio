@@ -21,6 +21,8 @@ export type Database = {
           day: string
           end_time: string
           id: string
+          spots: number
+          spots_left: number
           time: string
         }
         Insert: {
@@ -29,6 +31,8 @@ export type Database = {
           day: string
           end_time?: string
           id?: string
+          spots?: number
+          spots_left?: number
           time: string
         }
         Update: {
@@ -37,6 +41,8 @@ export type Database = {
           day?: string
           end_time?: string
           id?: string
+          spots?: number
+          spots_left?: number
           time?: string
         }
         Relationships: [
@@ -144,6 +150,79 @@ export type Database = {
           },
           {
             foreignKeyName: "planned_sessions_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reservations: {
+        Row: {
+          activity_name: string
+          activity_type: string
+          client_name: string
+          course_id: string | null
+          created_at: string
+          date: string
+          end_time: string
+          id: string
+          notes: string
+          participants: number
+          schedule_id: string | null
+          status: string
+          time: string
+          workshop_id: string | null
+        }
+        Insert: {
+          activity_name: string
+          activity_type?: string
+          client_name?: string
+          course_id?: string | null
+          created_at?: string
+          date: string
+          end_time?: string
+          id?: string
+          notes?: string
+          participants?: number
+          schedule_id?: string | null
+          status?: string
+          time: string
+          workshop_id?: string | null
+        }
+        Update: {
+          activity_name?: string
+          activity_type?: string
+          client_name?: string
+          course_id?: string | null
+          created_at?: string
+          date?: string
+          end_time?: string
+          id?: string
+          notes?: string
+          participants?: number
+          schedule_id?: string | null
+          status?: string
+          time?: string
+          workshop_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservations_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "course_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_workshop_id_fkey"
             columns: ["workshop_id"]
             isOneToOne: false
             referencedRelation: "workshops"
