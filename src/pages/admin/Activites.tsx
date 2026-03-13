@@ -191,6 +191,7 @@ export default function AdminActivites() {
     const payload = {
       name: courseForm.name,
       description: courseForm.description,
+      long_description: courseForm.long_description,
       category: courseForm.category,
       frequency: courseForm.frequency,
       instructor: courseForm.instructor,
