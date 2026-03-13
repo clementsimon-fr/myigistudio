@@ -602,7 +602,20 @@ export default function AdminActivites() {
                 <div><Label>Prix (€)</Label><Input type="number" value={workshopForm.price} onChange={e => setWorkshopForm({ ...workshopForm, price: Number(e.target.value) })} /></div>
                 <div><Label>Places</Label><Input type="number" value={workshopForm.spots} onChange={e => setWorkshopForm({ ...workshopForm, spots: Number(e.target.value) })} /></div>
               </div>
-              <div><Label>Image URL</Label><Input value={workshopForm.image} onChange={e => setWorkshopForm({ ...workshopForm, image: e.target.value })} placeholder="https://..." /></div>
+              <div>
+                <Label>Intervenant</Label>
+                {instructorsList.length > 0 ? (
+                  <Select value={workshopForm.instructor} onValueChange={v => setWorkshopForm({ ...workshopForm, instructor: v })}>
+                    <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                    <SelectContent>
+                      {instructorsList.map(i => <SelectItem key={i.id} value={i.name}>{i.name}</SelectItem>)}
+                      <SelectItem value="Élodie">Élodie (par défaut)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={workshopForm.instructor} onChange={e => setWorkshopForm({ ...workshopForm, instructor: e.target.value })} />
+                )}
+              </div>
               <div>
                 <Label>📧 Modèle de rappel (e-mail)</Label>
                 <Textarea value={workshopForm.reminder_template} onChange={e => setWorkshopForm({ ...workshopForm, reminder_template: e.target.value })} rows={4} placeholder="Bonjour {nom}, votre atelier {activité} approche ! Rendez-vous le {date} à {heure}. Tout le matériel est fourni. À très vite !" />
