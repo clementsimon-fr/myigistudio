@@ -172,9 +172,13 @@ export default function AdminIntervenants() {
             <div key={inst.id} className="rounded-xl border bg-card p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/15 flex items-center justify-center">
-                    <User className="h-5 w-5 text-primary-dark" />
-                  </div>
+                  {inst.photo_url ? (
+                    <img src={inst.photo_url} alt={inst.name} className="h-10 w-10 rounded-full object-cover" />
+                  ) : (
+                    <div className="h-10 w-10 rounded-full bg-primary/15 flex items-center justify-center">
+                      <User className="h-5 w-5 text-primary-dark" />
+                    </div>
+                  )}
                   <div>
                     <h3 className="font-semibold">{inst.name}</h3>
                     {inst.email && <p className="text-xs text-muted-foreground">{inst.email}</p>}
