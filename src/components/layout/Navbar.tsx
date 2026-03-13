@@ -50,7 +50,7 @@ export default function Navbar() {
               Connexion
             </Button>
           </Link>
-          <Link to="/reserver">
+          <Link to="/calendrier">
             <Button size="sm" className="bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
               Réserver
             </Button>
