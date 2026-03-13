@@ -100,6 +100,57 @@ export type Database = {
         }
         Relationships: []
       }
+      planned_sessions: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          date: string
+          end_time: string
+          id: string
+          notes: string
+          time: string
+          title: string
+          workshop_id: string | null
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          date: string
+          end_time?: string
+          id?: string
+          notes?: string
+          time?: string
+          title?: string
+          workshop_id?: string | null
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          date?: string
+          end_time?: string
+          id?: string
+          notes?: string
+          time?: string
+          title?: string
+          workshop_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planned_sessions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planned_sessions_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workshops: {
         Row: {
           category: string
