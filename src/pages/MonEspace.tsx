@@ -290,7 +290,30 @@ export default function MonEspace() {
                       </div>
                       <Switch checked={showInCommunity} onCheckedChange={setShowInCommunity} />
                     </div>
-                    {showInCommunity !== (profile?.show_in_community ?? false) && (
+
+                    {/* Reminder preferences */}
+                    <div className="space-y-2 mt-4">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Bell className="h-4 w-4 text-primary-dark" />
+                        <p className="text-sm font-medium">Préférences de rappel</p>
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border p-3">
+                        <div>
+                          <p className="text-sm font-medium">📧 Rappel par e-mail</p>
+                          <p className="text-[10px] text-muted-foreground">Recevoir un rappel par e-mail avant chaque séance</p>
+                        </div>
+                        <Switch checked={reminderEmail} onCheckedChange={setReminderEmail} />
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border p-3">
+                        <div>
+                          <p className="text-sm font-medium">📱 Rappel par SMS</p>
+                          <p className="text-[10px] text-muted-foreground">Recevoir un rappel par SMS avant chaque séance</p>
+                        </div>
+                        <Switch checked={reminderSms} onCheckedChange={setReminderSms} />
+                      </div>
+                    </div>
+
+                    {(showInCommunity !== (profile?.show_in_community ?? false) || reminderSms !== (profile?.reminder_sms ?? false) || reminderEmail !== (profile?.reminder_email ?? true)) && (
                       <Button size="sm" className="text-xs mt-2" onClick={saveProfile}>Sauvegarder</Button>
                     )}
                   </div>
