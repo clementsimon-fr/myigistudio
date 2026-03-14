@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Reservation { id: string; client_name: string; activity_name: string; activity_type: string; date: string; time: string; end_time: string; participants: number; status: string; created_at: string; }
 interface ClientCard { id: string; client_name: string; card_name: string; total_sessions: number; used_sessions: number; expires_at: string; }
-interface Profile { id: string; user_name: string; bio: string; show_in_community: boolean; avatar_url: string; }
+interface Profile { id: string; user_name: string; bio: string; show_in_community: boolean; avatar_url: string; reminder_sms: boolean; reminder_email: boolean; }
 interface ForumPost { id: string; author_name: string; category: string; content: string; created_at: string; }
 
 const statusColors: Record<string, string> = {
