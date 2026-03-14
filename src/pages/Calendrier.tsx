@@ -65,6 +65,7 @@ export default function Calendrier() {
     initialFilter && CATEGORY_FILTERS.some(f => f.value === initialFilter) ? initialFilter : "all"
   );
   const [subFilter, setSubFilter] = useState<string>(activityName || "all");
+  const [initialScrollDone, setInitialScrollDone] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<ActivityBlock | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     // If a target date is provided, navigate to that week
