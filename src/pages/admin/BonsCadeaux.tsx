@@ -96,13 +96,17 @@ export default function AdminBonsCadeaux() {
   const openNew = () => { setEditingId(null); setForm(emptyForm); setBuyerSearch(""); setBeneficiarySearch(""); setDialogOpen(true); };
   const openEdit = (v: Voucher) => {
     setEditingId(v.id);
+    const buyerParts = v.buyer_name.split(" ");
+    const benefParts = v.beneficiary_name.split(" ");
     setForm({
       type: v.type as "amount" | "card",
       amount: v.amount,
       card_name: v.card_name,
       sessions: v.sessions,
-      beneficiary_name: v.beneficiary_name,
-      buyer_name: v.buyer_name,
+      beneficiary_name: benefParts[0] || "",
+      beneficiary_last_name: benefParts.slice(1).join(" "),
+      buyer_name: buyerParts[0] || "",
+      buyer_last_name: buyerParts.slice(1).join(" "),
       message: v.message,
       expires_at: v.expires_at,
       buyer_is_existing: false,
