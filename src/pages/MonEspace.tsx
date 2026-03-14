@@ -43,9 +43,14 @@ const NAV_ITEMS: { value: Section; label: string; icon: typeof Home }[] = [
 
 export default function MonEspace() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const [section, setSection] = useState<Section>("accueil");
-  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const sectionParam = searchParams.get("section") as Section | null;
+  const [section, setSection] = useState<Section>(sectionParam || "accueil");
+
+  useEffect(() => {
+    if (sectionParam && sectionParam !== section) setSection(sectionParam);
+  }, [sectionParam]);
   const [cards, setCards] = useState<ClientCard[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [forumPosts, setForumPosts] = useState<ForumPost[]>([]);
