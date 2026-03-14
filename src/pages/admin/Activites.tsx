@@ -559,7 +559,33 @@ export default function AdminActivites() {
                   )}
                 </div>
               </div>
-              <div><Label>Image URL</Label><Input value={courseForm.image} onChange={e => setCourseForm({ ...courseForm, image: e.target.value })} placeholder="https://images.unsplash.com/..." /></div>
+              <div>
+                <Label>Image</Label>
+                <div className="flex items-center gap-3 mt-1.5">
+                  {courseForm.image && <img src={courseForm.image} alt="Preview" className="h-16 w-16 rounded-lg object-cover" />}
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const ext = file.name.split(".").pop();
+                      const path = `courses/${Date.now()}.${ext}`;
+                      const { error } = await supabase.storage.from("activity-images").upload(path, file);
+                      if (!error) {
+                        const { data: urlData } = supabase.storage.from("activity-images").getPublicUrl(path);
+                        setCourseForm(prev => ({ ...prev, image: urlData.publicUrl }));
+                      }
+                    }}
+                    className="text-xs"
+                  />
+                  {courseForm.image && (
+                    <Button type="button" variant="link" size="sm" className="text-xs text-destructive p-0 h-auto shrink-0" onClick={() => setCourseForm(prev => ({ ...prev, image: "" }))}>
+                      Supprimer
+                    </Button>
+                  )}
+                </div>
+              </div>
               <div>
                 <Label>📧 Modèle de rappel (e-mail)</Label>
                 <Textarea value={courseForm.reminder_template} onChange={e => setCourseForm({ ...courseForm, reminder_template: e.target.value })} rows={4} placeholder="Bonjour {nom}, nous avons hâte de vous retrouver pour votre séance de {activité} le {date} à {heure}. Pensez à apporter votre tapis et une tenue confortable. À bientôt !" />
@@ -636,7 +662,33 @@ export default function AdminActivites() {
                   <Input value={workshopForm.instructor} onChange={e => setWorkshopForm({ ...workshopForm, instructor: e.target.value })} />
                 )}
               </div>
-              <div><Label>Image URL</Label><Input value={workshopForm.image} onChange={e => setWorkshopForm({ ...workshopForm, image: e.target.value })} placeholder="https://..." /></div>
+              <div>
+                <Label>Image</Label>
+                <div className="flex items-center gap-3 mt-1.5">
+                  {workshopForm.image && <img src={workshopForm.image} alt="Preview" className="h-16 w-16 rounded-lg object-cover" />}
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const ext = file.name.split(".").pop();
+                      const path = `workshops/${Date.now()}.${ext}`;
+                      const { error } = await supabase.storage.from("activity-images").upload(path, file);
+                      if (!error) {
+                        const { data: urlData } = supabase.storage.from("activity-images").getPublicUrl(path);
+                        setWorkshopForm(prev => ({ ...prev, image: urlData.publicUrl }));
+                      }
+                    }}
+                    className="text-xs"
+                  />
+                  {workshopForm.image && (
+                    <Button type="button" variant="link" size="sm" className="text-xs text-destructive p-0 h-auto shrink-0" onClick={() => setWorkshopForm(prev => ({ ...prev, image: "" }))}>
+                      Supprimer
+                    </Button>
+                  )}
+                </div>
+              </div>
               <div>
                 <Label>📧 Modèle de rappel (e-mail)</Label>
                 <Textarea value={workshopForm.reminder_template} onChange={e => setWorkshopForm({ ...workshopForm, reminder_template: e.target.value })} rows={4} placeholder="Bonjour {nom}, votre atelier {activité} approche ! Rendez-vous le {date} à {heure}. Tout le matériel est fourni. À très vite !" />

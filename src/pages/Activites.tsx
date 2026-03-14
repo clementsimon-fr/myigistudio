@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { motion } from "framer-motion";
-import { Clock, Users, Euro, Calendar, Loader2, ChevronDown, ChevronUp, Info, ArrowRight } from "lucide-react";
+import { Clock, Users, Euro, Calendar, Loader2, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -108,26 +108,19 @@ export default function Activites() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1">
-        {/* ─── Hero ─── */}
-        <section className="relative overflow-hidden bg-secondary/30 py-16 md:py-24">
+        {/* ─── Hero (mobile only) ─── */}
+        <section className="relative overflow-hidden bg-secondary/30 py-12 md:hidden">
           <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-primary/10 blur-3xl" />
           <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-accent/10 blur-3xl" />
           <div className="container relative">
             <div className="max-w-2xl mx-auto text-center">
-              <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-sm font-medium uppercase tracking-widest text-primary-dark mb-4">Bienvenue chez</motion.p>
-              <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="text-4xl md:text-7xl font-display font-bold text-primary-dark mb-4 md:mb-6">
+              <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-sm font-medium uppercase tracking-widest text-primary-dark mb-3">Bienvenue chez</motion.p>
+              <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="text-4xl font-display font-bold text-primary-dark mb-3">
                 MyIgi<span className="text-primary italic">Studio</span>
               </motion.h1>
-              <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="text-base md:text-xl text-muted-foreground mb-8 md:mb-10 leading-relaxed px-4">
+              <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="text-base text-muted-foreground leading-relaxed px-4">
                 Yoga, Pilates, Poterie & Bien-être.<br />Réservez vos cours et ateliers en quelques clics.
               </motion.p>
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} className="flex justify-center">
-                <Link to="/calendrier">
-                  <Button size="lg" className="bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-2 px-8">
-                    Planning & réservation <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </motion.div>
             </div>
           </div>
         </section>
