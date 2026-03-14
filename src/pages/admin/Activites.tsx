@@ -212,7 +212,7 @@ export default function AdminActivites() {
           reminder_template: w.reminder_template || "", modalities: w.modalities || "", source: "workshop",
           date: w.date, time: w.time, end_time: w.end_time, duration: w.duration,
           price: w.price, spots: w.spots, spots_left: w.spots_left,
-          intensity: w.intensity || "", reminder_timing: w.reminder_timing || "1j",
+          intensity: w.intensity || "none", reminder_timing: w.reminder_timing || "1j",
         });
       }
     }
