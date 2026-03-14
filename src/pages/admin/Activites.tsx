@@ -498,7 +498,7 @@ export default function AdminActivites() {
                   <Select value={form.intensity} onValueChange={v => setForm({ ...form, intensity: v })}>
                     <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
                     <SelectContent>
-                      {INTENSITY_OPTIONS.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
+                      {getIntensityOptions(form.category).map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
