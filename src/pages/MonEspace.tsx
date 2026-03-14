@@ -100,9 +100,8 @@ export default function MonEspace() {
   const filteredRes = resFilter === "all" ? reservations : resFilter === "yoga" ? yogaRes : resFilter === "poterie" ? potteryRes : atelierRes;
 
   const saveProfile = async () => {
-    if (profile) await supabase.from("profiles").update({ bio: bioValue, show_in_community: showInCommunity, reminder_sms: reminderSms, reminder_email: reminderEmail } as any).eq("id", profile.id);
-    else await supabase.from("profiles").insert({ user_name: CLIENT_NAME, bio: bioValue, show_in_community: showInCommunity, reminder_sms: reminderSms, reminder_email: reminderEmail } as any);
-    setEditingBio(false);
+    if (profile) await supabase.from("profiles").update({ reminder_sms: reminderSms, reminder_email: reminderEmail } as any).eq("id", profile.id);
+    else await supabase.from("profiles").insert({ user_name: CLIENT_NAME, reminder_sms: reminderSms, reminder_email: reminderEmail } as any);
     toast({ title: "Profil mis à jour ✓" });
   };
 
