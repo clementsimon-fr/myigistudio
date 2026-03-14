@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import PricingSection from "@/components/home/PricingSection";
 import TeamSection from "@/components/home/TeamSection";
 import ActivityFilterBar, { type FilterCategory } from "@/components/ActivityFilterBar";
