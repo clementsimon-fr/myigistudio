@@ -17,8 +17,8 @@ export const CATEGORY_STYLES: Record<string, { block: string; dot: string }> = {
 };
 
 const VIEW_TABS = [
-  { label: "Activités", to: "/" },
-  { label: "Planning", to: "/calendrier" },
+  { label: "Les activités", to: "/" },
+  { label: "Planning & réservation", to: "/calendrier" },
 ];
 
 interface ActivityFilterBarProps {
