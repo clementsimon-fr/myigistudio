@@ -374,3 +374,73 @@ export default function MonEspace() {
     </div>
   );
 }
+
+function FeedbackSection({ clientName }: { clientName: string }) {
+  const { toast } = useToast();
+  const [feedbackMsg, setFeedbackMsg] = useState("");
+  const [rating, setRating] = useState(5);
+  const [submitting, setSubmitting] = useState(false);
+  const [feedbacks, setFeedbacks] = useState<{ id: string; message: string; rating: number; created_at: string }[]>([]);
+
+  useEffect(() => {
+    supabase.from("feedbacks").select("*").eq("author_name", clientName).order("created_at", { ascending: false }).then(({ data }) => {
+      if (data) setFeedbacks(data as any);
+    });
+  }, [clientName]);
+
+  const submit = async () => {
+    if (!feedbackMsg.trim()) return;
+    setSubmitting(true);
+    await supabase.from("feedbacks").insert({ author_name: clientName, message: feedbackMsg, rating } as any);
+    toast({ title: "Merci pour votre retour ! 🙏" });
+    setFeedbackMsg("");
+    setRating(5);
+    setSubmitting(false);
+    const { data } = await supabase.from("feedbacks").select("*").eq("author_name", clientName).order("created_at", { ascending: false });
+    if (data) setFeedbacks(data as any);
+  };
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-display font-bold text-primary-dark">Votre avis compte !</h2>
+      <p className="text-sm text-muted-foreground">Aidez-nous à améliorer votre expérience en partageant vos idées et suggestions.</p>
+
+      <div className="rounded-xl border bg-card p-4 space-y-3">
+        <div>
+          <Label className="text-sm">Note</Label>
+          <div className="flex gap-1 mt-1">
+            {[1, 2, 3, 4, 5].map(n => (
+              <button key={n} onClick={() => setRating(n)} className="focus:outline-none">
+                <Star className={`h-6 w-6 transition-colors ${n <= rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`} />
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <Label className="text-sm">Votre message</Label>
+          <Textarea value={feedbackMsg} onChange={e => setFeedbackMsg(e.target.value)} rows={3} placeholder="Ce que vous aimez, ce qu'on pourrait améliorer..." className="mt-1" />
+        </div>
+        <Button size="sm" className="gap-1.5" onClick={submit} disabled={!feedbackMsg.trim() || submitting}>
+          <Send className="h-3.5 w-3.5" /> Envoyer
+        </Button>
+      </div>
+
+      {feedbacks.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-muted-foreground">Vos retours précédents</h3>
+          {feedbacks.map(fb => (
+            <div key={fb.id} className="rounded-lg border bg-muted/30 p-3">
+              <div className="flex items-center gap-1 mb-1">
+                {Array.from({ length: fb.rating }).map((_, i) => (
+                  <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />
+                ))}
+              </div>
+              <p className="text-sm">{fb.message}</p>
+              <p className="text-[10px] text-muted-foreground mt-1">{new Date(fb.created_at).toLocaleDateString("fr-FR")}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
