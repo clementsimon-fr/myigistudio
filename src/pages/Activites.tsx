@@ -159,7 +159,7 @@ export default function Activites() {
                               <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => setDescriptionCourse(course)}>
                                 <Info className="h-3 w-3" /> Description
                               </Button>
-                              <Link to="/calendrier?filter=yoga" className="flex-1">
+                              <Link to={`/calendrier?filter=yoga&activity=${encodeURIComponent(course.name)}`} className="flex-1">
                                 <Button size="sm" className="w-full text-xs">Réserver</Button>
                               </Link>
                             </div>
