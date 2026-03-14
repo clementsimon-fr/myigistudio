@@ -4,11 +4,20 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Search, Loader2, Clock, Plus, Trash2, Pencil, UserPlus } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+function makeDisplayName(firstName: string, lastName: string): string {
+  const fn = (firstName || "").trim();
+  const ln = (lastName || "").trim();
+  if (!fn && !ln) return "";
+  if (!ln) return fn;
+  return `${fn}.${ln.charAt(0).toUpperCase()}`;
+}
 
 interface AggregatedClient {
   name: string;
@@ -64,23 +73,22 @@ export default function AdminClients() {
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<AggregatedClient[]>([]);
 
-  // Client detail dialog
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clientReservations, setClientReservations] = useState<ReservationRow[]>([]);
   const [clientCards, setClientCards] = useState<ClientCard[]>([]);
   const [clientVouchers, setClientVouchers] = useState<GiftVoucher[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
-  // Add card dialog
   const [showAddCard, setShowAddCard] = useState(false);
   const [pricingCards, setPricingCards] = useState<PricingCard[]>([]);
   const [selectedPricing, setSelectedPricing] = useState("");
   const [addingCard, setAddingCard] = useState(false);
 
-  // Edit/Add client dialog
   const [editClientOpen, setEditClientOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ user_name: "", first_name: "", last_name: "", phone: "", email: "", address: "" });
+  const [editForm, setEditForm] = useState({ first_name: "", last_name: "", phone: "", email: "", address: "" });
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+
+  const [deletingClient, setDeletingClient] = useState<AggregatedClient | null>(null);
 
   const loadClients = async () => {
     setLoading(true);
@@ -91,10 +99,10 @@ export default function AdminClients() {
     ]);
     const map = new Map<string, { count: number; first: string; profileId?: string; first_name?: string; last_name?: string; phone?: string; email?: string; address?: string }>();
 
-    // Add profiles first
     if (profilesData.data) {
       for (const p of profilesData.data as any[]) {
-        map.set(p.user_name, {
+        const displayName = makeDisplayName(p.first_name, p.last_name) || p.user_name;
+        map.set(displayName, {
           count: 0, first: p.created_at?.split("T")[0] || "",
           profileId: p.id, first_name: p.first_name || "", last_name: p.last_name || "",
           phone: p.phone || "", email: p.email || "", address: p.address || "",
@@ -187,14 +195,13 @@ export default function AdminClients() {
 
   const openNewClient = () => {
     setEditingProfileId(null);
-    setEditForm({ user_name: "", first_name: "", last_name: "", phone: "", email: "", address: "" });
+    setEditForm({ first_name: "", last_name: "", phone: "", email: "", address: "" });
     setEditClientOpen(true);
   };
 
   const openEditClient = (client: AggregatedClient) => {
     setEditingProfileId(client.profileId || null);
     setEditForm({
-      user_name: client.name,
       first_name: client.first_name || "",
       last_name: client.last_name || "",
       phone: client.phone || "",
@@ -205,8 +212,8 @@ export default function AdminClients() {
   };
 
   const saveClient = async () => {
-    if (!editForm.user_name.trim() && !editForm.first_name.trim()) return;
-    const displayName = editForm.user_name || `${editForm.first_name} ${editForm.last_name}`.trim();
+    if (!editForm.first_name.trim()) return;
+    const displayName = makeDisplayName(editForm.first_name, editForm.last_name);
     if (editingProfileId) {
       await supabase.from("profiles").update({
         user_name: displayName,
@@ -228,6 +235,17 @@ export default function AdminClients() {
     }
     toast({ title: editingProfileId ? "Client modifié ✓" : "Client ajouté ✓" });
     setEditClientOpen(false);
+    loadClients();
+  };
+
+  const confirmDeleteClient = async () => {
+    if (!deletingClient) return;
+    if (deletingClient.profileId) {
+      await supabase.from("profiles").delete().eq("id", deletingClient.profileId);
+    }
+    toast({ title: "Client supprimé", variant: "destructive" });
+    setDeletingClient(null);
+    setSelectedClient(null);
     loadClients();
   };
 
@@ -258,7 +276,7 @@ export default function AdminClients() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
-                <th className="text-left p-3 font-medium text-muted-foreground">Nom</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Client</th>
                 <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Téléphone</th>
                 <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Email</th>
                 <th className="text-left p-3 font-medium text-muted-foreground">Réservations</th>
@@ -276,7 +294,7 @@ export default function AdminClients() {
                 >
                   <td className="p-3">
                     <div className="font-medium">{c.name}</div>
-                    {(c.first_name || c.last_name) && c.name !== `${c.first_name} ${c.last_name}`.trim() && (
+                    {c.first_name && c.last_name && (
                       <div className="text-xs text-muted-foreground">{c.first_name} {c.last_name}</div>
                     )}
                   </td>
@@ -288,9 +306,14 @@ export default function AdminClients() {
                       : c.totalReservations}
                   </td>
                   <td className="p-3 text-right">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openEditClient(c); }}>
-                      <Pencil className="h-3 w-3" />
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openEditClient(c); }}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); setDeletingClient(c); }}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -437,16 +460,34 @@ export default function AdminClients() {
               <div><Label>Prénom</Label><Input value={editForm.first_name} onChange={e => setEditForm({ ...editForm, first_name: e.target.value })} /></div>
               <div><Label>Nom</Label><Input value={editForm.last_name} onChange={e => setEditForm({ ...editForm, last_name: e.target.value })} /></div>
             </div>
-            <div><Label>Nom d'affichage</Label><Input value={editForm.user_name} onChange={e => setEditForm({ ...editForm, user_name: e.target.value })} placeholder={`${editForm.first_name} ${editForm.last_name}`.trim() || "Sophie"} /></div>
+            {editForm.first_name && (
+              <p className="text-xs text-muted-foreground">Nom d'affichage : <span className="font-medium">{makeDisplayName(editForm.first_name, editForm.last_name)}</span></p>
+            )}
             <div><Label>Téléphone</Label><Input type="tel" value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} placeholder="06 12 34 56 78" /></div>
             <div><Label>Email</Label><Input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} placeholder="sophie@email.com" /></div>
             <div><Label>Adresse</Label><Input value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} placeholder="12 rue de la Paix, 75002 Paris" /></div>
-            <Button className="w-full" onClick={saveClient} disabled={!editForm.user_name.trim() && !editForm.first_name.trim()}>
+            <Button className="w-full" onClick={saveClient} disabled={!editForm.first_name.trim()}>
               {editingProfileId ? "Enregistrer" : "Ajouter le client"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Client Confirmation */}
+      <AlertDialog open={!!deletingClient} onOpenChange={(open) => !open && setDeletingClient(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce client ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Le profil de {deletingClient?.name} sera supprimé. Les réservations existantes seront conservées.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteClient} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }

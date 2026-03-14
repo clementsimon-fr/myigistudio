@@ -92,7 +92,11 @@ function getWeekDays(baseDate: Date): Date[] {
   return days;
 }
 
-export default function DailyView() {
+interface DailyViewProps {
+  categoryFilter?: string;
+}
+
+export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
   const [viewMode, setViewMode] = useState<"daily" | "weekly">("daily");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -140,7 +144,6 @@ export default function DailyView() {
 
   useEffect(() => { fetchData(); }, [dateStr, viewMode, currentDate]);
 
-  // Build blocks for a given date
   const buildBlocks = (date: Date, resas: Reservation[]): ActivityBlock[] => {
     const result: ActivityBlock[] = [];
     const dn = DAY_NAMES[date.getDay()];
@@ -150,8 +153,8 @@ export default function DailyView() {
     for (const sched of daySchedules) {
       const course = courses.find(c => c.id === sched.course_id);
       if (!course) continue;
-      // Match by schedule_id first, then fallback to activity_name + date for reservations without schedule_id
-      const matchingResas = resas.filter(r => 
+      if (categoryFilter !== "all" && course.category !== categoryFilter) continue;
+      const matchingResas = resas.filter(r =>
         r.status === "confirmé" && (
           r.schedule_id === sched.id ||
           (!r.schedule_id && r.course_id === sched.course_id && r.date === ds) ||
@@ -174,7 +177,8 @@ export default function DailyView() {
 
     const dayWorkshops = workshops.filter(w => w.date === ds);
     for (const ws of dayWorkshops) {
-      const matchingResas = resas.filter(r => 
+      if (categoryFilter !== "all" && ws.category !== categoryFilter) continue;
+      const matchingResas = resas.filter(r =>
         r.status === "confirmé" && (
           r.workshop_id === ws.id ||
           (!r.workshop_id && r.activity_name.trim().toLowerCase().includes(ws.name.trim().toLowerCase()) && r.date === ds)
@@ -197,7 +201,7 @@ export default function DailyView() {
     return result;
   };
 
-  const blocks = useMemo(() => buildBlocks(currentDate, reservations), [dayName, dateStr, schedules, courses, workshops, reservations]);
+  const blocks = useMemo(() => buildBlocks(currentDate, reservations), [dayName, dateStr, schedules, courses, workshops, reservations, categoryFilter]);
 
   const weekBlocks = useMemo(() => {
     if (viewMode !== "weekly") return [];
@@ -205,7 +209,7 @@ export default function DailyView() {
       date,
       blocks: buildBlocks(date, allReservations.filter(r => r.date === formatDateStr(date))),
     }));
-  }, [weekDays, viewMode, schedules, courses, workshops, allReservations]);
+  }, [weekDays, viewMode, schedules, courses, workshops, allReservations, categoryFilter]);
 
   const prevDay = () => { const d = new Date(currentDate); d.setDate(d.getDate() - 1); setCurrentDate(d); };
   const nextDay = () => { const d = new Date(currentDate); d.setDate(d.getDate() + 1); setCurrentDate(d); };
@@ -218,6 +222,7 @@ export default function DailyView() {
   const renderBlock = (block: ActivityBlock) => {
     const totalParticipants = block.reservations.reduce((sum, r) => sum + r.participants, 0);
     const style = CATEGORY_STYLES[block.category] || { block: "bg-muted border-border text-foreground", dot: "bg-muted-foreground" };
+    const fillPct = block.spots > 0 ? Math.round((totalParticipants / block.spots) * 100) : 0;
 
     return (
       <div
@@ -240,6 +245,13 @@ export default function DailyView() {
             <Users className="h-3 w-3" />
             {totalParticipants}/{block.spots}
           </span>
+        </div>
+        {/* Fill progress bar */}
+        <div className="mt-2 h-1.5 rounded-full bg-current/10 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-current/40 transition-all"
+            style={{ width: `${fillPct}%` }}
+          />
         </div>
         {block.instructor && (
           <div className="flex items-center gap-1 mt-1.5 text-xs opacity-70">
@@ -298,7 +310,6 @@ export default function DailyView() {
 
       {viewMode === "daily" ? (
         <>
-          {/* Daily navigation */}
           <div className="flex items-center justify-between">
             <Button variant="outline" size="icon" onClick={prevDay}>
               <ChevronLeft className="h-4 w-4" />
@@ -318,7 +329,6 @@ export default function DailyView() {
             </Button>
           </div>
 
-          {/* Daily blocks */}
           {blocks.length === 0 ? (
             <div className="rounded-xl border bg-card p-12 text-center text-muted-foreground">
               Aucune activité programmée ce jour.
@@ -331,7 +341,6 @@ export default function DailyView() {
         </>
       ) : (
         <>
-          {/* Weekly navigation */}
           <div className="flex items-center justify-between">
             <Button variant="outline" size="icon" onClick={prevWeek}>
               <ChevronLeft className="h-4 w-4" />
@@ -352,7 +361,6 @@ export default function DailyView() {
             </Button>
           </div>
 
-          {/* Weekly blocks */}
           <div className="space-y-4">
             {weekBlocks.map(({ date, blocks: dayBlks }) => {
               const isDayToday = formatDateStr(date) === todayStr;
@@ -397,11 +405,22 @@ export default function DailyView() {
                 {selectedBlock.instructor && <span>· {selectedBlock.instructor}</span>}
               </div>
 
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">
-                  {selectedBlock.reservations.reduce((s, r) => s + r.participants, 0)} / {selectedBlock.spots} participants
-                </span>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">
+                      {selectedBlock.reservations.reduce((s, r) => s + r.participants, 0)} / {selectedBlock.spots} participants
+                    </span>
+                  </div>
+                </div>
+                {/* Fill bar in detail */}
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{ width: `${selectedBlock.spots > 0 ? Math.round((selectedBlock.reservations.reduce((s, r) => s + r.participants, 0) / selectedBlock.spots) * 100) : 0}%` }}
+                  />
+                </div>
               </div>
 
               <div className="border-t pt-3">
