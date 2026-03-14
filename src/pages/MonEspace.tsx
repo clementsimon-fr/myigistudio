@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -43,8 +43,14 @@ const NAV_ITEMS: { value: Section; label: string; icon: typeof Home }[] = [
 
 export default function MonEspace() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const [section, setSection] = useState<Section>("accueil");
+  const sectionParam = searchParams.get("section") as Section | null;
+  const [section, setSection] = useState<Section>(sectionParam || "accueil");
+
+  useEffect(() => {
+    if (sectionParam && sectionParam !== section) setSection(sectionParam);
+  }, [sectionParam]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [cards, setCards] = useState<ClientCard[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -108,7 +114,7 @@ export default function MonEspace() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 pb-20 md:pb-8">
+      <main className="flex-1 pb-8">
         <div className="container max-w-4xl py-4 md:py-8 px-4">
           {/* Header - compact on mobile */}
           <div className="flex items-center justify-between mb-4 md:mb-8">
@@ -380,23 +386,9 @@ export default function MonEspace() {
         </div>
       </main>
 
-      {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t z-40">
-        <div className="flex justify-around py-1.5">
-          {NAV_ITEMS.map(item => (
-            <button
-              key={item.value}
-              onClick={() => setSection(item.value)}
-              className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors min-w-[56px] ${section === item.value ? "text-primary-dark" : "text-muted-foreground"}`}
-            >
-              <item.icon className={`h-5 w-5 ${section === item.value ? "text-primary" : ""}`} />
-              <span className="text-[10px] font-medium">{item.label}</span>
-            </button>
-          ))}
-        </div>
-      </nav>
+      {/* Bottom nav removed — navigation is now in the top Navbar menu */}
 
-      <div className="hidden md:block"><Footer /></div>
+      <Footer />
     </div>
   );
 }

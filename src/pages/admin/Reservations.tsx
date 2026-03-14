@@ -137,7 +137,7 @@ export default function AdminReservations() {
           className="gap-1.5"
           onClick={() => setViewMode("daily")}
         >
-          <CalendarDays className="h-4 w-4" /> Vue journalière
+          <CalendarDays className="h-4 w-4" /> Planning
         </Button>
         <Button
           variant={viewMode === "list" ? "default" : "outline"}

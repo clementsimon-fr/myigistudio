@@ -1,16 +1,32 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, User } from "lucide-react";
+import { Menu, X, User, CalendarDays, CreditCard, MessageSquare, Home, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const navLinks = [
   { label: "Activités", to: "/" },
   { label: "Planning & réservation", to: "/calendrier" },
 ];
 
+const clientSections = [
+  { label: "Accueil", to: "/mon-espace?section=accueil", icon: Home },
+  { label: "Réservations", to: "/mon-espace?section=reservations", icon: CalendarDays },
+  { label: "Mes cartes", to: "/mon-espace?section=cartes", icon: CreditCard },
+  { label: "Forum", to: "/mon-espace?section=communaute", icon: MessageSquare },
+  { label: "Profil", to: "/mon-espace?section=profil", icon: User },
+];
+
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const isClientSpace = location.pathname === "/mon-espace";
 
   return (
     <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b">
@@ -38,17 +54,42 @@ export default function Navbar() {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <Link to="/login">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <User className="h-4 w-4" />
-              Connexion
-            </Button>
-          </Link>
-          <Link to="/calendrier">
-            <Button size="sm" className="bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
-              Réserver
-            </Button>
-          </Link>
+          {isClientSpace ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <div className="h-7 w-7 rounded-full bg-primary/15 flex items-center justify-center">
+                    <User className="h-4 w-4 text-primary-dark" />
+                  </div>
+                  Mon espace
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {clientSections.map((item) => (
+                  <DropdownMenuItem key={item.to} asChild>
+                    <Link to={item.to} className="flex items-center gap-2">
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/login" className="flex items-center gap-2 text-destructive">
+                    <LogOut className="h-4 w-4" />
+                    Déconnexion
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link to="/login">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <User className="h-4 w-4" />
+                Connexion
+              </Button>
+            </Link>
+          )}
         </div>
 
         <button className="md:hidden p-2" onClick={() => setOpen(!open)} aria-label="Menu">
@@ -73,17 +114,31 @@ export default function Navbar() {
             </Link>
           ))}
           <div className="pt-2 border-t flex flex-col gap-2">
-            <Link to="/login" onClick={() => setOpen(false)}>
-              <Button variant="ghost" className="w-full justify-start gap-2">
-                <User className="h-4 w-4" />
-                Connexion
-              </Button>
-            </Link>
-            <Link to="/calendrier" onClick={() => setOpen(false)}>
-              <Button className="w-full bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
-                Réserver
-              </Button>
-            </Link>
+            {isClientSpace ? (
+              <>
+                {clientSections.map((item) => (
+                  <Link key={item.to} to={item.to} onClick={() => setOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start gap-2">
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Button>
+                  </Link>
+                ))}
+                <Link to="/login" onClick={() => setOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start gap-2 text-destructive">
+                    <LogOut className="h-4 w-4" />
+                    Déconnexion
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <Link to="/login" onClick={() => setOpen(false)}>
+                <Button variant="ghost" className="w-full justify-start gap-2">
+                  <User className="h-4 w-4" />
+                  Connexion
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       )}

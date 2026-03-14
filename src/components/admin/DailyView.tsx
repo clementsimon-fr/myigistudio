@@ -2,9 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Clock, Users, User } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Users, User, CalendarDays, CalendarRange } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 
 interface Reservation {
   id: string;
@@ -67,65 +68,91 @@ const DAY_NAMES: Record<number, string> = {
   4: "Jeudi", 5: "Vendredi", 6: "Samedi",
 };
 
-const CATEGORY_COLORS: Record<string, string> = {
-  yoga: "bg-primary/15 border-primary/30 text-primary-dark",
-  poterie: "bg-secondary/30 border-secondary/50 text-secondary-foreground",
-  "bien-etre": "bg-accent/20 border-accent/40 text-accent-foreground",
-};
-
 function timeToMinutes(t: string): number {
   const [h, m] = t.split(":").map(Number);
   return h * 60 + (m || 0);
 }
 
+function formatDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function getWeekDays(baseDate: Date): Date[] {
+  const d = new Date(baseDate);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  const days: Date[] = [];
+  for (let i = 0; i < 7; i++) {
+    const dd = new Date(monday);
+    dd.setDate(monday.getDate() + i);
+    days.push(dd);
+  }
+  return days;
+}
+
 export default function DailyView() {
+  const [viewMode, setViewMode] = useState<"daily" | "weekly">("daily");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [allReservations, setAllReservations] = useState<Reservation[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBlock, setSelectedBlock] = useState<ActivityBlock | null>(null);
 
-  const dateStr = useMemo(() => {
-    const y = currentDate.getFullYear();
-    const m = String(currentDate.getMonth() + 1).padStart(2, "0");
-    const d = String(currentDate.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }, [currentDate]);
-
+  const dateStr = useMemo(() => formatDateStr(currentDate), [currentDate]);
   const dayName = DAY_NAMES[currentDate.getDay()];
+  const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate]);
+  const todayStr = formatDateStr(new Date());
 
   const fetchData = async () => {
     setLoading(true);
-    const [resaRes, schedRes, courseRes, wsRes] = await Promise.all([
-      supabase.from("reservations").select("*").eq("date", dateStr),
-      supabase.from("course_schedules").select("*"),
-      supabase.from("courses").select("id, name, category, instructor"),
-      supabase.from("workshops").select("*"),
-    ]);
-    if (resaRes.data) setReservations(resaRes.data as unknown as Reservation[]);
-    if (schedRes.data) setSchedules(schedRes.data as unknown as Schedule[]);
-    if (courseRes.data) setCourses(courseRes.data as unknown as Course[]);
-    if (wsRes.data) setWorkshops(wsRes.data as unknown as Workshop[]);
+    if (viewMode === "daily") {
+      const [resaRes, schedRes, courseRes, wsRes] = await Promise.all([
+        supabase.from("reservations").select("*").eq("date", dateStr),
+        supabase.from("course_schedules").select("*"),
+        supabase.from("courses").select("id, name, category, instructor"),
+        supabase.from("workshops").select("*"),
+      ]);
+      if (resaRes.data) setReservations(resaRes.data as unknown as Reservation[]);
+      if (schedRes.data) setSchedules(schedRes.data as unknown as Schedule[]);
+      if (courseRes.data) setCourses(courseRes.data as unknown as Course[]);
+      if (wsRes.data) setWorkshops(wsRes.data as unknown as Workshop[]);
+    } else {
+      const weekStart = formatDateStr(weekDays[0]);
+      const weekEnd = formatDateStr(weekDays[6]);
+      const [resaRes, schedRes, courseRes, wsRes] = await Promise.all([
+        supabase.from("reservations").select("*").gte("date", weekStart).lte("date", weekEnd),
+        supabase.from("course_schedules").select("*"),
+        supabase.from("courses").select("id, name, category, instructor"),
+        supabase.from("workshops").select("*"),
+      ]);
+      if (resaRes.data) setAllReservations(resaRes.data as unknown as Reservation[]);
+      if (schedRes.data) setSchedules(schedRes.data as unknown as Schedule[]);
+      if (courseRes.data) setCourses(courseRes.data as unknown as Course[]);
+      if (wsRes.data) setWorkshops(wsRes.data as unknown as Workshop[]);
+    }
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [dateStr]);
+  useEffect(() => { fetchData(); }, [dateStr, viewMode, currentDate]);
 
-  const blocks: ActivityBlock[] = useMemo(() => {
+  // Build blocks for a given date
+  const buildBlocks = (date: Date, resas: Reservation[]): ActivityBlock[] => {
     const result: ActivityBlock[] = [];
+    const dn = DAY_NAMES[date.getDay()];
+    const ds = formatDateStr(date);
 
-    // Recurring courses for this day of week
-    const daySchedules = schedules.filter(s => s.day === dayName);
+    const daySchedules = schedules.filter(s => s.day === dn);
     for (const sched of daySchedules) {
       const course = courses.find(c => c.id === sched.course_id);
       if (!course) continue;
-      const matchingResas = reservations.filter(
-        r => r.schedule_id === sched.id && r.status === "confirmé"
-      );
+      const matchingResas = resas.filter(r => r.schedule_id === sched.id && r.status === "confirmé");
       result.push({
-        id: sched.id,
+        id: `${sched.id}-${ds}`,
         title: course.name,
         category: course.category,
         time: sched.time,
@@ -138,12 +165,9 @@ export default function DailyView() {
       });
     }
 
-    // Workshops on this date
-    const dayWorkshops = workshops.filter(w => w.date === dateStr);
+    const dayWorkshops = workshops.filter(w => w.date === ds);
     for (const ws of dayWorkshops) {
-      const matchingResas = reservations.filter(
-        r => r.workshop_id === ws.id && r.status === "confirmé"
-      );
+      const matchingResas = resas.filter(r => r.workshop_id === ws.id && r.status === "confirmé");
       result.push({
         id: ws.id,
         title: ws.name,
@@ -159,21 +183,76 @@ export default function DailyView() {
 
     result.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
     return result;
-  }, [dayName, dateStr, schedules, courses, workshops, reservations]);
+  };
 
-  const prevDay = () => {
-    const d = new Date(currentDate);
-    d.setDate(d.getDate() - 1);
-    setCurrentDate(d);
-  };
-  const nextDay = () => {
-    const d = new Date(currentDate);
-    d.setDate(d.getDate() + 1);
-    setCurrentDate(d);
-  };
+  const blocks = useMemo(() => buildBlocks(currentDate, reservations), [dayName, dateStr, schedules, courses, workshops, reservations]);
+
+  const weekBlocks = useMemo(() => {
+    if (viewMode !== "weekly") return [];
+    return weekDays.map(date => ({
+      date,
+      blocks: buildBlocks(date, allReservations.filter(r => r.date === formatDateStr(date))),
+    }));
+  }, [weekDays, viewMode, schedules, courses, workshops, allReservations]);
+
+  const prevDay = () => { const d = new Date(currentDate); d.setDate(d.getDate() - 1); setCurrentDate(d); };
+  const nextDay = () => { const d = new Date(currentDate); d.setDate(d.getDate() + 1); setCurrentDate(d); };
+  const prevWeek = () => { const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d); };
+  const nextWeek = () => { const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d); };
   const goToday = () => setCurrentDate(new Date());
 
-  const isToday = dateStr === new Date().toISOString().split("T")[0];
+  const isToday = dateStr === todayStr;
+
+  const renderBlock = (block: ActivityBlock) => {
+    const totalParticipants = block.reservations.reduce((sum, r) => sum + r.participants, 0);
+    const style = CATEGORY_STYLES[block.category] || { block: "bg-muted border-border text-foreground", dot: "bg-muted-foreground" };
+
+    return (
+      <div
+        key={block.id}
+        className={`rounded-xl border-2 p-4 cursor-pointer transition-all hover:shadow-md ${style.block}`}
+        onClick={() => setSelectedBlock(block)}
+      >
+        <div className="flex items-start justify-between mb-2">
+          <h4 className="font-semibold text-sm">{block.title}</h4>
+          <Badge variant="secondary" className="text-[10px] px-1.5">
+            {block.type === "course" ? "Cours" : "Atelier"}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-3 text-xs opacity-80">
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {block.time} - {block.end_time}
+          </span>
+          <span className="flex items-center gap-1">
+            <Users className="h-3 w-3" />
+            {totalParticipants}/{block.spots}
+          </span>
+        </div>
+        {block.instructor && (
+          <div className="flex items-center gap-1 mt-1.5 text-xs opacity-70">
+            <User className="h-3 w-3" />{block.instructor}
+          </div>
+        )}
+        {block.reservations.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-current/10">
+            <div className="flex flex-wrap gap-1.5">
+              {block.reservations.slice(0, 4).map(r => (
+                <Badge key={r.id} variant="outline" className="text-xs bg-background/60">
+                  {r.client_name} {r.participants > 1 && `(×${r.participants})`}
+                </Badge>
+              ))}
+              {block.reservations.length > 4 && (
+                <Badge variant="outline" className="text-xs bg-background/60">
+                  +{block.reservations.length - 4}
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -185,95 +264,119 @@ export default function DailyView() {
 
   return (
     <div className="space-y-4">
-      {/* Date navigation */}
-      <div className="flex items-center justify-between">
-        <Button variant="outline" size="icon" onClick={prevDay}>
-          <ChevronLeft className="h-4 w-4" />
+      {/* View mode toggle */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant={viewMode === "daily" ? "default" : "outline"}
+          size="sm"
+          className="gap-1.5"
+          onClick={() => setViewMode("daily")}
+        >
+          <CalendarDays className="h-4 w-4" /> Journalier
         </Button>
-        <div className="text-center">
-          <h3 className="text-lg font-semibold capitalize">
-            {currentDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-          </h3>
-          {!isToday && (
-            <Button variant="link" size="sm" className="text-xs h-auto p-0" onClick={goToday}>
-              Aujourd'hui
-            </Button>
-          )}
-        </div>
-        <Button variant="outline" size="icon" onClick={nextDay}>
-          <ChevronRight className="h-4 w-4" />
+        <Button
+          variant={viewMode === "weekly" ? "default" : "outline"}
+          size="sm"
+          className="gap-1.5"
+          onClick={() => setViewMode("weekly")}
+        >
+          <CalendarRange className="h-4 w-4" /> Semaine
         </Button>
       </div>
 
-      {/* Activity blocks */}
-      {blocks.length === 0 ? (
-        <div className="rounded-xl border bg-card p-12 text-center text-muted-foreground">
-          Aucune activité programmée ce jour.
-        </div>
+      {viewMode === "daily" ? (
+        <>
+          {/* Daily navigation */}
+          <div className="flex items-center justify-between">
+            <Button variant="outline" size="icon" onClick={prevDay}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="text-center">
+              <h3 className="text-sm md:text-lg font-semibold capitalize">
+                {currentDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+              </h3>
+              {!isToday && (
+                <Button variant="link" size="sm" className="text-xs h-auto p-0" onClick={goToday}>
+                  Aujourd'hui
+                </Button>
+              )}
+            </div>
+            <Button variant="outline" size="icon" onClick={nextDay}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Daily blocks */}
+          {blocks.length === 0 ? (
+            <div className="rounded-xl border bg-card p-12 text-center text-muted-foreground">
+              Aucune activité programmée ce jour.
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {blocks.map(renderBlock)}
+            </div>
+          )}
+        </>
       ) : (
-        <div className="space-y-3">
-          {blocks.map((block) => {
-            const totalParticipants = block.reservations.reduce((sum, r) => sum + r.participants, 0);
-            const colorClass = CATEGORY_COLORS[block.category] || "bg-muted border-border text-foreground";
+        <>
+          {/* Weekly navigation */}
+          <div className="flex items-center justify-between">
+            <Button variant="outline" size="icon" onClick={prevWeek}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="text-center">
+              <h3 className="text-sm md:text-lg font-semibold">
+                Semaine du {weekDays[0].toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+                {" "}au {weekDays[6].toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+              </h3>
+              {!weekDays.some(d => formatDateStr(d) === todayStr) && (
+                <Button variant="link" size="sm" className="text-xs h-auto p-0" onClick={goToday}>
+                  Cette semaine
+                </Button>
+              )}
+            </div>
+            <Button variant="outline" size="icon" onClick={nextWeek}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
 
-            return (
-              <div
-                key={block.id}
-                className={`rounded-xl border-2 p-4 cursor-pointer transition-all hover:shadow-md ${colorClass}`}
-                onClick={() => setSelectedBlock(block)}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <h4 className="font-semibold text-base">{block.title}</h4>
-                    <div className="flex items-center gap-3 text-sm opacity-80">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />
-                        {block.time} - {block.end_time}
-                      </span>
-                      {block.instructor && (
-                        <span>· {block.instructor}</span>
-                      )}
+          {/* Weekly blocks */}
+          <div className="space-y-4">
+            {weekBlocks.map(({ date, blocks: dayBlks }) => {
+              const isDayToday = formatDateStr(date) === todayStr;
+              return (
+                <div key={formatDateStr(date)}>
+                  <div className={`flex items-center gap-3 mb-2 ${isDayToday ? "text-primary-dark" : "text-foreground"}`}>
+                    <div className={`text-sm font-semibold capitalize ${isDayToday ? "bg-primary-dark text-primary-dark-foreground px-3 py-1 rounded-full" : ""}`}>
+                      {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
                     </div>
+                    {isDayToday && <Badge variant="outline" className="text-xs">Aujourd'hui</Badge>}
                   </div>
-                  <div className="text-right space-y-1">
-                    <Badge variant="secondary" className="text-xs">
-                      {block.type === "course" ? "Cours" : "Atelier"}
-                    </Badge>
-                    <div className="flex items-center gap-1 text-sm justify-end">
-                      <Users className="h-3.5 w-3.5" />
-                      <span className="font-medium">{totalParticipants}/{block.spots}</span>
+                  {dayBlks.length === 0 ? (
+                    <div className="rounded-lg border border-dashed bg-muted/10 p-4 text-center text-sm text-muted-foreground">
+                      Aucune activité
                     </div>
-                  </div>
+                  ) : (
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {dayBlks.map(renderBlock)}
+                    </div>
+                  )}
                 </div>
-
-                {/* Quick participant preview */}
-                {block.reservations.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-current/10">
-                    <div className="flex flex-wrap gap-1.5">
-                      {block.reservations.slice(0, 6).map(r => (
-                        <Badge key={r.id} variant="outline" className="text-xs bg-background/60">
-                          {r.client_name} {r.participants > 1 && `(×${r.participants})`}
-                        </Badge>
-                      ))}
-                      {block.reservations.length > 6 && (
-                        <Badge variant="outline" className="text-xs bg-background/60">
-                          +{block.reservations.length - 6}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* Detail dialog */}
       <Dialog open={!!selectedBlock} onOpenChange={(open) => !open && setSelectedBlock(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-display">{selectedBlock?.title}</DialogTitle>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs capitalize">{selectedBlock?.category}</Badge>
+              <Badge variant="secondary" className="text-xs">{selectedBlock?.type === "course" ? "Cours" : "Atelier"}</Badge>
+            </div>
+            <DialogTitle className="font-display text-xl mt-2">{selectedBlock?.title}</DialogTitle>
           </DialogHeader>
           {selectedBlock && (
             <div className="space-y-4 pt-2">
@@ -308,10 +411,7 @@ export default function DailyView() {
                             </p>
                           </div>
                         </div>
-                        <Badge
-                          className="text-xs"
-                          variant={r.status === "confirmé" ? "default" : "destructive"}
-                        >
+                        <Badge className="text-xs" variant={r.status === "confirmé" ? "default" : "destructive"}>
                           {r.status}
                         </Badge>
                       </div>
