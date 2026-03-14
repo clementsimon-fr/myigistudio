@@ -597,28 +597,7 @@ export default function AdminActivites() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Global Defaults Dialog ── */}
-      <Dialog open={defaultsDialogOpen} onOpenChange={setDefaultsDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="font-display flex items-center gap-2">
-              <Settings className="h-5 w-5" /> Modèles par défaut
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-xs text-muted-foreground">Ces textes seront utilisés par défaut pour toutes les activités. Vous pouvez les personnaliser individuellement dans les détails de chaque événement.</p>
-          <div className="space-y-5 pt-2">
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5 text-sm"><Mail className="h-4 w-4" /> Modèle de rappel par défaut</Label>
-              <TemplateEditor value={globalReminder} onChange={setGlobalReminder} variables={REMINDER_VARIABLES} />
-            </div>
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5 text-sm"><MapPin className="h-4 w-4" /> Modalités par défaut</Label>
-              <TemplateEditor value={globalModalities} onChange={setGlobalModalities} variables={MODALITIES_VARIABLES} />
-            </div>
-            <Button className="w-full" onClick={saveGlobalDefaults}>Enregistrer les modèles par défaut</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      
 
       {/* ── Delete confirmation ── */}
       <AlertDialog open={!!deletingItem} onOpenChange={(open) => !open && setDeletingItem(null)}>
