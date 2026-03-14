@@ -306,7 +306,7 @@ export default function Calendrier() {
                     const newVal = subFilter === name ? "all" : name;
                     setSubFilter(newVal);
                     if (newVal !== "all") {
-                      scrollToFirstMatch({ activityName: newVal, category: filter === "all" ? undefined : filter });
+                      scrollToFirstMatch({ activityName: newVal, category: filter as string === "all" ? undefined : filter });
                     }
                   }}
                 >
