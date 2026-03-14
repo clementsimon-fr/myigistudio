@@ -114,7 +114,7 @@ export default function MonEspace() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 pb-20 md:pb-8">
+      <main className="flex-1 pb-8">
         <div className="container max-w-4xl py-4 md:py-8 px-4">
           {/* Header - compact on mobile */}
           <div className="flex items-center justify-between mb-4 md:mb-8">
