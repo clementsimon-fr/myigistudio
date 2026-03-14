@@ -8,90 +8,69 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ActivityCalendar from "@/components/admin/ActivityCalendar";
 import { useSiteSettings, saveSiteSettings } from "@/hooks/useSiteSettings";
 
-// ── Reminder Template Editor ──
+// ── Template Editor (shared for reminder & modalities) ──
 const TEMPLATE_VARIABLES = [
   { key: "{nom}", label: "Nom" },
   { key: "{activité}", label: "Activité" },
   { key: "{date}", label: "Date" },
   { key: "{heure}", label: "Heure" },
+  { key: "{intervenant}", label: "Intervenant" },
+  { key: "{adresse}", label: "Adresse" },
 ];
 
-const DEFAULT_TEMPLATE = "Bonjour {nom}, nous avons hâte de vous retrouver pour {activité} le {date} à {heure}. À bientôt !";
+const DEFAULT_REMINDER = "Bonjour {nom}, nous avons hâte de vous retrouver pour {activité} le {date} à {heure}. À bientôt !";
+const DEFAULT_MODALITIES = "📍 Adresse : {adresse}\n\n🧘 Merci d'arriver 5 minutes avant le début de la séance.\n🚗 Parking disponible à proximité.\n💧 Pensez à apporter votre bouteille d'eau.";
 
-function ReminderTemplateEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const { get, ready } = useSiteSettings();
+function TemplateEditor({ value, onChange, label, icon, defaultTemplate, variables }: {
+  value: string; onChange: (v: string) => void; label: string; icon: React.ReactNode;
+  defaultTemplate: string; variables: { key: string; label: string }[];
+}) {
   const [useDefault, setUseDefault] = useState(!value);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
-  const defaultTemplate = ready ? get("default_reminder_template", DEFAULT_TEMPLATE) : DEFAULT_TEMPLATE;
 
-  useEffect(() => {
-    setUseDefault(!value);
-  }, []);
+  useEffect(() => { setUseDefault(!value); }, []);
 
   const insertVariable = (variable: string) => {
     const ta = textareaRef.current;
-    if (!ta) {
-      onChange((useDefault ? defaultTemplate : value) + variable);
-      return;
-    }
+    if (!ta) { onChange((useDefault ? defaultTemplate : value) + variable); return; }
     const start = ta.selectionStart;
     const end = ta.selectionEnd;
     const current = useDefault ? defaultTemplate : value;
     const newVal = current.substring(0, start) + variable + current.substring(end);
     onChange(newVal);
     if (useDefault) setUseDefault(false);
-    setTimeout(() => {
-      ta.focus();
-      ta.setSelectionRange(start + variable.length, start + variable.length);
-    }, 0);
+    setTimeout(() => { ta.focus(); ta.setSelectionRange(start + variable.length, start + variable.length); }, 0);
   };
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Modèle de rappel</Label>
+        <Label className="flex items-center gap-1.5 text-xs">{icon} {label}</Label>
         <div className="flex gap-1.5">
-          <Button
-            type="button" size="sm" variant={useDefault ? "default" : "outline"}
-            className="h-6 text-[10px] px-2 gap-1"
-            onClick={() => { setUseDefault(true); onChange(""); }}
-          >
+          <Button type="button" size="sm" variant={useDefault ? "default" : "outline"} className="h-6 text-[10px] px-2 gap-1"
+            onClick={() => { setUseDefault(true); onChange(""); }}>
             <FileText className="h-3 w-3" /> Par défaut
           </Button>
-          <Button
-            type="button" size="sm" variant={!useDefault ? "default" : "outline"}
-            className="h-6 text-[10px] px-2"
-            onClick={() => { setUseDefault(false); onChange(defaultTemplate); }}
-          >
+          <Button type="button" size="sm" variant={!useDefault ? "default" : "outline"} className="h-6 text-[10px] px-2"
+            onClick={() => { setUseDefault(false); onChange(defaultTemplate); }}>
             Personnalisé
           </Button>
         </div>
       </div>
-      <Textarea
-        ref={textareaRef}
-        value={useDefault ? defaultTemplate : value}
+      <Textarea ref={textareaRef} value={useDefault ? defaultTemplate : value}
         onChange={e => { onChange(e.target.value); if (useDefault) setUseDefault(false); }}
-        rows={3}
-        readOnly={useDefault}
-        className={useDefault ? "opacity-60" : ""}
-        placeholder="Bonjour {nom}, nous avons hâte de vous retrouver..."
-      />
+        rows={3} readOnly={useDefault} className={`text-xs ${useDefault ? "opacity-60" : ""}`} />
       <div className="flex flex-wrap gap-1">
         <span className="text-[10px] text-muted-foreground mr-1">Insérer :</span>
-        {TEMPLATE_VARIABLES.map(v => (
-          <Button
-            key={v.key} type="button" size="sm" variant="outline"
-            className="h-5 text-[10px] px-1.5 font-mono"
-            onClick={() => insertVariable(v.key)}
-          >
-            {v.key}
-          </Button>
+        {variables.map(v => (
+          <Button key={v.key} type="button" size="sm" variant="outline" className="h-5 text-[10px] px-1.5 font-mono"
+            onClick={() => insertVariable(v.key)}>{v.key}</Button>
         ))}
       </div>
     </div>
@@ -101,36 +80,15 @@ function ReminderTemplateEditor({ value, onChange }: { value: string; onChange: 
 // ── Types ──
 
 interface Schedule {
-  id?: string;
-  day: string;
-  time: string;
-  end_time: string;
-  spots: number;
-  spots_left: number;
+  id?: string; day: string; time: string; end_time: string; spots: number; spots_left: number;
 }
 
 interface UnifiedActivity {
-  id: string;
-  name: string;
-  description: string;
-  long_description: string;
-  category: string;
-  image: string;
-  instructor: string;
-  instructor_id: string | null;
-  reminder_template: string;
-  source: "course" | "workshop";
-  // Course-specific
-  frequency?: string;
-  spots?: number;
-  spots_left?: number;
-  schedules?: Schedule[];
-  // Workshop-specific
-  date?: string;
-  time?: string;
-  end_time?: string;
-  duration?: string;
-  price?: number;
+  id: string; name: string; description: string; long_description: string; category: string;
+  image: string; instructor: string; instructor_id: string | null;
+  reminder_template: string; modalities: string; source: "course" | "workshop";
+  frequency?: string; spots?: number; spots_left?: number; schedules?: Schedule[];
+  date?: string; time?: string; end_time?: string; duration?: string; price?: number;
 }
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
@@ -153,52 +111,28 @@ function calcDuration(start: string, end: string): string {
   return `${h}h${m.toString().padStart(2, "0")}`;
 }
 
-// ── Form types ──
-
 interface EventSlot {
   type: "recurring" | "ponctuel";
-  // Recurring
-  day: string;
-  time: string;
-  end_time: string;
-  spots: number;
-  // Ponctuel
-  date: string;
-  price: number;
+  day: string; time: string; end_time: string; spots: number;
+  date: string; price: number;
+  reminder_template: string;
+  modalities: string;
 }
 
 interface ActivityForm {
-  name: string;
-  description: string;
-  long_description: string;
-  category: string;
-  instructor: string;
-  image: string;
-  reminder_template: string;
-  spots: number;
+  name: string; description: string; long_description: string; category: string;
+  instructor: string; image: string; spots: number;
   events: EventSlot[];
 }
 
 const emptyEvent = (): EventSlot => ({
-  type: "recurring",
-  day: "Lundi",
-  time: "09:00",
-  end_time: "10:00",
-  spots: 12,
-  date: "",
-  price: 0,
+  type: "recurring", day: "Lundi", time: "09:00", end_time: "10:00", spots: 12,
+  date: "", price: 0, reminder_template: "", modalities: "",
 });
 
 const emptyForm = (): ActivityForm => ({
-  name: "",
-  description: "",
-  long_description: "",
-  category: "yoga",
-  instructor: "Élodie",
-  image: "",
-  reminder_template: "",
-  spots: 12,
-  events: [emptyEvent()],
+  name: "", description: "", long_description: "", category: "yoga",
+  instructor: "Élodie", image: "", spots: 12, events: [emptyEvent()],
 });
 
 export default function AdminActivites() {
@@ -233,28 +167,25 @@ export default function AdminActivites() {
     }
 
     const unified: UnifiedActivity[] = [];
-
     if (coursesRes.data) {
       for (const c of coursesRes.data as any[]) {
         unified.push({
           id: c.id, name: c.name, description: c.description || "", long_description: c.long_description || "",
           category: c.category, image: c.image || "", instructor: c.instructor, instructor_id: c.instructor_id,
-          reminder_template: c.reminder_template || "", source: "course",
+          reminder_template: c.reminder_template || "", modalities: c.modalities || "", source: "course",
           frequency: c.frequency, spots: c.spots, spots_left: c.spots_left,
           schedules: schedulesMap[c.id] || [],
         });
       }
     }
-
     if (workshopsRes.data) {
       for (const w of workshopsRes.data as any[]) {
         const instrName = w.instructor_id && instrRes.data
-          ? (instrRes.data as any[]).find(i => i.id === w.instructor_id)?.name || "Élodie"
-          : "Élodie";
+          ? (instrRes.data as any[]).find(i => i.id === w.instructor_id)?.name || "Élodie" : "Élodie";
         unified.push({
           id: w.id, name: w.name, description: w.description || "", long_description: w.long_description || "",
           category: w.category, image: w.image || "", instructor: instrName, instructor_id: w.instructor_id,
-          reminder_template: w.reminder_template || "", source: "workshop",
+          reminder_template: w.reminder_template || "", modalities: w.modalities || "", source: "workshop",
           date: w.date, time: w.time, end_time: w.end_time, duration: w.duration,
           price: w.price, spots: w.spots, spots_left: w.spots_left,
         });
@@ -269,7 +200,6 @@ export default function AdminActivites() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // ── Filtering ──
   const filtered = useMemo(() => {
     let list = activities;
     if (categoryFilter !== "all") list = list.filter(a => a.category === categoryFilter);
@@ -280,39 +210,31 @@ export default function AdminActivites() {
     return list;
   }, [activities, categoryFilter, searchQuery]);
 
-  // ── Open dialog ──
-  const openNew = () => {
-    setEditingActivity(null);
-    setForm(emptyForm());
-    setDialogOpen(true);
-  };
+  const openNew = () => { setEditingActivity(null); setForm(emptyForm()); setDialogOpen(true); };
 
   const openEdit = (a: UnifiedActivity) => {
     setEditingActivity(a);
     const events: EventSlot[] = [];
     if (a.source === "course" && a.schedules) {
       for (const s of a.schedules) {
-        events.push({ type: "recurring", day: s.day, time: s.time, end_time: s.end_time, spots: s.spots, date: "", price: 0 });
+        events.push({ type: "recurring", day: s.day, time: s.time, end_time: s.end_time, spots: s.spots, date: "", price: 0, reminder_template: a.reminder_template, modalities: a.modalities });
       }
     } else if (a.source === "workshop") {
-      events.push({ type: "ponctuel", day: "Lundi", time: a.time || "09:00", end_time: a.end_time || "10:00", spots: a.spots || 8, date: a.date || "", price: a.price || 0 });
+      events.push({ type: "ponctuel", day: "Lundi", time: a.time || "09:00", end_time: a.end_time || "10:00", spots: a.spots || 8, date: a.date || "", price: a.price || 0, reminder_template: a.reminder_template, modalities: a.modalities });
     }
     if (events.length === 0) events.push(emptyEvent());
     setForm({
       name: a.name, description: a.description, long_description: a.long_description,
-      category: a.category, instructor: a.instructor, image: a.image,
-      reminder_template: a.reminder_template, spots: a.spots || 12, events,
+      category: a.category, instructor: a.instructor, image: a.image, spots: a.spots || 12, events,
     });
     setDialogOpen(true);
   };
 
-  // ── Save ──
   const save = async () => {
     const recurringEvents = form.events.filter(e => e.type === "recurring");
     const ponctuelEvents = form.events.filter(e => e.type === "ponctuel");
     const instrId = instructorsList.find(i => i.name === form.instructor)?.id || null;
 
-    // If editing, delete the old entity
     if (editingActivity) {
       if (editingActivity.source === "course") {
         await supabase.from("course_schedules").delete().eq("course_id", editingActivity.id);
@@ -322,7 +244,6 @@ export default function AdminActivites() {
       }
     }
 
-    // Create recurring events as a course
     if (recurringEvents.length > 0) {
       const firstSlot = recurringEvents[0];
       const duration = calcDuration(firstSlot.time, firstSlot.end_time);
@@ -330,11 +251,12 @@ export default function AdminActivites() {
       const { data } = await supabase.from("courses").insert({
         name: form.name, description: form.description, long_description: form.long_description,
         category: form.category, instructor: form.instructor, instructor_id: instrId,
-        image: form.image, reminder_template: form.reminder_template,
+        image: form.image, reminder_template: firstSlot.reminder_template,
+        modalities: firstSlot.modalities,
         spots: firstSlot.spots, spots_left: firstSlot.spots,
         day: firstSlot.day, time: firstSlot.time, end_time: firstSlot.end_time,
         duration, days, frequency: "hebdomadaire",
-      }).select("id").single();
+      } as any).select("id").single();
       if (data) {
         const scheduleRows = recurringEvents.map(e => ({
           course_id: data.id, day: e.day, time: e.time, end_time: e.end_time, spots: e.spots, spots_left: e.spots,
@@ -343,17 +265,17 @@ export default function AdminActivites() {
       }
     }
 
-    // Create ponctuel events as workshops
     for (const evt of ponctuelEvents) {
       if (!evt.date) continue;
       const duration = calcDuration(evt.time, evt.end_time);
       await supabase.from("workshops").insert({
         name: form.name, description: form.description, long_description: form.long_description,
         category: form.category, instructor_id: instrId,
-        image: form.image, reminder_template: form.reminder_template,
+        image: form.image, reminder_template: evt.reminder_template,
+        modalities: evt.modalities,
         date: evt.date, time: evt.time, end_time: evt.end_time,
         duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
-      });
+      } as any);
     }
 
     toast({ title: editingActivity ? "Activité modifiée" : "Activité créée ✓" });
@@ -361,7 +283,6 @@ export default function AdminActivites() {
     fetchData();
   };
 
-  // ── Delete ──
   const executeDelete = async () => {
     if (!deletingItem) return;
     if (deletingItem.source === "course") {
@@ -375,22 +296,18 @@ export default function AdminActivites() {
     fetchData();
   };
 
-  // ── Event slot helpers ──
   const addEvent = (type: "recurring" | "ponctuel") => {
-    setForm(prev => ({
-      ...prev,
-      events: [...prev.events, { ...emptyEvent(), type }],
-    }));
+    setForm(prev => ({ ...prev, events: [...prev.events, { ...emptyEvent(), type }] }));
   };
   const removeEvent = (idx: number) => {
     setForm(prev => ({ ...prev, events: prev.events.filter((_, i) => i !== idx) }));
   };
   const updateEvent = (idx: number, patch: Partial<EventSlot>) => {
-    setForm(prev => ({
-      ...prev,
-      events: prev.events.map((e, i) => i === idx ? { ...e, ...patch } : e),
-    }));
+    setForm(prev => ({ ...prev, events: prev.events.map((e, i) => i === idx ? { ...e, ...patch } : e) }));
   };
+
+  // Expand/collapse per event
+  const [expandedEvent, setExpandedEvent] = useState<number | null>(null);
 
   if (loading) {
     return (
@@ -434,21 +351,16 @@ export default function AdminActivites() {
       ) : (
         <>
           <p className="text-sm text-muted-foreground mb-4">{filtered.length} activité{filtered.length > 1 ? "s" : ""}</p>
-
-          {/* ─── Desktop grid ─── */}
           <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(a => (
               <ActivityCard key={`${a.source}-${a.id}`} activity={a} onEdit={() => openEdit(a)} onDelete={() => setDeletingItem({ id: a.id, source: a.source })} />
             ))}
           </div>
-
-          {/* ─── Mobile list ─── */}
           <div className="space-y-3 md:hidden">
             {filtered.map(a => (
               <ActivityCardMobile key={`${a.source}-${a.id}`} activity={a} onEdit={() => openEdit(a)} onDelete={() => setDeletingItem({ id: a.id, source: a.source })} />
             ))}
           </div>
-
           {filtered.length === 0 && (
             <div className="text-center py-12 text-muted-foreground text-sm">Aucune activité trouvée.</div>
           )}
@@ -465,7 +377,7 @@ export default function AdminActivites() {
           </DialogHeader>
 
           <div className="space-y-5 pt-2">
-            {/* Basic info - 2 columns on desktop */}
+            {/* Basic info */}
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-4">
                 <div><Label>Nom</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Vinyasa Flow" /></div>
@@ -473,9 +385,7 @@ export default function AdminActivites() {
                   <Label>Catégorie</Label>
                   <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                    </SelectContent>
+                    <SelectContent>{CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div>
@@ -499,26 +409,18 @@ export default function AdminActivites() {
                   <Label>Image</Label>
                   <div className="flex items-center gap-3 mt-1.5">
                     {form.image && <img src={form.image} alt="Preview" className="h-14 w-14 rounded-lg object-cover" />}
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const ext = file.name.split(".").pop();
-                        const path = `activities/${Date.now()}.${ext}`;
-                        const { error } = await supabase.storage.from("activity-images").upload(path, file);
-                        if (!error) {
-                          const { data: urlData } = supabase.storage.from("activity-images").getPublicUrl(path);
-                          setForm(prev => ({ ...prev, image: urlData.publicUrl }));
-                        }
-                      }}
-                      className="text-xs"
-                    />
+                    <Input type="file" accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0]; if (!file) return;
+                      const ext = file.name.split(".").pop();
+                      const path = `activities/${Date.now()}.${ext}`;
+                      const { error } = await supabase.storage.from("activity-images").upload(path, file);
+                      if (!error) {
+                        const { data: urlData } = supabase.storage.from("activity-images").getPublicUrl(path);
+                        setForm(prev => ({ ...prev, image: urlData.publicUrl }));
+                      }
+                    }} className="text-xs" />
                     {form.image && (
-                      <Button type="button" variant="link" size="sm" className="text-xs text-destructive p-0 h-auto" onClick={() => setForm(prev => ({ ...prev, image: "" }))}>
-                        ×
-                      </Button>
+                      <Button type="button" variant="link" size="sm" className="text-xs text-destructive p-0 h-auto" onClick={() => setForm(prev => ({ ...prev, image: "" }))}>×</Button>
                     )}
                   </div>
                 </div>
@@ -542,53 +444,72 @@ export default function AdminActivites() {
               </div>
 
               <div className="space-y-3">
-                {form.events.map((evt, idx) => (
-                  <div key={idx} className="rounded-lg border bg-muted/20 p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Badge variant={evt.type === "recurring" ? "default" : "secondary"} className="text-xs gap-1">
-                        {evt.type === "recurring" ? <><Repeat className="h-3 w-3" /> Récurrent</> : <><CalendarIcon className="h-3 w-3" /> Ponctuel</>}
-                      </Badge>
-                      {form.events.length > 1 && (
-                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeEvent(idx)}>
-                          <X className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      {evt.type === "recurring" ? (
-                        <Select value={evt.day} onValueChange={v => updateEvent(idx, { day: v })}>
-                          <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input type="date" className="w-[150px] h-8 text-xs" value={evt.date} onChange={e => updateEvent(idx, { date: e.target.value })} />
-                      )}
-                      <Input type="time" className="w-[100px] h-8 text-xs" value={evt.time} onChange={e => updateEvent(idx, { time: e.target.value })} />
-                      <span className="text-muted-foreground text-xs">→</span>
-                      <Input type="time" className="w-[100px] h-8 text-xs" value={evt.end_time} onChange={e => updateEvent(idx, { end_time: e.target.value })} />
-                      {evt.time && evt.end_time && (
-                        <span className="text-xs text-muted-foreground">{calcDuration(evt.time, evt.end_time)}</span>
-                      )}
-                      <Input type="number" className="w-[70px] h-8 text-xs" value={evt.spots} onChange={e => updateEvent(idx, { spots: Number(e.target.value) })} placeholder="Places" />
-                      {evt.type === "ponctuel" && (
+                {form.events.map((evt, idx) => {
+                  const isExpanded = expandedEvent === idx;
+                  return (
+                    <div key={idx} className="rounded-lg border bg-muted/20 p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Badge variant={evt.type === "recurring" ? "default" : "secondary"} className="text-xs gap-1">
+                          {evt.type === "recurring" ? <><Repeat className="h-3 w-3" /> Récurrent</> : <><CalendarIcon className="h-3 w-3" /> Ponctuel</>}
+                        </Badge>
                         <div className="flex items-center gap-1">
-                          <Input type="number" className="w-[70px] h-8 text-xs" value={evt.price} onChange={e => updateEvent(idx, { price: Number(e.target.value) })} placeholder="Prix" />
-                          <span className="text-xs text-muted-foreground">€</span>
+                          <Button type="button" size="sm" variant="ghost" className="h-6 text-[10px] px-2"
+                            onClick={() => setExpandedEvent(isExpanded ? null : idx)}>
+                            {isExpanded ? "Réduire" : "Détails"}
+                          </Button>
+                          {form.events.length > 1 && (
+                            <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeEvent(idx)}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* ── Bloc Temporalité ── */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {evt.type === "recurring" ? (
+                          <Select value={evt.day} onValueChange={v => updateEvent(idx, { day: v })}>
+                            <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>{DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                          </Select>
+                        ) : (
+                          <Input type="date" className="w-[150px] h-8 text-xs" value={evt.date} onChange={e => updateEvent(idx, { date: e.target.value })} />
+                        )}
+                        <Input type="time" className="w-[100px] h-8 text-xs" value={evt.time} onChange={e => updateEvent(idx, { time: e.target.value })} />
+                        <span className="text-muted-foreground text-xs">→</span>
+                        <Input type="time" className="w-[100px] h-8 text-xs" value={evt.end_time} onChange={e => updateEvent(idx, { end_time: e.target.value })} />
+                        {evt.time && evt.end_time && <span className="text-xs text-muted-foreground">{calcDuration(evt.time, evt.end_time)}</span>}
+                        <Input type="number" className="w-[70px] h-8 text-xs" value={evt.spots} onChange={e => updateEvent(idx, { spots: Number(e.target.value) })} placeholder="Places" />
+                        {evt.type === "ponctuel" && (
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="w-[70px] h-8 text-xs" value={evt.price} onChange={e => updateEvent(idx, { price: Number(e.target.value) })} placeholder="Prix" />
+                            <span className="text-xs text-muted-foreground">€</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ── Expanded: Rappel + Modalités ── */}
+                      {isExpanded && (
+                        <div className="space-y-4 pt-2 border-t mt-2">
+                          <TemplateEditor
+                            value={evt.reminder_template} onChange={v => updateEvent(idx, { reminder_template: v })}
+                            label="Modèle de rappel" icon={<Mail className="h-3.5 w-3.5" />}
+                            defaultTemplate={DEFAULT_REMINDER}
+                            variables={TEMPLATE_VARIABLES.filter(v => ["{nom}", "{activité}", "{date}", "{heure}", "{intervenant}"].includes(v.key))}
+                          />
+                          <TemplateEditor
+                            value={evt.modalities} onChange={v => updateEvent(idx, { modalities: v })}
+                            label="Modalités (consignes, adresse)" icon={<MapPin className="h-3.5 w-3.5" />}
+                            defaultTemplate={DEFAULT_MODALITIES}
+                            variables={TEMPLATE_VARIABLES.filter(v => ["{activité}", "{date}", "{heure}", "{adresse}", "{intervenant}"].includes(v.key))}
+                          />
                         </div>
                       )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
-
-            <ReminderTemplateEditor
-              value={form.reminder_template}
-              onChange={v => setForm({ ...form, reminder_template: v })}
-            />
 
             <Button className="w-full" onClick={save} disabled={!form.name || form.events.length === 0}>
               {editingActivity ? "Enregistrer les modifications" : "Créer l'activité"}
@@ -615,7 +536,6 @@ export default function AdminActivites() {
 }
 
 // ── Desktop Activity Card ──
-
 function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActivity; onEdit: () => void; onDelete: () => void }) {
   const catLabel = CATEGORIES.find(c => c.value === a.category)?.label || a.category;
   return (
@@ -636,13 +556,10 @@ function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActi
             <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={onDelete}><Trash2 className="h-3 w-3" /></Button>
           </div>
         </div>
-
         <div className="flex items-center gap-2 mb-2">
           <Badge variant="outline" className="text-[10px]">{catLabel}</Badge>
           <span className="text-xs text-muted-foreground">{a.instructor}</span>
         </div>
-
-        {/* Show events summary */}
         <div className="space-y-1">
           {a.source === "course" && a.schedules?.map((s, i) => (
             <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -666,7 +583,6 @@ function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActi
 }
 
 // ── Mobile Activity Card ──
-
 function ActivityCardMobile({ activity: a, onEdit, onDelete }: { activity: UnifiedActivity; onEdit: () => void; onDelete: () => void }) {
   return (
     <div className="rounded-xl border bg-card p-4">

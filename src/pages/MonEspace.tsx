@@ -5,16 +5,17 @@ import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarDays, CreditCard, Clock, LogOut, Plus, Loader2, User, MessageSquare, Send, Pencil, XCircle, Star, ArrowRight, Bell } from "lucide-react";
+import { CalendarDays, CreditCard, Clock, LogOut, Plus, Loader2, User, MessageSquare, Send, Pencil, XCircle, Star, ArrowRight, Bell, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-interface Reservation { id: string; client_name: string; activity_name: string; activity_type: string; date: string; time: string; end_time: string; participants: number; status: string; created_at: string; }
+interface Reservation { id: string; client_name: string; activity_name: string; activity_type: string; date: string; time: string; end_time: string; participants: number; status: string; created_at: string; course_id: string | null; workshop_id: string | null; }
 interface ClientCard { id: string; client_name: string; card_name: string; total_sessions: number; used_sessions: number; expires_at: string; }
 interface Profile { id: string; user_name: string; bio: string; show_in_community: boolean; avatar_url: string; reminder_sms: boolean; reminder_email: boolean; }
 interface ForumPost { id: string; author_name: string; category: string; content: string; created_at: string; }
@@ -68,6 +69,8 @@ export default function MonEspace() {
   const [forumFilter, setForumFilter] = useState("all");
   const [resFilter, setResFilter] = useState("all");
   const [viewingReservation, setViewingReservation] = useState<Reservation | null>(null);
+  const [cancelConfirm, setCancelConfirm] = useState<Reservation | null>(null);
+  const [activityModalities, setActivityModalities] = useState<string>("");
 
   useEffect(() => {
     const load = async () => {
@@ -89,10 +92,27 @@ export default function MonEspace() {
     load();
   }, []);
 
+  // Fetch modalities when viewing a reservation
+  useEffect(() => {
+    if (!viewingReservation) { setActivityModalities(""); return; }
+    const fetchModalities = async () => {
+      const r = viewingReservation;
+      if (r.activity_type === "course" && r.course_id) {
+        const { data } = await supabase.from("courses").select("modalities").eq("id", r.course_id).maybeSingle();
+        setActivityModalities((data as any)?.modalities || "");
+      } else if (r.activity_type === "workshop" && r.workshop_id) {
+        const { data } = await supabase.from("workshops").select("modalities").eq("id", r.workshop_id).maybeSingle();
+        setActivityModalities((data as any)?.modalities || "");
+      } else {
+        setActivityModalities("");
+      }
+    };
+    fetchModalities();
+  }, [viewingReservation]);
+
   const yogaRes = reservations.filter(r => r.activity_type === "course");
   const potteryRes = reservations.filter(r => r.activity_type === "workshop" && (r.activity_name.toLowerCase().includes("poterie") || r.activity_name.toLowerCase().includes("tour") || r.activity_name.toLowerCase().includes("modelage")));
   const atelierRes = reservations.filter(r => r.activity_type === "workshop" && !potteryRes.includes(r));
-  const upcomingRes = reservations.filter(r => r.status === "confirmé" && r.date >= new Date().toISOString().split("T")[0]);
   const totalCredits = cards.reduce((sum, c) => sum + (c.total_sessions - c.used_sessions), 0);
 
   const filteredRes = resFilter === "all" ? reservations : resFilter === "yoga" ? yogaRes : resFilter === "poterie" ? potteryRes : atelierRes;
@@ -113,6 +133,15 @@ export default function MonEspace() {
     toast({ title: "Message publié ✓" });
   };
 
+  const handleCancelReservation = async (r: Reservation) => {
+    await supabase.from("reservations").update({ status: "annulé" }).eq("id", r.id);
+    toast({ title: "En annulant, nous espérons que vous allez bien, et, nous vous remercions de prévenir l'intervenant. À bientôt ❤️" });
+    setCancelConfirm(null);
+    setViewingReservation(null);
+    const { data } = await supabase.from("reservations").select("*").eq("client_name", CLIENT_NAME).order("date", { ascending: false });
+    if (data) setReservations(data as unknown as Reservation[]);
+  };
+
   const filteredPosts = forumFilter === "all" ? forumPosts : forumPosts.filter(p => p.category === forumFilter);
 
   return (
@@ -120,7 +149,7 @@ export default function MonEspace() {
       <Navbar />
       <main className="flex-1 pb-8">
         <div className="container max-w-4xl py-4 md:py-8 px-4">
-          {/* Header - compact on mobile */}
+          {/* Header */}
           <div className="flex items-center justify-between mb-4 md:mb-8">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/15 flex items-center justify-center">
@@ -137,7 +166,7 @@ export default function MonEspace() {
             </div>
           </div>
 
-          {/* Desktop sidebar nav */}
+          {/* Desktop nav */}
           <div className="hidden md:flex gap-2 mb-6 border-b pb-3">
             {NAV_ITEMS.map(item => (
               <Button key={item.value} variant={section === item.value ? "default" : "ghost"} size="sm" className="gap-1.5" onClick={() => setSection(item.value)}>
@@ -168,31 +197,9 @@ export default function MonEspace() {
                   ) : (
                     <div className="space-y-2">
                       {filteredRes.map(r => {
-                        // Check if cancellation is allowed (12h before)
                         const isConfirmed = r.status === "confirmé";
                         const todayStr = new Date().toISOString().split("T")[0];
                         const isFuture = r.date >= todayStr;
-                        let canCancel = false;
-                        if (isConfirmed && isFuture && r.time) {
-                          const [h, m] = r.time.split(":").map(Number);
-                          const courseStart = new Date(r.date + "T00:00:00");
-                          courseStart.setHours(h, m, 0, 0);
-                          const hoursUntil = (courseStart.getTime() - Date.now()) / (1000 * 60 * 60);
-                          canCancel = hoursUntil >= 12;
-                        }
-
-                        const handleCancel = async () => {
-                          await supabase.from("reservations").update({ status: "annulé" }).eq("id", r.id);
-                          // Re-credit spots
-                          if (r.activity_type === "course") {
-                            // Find schedule to re-credit - we don't have schedule_id in the Reservation type here
-                            // so we just refetch
-                          }
-                          toast({ title: "Réservation annulée" });
-                          // Reload
-                          const { data } = await supabase.from("reservations").select("*").eq("client_name", CLIENT_NAME).order("date", { ascending: false });
-                          if (data) setReservations(data as unknown as Reservation[]);
-                        };
 
                         return (
                           <div key={r.id} className="flex items-center gap-3 rounded-lg border bg-card p-3">
@@ -207,7 +214,7 @@ export default function MonEspace() {
                                 {r.participants > 1 && <span>· {r.participants} pers.</span>}
                               </div>
                             </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="flex items-center gap-1.5 shrink-0">
                               {isConfirmed && isFuture && (
                                 <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] gap-1" onClick={() => setViewingReservation(r)}>
                                   <ArrowRight className="h-3 w-3" /> Accéder
@@ -324,7 +331,6 @@ export default function MonEspace() {
               {/* ─── COMMUNAUTÉ ─── */}
               {section === "communaute" && (
                 <div className="space-y-4">
-                  {/* Members */}
                   {communityMembers.length > 0 && (
                     <div>
                       <h3 className="text-xs font-medium text-muted-foreground mb-2">Membres actifs</h3>
@@ -341,7 +347,6 @@ export default function MonEspace() {
                     </div>
                   )}
 
-                  {/* New post */}
                   <div className="rounded-xl border bg-card p-3 space-y-2">
                     <div className="flex gap-2">
                       <Select value={newPostCategory} onValueChange={setNewPostCategory}>
@@ -355,7 +360,6 @@ export default function MonEspace() {
                     </Button>
                   </div>
 
-                  {/* Filter */}
                   <div className="flex flex-wrap gap-1.5">
                     <Button size="sm" variant={forumFilter === "all" ? "default" : "outline"} className="rounded-full text-xs h-7" onClick={() => setForumFilter("all")}>Tous</Button>
                     {FORUM_CATEGORIES.map(c => (
@@ -363,7 +367,6 @@ export default function MonEspace() {
                     ))}
                   </div>
 
-                  {/* Posts */}
                   <div className="space-y-2">
                     {filteredPosts.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-6">Aucun message. Soyez le premier !</p>
@@ -412,14 +415,6 @@ export default function MonEspace() {
               canCancel = hoursUntil >= 12;
             }
 
-            const handleCancel = async () => {
-              await supabase.from("reservations").update({ status: "annulé" }).eq("id", r.id);
-              toast({ title: "Réservation annulée" });
-              setViewingReservation(null);
-              const { data } = await supabase.from("reservations").select("*").eq("client_name", CLIENT_NAME).order("date", { ascending: false });
-              if (data) setReservations(data as unknown as Reservation[]);
-            };
-
             return (
               <>
                 <DialogHeader>
@@ -446,16 +441,21 @@ export default function MonEspace() {
                     <span>Type : {r.activity_type === "course" ? "Cours" : "Atelier"}</span>
                   </div>
 
+                  {/* Modalités */}
+                  {activityModalities && (
+                    <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <MapPin className="h-3.5 w-3.5 text-primary-dark" />
+                        <span className="text-xs font-semibold text-primary-dark">Modalités & consignes</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground whitespace-pre-line">{activityModalities}</p>
+                    </div>
+                  )}
+
                   <div className="flex gap-2 pt-2">
-                    <Button className="flex-1 gap-1.5" variant="outline" onClick={() => {
-                      setViewingReservation(null);
-                      navigate(`/calendrier?filter=${r.activity_type === "course" ? "yoga" : "poterie"}&activity=${encodeURIComponent(r.activity_name)}`);
-                    }}>
-                      <CalendarDays className="h-4 w-4" /> Voir le planning
-                    </Button>
                     {canCancel && (
-                      <Button variant="destructive" className="gap-1.5" onClick={handleCancel}>
-                        <XCircle className="h-4 w-4" /> Annuler
+                      <Button variant="destructive" className="flex-1 gap-1.5" onClick={() => setCancelConfirm(r)}>
+                        <XCircle className="h-4 w-4" /> Annuler la réservation
                       </Button>
                     )}
                   </div>
@@ -469,7 +469,26 @@ export default function MonEspace() {
         </DialogContent>
       </Dialog>
 
-      {/* Bottom nav removed — navigation is now in the top Navbar menu */}
+      {/* Cancel confirmation dialog */}
+      <AlertDialog open={!!cancelConfirm} onOpenChange={(open) => !open && setCancelConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer l'annulation</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span>Êtes-vous sûr(e) de vouloir annuler cette réservation ?</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Retour</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => cancelConfirm && handleCancelReservation(cancelConfirm)}
+            >
+              Confirmer l'annulation
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Footer />
     </div>
