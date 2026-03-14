@@ -84,6 +84,9 @@ export default function Reserver() {
   const [participants, setParticipants] = useState(1);
   const [confirmed, setConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [conditions, setConditions] = useState<ConditionRow[]>([]);
+  const [conditionsAccepted, setConditionsAccepted] = useState(false);
+  const [bookingBlocked, setBookingBlocked] = useState<string | null>(null);
 
   useEffect(() => {
     if (!activityType || !activityId) { setLoading(false); return; }
