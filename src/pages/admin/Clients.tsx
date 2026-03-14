@@ -60,24 +60,37 @@ export default function AdminClients() {
 
   const loadClients = async () => {
     setLoading(true);
-    const { data } = await supabase.from("reservations").select("client_name, date").order("date", { ascending: true });
-    if (data) {
-      const map = new Map<string, { count: number; first: string }>();
-      (data as any[]).forEach((r) => {
+    const [resData, voucherData] = await Promise.all([
+      supabase.from("reservations").select("client_name, date").order("date", { ascending: true }),
+      supabase.from("gift_vouchers").select("beneficiary_name, buyer_name, created_at"),
+    ]);
+    const map = new Map<string, { count: number; first: string; source: string }>();
+    if (resData.data) {
+      (resData.data as any[]).forEach((r) => {
         const existing = map.get(r.client_name);
         if (existing) {
           existing.count++;
         } else {
-          map.set(r.client_name, { count: 1, first: r.date });
+          map.set(r.client_name, { count: 1, first: r.date, source: "client" });
         }
       });
-      const list: AggregatedClient[] = Array.from(map.entries()).map(([name, v]) => ({
-        name,
-        totalReservations: v.count,
-        firstReservation: v.first,
-      }));
-      setClients(list);
     }
+    // Add gift voucher beneficiaries/buyers as "future clients" if not already in map
+    if (voucherData.data) {
+      (voucherData.data as any[]).forEach((v) => {
+        [v.beneficiary_name, v.buyer_name].filter(Boolean).forEach((name: string) => {
+          if (name && !map.has(name)) {
+            map.set(name, { count: 0, first: v.created_at?.split("T")[0] || "", source: "voucher" });
+          }
+        });
+      });
+    }
+    const list: AggregatedClient[] = Array.from(map.entries()).map(([name, v]) => ({
+      name,
+      totalReservations: v.count,
+      firstReservation: v.first,
+    }));
+    setClients(list);
     setLoading(false);
   };
 
