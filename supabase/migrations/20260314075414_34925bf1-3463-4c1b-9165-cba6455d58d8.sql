@@ -1,0 +1,1 @@
+ALTER TABLE public.instructors ADD COLUMN last_name text NOT NULL DEFAULT '';
