@@ -604,6 +604,12 @@ export default function AdminActivites() {
                             <span className="text-xs text-muted-foreground">€</span>
                           </div>
                         )}
+                        {evt.type === "recurring" && (
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="w-[70px] h-8 text-xs" value={evt.price} onChange={e => updateEvent(idx, { price: Number(e.target.value) })} placeholder="Prix" />
+                            <span className="text-xs text-muted-foreground">€</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* ── Expanded: Rappel + Modalités per event ── */}
