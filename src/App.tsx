@@ -19,6 +19,7 @@ import AdminContenu from "./pages/admin/Contenu";
 import AdminBonsCadeaux from "./pages/admin/BonsCadeaux";
 import AdminConditions from "./pages/admin/Conditions";
 import AdminFonctionnalites from "./pages/admin/Fonctionnalites";
+import AdminContrat from "./pages/admin/Contrat";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
