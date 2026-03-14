@@ -63,20 +63,22 @@ export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFi
 
       {/* Level 2: Category filters */}
       <div className="container pb-2 pt-1 md:pt-2">
-        <div className="flex items-center justify-center gap-1.5 flex-nowrap overflow-x-auto">
-          <span className="text-xs font-medium text-muted-foreground shrink-0">Filtre</span>
-          {CATEGORY_FILTERS.map(f => (
-            <Button
-              key={f.value}
-              variant={filter === f.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleFilterChange(f.value)}
-              className="rounded-full gap-1.5 h-7 text-xs shrink-0"
-            >
-              {f.dot && <div className={`w-2 h-2 rounded-full ${f.dot}`} />}
-              {f.label}
-            </Button>
-          ))}
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-xs font-medium text-muted-foreground">Filtre</span>
+          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+            {CATEGORY_FILTERS.map(f => (
+              <Button
+                key={f.value}
+                variant={filter === f.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleFilterChange(f.value)}
+                className="rounded-full gap-1.5 h-7 text-xs"
+              >
+                {f.dot && <div className={`w-2 h-2 rounded-full ${f.dot}`} />}
+                {f.label}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
