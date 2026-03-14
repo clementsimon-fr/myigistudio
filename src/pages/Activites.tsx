@@ -230,7 +230,7 @@ export default function Activites() {
                   <InstructorBadge instructor={descriptionCourse.instructor} photo={getInstructorPhoto(descriptionCourse.instructor_id, descriptionCourse.instructor)} />
                   <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionCourse.schedules[0]?.spots || descriptionCourse.spots} places max</div>
                 </div>
-                <Link to="/calendrier?filter=yoga"><Button className="w-full">Réserver</Button></Link>
+                <Link to={`/calendrier?filter=yoga&activity=${encodeURIComponent(descriptionCourse.name)}`}><Button className="w-full">Réserver</Button></Link>
               </div>
             </>
           )}
