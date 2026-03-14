@@ -147,15 +147,16 @@ export default function Calendrier() {
 
   // Count total upcoming dates for the active filter
   const matchingDatesCount = useMemo(() => {
-    if (filter === "all") return 0;
+    if (filter === "all" && subFilter === "all") return 0;
     const today = formatDateStr(new Date());
     let count = 0;
-    // Recurring courses: count unique schedule days
     const filteredSchedules = schedules.filter(s => {
       const course = courses.find(c => c.id === s.course_id);
-      return course && course.category === filter;
+      if (!course) return false;
+      if (filter !== "all" && course.category !== filter) return false;
+      if (subFilter !== "all" && course.name !== subFilter) return false;
+      return true;
     });
-    // Count in next 8 weeks
     for (let w = 0; w < 8; w++) {
       for (let d = 0; d < 7; d++) {
         const date = new Date();
@@ -164,10 +165,13 @@ export default function Calendrier() {
         count += filteredSchedules.filter(s => s.day === dayName).length;
       }
     }
-    // Ponctuel workshops
-    count += workshops.filter(ws => ws.category === filter && ws.date >= today).length;
+    count += workshops.filter(ws => {
+      if (filter !== "all" && ws.category !== filter) return false;
+      if (subFilter !== "all" && ws.name !== subFilter) return false;
+      return ws.date >= today;
+    }).length;
     return count;
-  }, [filter, courses, schedules, workshops]);
+  }, [filter, subFilter, courses, schedules, workshops]);
 
   const prevWeek = () => { const d = new Date(currentWeekStart); d.setDate(d.getDate() - 7); setCurrentWeekStart(d); };
   const nextWeek = () => { const d = new Date(currentWeekStart); d.setDate(d.getDate() + 7); setCurrentWeekStart(d); };
