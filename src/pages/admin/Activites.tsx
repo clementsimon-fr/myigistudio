@@ -564,9 +564,15 @@ export default function AdminActivites() {
                   return (
                     <div key={idx} className="rounded-lg border bg-muted/20 p-3 space-y-2">
                       <div className="flex items-center justify-between">
-                        <Badge variant={evt.type === "recurring" ? "default" : "secondary"} className="text-xs gap-1">
-                          {evt.type === "recurring" ? <><Repeat className="h-3 w-3" /> Récurrent</> : <><CalendarIcon className="h-3 w-3" /> Ponctuel</>}
-                        </Badge>
+                      <Select value={evt.type} onValueChange={v => updateEvent(idx, { type: v as "recurring" | "ponctuel" })}>
+                        <SelectTrigger className="w-[140px] h-7 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="recurring"><span className="flex items-center gap-1"><Repeat className="h-3 w-3" /> Récurrent</span></SelectItem>
+                          <SelectItem value="ponctuel"><span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> Ponctuel</span></SelectItem>
+                        </SelectContent>
+                      </Select>
                         <div className="flex items-center gap-1">
                           <Button type="button" size="sm" variant="ghost" className="h-6 text-[10px] px-2"
                             onClick={() => setExpandedEvent(isExpanded ? null : idx)}>

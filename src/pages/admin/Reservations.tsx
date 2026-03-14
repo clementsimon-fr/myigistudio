@@ -160,7 +160,7 @@ export default function AdminReservations() {
     <AdminLayout title="Réservations">
       {/* Views & Filters bar */}
       <div className="flex flex-col gap-3 mb-4">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Button
               variant={viewMode === "list" ? "default" : "outline"}
@@ -179,7 +179,9 @@ export default function AdminReservations() {
               <CalendarDays className="h-4 w-4" /> Planning
             </Button>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+        </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+          <div className="flex gap-1.5 flex-wrap">
             {CATEGORY_FILTERS.map(f => (
               <Badge
                 key={f.value}
@@ -190,15 +192,15 @@ export default function AdminReservations() {
                 {f.label}
               </Badge>
             ))}
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 h-8 w-40 text-xs"
-              />
-            </div>
+          </div>
+          <div className="relative flex-1 w-full sm:w-auto sm:max-w-[220px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 h-9 text-sm"
+            />
           </div>
         </div>
       </div>
