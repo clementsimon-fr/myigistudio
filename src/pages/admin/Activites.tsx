@@ -39,12 +39,30 @@ const REMINDER_TIMINGS = [
   { value: "1h", label: "1 heure" },
 ];
 
-const INTENSITY_OPTIONS = [
+const YOGA_INTENSITY = [
   { value: "none", label: "Non défini" },
   { value: "doux", label: "🌿 Doux" },
   { value: "equilibre", label: "⚖️ Équilibré" },
   { value: "dynamique", label: "🔥 Dynamique" },
 ];
+
+const ATELIER_INTENSITY = [
+  { value: "none", label: "Non défini" },
+  { value: "novice", label: "🌱 Novice" },
+  { value: "amateur", label: "🎨 Amateur" },
+  { value: "experimente", label: "⭐ Expérimenté" },
+];
+
+function getIntensityOptions(category: string) {
+  if (category === "yoga") return YOGA_INTENSITY;
+  return ATELIER_INTENSITY;
+}
+
+function getIntensityLabel(value: string | undefined) {
+  if (!value || value === "none") return undefined;
+  const all = [...YOGA_INTENSITY, ...ATELIER_INTENSITY];
+  return all.find(i => i.value === value)?.label;
+}
 
 // ── Inline Template Editor ──
 function TemplateEditor({ value, onChange, variables, readOnly, showInsertModalities }: {
