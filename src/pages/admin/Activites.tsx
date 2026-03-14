@@ -278,8 +278,8 @@ export default function AdminActivites() {
       await supabase.from("workshops").insert({
         name: form.name, description: form.description, long_description: form.long_description,
         category: form.category, instructor_id: instrId,
-        image: form.image, reminder_template: resolveReminder(evt),
-        modalities: resolveModalities(evt),
+        image: form.image, reminder_template: form.default_reminder,
+        modalities: form.default_modalities,
         date: evt.date, time: evt.time, end_time: evt.end_time,
         duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
       } as any);
