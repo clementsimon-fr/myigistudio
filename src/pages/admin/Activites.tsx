@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ActivityCalendar from "@/components/admin/ActivityCalendar";

@@ -250,7 +250,14 @@ export default function Calendrier() {
                   variant={subFilter === name ? "default" : "outline"}
                   size="sm"
                   className="rounded-full h-6 text-[11px] px-3"
-                  onClick={() => setSubFilter(subFilter === name ? "all" : name)}
+                  onClick={() => {
+                    const newVal = subFilter === name ? "all" : name;
+                    setSubFilter(newVal);
+                    // Auto-scroll to first matching date
+                    if (newVal !== "all") {
+                      scrollToFirstMatch(newVal);
+                    }
+                  }}
                 >
                   {name}
                 </Button>

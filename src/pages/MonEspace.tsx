@@ -203,10 +203,10 @@ export default function MonEspace() {
                                 {r.participants > 1 && <span>· {r.participants} pers.</span>}
                               </div>
                             </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {canCancel && (
-                                <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive hover:text-destructive text-[10px] gap-1" onClick={handleCancel}>
-                                  <XCircle className="h-3 w-3" /> Annuler
+                    <div className="flex items-center gap-1.5 shrink-0">
+                              {isConfirmed && isFuture && (
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] gap-1" onClick={() => setViewingReservation(r)}>
+                                  <ArrowRight className="h-3 w-3" /> Accéder
                                 </Button>
                               )}
                               <Badge variant="outline" className={`text-[10px] ${statusColors[r.status] || ""}`}>{r.status}</Badge>
