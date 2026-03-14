@@ -257,7 +257,7 @@ export default function AdminActivites() {
       category: a.category, instructor: a.instructor, image: a.image, spots: a.spots || 12, events,
       default_reminder: a.reminder_template || currentDefaultReminder,
       default_modalities: a.modalities || currentDefaultModalities,
-      intensity: a.intensity || "",
+      intensity: a.intensity || "none",
       reminder_timing: a.reminder_timing || "1j",
     });
     setDialogOpen(true);
