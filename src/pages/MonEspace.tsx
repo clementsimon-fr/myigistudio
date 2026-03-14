@@ -165,8 +165,8 @@ export default function MonEspace() {
                       {filteredRes.map(r => (
                         <div key={r.id} className="flex items-center gap-3 rounded-lg border bg-card p-3">
                           <div className="text-center min-w-[40px]">
-                            <p className="text-base font-bold text-primary-dark">{new Date(r.date).getDate()}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase">{new Date(r.date).toLocaleDateString("fr-FR", { month: "short" })}</p>
+                            <p className="text-base font-bold text-primary-dark">{new Date(r.date + "T00:00:00").getDate()}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase">{new Date(r.date + "T00:00:00").toLocaleDateString("fr-FR", { month: "short" })}</p>
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm truncate">{r.activity_name}</p>
