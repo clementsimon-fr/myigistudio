@@ -25,11 +25,12 @@ const statusColors: Record<string, string> = {
 };
 const CLIENT_NAME = "Sophie";
 
-type Section = "reservations" | "cartes" | "profil" | "feedback";
+type Section = "reservations" | "cartes" | "cadeaux" | "profil" | "feedback";
 
 const NAV_ITEMS: { value: Section; label: string; icon: typeof CalendarDays }[] = [
-  { value: "reservations", label: "Résa", icon: CalendarDays },
+  { value: "reservations", label: "Réservations", icon: CalendarDays },
   { value: "cartes", label: "Cartes Yoga", icon: CreditCard },
+  { value: "cadeaux", label: "Bons Cadeaux", icon: Star },
   { value: "feedback", label: "Feedback", icon: Star },
   { value: "profil", label: "Profil", icon: User },
 ];

@@ -167,7 +167,7 @@ const emptyEvent = (): EventSlot => ({
 
 const emptyForm = (): ActivityForm => ({
   name: "", description: "", long_description: "", category: "yoga",
-  instructor: "Élodie", image: "", spots: 12, events: [emptyEvent()],
+  instructor: "", image: "", spots: 12, events: [emptyEvent()],
   default_reminder: "", default_modalities: "",
   intensity: "none", reminder_timing: "1j",
 });
