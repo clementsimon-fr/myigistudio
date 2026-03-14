@@ -133,6 +133,7 @@ export type Database = {
           instructor: string
           instructor_id: string | null
           long_description: string
+          modalities: string
           name: string
           reminder_template: string
           spots: number
@@ -153,6 +154,7 @@ export type Database = {
           instructor?: string
           instructor_id?: string | null
           long_description?: string
+          modalities?: string
           name: string
           reminder_template?: string
           spots?: number
@@ -173,6 +175,7 @@ export type Database = {
           instructor?: string
           instructor_id?: string | null
           long_description?: string
+          modalities?: string
           name?: string
           reminder_template?: string
           spots?: number
@@ -581,6 +584,7 @@ export type Database = {
           image: string
           instructor_id: string | null
           long_description: string
+          modalities: string
           name: string
           price: number
           reminder_template: string
@@ -600,6 +604,7 @@ export type Database = {
           image?: string
           instructor_id?: string | null
           long_description?: string
+          modalities?: string
           name: string
           price?: number
           reminder_template?: string
@@ -619,6 +624,7 @@ export type Database = {
           image?: string
           instructor_id?: string | null
           long_description?: string
+          modalities?: string
           name?: string
           price?: number
           reminder_template?: string
