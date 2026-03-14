@@ -289,7 +289,7 @@ export default function AdminActivites() {
         spots: firstSlot.spots, spots_left: firstSlot.spots,
         day: firstSlot.day, time: firstSlot.time, end_time: firstSlot.end_time,
         duration, days, frequency: "hebdomadaire",
-        intensity: form.intensity, reminder_timing: form.reminder_timing,
+        intensity: form.intensity === "none" ? "" : form.intensity, reminder_timing: form.reminder_timing,
       } as any).select("id").single();
       if (data) {
         const scheduleRows = recurringEvents.map(e => ({
