@@ -160,6 +160,40 @@ export default function AdminReservations() {
         </Button>
       </div>
 
+      {/* Stats cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <CalendarDays className="h-4 w-4 text-primary-dark" />
+            <span className="text-xs text-muted-foreground">Réservations du jour</span>
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            {reservations.filter(r => r.status === "confirmé" && r.date === new Date().toISOString().split("T")[0]).length}
+          </p>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="h-4 w-4 text-primary" />
+            <span className="text-xs text-muted-foreground">Clients inscrits</span>
+          </div>
+          <p className="text-2xl font-bold text-foreground">{new Set(reservations.map(r => r.client_name)).size}</p>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="h-4 w-4 text-accent" />
+            <span className="text-xs text-muted-foreground">Taux de remplissage</span>
+          </div>
+          <p className="text-2xl font-bold text-foreground">{fillRate}%</p>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Clock className="h-4 w-4 text-primary-dark" />
+            <span className="text-xs text-muted-foreground">Activités</span>
+          </div>
+          <p className="text-2xl font-bold text-foreground">{activitiesCount}</p>
+        </div>
+      </div>
+
       {viewMode === "daily" ? (
         <DailyView />
       ) : (

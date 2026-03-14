@@ -65,8 +65,7 @@ const STATUS_OPTIONS = [
 ];
 
 function getCostLabel(impact: string, urgency: number): { text: string; detail: string } {
-  if (urgency === 4) return { text: "Sur devis", detail: "Cette demande sera discutée et chiffrée sur mesure." };
-  if (impact === "fonctionnalite") return { text: "20€", detail: "Cette fonctionnalité sera facturée en tant que ticket." };
+  if (impact === "fonctionnalite") return { text: "50€", detail: "Cette création sera facturée en tant que ticket." };
   if (urgency === 1) return { text: "Inclus", detail: "Groupée avec vos autres demandes urgentes du jour." };
   return { text: "Inclus", detail: "Inclus dans votre quota hebdomadaire." };
 }

@@ -132,10 +132,12 @@ export type Database = {
           image: string
           instructor: string
           instructor_id: string | null
+          intensity: string
           long_description: string
           modalities: string
           name: string
           reminder_template: string
+          reminder_timing: string
           spots: number
           spots_left: number
           time: string
@@ -153,10 +155,12 @@ export type Database = {
           image?: string
           instructor?: string
           instructor_id?: string | null
+          intensity?: string
           long_description?: string
           modalities?: string
           name: string
           reminder_template?: string
+          reminder_timing?: string
           spots?: number
           spots_left?: number
           time: string
@@ -174,10 +178,12 @@ export type Database = {
           image?: string
           instructor?: string
           instructor_id?: string | null
+          intensity?: string
           long_description?: string
           modalities?: string
           name?: string
           reminder_template?: string
+          reminder_timing?: string
           spots?: number
           spots_left?: number
           time?: string
@@ -592,11 +598,13 @@ export type Database = {
           id: string
           image: string
           instructor_id: string | null
+          intensity: string
           long_description: string
           modalities: string
           name: string
           price: number
           reminder_template: string
+          reminder_timing: string
           spots: number
           spots_left: number
           time: string
@@ -612,11 +620,13 @@ export type Database = {
           id?: string
           image?: string
           instructor_id?: string | null
+          intensity?: string
           long_description?: string
           modalities?: string
           name: string
           price?: number
           reminder_template?: string
+          reminder_timing?: string
           spots?: number
           spots_left?: number
           time?: string
@@ -632,11 +642,13 @@ export type Database = {
           id?: string
           image?: string
           instructor_id?: string | null
+          intensity?: string
           long_description?: string
           modalities?: string
           name?: string
           price?: number
           reminder_template?: string
+          reminder_timing?: string
           spots?: number
           spots_left?: number
           time?: string
