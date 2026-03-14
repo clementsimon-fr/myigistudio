@@ -51,6 +51,7 @@ export default function MonEspace() {
   useEffect(() => {
     if (sectionParam && sectionParam !== section) setSection(sectionParam);
   }, [sectionParam]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [cards, setCards] = useState<ClientCard[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [forumPosts, setForumPosts] = useState<ForumPost[]>([]);
