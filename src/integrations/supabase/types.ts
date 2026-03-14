@@ -84,6 +84,7 @@ export type Database = {
           day: string
           end_time: string
           id: string
+          price: number
           spots: number
           spots_left: number
           time: string
@@ -94,6 +95,7 @@ export type Database = {
           day: string
           end_time?: string
           id?: string
+          price?: number
           spots?: number
           spots_left?: number
           time: string
@@ -104,6 +106,7 @@ export type Database = {
           day?: string
           end_time?: string
           id?: string
+          price?: number
           spots?: number
           spots_left?: number
           time?: string
@@ -197,6 +200,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      feature_examples: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          impact: string
+          target: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          impact?: string
+          target?: string
+          title?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          impact?: string
+          target?: string
+          title?: string
+        }
+        Relationships: []
       }
       feature_requests: {
         Row: {
@@ -461,30 +491,45 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: string
           avatar_url: string
           bio: string
           created_at: string
+          email: string
+          first_name: string
           id: string
+          last_name: string
+          phone: string
           reminder_email: boolean
           reminder_sms: boolean
           show_in_community: boolean
           user_name: string
         }
         Insert: {
+          address?: string
           avatar_url?: string
           bio?: string
           created_at?: string
+          email?: string
+          first_name?: string
           id?: string
+          last_name?: string
+          phone?: string
           reminder_email?: boolean
           reminder_sms?: boolean
           show_in_community?: boolean
           user_name: string
         }
         Update: {
+          address?: string
           avatar_url?: string
           bio?: string
           created_at?: string
+          email?: string
+          first_name?: string
           id?: string
+          last_name?: string
+          phone?: string
           reminder_email?: boolean
           reminder_sms?: boolean
           show_in_community?: boolean
