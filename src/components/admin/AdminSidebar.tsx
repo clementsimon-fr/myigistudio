@@ -24,6 +24,7 @@ const items = [
   { title: "Conditions", url: "/admin/conditions", icon: ScrollText },
   { title: "Contenu du site", url: "/admin/contenu", icon: FileText },
   { title: "Fonctionnalités", url: "/admin/fonctionnalites", icon: Lightbulb },
+  { title: "Contrat", url: "/admin/contrat", icon: FileSignature },
 ];
 
 export default function AdminSidebar() {
