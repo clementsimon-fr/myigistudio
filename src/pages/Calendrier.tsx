@@ -216,6 +216,14 @@ export default function Calendrier() {
         {/* ─── Sticky filters ─── */}
         <ActivityFilterBar filter={filter} onFilterChange={setFilter} />
 
+        {filter !== "all" && matchingDatesCount > 0 && (
+          <div className="container max-w-5xl pt-3 pb-0">
+            <Badge variant="secondary" className="text-xs font-medium">
+              {matchingDatesCount} date{matchingDatesCount > 1 ? "s" : ""} trouvée{matchingDatesCount > 1 ? "s" : ""} dans les 8 prochaines semaines
+            </Badge>
+          </div>
+        )}
+
         <div className="container max-w-5xl py-6">
           {/* Week navigation */}
           <div className="flex items-center justify-between mb-6">
