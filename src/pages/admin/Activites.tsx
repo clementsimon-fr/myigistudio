@@ -536,7 +536,7 @@ export default function AdminActivites() {
                                   <FileText className="h-3 w-3" /> Par défaut
                                 </Button>
                                 <Button type="button" size="sm" variant={isModalitiesCustom ? "default" : "outline"} className="h-6 text-[10px] px-2"
-                                  onClick={() => { if (!isModalitiesCustom) updateEvent(idx, { modalities: currentDefaultModalities }); }}>
+                                  onClick={() => { if (!isModalitiesCustom) updateEvent(idx, { modalities: form.default_modalities }); }}>
                                   Personnalisé
                                 </Button>
                               </div>
