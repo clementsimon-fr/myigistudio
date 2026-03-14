@@ -12,7 +12,7 @@ import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Us
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ActivityCalendar from "@/components/admin/ActivityCalendar";
-import { useSiteSettings, saveSiteSettings } from "@/hooks/useSiteSettings";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 // ── Template Variables ──
 const TEMPLATE_VARIABLES = [
