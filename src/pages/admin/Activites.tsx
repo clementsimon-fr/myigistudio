@@ -40,7 +40,7 @@ const REMINDER_TIMINGS = [
 ];
 
 const INTENSITY_OPTIONS = [
-  { value: "", label: "Non défini" },
+  { value: "none", label: "Non défini" },
   { value: "doux", label: "🌿 Doux" },
   { value: "equilibre", label: "⚖️ Équilibré" },
   { value: "dynamique", label: "🔥 Dynamique" },
