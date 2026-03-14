@@ -197,8 +197,10 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          impact: string
           status: string
           target: string
+          ticket_group: string | null
           title: string
           urgency: number
         }
@@ -206,8 +208,10 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          impact?: string
           status?: string
           target?: string
+          ticket_group?: string | null
           title?: string
           urgency?: number
         }
@@ -215,8 +219,10 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          impact?: string
           status?: string
           target?: string
+          ticket_group?: string | null
           title?: string
           urgency?: number
         }
