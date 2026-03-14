@@ -88,6 +88,8 @@ export default function Reserver() {
   const [conditions, setConditions] = useState<ConditionRow[]>([]);
   const [conditionsAccepted, setConditionsAccepted] = useState(false);
   const [bookingBlocked, setBookingBlocked] = useState<string | null>(null);
+  const [voucherCode, setVoucherCode] = useState("");
+  const [voucherStatus, setVoucherStatus] = useState<"idle" | "valid" | "invalid" | "checking">("idle");
 
   useEffect(() => {
     if (!activityType || !activityId) { setLoading(false); return; }

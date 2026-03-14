@@ -190,8 +190,12 @@ export default function AdminClients() {
                   onClick={() => openClientDetail(c.name)}
                 >
                   <td className="p-3 font-medium">{c.name}</td>
-                  <td className="p-3">{c.totalReservations}</td>
-                  <td className="p-3">{new Date(c.firstReservation).toLocaleDateString("fr-FR")}</td>
+                  <td className="p-3">
+                    {c.totalReservations === 0
+                      ? <Badge variant="outline" className="text-xs">Futur client</Badge>
+                      : c.totalReservations}
+                  </td>
+                  <td className="p-3">{c.firstReservation ? new Date(c.firstReservation).toLocaleDateString("fr-FR") : "—"}</td>
                 </tr>
               ))}
             </tbody>
