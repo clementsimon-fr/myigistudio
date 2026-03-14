@@ -239,6 +239,11 @@ export default function MonEspace() {
                 </div>
               )}
 
+              {/* ─── BONS CADEAUX ─── */}
+              {section === "cadeaux" && (
+                <GiftVoucherSection clientName={CLIENT_NAME} />
+              )}
+
               {/* ─── PROFIL ─── */}
               {section === "profil" && (
                 <div className="space-y-4">
@@ -255,34 +260,8 @@ export default function MonEspace() {
                       </div>
                     </div>
 
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between mb-1">
-                        <Label className="text-xs">Ma bio</Label>
-                        {!editingBio && <Button variant="ghost" size="sm" className="gap-1 h-6 text-xs" onClick={() => setEditingBio(true)}><Pencil className="h-3 w-3" /> Modifier</Button>}
-                      </div>
-                      {editingBio ? (
-                        <div className="space-y-2">
-                          <Textarea value={bioValue} onChange={e => setBioValue(e.target.value)} rows={3} placeholder="Présentez-vous..." className="text-sm" />
-                          <div className="flex gap-2">
-                            <Button size="sm" className="text-xs" onClick={saveProfile}>Enregistrer</Button>
-                            <Button size="sm" variant="outline" className="text-xs" onClick={() => setEditingBio(false)}>Annuler</Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">{bioValue || "Aucune bio pour le moment."}</p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-lg border p-3">
-                      <div>
-                        <p className="text-sm font-medium">Visibilité communauté</p>
-                        <p className="text-[10px] text-muted-foreground">Les membres verront votre profil</p>
-                      </div>
-                      <Switch checked={showInCommunity} onCheckedChange={setShowInCommunity} />
-                    </div>
-
                     {/* Reminder preferences */}
-                    <div className="space-y-2 mt-4">
+                    <div className="space-y-2">
                       <div className="flex items-center gap-1.5 mb-1">
                         <Bell className="h-4 w-4 text-primary-dark" />
                         <p className="text-sm font-medium">Préférences de rappel</p>
@@ -303,7 +282,7 @@ export default function MonEspace() {
                       </div>
                     </div>
 
-                    {(showInCommunity !== (profile?.show_in_community ?? false) || reminderSms !== (profile?.reminder_sms ?? false) || reminderEmail !== (profile?.reminder_email ?? true)) && (
+                    {(reminderSms !== (profile?.reminder_sms ?? false) || reminderEmail !== (profile?.reminder_email ?? true)) && (
                       <Button size="sm" className="text-xs mt-2" onClick={saveProfile}>Sauvegarder</Button>
                     )}
                   </div>
