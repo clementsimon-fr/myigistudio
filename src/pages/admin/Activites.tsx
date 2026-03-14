@@ -227,7 +227,8 @@ export default function AdminActivites() {
     setForm({
       name: a.name, description: a.description, long_description: a.long_description,
       category: a.category, instructor: a.instructor, image: a.image, spots: a.spots || 12, events,
-      default_reminder: currentDefaultReminder, default_modalities: currentDefaultModalities,
+      default_reminder: a.reminder_template || currentDefaultReminder,
+      default_modalities: a.modalities || currentDefaultModalities,
     });
     setDialogOpen(true);
   };
