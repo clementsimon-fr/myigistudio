@@ -309,7 +309,7 @@ export default function AdminActivites() {
         modalities: form.default_modalities,
         date: evt.date, time: evt.time, end_time: evt.end_time,
         duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
-        intensity: form.intensity, reminder_timing: form.reminder_timing,
+        intensity: form.intensity === "none" ? "" : form.intensity, reminder_timing: form.reminder_timing,
       } as any);
     }
 
