@@ -121,6 +121,14 @@ export default function Reserver() {
           }
         }
       }
+      // Fetch conditions
+      const { data: condData } = await supabase
+        .from("conditions")
+        .select("*")
+        .eq("active", true)
+        .order("sort_order");
+      if (condData) setConditions(condData as unknown as ConditionRow[]);
+
       setLoading(false);
     };
     load();
