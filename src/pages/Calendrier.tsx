@@ -282,7 +282,7 @@ export default function Calendrier() {
         </div>
 
         {/* ─── Sticky filters ─── */}
-        <ActivityFilterBar filter={filter} onFilterChange={(v) => { setFilter(v); setSubFilter("all"); }} />
+        <ActivityFilterBar filter={filter} onFilterChange={(v) => { setFilter(v); setSubFilter("all"); if (v !== "all") scrollToFirstMatch({ category: v }); }} />
 
         {/* Sub-filters for specific activities within category */}
         {filter !== "all" && subFilterOptions.length > 1 && (
