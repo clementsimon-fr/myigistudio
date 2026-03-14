@@ -40,7 +40,7 @@ const REMINDER_TIMINGS = [
 ];
 
 const INTENSITY_OPTIONS = [
-  { value: "", label: "Non défini" },
+  { value: "none", label: "Non défini" },
   { value: "doux", label: "🌿 Doux" },
   { value: "equilibre", label: "⚖️ Équilibré" },
   { value: "dynamique", label: "🔥 Dynamique" },
@@ -151,7 +151,7 @@ const emptyForm = (): ActivityForm => ({
   name: "", description: "", long_description: "", category: "yoga",
   instructor: "Élodie", image: "", spots: 12, events: [emptyEvent()],
   default_reminder: "", default_modalities: "",
-  intensity: "", reminder_timing: "1j",
+  intensity: "none", reminder_timing: "1j",
 });
 
 export default function AdminActivites() {
@@ -198,7 +198,7 @@ export default function AdminActivites() {
           reminder_template: c.reminder_template || "", modalities: c.modalities || "", source: "course",
           frequency: c.frequency, spots: c.spots, spots_left: c.spots_left,
           schedules: schedulesMap[c.id] || [],
-          intensity: c.intensity || "", reminder_timing: c.reminder_timing || "1j",
+          intensity: c.intensity || "none", reminder_timing: c.reminder_timing || "1j",
         });
       }
     }
@@ -212,7 +212,7 @@ export default function AdminActivites() {
           reminder_template: w.reminder_template || "", modalities: w.modalities || "", source: "workshop",
           date: w.date, time: w.time, end_time: w.end_time, duration: w.duration,
           price: w.price, spots: w.spots, spots_left: w.spots_left,
-          intensity: w.intensity || "", reminder_timing: w.reminder_timing || "1j",
+          intensity: w.intensity || "none", reminder_timing: w.reminder_timing || "1j",
         });
       }
     }
@@ -257,7 +257,7 @@ export default function AdminActivites() {
       category: a.category, instructor: a.instructor, image: a.image, spots: a.spots || 12, events,
       default_reminder: a.reminder_template || currentDefaultReminder,
       default_modalities: a.modalities || currentDefaultModalities,
-      intensity: a.intensity || "",
+      intensity: a.intensity || "none",
       reminder_timing: a.reminder_timing || "1j",
     });
     setDialogOpen(true);
@@ -289,7 +289,7 @@ export default function AdminActivites() {
         spots: firstSlot.spots, spots_left: firstSlot.spots,
         day: firstSlot.day, time: firstSlot.time, end_time: firstSlot.end_time,
         duration, days, frequency: "hebdomadaire",
-        intensity: form.intensity, reminder_timing: form.reminder_timing,
+        intensity: form.intensity === "none" ? "" : form.intensity, reminder_timing: form.reminder_timing,
       } as any).select("id").single();
       if (data) {
         const scheduleRows = recurringEvents.map(e => ({
@@ -309,7 +309,7 @@ export default function AdminActivites() {
         modalities: form.default_modalities,
         date: evt.date, time: evt.time, end_time: evt.end_time,
         duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
-        intensity: form.intensity, reminder_timing: form.reminder_timing,
+        intensity: form.intensity === "none" ? "" : form.intensity, reminder_timing: form.reminder_timing,
       } as any);
     }
 
