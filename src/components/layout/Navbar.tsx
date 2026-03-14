@@ -15,6 +15,8 @@ const navLinks = [
   { label: "Planning & réservation", to: "/calendrier" },
 ];
 
+const mobileNavLinks: typeof navLinks = [];
+
 const clientSections = [
   { label: "Réservations", to: "/mon-espace?section=reservations", icon: CalendarDays },
   { label: "Mes cartes Yoga", to: "/mon-espace?section=cartes", icon: CreditCard },
