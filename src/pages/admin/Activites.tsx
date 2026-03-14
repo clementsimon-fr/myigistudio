@@ -8,13 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText, MapPin } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText, MapPin, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ActivityCalendar from "@/components/admin/ActivityCalendar";
 import { useSiteSettings, saveSiteSettings } from "@/hooks/useSiteSettings";
 
-// ── Template Editor (shared for reminder & modalities) ──
+// ── Template Variables ──
 const TEMPLATE_VARIABLES = [
   { key: "{nom}", label: "Nom" },
   { key: "{activité}", label: "Activité" },
@@ -24,61 +24,50 @@ const TEMPLATE_VARIABLES = [
   { key: "{adresse}", label: "Adresse" },
 ];
 
-const DEFAULT_REMINDER = "Bonjour {nom}, nous avons hâte de vous retrouver pour {activité} le {date} à {heure}. À bientôt !";
-const DEFAULT_MODALITIES = "📍 Adresse : {adresse}\n\n🧘 Merci d'arriver 5 minutes avant le début de la séance.\n🚗 Parking disponible à proximité.\n💧 Pensez à apporter votre bouteille d'eau.";
+const REMINDER_VARIABLES = TEMPLATE_VARIABLES.filter(v => ["{nom}", "{activité}", "{date}", "{heure}", "{intervenant}"].includes(v.key));
+const MODALITIES_VARIABLES = TEMPLATE_VARIABLES.filter(v => ["{activité}", "{date}", "{heure}", "{adresse}", "{intervenant}"].includes(v.key));
 
-function TemplateEditor({ value, onChange, label, icon, defaultTemplate, variables }: {
-  value: string; onChange: (v: string) => void; label: string; icon: React.ReactNode;
-  defaultTemplate: string; variables: { key: string; label: string }[];
+const INITIAL_DEFAULT_REMINDER = "Bonjour {nom}, nous avons hâte de vous retrouver pour {activité} le {date} à {heure}. À bientôt !";
+const INITIAL_DEFAULT_MODALITIES = "📍 Adresse : {adresse}\n\n🧘 Merci d'arriver 5 minutes avant le début de la séance.\n🚗 Parking disponible à proximité.\n💧 Pensez à apporter votre bouteille d'eau.";
+
+// ── Inline Template Editor ──
+function TemplateEditor({ value, onChange, variables, readOnly }: {
+  value: string; onChange: (v: string) => void;
+  variables: { key: string; label: string }[];
+  readOnly?: boolean;
 }) {
-  const [useDefault, setUseDefault] = useState(!value);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => { setUseDefault(!value); }, []);
-
   const insertVariable = (variable: string) => {
+    if (readOnly) return;
     const ta = textareaRef.current;
-    if (!ta) { onChange((useDefault ? defaultTemplate : value) + variable); return; }
+    if (!ta) { onChange(value + variable); return; }
     const start = ta.selectionStart;
     const end = ta.selectionEnd;
-    const current = useDefault ? defaultTemplate : value;
-    const newVal = current.substring(0, start) + variable + current.substring(end);
+    const newVal = value.substring(0, start) + variable + value.substring(end);
     onChange(newVal);
-    if (useDefault) setUseDefault(false);
     setTimeout(() => { ta.focus(); ta.setSelectionRange(start + variable.length, start + variable.length); }, 0);
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label className="flex items-center gap-1.5 text-xs">{icon} {label}</Label>
-        <div className="flex gap-1.5">
-          <Button type="button" size="sm" variant={useDefault ? "default" : "outline"} className="h-6 text-[10px] px-2 gap-1"
-            onClick={() => { setUseDefault(true); onChange(""); }}>
-            <FileText className="h-3 w-3" /> Par défaut
-          </Button>
-          <Button type="button" size="sm" variant={!useDefault ? "default" : "outline"} className="h-6 text-[10px] px-2"
-            onClick={() => { setUseDefault(false); onChange(defaultTemplate); }}>
-            Personnalisé
-          </Button>
+    <div className="space-y-1.5">
+      <Textarea ref={textareaRef} value={value}
+        onChange={e => onChange(e.target.value)}
+        rows={3} readOnly={readOnly} className={`text-xs ${readOnly ? "opacity-60" : ""}`} />
+      {!readOnly && (
+        <div className="flex flex-wrap gap-1">
+          <span className="text-[10px] text-muted-foreground mr-1">Insérer :</span>
+          {variables.map(v => (
+            <Button key={v.key} type="button" size="sm" variant="outline" className="h-5 text-[10px] px-1.5 font-mono"
+              onClick={() => insertVariable(v.key)}>{v.key}</Button>
+          ))}
         </div>
-      </div>
-      <Textarea ref={textareaRef} value={useDefault ? defaultTemplate : value}
-        onChange={e => { onChange(e.target.value); if (useDefault) setUseDefault(false); }}
-        rows={3} readOnly={useDefault} className={`text-xs ${useDefault ? "opacity-60" : ""}`} />
-      <div className="flex flex-wrap gap-1">
-        <span className="text-[10px] text-muted-foreground mr-1">Insérer :</span>
-        {variables.map(v => (
-          <Button key={v.key} type="button" size="sm" variant="outline" className="h-5 text-[10px] px-1.5 font-mono"
-            onClick={() => insertVariable(v.key)}>{v.key}</Button>
-        ))}
-      </div>
+      )}
     </div>
   );
 }
 
 // ── Types ──
-
 interface Schedule {
   id?: string; day: string; time: string; end_time: string; spots: number; spots_left: number;
 }
@@ -123,6 +112,8 @@ interface ActivityForm {
   name: string; description: string; long_description: string; category: string;
   instructor: string; image: string; spots: number;
   events: EventSlot[];
+  default_reminder: string;
+  default_modalities: string;
 }
 
 const emptyEvent = (): EventSlot => ({
@@ -133,10 +124,12 @@ const emptyEvent = (): EventSlot => ({
 const emptyForm = (): ActivityForm => ({
   name: "", description: "", long_description: "", category: "yoga",
   instructor: "Élodie", image: "", spots: 12, events: [emptyEvent()],
+  default_reminder: "", default_modalities: "",
 });
 
 export default function AdminActivites() {
   const { toast } = useToast();
+  const { get: getSetting, ready: settingsReady } = useSiteSettings();
   const [activities, setActivities] = useState<UnifiedActivity[]>([]);
   const [instructorsList, setInstructorsList] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,6 +141,21 @@ export default function AdminActivites() {
   const [editingActivity, setEditingActivity] = useState<UnifiedActivity | null>(null);
   const [form, setForm] = useState<ActivityForm>(emptyForm());
   const [deletingItem, setDeletingItem] = useState<{ id: string; source: "course" | "workshop" } | null>(null);
+
+  // Global defaults dialog
+  const [defaultsDialogOpen, setDefaultsDialogOpen] = useState(false);
+  const [globalReminder, setGlobalReminder] = useState("");
+  const [globalModalities, setGlobalModalities] = useState("");
+
+  useEffect(() => {
+    if (settingsReady) {
+      setGlobalReminder(getSetting("default_reminder", INITIAL_DEFAULT_REMINDER));
+      setGlobalModalities(getSetting("default_modalities", INITIAL_DEFAULT_MODALITIES));
+    }
+  }, [settingsReady]);
+
+  const currentDefaultReminder = globalReminder || INITIAL_DEFAULT_REMINDER;
+  const currentDefaultModalities = globalModalities || INITIAL_DEFAULT_MODALITIES;
 
   const fetchData = async () => {
     setLoading(true);
@@ -210,7 +218,11 @@ export default function AdminActivites() {
     return list;
   }, [activities, categoryFilter, searchQuery]);
 
-  const openNew = () => { setEditingActivity(null); setForm(emptyForm()); setDialogOpen(true); };
+  const openNew = () => {
+    setEditingActivity(null);
+    setForm({ ...emptyForm(), default_reminder: currentDefaultReminder, default_modalities: currentDefaultModalities });
+    setDialogOpen(true);
+  };
 
   const openEdit = (a: UnifiedActivity) => {
     setEditingActivity(a);
@@ -226,6 +238,7 @@ export default function AdminActivites() {
     setForm({
       name: a.name, description: a.description, long_description: a.long_description,
       category: a.category, instructor: a.instructor, image: a.image, spots: a.spots || 12, events,
+      default_reminder: currentDefaultReminder, default_modalities: currentDefaultModalities,
     });
     setDialogOpen(true);
   };
@@ -234,6 +247,10 @@ export default function AdminActivites() {
     const recurringEvents = form.events.filter(e => e.type === "recurring");
     const ponctuelEvents = form.events.filter(e => e.type === "ponctuel");
     const instrId = instructorsList.find(i => i.name === form.instructor)?.id || null;
+
+    // Resolve templates: empty string means "use default"
+    const resolveReminder = (evt: EventSlot) => evt.reminder_template || "";
+    const resolveModalities = (evt: EventSlot) => evt.modalities || "";
 
     if (editingActivity) {
       if (editingActivity.source === "course") {
@@ -251,8 +268,8 @@ export default function AdminActivites() {
       const { data } = await supabase.from("courses").insert({
         name: form.name, description: form.description, long_description: form.long_description,
         category: form.category, instructor: form.instructor, instructor_id: instrId,
-        image: form.image, reminder_template: firstSlot.reminder_template,
-        modalities: firstSlot.modalities,
+        image: form.image, reminder_template: resolveReminder(firstSlot),
+        modalities: resolveModalities(firstSlot),
         spots: firstSlot.spots, spots_left: firstSlot.spots,
         day: firstSlot.day, time: firstSlot.time, end_time: firstSlot.end_time,
         duration, days, frequency: "hebdomadaire",
@@ -271,8 +288,8 @@ export default function AdminActivites() {
       await supabase.from("workshops").insert({
         name: form.name, description: form.description, long_description: form.long_description,
         category: form.category, instructor_id: instrId,
-        image: form.image, reminder_template: evt.reminder_template,
-        modalities: evt.modalities,
+        image: form.image, reminder_template: resolveReminder(evt),
+        modalities: resolveModalities(evt),
         date: evt.date, time: evt.time, end_time: evt.end_time,
         duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
       } as any);
@@ -306,8 +323,17 @@ export default function AdminActivites() {
     setForm(prev => ({ ...prev, events: prev.events.map((e, i) => i === idx ? { ...e, ...patch } : e) }));
   };
 
-  // Expand/collapse per event
   const [expandedEvent, setExpandedEvent] = useState<number | null>(null);
+
+  // Save global defaults
+  const saveGlobalDefaults = async () => {
+    await saveSiteSettings([
+      { key: "default_reminder", value: globalReminder },
+      { key: "default_modalities", value: globalModalities },
+    ]);
+    toast({ title: "Modèles par défaut sauvegardés ✓" });
+    setDefaultsDialogOpen(false);
+  };
 
   if (loading) {
     return (
@@ -340,6 +366,9 @@ export default function AdminActivites() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input placeholder="Rechercher..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9 text-sm" />
           </div>
+          <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={() => setDefaultsDialogOpen(true)}>
+            <Settings className="h-4 w-4" /> Par défaut
+          </Button>
           <Button size="sm" className="gap-1.5 shrink-0" onClick={openNew}>
             <Plus className="h-4 w-4" /> Nouvelle activité
           </Button>
@@ -446,6 +475,8 @@ export default function AdminActivites() {
               <div className="space-y-3">
                 {form.events.map((evt, idx) => {
                   const isExpanded = expandedEvent === idx;
+                  const isReminderCustom = !!evt.reminder_template;
+                  const isModalitiesCustom = !!evt.modalities;
                   return (
                     <div key={idx} className="rounded-lg border bg-muted/20 p-3 space-y-2">
                       <div className="flex items-center justify-between">
@@ -488,21 +519,54 @@ export default function AdminActivites() {
                         )}
                       </div>
 
-                      {/* ── Expanded: Rappel + Modalités ── */}
+                      {/* ── Expanded: Rappel + Modalités per event ── */}
                       {isExpanded && (
                         <div className="space-y-4 pt-2 border-t mt-2">
-                          <TemplateEditor
-                            value={evt.reminder_template} onChange={v => updateEvent(idx, { reminder_template: v })}
-                            label="Modèle de rappel" icon={<Mail className="h-3.5 w-3.5" />}
-                            defaultTemplate={DEFAULT_REMINDER}
-                            variables={TEMPLATE_VARIABLES.filter(v => ["{nom}", "{activité}", "{date}", "{heure}", "{intervenant}"].includes(v.key))}
-                          />
-                          <TemplateEditor
-                            value={evt.modalities} onChange={v => updateEvent(idx, { modalities: v })}
-                            label="Modalités (consignes, adresse)" icon={<MapPin className="h-3.5 w-3.5" />}
-                            defaultTemplate={DEFAULT_MODALITIES}
-                            variables={TEMPLATE_VARIABLES.filter(v => ["{activité}", "{date}", "{heure}", "{adresse}", "{intervenant}"].includes(v.key))}
-                          />
+                          {/* Reminder */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="flex items-center gap-1.5 text-xs"><Mail className="h-3.5 w-3.5" /> Modèle de rappel</Label>
+                              <div className="flex gap-1.5">
+                                <Button type="button" size="sm" variant={!isReminderCustom ? "default" : "outline"} className="h-6 text-[10px] px-2 gap-1"
+                                  onClick={() => updateEvent(idx, { reminder_template: "" })}>
+                                  <FileText className="h-3 w-3" /> Par défaut
+                                </Button>
+                                <Button type="button" size="sm" variant={isReminderCustom ? "default" : "outline"} className="h-6 text-[10px] px-2"
+                                  onClick={() => { if (!isReminderCustom) updateEvent(idx, { reminder_template: currentDefaultReminder }); }}>
+                                  Personnalisé
+                                </Button>
+                              </div>
+                            </div>
+                            <TemplateEditor
+                              value={isReminderCustom ? evt.reminder_template : currentDefaultReminder}
+                              onChange={v => updateEvent(idx, { reminder_template: v })}
+                              variables={REMINDER_VARIABLES}
+                              readOnly={!isReminderCustom}
+                            />
+                          </div>
+
+                          {/* Modalities */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="flex items-center gap-1.5 text-xs"><MapPin className="h-3.5 w-3.5" /> Modalités (consignes, adresse)</Label>
+                              <div className="flex gap-1.5">
+                                <Button type="button" size="sm" variant={!isModalitiesCustom ? "default" : "outline"} className="h-6 text-[10px] px-2 gap-1"
+                                  onClick={() => updateEvent(idx, { modalities: "" })}>
+                                  <FileText className="h-3 w-3" /> Par défaut
+                                </Button>
+                                <Button type="button" size="sm" variant={isModalitiesCustom ? "default" : "outline"} className="h-6 text-[10px] px-2"
+                                  onClick={() => { if (!isModalitiesCustom) updateEvent(idx, { modalities: currentDefaultModalities }); }}>
+                                  Personnalisé
+                                </Button>
+                              </div>
+                            </div>
+                            <TemplateEditor
+                              value={isModalitiesCustom ? evt.modalities : currentDefaultModalities}
+                              onChange={v => updateEvent(idx, { modalities: v })}
+                              variables={MODALITIES_VARIABLES}
+                              readOnly={!isModalitiesCustom}
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
@@ -514,6 +578,29 @@ export default function AdminActivites() {
             <Button className="w-full" onClick={save} disabled={!form.name || form.events.length === 0}>
               {editingActivity ? "Enregistrer les modifications" : "Créer l'activité"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Global Defaults Dialog ── */}
+      <Dialog open={defaultsDialogOpen} onOpenChange={setDefaultsDialogOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Settings className="h-5 w-5" /> Modèles par défaut
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">Ces textes seront utilisés par défaut pour toutes les activités. Vous pouvez les personnaliser individuellement dans les détails de chaque événement.</p>
+          <div className="space-y-5 pt-2">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5 text-sm"><Mail className="h-4 w-4" /> Modèle de rappel par défaut</Label>
+              <TemplateEditor value={globalReminder} onChange={setGlobalReminder} variables={REMINDER_VARIABLES} />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5 text-sm"><MapPin className="h-4 w-4" /> Modalités par défaut</Label>
+              <TemplateEditor value={globalModalities} onChange={setGlobalModalities} variables={MODALITIES_VARIABLES} />
+            </div>
+            <Button className="w-full" onClick={saveGlobalDefaults}>Enregistrer les modèles par défaut</Button>
           </div>
         </DialogContent>
       </Dialog>
