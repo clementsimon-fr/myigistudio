@@ -444,9 +444,39 @@ export default function Reserver() {
                         </div>
                       </div>
 
+                      {/* Booking blocked warning */}
+                      {bookingBlocked && (
+                        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                          <p className="text-sm text-destructive">{bookingBlocked}</p>
+                        </div>
+                      )}
+
+                      {/* Conditions */}
+                      {applicableConditions.length > 0 && !bookingBlocked && (
+                        <div className="space-y-3">
+                          {applicableConditions.map(c => (
+                            <div key={c.id} className="rounded-lg border bg-muted/30 p-3">
+                              <p className="text-xs font-semibold text-primary-dark mb-1">{c.title}</p>
+                              <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{c.content}</p>
+                            </div>
+                          ))}
+                          <div className="flex items-start gap-2">
+                            <Checkbox
+                              id="accept-conditions"
+                              checked={conditionsAccepted}
+                              onCheckedChange={(v) => setConditionsAccepted(!!v)}
+                            />
+                            <label htmlFor="accept-conditions" className="text-xs text-muted-foreground cursor-pointer leading-tight">
+                              J'ai lu et j'accepte les conditions ci-dessus
+                            </label>
+                          </div>
+                        </div>
+                      )}
+
                       <Button
                         onClick={handleConfirm}
-                        disabled={submitting}
+                        disabled={submitting || !!bookingBlocked || (applicableConditions.length > 0 && !conditionsAccepted)}
                         className="w-full bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-1.5"
                       >
                         {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
