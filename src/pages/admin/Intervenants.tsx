@@ -192,7 +192,7 @@ export default function AdminIntervenants() {
                     </div>
                   )}
                   <div>
-                    <h3 className="font-semibold">{inst.name}</h3>
+                    <h3 className="font-semibold">{inst.name} {(inst as any).last_name || ""}</h3>
                     {inst.email && <p className="text-xs text-muted-foreground">{inst.email}</p>}
                   </div>
                 </div>
