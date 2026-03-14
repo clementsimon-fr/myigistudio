@@ -31,12 +31,11 @@ const FORUM_CATEGORIES = [
 ];
 const CLIENT_NAME = "Sophie";
 
-type Section = "accueil" | "reservations" | "cartes" | "profil" | "communaute";
+type Section = "reservations" | "cartes" | "profil" | "communaute";
 
 const NAV_ITEMS: { value: Section; label: string; icon: typeof Home }[] = [
-  { value: "accueil", label: "Accueil", icon: Home },
   { value: "reservations", label: "Résa", icon: CalendarDays },
-  { value: "cartes", label: "Cartes", icon: CreditCard },
+  { value: "cartes", label: "Cartes Yoga", icon: CreditCard },
   { value: "communaute", label: "Forum", icon: MessageSquare },
   { value: "profil", label: "Profil", icon: User },
 ];
