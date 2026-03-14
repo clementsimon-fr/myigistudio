@@ -109,8 +109,8 @@ export default function Calendrier() {
         if (sched.day !== dayName) continue;
         const course = courses.find(c => c.id === sched.course_id);
         if (!course) continue;
-        const effectiveFilter = filter === "all" ? filter : filter;
-        if (effectiveFilter !== "all" && course.category !== effectiveFilter) continue;
+        if (filter !== "all" && course.category !== filter) continue;
+        if (subFilter !== "all" && course.name !== subFilter) continue;
         blocks.push({
           id: `${sched.id}-${dateStr}`, title: course.name, description: course.description || "",
           category: course.category, time: sched.time, end_time: sched.end_time,
@@ -122,6 +122,7 @@ export default function Calendrier() {
       for (const ws of workshops) {
         if (ws.date !== dateStr) continue;
         if (filter !== "all" && ws.category !== filter) continue;
+        if (subFilter !== "all" && ws.name !== subFilter) continue;
         blocks.push({
           id: ws.id, title: ws.name, description: ws.description || "",
           category: ws.category, time: ws.time, end_time: ws.end_time,
@@ -133,7 +134,16 @@ export default function Calendrier() {
       blocks.sort((a, b) => a.time.localeCompare(b.time));
       return { date, blocks };
     });
-  }, [weekDays, courses, schedules, workshops, filter]);
+  }, [weekDays, courses, schedules, workshops, filter, subFilter]);
+
+  // Unique activity names for current category (for sub-filters)
+  const subFilterOptions = useMemo(() => {
+    if (filter === "all") return [];
+    const names = new Set<string>();
+    courses.filter(c => c.category === filter).forEach(c => names.add(c.name));
+    workshops.filter(w => w.category === filter).forEach(w => names.add(w.name));
+    return Array.from(names).sort();
+  }, [filter, courses, workshops]);
 
   // Count total upcoming dates for the active filter
   const matchingDatesCount = useMemo(() => {
