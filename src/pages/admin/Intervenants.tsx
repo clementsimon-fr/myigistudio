@@ -71,7 +71,7 @@ export default function AdminIntervenants() {
   const [workshops, setWorkshops] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
 
-  const emptyForm = { name: "", email: "", phone: "", specialties: [] as string[], urls: [""] as string[], bio: "", active: true, photo_url: "" };
+  const emptyForm = { name: "", last_name: "", email: "", phone: "", specialties: [] as string[], urls: [""] as string[], bio: "", active: true, photo_url: "" };
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
