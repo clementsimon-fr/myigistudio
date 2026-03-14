@@ -71,7 +71,7 @@ export default function AdminIntervenants() {
   const [workshops, setWorkshops] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
 
-  const emptyForm = { name: "", email: "", phone: "", specialties: [] as string[], urls: [""] as string[], bio: "", active: true, photo_url: "" };
+  const emptyForm = { name: "", last_name: "", email: "", phone: "", specialties: [] as string[], urls: [""] as string[], bio: "", active: true, photo_url: "" };
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -114,7 +114,7 @@ export default function AdminIntervenants() {
   const openNew = () => { setEditingId(null); setForm(emptyForm); setSelectedCategory(""); setDialogOpen(true); };
   const openEdit = (i: Instructor) => {
     setEditingId(i.id);
-    setForm({ name: i.name, email: i.email, phone: i.phone, specialties: i.specialties || [], urls: (i.urls && i.urls.length > 0) ? i.urls : [""], bio: i.bio, active: i.active, photo_url: i.photo_url || "" });
+    setForm({ name: i.name, last_name: (i as any).last_name || "", email: i.email, phone: i.phone, specialties: i.specialties || [], urls: (i.urls && i.urls.length > 0) ? i.urls : [""], bio: i.bio, active: i.active, photo_url: i.photo_url || "" });
     setSelectedCategory("");
     setDialogOpen(true);
   };
@@ -192,7 +192,7 @@ export default function AdminIntervenants() {
                     </div>
                   )}
                   <div>
-                    <h3 className="font-semibold">{inst.name}</h3>
+                    <h3 className="font-semibold">{inst.name} {(inst as any).last_name || ""}</h3>
                     {inst.email && <p className="text-xs text-muted-foreground">{inst.email}</p>}
                   </div>
                 </div>
@@ -263,7 +263,10 @@ export default function AdminIntervenants() {
             <DialogTitle className="font-display">{editingId ? "Modifier" : "Nouvel"} intervenant</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
-            <div><Label>Nom</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Prénom Nom" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Prénom</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Prénom" /></div>
+              <div><Label>Nom</Label><Input value={form.last_name} onChange={e => setForm({ ...form, last_name: e.target.value })} placeholder="Nom" /></div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="email@..." /></div>
               <div><Label>Téléphone</Label><Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="06..." /></div>

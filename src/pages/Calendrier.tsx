@@ -163,7 +163,24 @@ export default function Calendrier() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1">
-        <div className="container max-w-5xl pt-6 pb-2">
+        {/* ─── Hero (mobile only) ─── */}
+        <section className="relative overflow-hidden bg-secondary/30 py-12 md:hidden">
+          <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-accent/10 blur-3xl" />
+          <div className="container relative">
+            <div className="max-w-2xl mx-auto text-center">
+              <p className="text-sm font-medium uppercase tracking-widest text-primary-dark mb-3">Bienvenue chez</p>
+              <h1 className="text-4xl font-display font-bold text-primary-dark mb-3">
+                MyIgi<span className="text-primary italic">Studio</span>
+              </h1>
+              <p className="text-base text-muted-foreground leading-relaxed px-4">
+                Yoga, Pilates, Poterie & Bien-être.<br />Réservez vos cours et ateliers en quelques clics.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <div className="container max-w-5xl pt-6 pb-2 hidden md:block">
           <div className="text-center mb-4">
             <h1 className="text-2xl md:text-4xl font-display font-bold text-primary-dark mb-1">Planning des activités</h1>
             <p className="text-sm text-muted-foreground">Retrouvez toutes nos activités et réservez en un clic</p>
