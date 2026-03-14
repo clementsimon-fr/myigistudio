@@ -360,6 +360,11 @@ export default function MonEspace() {
               )}
             </>
           )}
+
+          {/* ── FEEDBACK ── */}
+          {section === "feedback" && (
+            <FeedbackSection clientName={CLIENT_NAME} />
+          )}
         </div>
       </main>
 
