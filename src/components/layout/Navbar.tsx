@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, User, CalendarDays, CreditCard, MessageSquare, Home, LogOut } from "lucide-react";
+import { Menu, X, User, CalendarDays, CreditCard, MessageSquare, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
