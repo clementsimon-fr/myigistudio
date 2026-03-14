@@ -230,12 +230,40 @@ export default function Calendrier() {
         </div>
 
         {/* ─── Sticky filters ─── */}
-        <ActivityFilterBar filter={filter} onFilterChange={setFilter} />
+        <ActivityFilterBar filter={filter} onFilterChange={(v) => { setFilter(v); setSubFilter("all"); }} />
 
-        {filter !== "all" && matchingDatesCount > 0 && (
-          <div className="container max-w-5xl pt-3 pb-0">
+        {/* Sub-filters for specific activities within category */}
+        {filter !== "all" && subFilterOptions.length > 1 && (
+          <div className="container max-w-5xl pt-2 pb-0">
+            <div className="flex flex-wrap items-center gap-1.5 justify-center">
+              <Button
+                variant={subFilter === "all" ? "default" : "outline"}
+                size="sm"
+                className="rounded-full h-6 text-[11px] px-3"
+                onClick={() => setSubFilter("all")}
+              >
+                Tout voir
+              </Button>
+              {subFilterOptions.map(name => (
+                <Button
+                  key={name}
+                  variant={subFilter === name ? "default" : "outline"}
+                  size="sm"
+                  className="rounded-full h-6 text-[11px] px-3"
+                  onClick={() => setSubFilter(subFilter === name ? "all" : name)}
+                >
+                  {name}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(filter !== "all" || subFilter !== "all") && matchingDatesCount > 0 && (
+          <div className="container max-w-5xl pt-2 pb-0">
             <Badge variant="secondary" className="text-xs font-medium">
-              {matchingDatesCount} date{matchingDatesCount > 1 ? "s" : ""} trouvée{matchingDatesCount > 1 ? "s" : ""} dans les 8 prochaines semaines
+              {matchingDatesCount} date{matchingDatesCount > 1 ? "s" : ""} trouvée{matchingDatesCount > 1 ? "s" : ""}
+              {subFilter !== "all" ? ` pour ${subFilter}` : ""}
             </Badge>
           </div>
         )}
