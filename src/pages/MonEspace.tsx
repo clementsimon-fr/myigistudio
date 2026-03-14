@@ -448,7 +448,7 @@ function GiftVoucherSection({ clientName }: { clientName: string }) {
   );
 }
 
-
+function FeedbackSection({ clientName }: { clientName: string }) {
   const { toast } = useToast();
   const [feedbackMsg, setFeedbackMsg] = useState("");
   const [rating, setRating] = useState(5);
