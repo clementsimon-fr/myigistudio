@@ -33,7 +33,7 @@ const CLIENT_NAME = "Sophie";
 
 type Section = "reservations" | "cartes" | "profil" | "communaute";
 
-const NAV_ITEMS: { value: Section; label: string; icon: typeof Home }[] = [
+const NAV_ITEMS: { value: Section; label: string; icon: typeof CalendarDays }[] = [
   { value: "reservations", label: "Résa", icon: CalendarDays },
   { value: "cartes", label: "Cartes Yoga", icon: CreditCard },
   { value: "communaute", label: "Forum", icon: MessageSquare },
