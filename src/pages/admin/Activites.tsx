@@ -542,7 +542,7 @@ export default function AdminActivites() {
                               </div>
                             </div>
                             <TemplateEditor
-                              value={isModalitiesCustom ? evt.modalities : currentDefaultModalities}
+                              value={isModalitiesCustom ? evt.modalities : form.default_modalities}
                               onChange={v => updateEvent(idx, { modalities: v })}
                               variables={MODALITIES_VARIABLES}
                               readOnly={!isModalitiesCustom}
