@@ -447,6 +447,8 @@ export type Database = {
           bio: string
           created_at: string
           id: string
+          reminder_email: boolean
+          reminder_sms: boolean
           show_in_community: boolean
           user_name: string
         }
@@ -455,6 +457,8 @@ export type Database = {
           bio?: string
           created_at?: string
           id?: string
+          reminder_email?: boolean
+          reminder_sms?: boolean
           show_in_community?: boolean
           user_name: string
         }
@@ -463,6 +467,8 @@ export type Database = {
           bio?: string
           created_at?: string
           id?: string
+          reminder_email?: boolean
+          reminder_sms?: boolean
           show_in_community?: boolean
           user_name?: string
         }

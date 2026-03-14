@@ -177,6 +177,35 @@ export default function Calendrier() {
   const nextWeek = () => { const d = new Date(currentWeekStart); d.setDate(d.getDate() + 7); setCurrentWeekStart(d); };
   const goThisWeek = () => { const now = new Date(); const day = now.getDay(); const diff = now.getDate() - day + (day === 0 ? -6 : 1); const m = new Date(now); m.setDate(diff); m.setHours(0, 0, 0, 0); setCurrentWeekStart(m); };
 
+  // Auto-scroll to the week containing the first matching date for a sub-filter
+  const scrollToFirstMatch = (activityName: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Check workshops first (ponctuels)
+    const matchingWorkshops = workshops
+      .filter(w => w.name === activityName && w.date >= formatDateStr(today))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    if (matchingWorkshops.length > 0) {
+      const firstDate = new Date(matchingWorkshops[0].date + "T00:00:00");
+      const day = firstDate.getDay();
+      const diff = firstDate.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(firstDate);
+      monday.setDate(diff);
+      monday.setHours(0, 0, 0, 0);
+      setCurrentWeekStart(monday);
+      return;
+    }
+    // For recurring courses, find the next occurrence
+    const matchingSchedules = schedules.filter(s => {
+      const course = courses.find(c => c.id === s.course_id);
+      return course && course.name === activityName;
+    });
+    if (matchingSchedules.length > 0) {
+      // Already on this week likely has the day, just stay
+      goThisWeek();
+    }
+  };
+
   const handleBook = (event: ActivityBlock, date: Date) => {
     const dateStr = formatDateStr(date);
     const params = new URLSearchParams({
@@ -250,7 +279,14 @@ export default function Calendrier() {
                   variant={subFilter === name ? "default" : "outline"}
                   size="sm"
                   className="rounded-full h-6 text-[11px] px-3"
-                  onClick={() => setSubFilter(subFilter === name ? "all" : name)}
+                  onClick={() => {
+                    const newVal = subFilter === name ? "all" : name;
+                    setSubFilter(newVal);
+                    // Auto-scroll to first matching date
+                    if (newVal !== "all") {
+                      scrollToFirstMatch(newVal);
+                    }
+                  }}
                 >
                   {name}
                 </Button>

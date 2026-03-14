@@ -108,7 +108,7 @@ export default function AdminFonctionnalites() {
             <div><Label>Titre</Label><Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Ajouter un système de..." /></div>
             <div><Label>Description</Label><Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Détails de l'amélioration..." /></div>
             <div>
-              <Label>Urgence</Label>
+              <Label>Niveau d'importance</Label>
               <Select value={String(form.urgency)} onValueChange={v => setForm({ ...form, urgency: Number(v) })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>

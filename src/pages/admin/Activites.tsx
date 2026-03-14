@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,10 +8,95 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ActivityCalendar from "@/components/admin/ActivityCalendar";
+import { useSiteSettings, saveSiteSettings } from "@/hooks/useSiteSettings";
+
+// ── Reminder Template Editor ──
+const TEMPLATE_VARIABLES = [
+  { key: "{nom}", label: "Nom" },
+  { key: "{activité}", label: "Activité" },
+  { key: "{date}", label: "Date" },
+  { key: "{heure}", label: "Heure" },
+];
+
+const DEFAULT_TEMPLATE = "Bonjour {nom}, nous avons hâte de vous retrouver pour {activité} le {date} à {heure}. À bientôt !";
+
+function ReminderTemplateEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { get, ready } = useSiteSettings();
+  const [useDefault, setUseDefault] = useState(!value);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const defaultTemplate = ready ? get("default_reminder_template", DEFAULT_TEMPLATE) : DEFAULT_TEMPLATE;
+
+  useEffect(() => {
+    setUseDefault(!value);
+  }, []);
+
+  const insertVariable = (variable: string) => {
+    const ta = textareaRef.current;
+    if (!ta) {
+      onChange((useDefault ? defaultTemplate : value) + variable);
+      return;
+    }
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const current = useDefault ? defaultTemplate : value;
+    const newVal = current.substring(0, start) + variable + current.substring(end);
+    onChange(newVal);
+    if (useDefault) setUseDefault(false);
+    setTimeout(() => {
+      ta.focus();
+      ta.setSelectionRange(start + variable.length, start + variable.length);
+    }, 0);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Modèle de rappel</Label>
+        <div className="flex gap-1.5">
+          <Button
+            type="button" size="sm" variant={useDefault ? "default" : "outline"}
+            className="h-6 text-[10px] px-2 gap-1"
+            onClick={() => { setUseDefault(true); onChange(""); }}
+          >
+            <FileText className="h-3 w-3" /> Par défaut
+          </Button>
+          <Button
+            type="button" size="sm" variant={!useDefault ? "default" : "outline"}
+            className="h-6 text-[10px] px-2"
+            onClick={() => { setUseDefault(false); onChange(defaultTemplate); }}
+          >
+            Personnalisé
+          </Button>
+        </div>
+      </div>
+      <Textarea
+        ref={textareaRef}
+        value={useDefault ? defaultTemplate : value}
+        onChange={e => { onChange(e.target.value); if (useDefault) setUseDefault(false); }}
+        rows={3}
+        readOnly={useDefault}
+        className={useDefault ? "opacity-60" : ""}
+        placeholder="Bonjour {nom}, nous avons hâte de vous retrouver..."
+      />
+      <div className="flex flex-wrap gap-1">
+        <span className="text-[10px] text-muted-foreground mr-1">Insérer :</span>
+        {TEMPLATE_VARIABLES.map(v => (
+          <Button
+            key={v.key} type="button" size="sm" variant="outline"
+            className="h-5 text-[10px] px-1.5 font-mono"
+            onClick={() => insertVariable(v.key)}
+          >
+            {v.key}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ── Types ──
 
@@ -500,11 +585,10 @@ export default function AdminActivites() {
               </div>
             </div>
 
-            <div>
-              <Label>📧 Modèle de rappel (e-mail)</Label>
-              <Textarea value={form.reminder_template} onChange={e => setForm({ ...form, reminder_template: e.target.value })} rows={3} placeholder="Bonjour {nom}, nous avons hâte de vous retrouver..." />
-              <p className="text-xs text-muted-foreground mt-1">Variables : {"{nom}"}, {"{activité}"}, {"{date}"}, {"{heure}"}</p>
-            </div>
+            <ReminderTemplateEditor
+              value={form.reminder_template}
+              onChange={v => setForm({ ...form, reminder_template: v })}
+            />
 
             <Button className="w-full" onClick={save} disabled={!form.name || form.events.length === 0}>
               {editingActivity ? "Enregistrer les modifications" : "Créer l'activité"}

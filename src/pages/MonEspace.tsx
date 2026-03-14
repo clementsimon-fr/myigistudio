@@ -4,18 +4,19 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarDays, CreditCard, Clock, LogOut, Plus, Loader2, User, MessageSquare, Send, Pencil, XCircle, Star } from "lucide-react";
+import { CalendarDays, CreditCard, Clock, LogOut, Plus, Loader2, User, MessageSquare, Send, Pencil, XCircle, Star, ArrowRight, Bell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface Reservation { id: string; client_name: string; activity_name: string; activity_type: string; date: string; time: string; end_time: string; participants: number; status: string; created_at: string; }
 interface ClientCard { id: string; client_name: string; card_name: string; total_sessions: number; used_sessions: number; expires_at: string; }
-interface Profile { id: string; user_name: string; bio: string; show_in_community: boolean; avatar_url: string; }
+interface Profile { id: string; user_name: string; bio: string; show_in_community: boolean; avatar_url: string; reminder_sms: boolean; reminder_email: boolean; }
 interface ForumPost { id: string; author_name: string; category: string; content: string; created_at: string; }
 
 const statusColors: Record<string, string> = {
@@ -60,10 +61,13 @@ export default function MonEspace() {
   const [editingBio, setEditingBio] = useState(false);
   const [bioValue, setBioValue] = useState("");
   const [showInCommunity, setShowInCommunity] = useState(false);
+  const [reminderSms, setReminderSms] = useState(false);
+  const [reminderEmail, setReminderEmail] = useState(true);
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostCategory, setNewPostCategory] = useState("general");
   const [forumFilter, setForumFilter] = useState("all");
   const [resFilter, setResFilter] = useState("all");
+  const [viewingReservation, setViewingReservation] = useState<Reservation | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -77,7 +81,7 @@ export default function MonEspace() {
       ]);
       if (resR.data) setReservations(resR.data as unknown as Reservation[]);
       if (resC.data) setCards(resC.data as unknown as ClientCard[]);
-      if (resP.data) { setProfile(resP.data as unknown as Profile); setBioValue((resP.data as any).bio || ""); setShowInCommunity((resP.data as any).show_in_community || false); }
+      if (resP.data) { setProfile(resP.data as unknown as Profile); setBioValue((resP.data as any).bio || ""); setShowInCommunity((resP.data as any).show_in_community || false); setReminderSms((resP.data as any).reminder_sms || false); setReminderEmail((resP.data as any).reminder_email ?? true); }
       if (resF.data) setForumPosts(resF.data as unknown as ForumPost[]);
       if (resCom.data) setCommunityMembers(resCom.data as unknown as Profile[]);
       setLoading(false);
@@ -94,8 +98,8 @@ export default function MonEspace() {
   const filteredRes = resFilter === "all" ? reservations : resFilter === "yoga" ? yogaRes : resFilter === "poterie" ? potteryRes : atelierRes;
 
   const saveProfile = async () => {
-    if (profile) await supabase.from("profiles").update({ bio: bioValue, show_in_community: showInCommunity }).eq("id", profile.id);
-    else await supabase.from("profiles").insert({ user_name: CLIENT_NAME, bio: bioValue, show_in_community: showInCommunity });
+    if (profile) await supabase.from("profiles").update({ bio: bioValue, show_in_community: showInCommunity, reminder_sms: reminderSms, reminder_email: reminderEmail } as any).eq("id", profile.id);
+    else await supabase.from("profiles").insert({ user_name: CLIENT_NAME, bio: bioValue, show_in_community: showInCommunity, reminder_sms: reminderSms, reminder_email: reminderEmail } as any);
     setEditingBio(false);
     toast({ title: "Profil mis à jour ✓" });
   };
@@ -203,10 +207,10 @@ export default function MonEspace() {
                                 {r.participants > 1 && <span>· {r.participants} pers.</span>}
                               </div>
                             </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {canCancel && (
-                                <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive hover:text-destructive text-[10px] gap-1" onClick={handleCancel}>
-                                  <XCircle className="h-3 w-3" /> Annuler
+                    <div className="flex items-center gap-1.5 shrink-0">
+                              {isConfirmed && isFuture && (
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] gap-1" onClick={() => setViewingReservation(r)}>
+                                  <ArrowRight className="h-3 w-3" /> Accéder
                                 </Button>
                               )}
                               <Badge variant="outline" className={`text-[10px] ${statusColors[r.status] || ""}`}>{r.status}</Badge>
@@ -287,7 +291,30 @@ export default function MonEspace() {
                       </div>
                       <Switch checked={showInCommunity} onCheckedChange={setShowInCommunity} />
                     </div>
-                    {showInCommunity !== (profile?.show_in_community ?? false) && (
+
+                    {/* Reminder preferences */}
+                    <div className="space-y-2 mt-4">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Bell className="h-4 w-4 text-primary-dark" />
+                        <p className="text-sm font-medium">Préférences de rappel</p>
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border p-3">
+                        <div>
+                          <p className="text-sm font-medium">📧 Rappel par e-mail</p>
+                          <p className="text-[10px] text-muted-foreground">Recevoir un rappel par e-mail avant chaque séance</p>
+                        </div>
+                        <Switch checked={reminderEmail} onCheckedChange={setReminderEmail} />
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border p-3">
+                        <div>
+                          <p className="text-sm font-medium">📱 Rappel par SMS</p>
+                          <p className="text-[10px] text-muted-foreground">Recevoir un rappel par SMS avant chaque séance</p>
+                        </div>
+                        <Switch checked={reminderSms} onCheckedChange={setReminderSms} />
+                      </div>
+                    </div>
+
+                    {(showInCommunity !== (profile?.show_in_community ?? false) || reminderSms !== (profile?.reminder_sms ?? false) || reminderEmail !== (profile?.reminder_email ?? true)) && (
                       <Button size="sm" className="text-xs mt-2" onClick={saveProfile}>Sauvegarder</Button>
                     )}
                   </div>
@@ -367,6 +394,80 @@ export default function MonEspace() {
           )}
         </div>
       </main>
+
+      {/* Reservation detail dialog */}
+      <Dialog open={!!viewingReservation} onOpenChange={(open) => !open && setViewingReservation(null)}>
+        <DialogContent className="sm:max-w-md">
+          {viewingReservation && (() => {
+            const r = viewingReservation;
+            const todayStr = new Date().toISOString().split("T")[0];
+            const isFuture = r.date >= todayStr;
+            const isConfirmed = r.status === "confirmé";
+            let canCancel = false;
+            if (isConfirmed && isFuture && r.time) {
+              const [h, m] = r.time.split(":").map(Number);
+              const courseStart = new Date(r.date + "T00:00:00");
+              courseStart.setHours(h, m, 0, 0);
+              const hoursUntil = (courseStart.getTime() - Date.now()) / (1000 * 60 * 60);
+              canCancel = hoursUntil >= 12;
+            }
+
+            const handleCancel = async () => {
+              await supabase.from("reservations").update({ status: "annulé" }).eq("id", r.id);
+              toast({ title: "Réservation annulée" });
+              setViewingReservation(null);
+              const { data } = await supabase.from("reservations").select("*").eq("client_name", CLIENT_NAME).order("date", { ascending: false });
+              if (data) setReservations(data as unknown as Reservation[]);
+            };
+
+            return (
+              <>
+                <DialogHeader>
+                  <Badge variant="outline" className={`w-fit text-[10px] ${statusColors[r.status] || ""}`}>{r.status}</Badge>
+                  <DialogTitle className="font-display text-xl">{r.activity_name}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                    <span>{new Date(r.date + "T00:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span>{r.time}{r.end_time ? ` - ${r.end_time}` : ""}</span>
+                  </div>
+                  {r.participants > 1 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span>{r.participants} participant{r.participants > 1 ? "s" : ""}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sm">
+                    <CreditCard className="h-4 w-4 text-muted-foreground" />
+                    <span>Type : {r.activity_type === "course" ? "Cours" : "Atelier"}</span>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button className="flex-1 gap-1.5" variant="outline" onClick={() => {
+                      setViewingReservation(null);
+                      navigate(`/calendrier?filter=${r.activity_type === "course" ? "yoga" : "poterie"}&activity=${encodeURIComponent(r.activity_name)}`);
+                    }}>
+                      <CalendarDays className="h-4 w-4" /> Voir le planning
+                    </Button>
+                    {canCancel && (
+                      <Button variant="destructive" className="gap-1.5" onClick={handleCancel}>
+                        <XCircle className="h-4 w-4" /> Annuler
+                      </Button>
+                    )}
+                  </div>
+                  {isConfirmed && isFuture && !canCancel && (
+                    <p className="text-[10px] text-muted-foreground text-center">Annulation possible jusqu'à 12h avant la séance.</p>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Bottom nav removed — navigation is now in the top Navbar menu */}
 
