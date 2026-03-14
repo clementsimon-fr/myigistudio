@@ -20,6 +20,7 @@ import AdminBonsCadeaux from "./pages/admin/BonsCadeaux";
 import AdminConditions from "./pages/admin/Conditions";
 import AdminFonctionnalites from "./pages/admin/Fonctionnalites";
 import AdminContrat from "./pages/admin/Contrat";
+import AdminParametres from "./pages/admin/Parametres";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
