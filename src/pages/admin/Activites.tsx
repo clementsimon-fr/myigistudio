@@ -519,7 +519,7 @@ export default function AdminActivites() {
                               </div>
                             </div>
                             <TemplateEditor
-                              value={isReminderCustom ? evt.reminder_template : currentDefaultReminder}
+                              value={isReminderCustom ? evt.reminder_template : form.default_reminder}
                               onChange={v => updateEvent(idx, { reminder_template: v })}
                               variables={REMINDER_VARIABLES}
                               readOnly={!isReminderCustom}
