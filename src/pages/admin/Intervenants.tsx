@@ -114,7 +114,7 @@ export default function AdminIntervenants() {
   const openNew = () => { setEditingId(null); setForm(emptyForm); setSelectedCategory(""); setDialogOpen(true); };
   const openEdit = (i: Instructor) => {
     setEditingId(i.id);
-    setForm({ name: i.name, email: i.email, phone: i.phone, specialties: i.specialties || [], urls: (i.urls && i.urls.length > 0) ? i.urls : [""], bio: i.bio, active: i.active, photo_url: i.photo_url || "" });
+    setForm({ name: i.name, last_name: (i as any).last_name || "", email: i.email, phone: i.phone, specialties: i.specialties || [], urls: (i.urls && i.urls.length > 0) ? i.urls : [""], bio: i.bio, active: i.active, photo_url: i.photo_url || "" });
     setSelectedCategory("");
     setDialogOpen(true);
   };
