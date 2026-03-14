@@ -437,7 +437,7 @@ export default function AdminActivites() {
                   <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Aucune activité trouvée.</td></tr>
                 ) : filtered.map(a => {
                   const catLabel = CATEGORIES.find(c => c.value === a.category)?.label || a.category;
-                  const intensityLabel = INTENSITY_OPTIONS.find(i => i.value === a.intensity)?.label || "—";
+                  const intensityLabel = getIntensityLabel(a.intensity);
                   return (
                     <tr key={`${a.source}-${a.id}`} className="border-b last:border-0 hover:bg-muted/10">
                       <td className="p-3">
