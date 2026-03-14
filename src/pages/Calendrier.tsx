@@ -133,6 +133,30 @@ export default function Calendrier() {
     });
   }, [weekDays, courses, schedules, workshops, filter]);
 
+  // Count total upcoming dates for the active filter
+  const matchingDatesCount = useMemo(() => {
+    if (filter === "all") return 0;
+    const today = formatDateStr(new Date());
+    let count = 0;
+    // Recurring courses: count unique schedule days
+    const filteredSchedules = schedules.filter(s => {
+      const course = courses.find(c => c.id === s.course_id);
+      return course && course.category === filter;
+    });
+    // Count in next 8 weeks
+    for (let w = 0; w < 8; w++) {
+      for (let d = 0; d < 7; d++) {
+        const date = new Date();
+        date.setDate(date.getDate() + w * 7 + d);
+        const dayName = DAY_MAP[date.getDay()];
+        count += filteredSchedules.filter(s => s.day === dayName).length;
+      }
+    }
+    // Ponctuel workshops
+    count += workshops.filter(ws => ws.category === filter && ws.date >= today).length;
+    return count;
+  }, [filter, courses, schedules, workshops]);
+
   const prevWeek = () => { const d = new Date(currentWeekStart); d.setDate(d.getDate() - 7); setCurrentWeekStart(d); };
   const nextWeek = () => { const d = new Date(currentWeekStart); d.setDate(d.getDate() + 7); setCurrentWeekStart(d); };
   const goThisWeek = () => { const now = new Date(); const day = now.getDay(); const diff = now.getDate() - day + (day === 0 ? -6 : 1); const m = new Date(now); m.setDate(diff); m.setHours(0, 0, 0, 0); setCurrentWeekStart(m); };
