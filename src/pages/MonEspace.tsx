@@ -45,7 +45,7 @@ export default function MonEspace() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const sectionParam = searchParams.get("section") as Section | null;
-  const [section, setSection] = useState<Section>(sectionParam && sectionParam !== "accueil" ? sectionParam : "reservations");
+  const [section, setSection] = useState<Section>(sectionParam || "reservations");
 
   useEffect(() => {
     if (sectionParam && sectionParam !== section) setSection(sectionParam);
