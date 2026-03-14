@@ -168,7 +168,7 @@ export default function Reserver() {
   const handleConfirm = async () => {
     if (!selectedSlotData || !selectedDate) return;
     setSubmitting(true);
-    const dateStr = selectedDate.toISOString().split("T")[0];
+    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
     const { error } = await supabase.from("reservations").insert({
       client_name: "Sophie",
       activity_name: selectedSlotData.name,
