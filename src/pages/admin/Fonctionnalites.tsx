@@ -44,9 +44,9 @@ const IMPACT_CONFIG: Record<string, { label: string; examples: string; cost: str
     color: "bg-sky-500/15 text-sky-700 border-sky-500/30",
   },
   fonctionnalite: {
-    label: "Fonctionnalité",
+    label: "Création",
     examples: "Système de chat, bons cadeaux multiples, nouveau module",
-    cost: "20€ / ticket",
+    cost: "50€ / ticket",
     color: "bg-violet-500/15 text-violet-700 border-violet-500/30",
   },
 };
