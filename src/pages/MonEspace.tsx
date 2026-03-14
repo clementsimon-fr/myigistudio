@@ -415,7 +415,40 @@ export default function MonEspace() {
   );
 }
 
-function FeedbackSection({ clientName }: { clientName: string }) {
+function GiftVoucherSection({ clientName }: { clientName: string }) {
+  const [vouchers, setVouchers] = useState<{ id: string; code: string; type: string; amount: number; sessions: number; card_name: string; message: string; used: boolean; expires_at: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.from("gift_vouchers").select("*").eq("beneficiary_name", clientName).order("created_at", { ascending: false }).then(({ data }) => {
+      if (data) setVouchers(data as any);
+      setLoading(false);
+    });
+  }, [clientName]);
+
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-lg font-display font-bold text-primary-dark">Mes bons cadeaux</h2>
+      {vouchers.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">Aucun bon cadeau pour le moment.</p>
+      ) : vouchers.map(v => (
+        <div key={v.id} className="rounded-xl border bg-card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-sm text-primary-dark">{v.card_name || (v.type === "amount" ? `Bon de ${v.amount}€` : `${v.sessions} séances`)}</h3>
+            <Badge variant={v.used ? "secondary" : "default"} className="text-xs">{v.used ? "Utilisé" : "Actif"}</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">Code : <span className="font-mono font-medium">{v.code}</span></p>
+          <p className="text-xs text-muted-foreground">Expire le {new Date(v.expires_at).toLocaleDateString("fr-FR")}</p>
+          {v.message && <p className="text-xs text-muted-foreground mt-1 italic">"{v.message}"</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
   const { toast } = useToast();
   const [feedbackMsg, setFeedbackMsg] = useState("");
   const [rating, setRating] = useState(5);
