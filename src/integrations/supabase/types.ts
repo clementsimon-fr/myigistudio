@@ -189,6 +189,57 @@ export type Database = {
           },
         ]
       }
+      feature_requests: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          status: string
+          title: string
+          urgency: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          status?: string
+          title?: string
+          urgency?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          status?: string
+          title?: string
+          urgency?: number
+        }
+        Relationships: []
+      }
+      feedbacks: {
+        Row: {
+          author_name: string
+          created_at: string
+          id: string
+          message: string
+          rating: number
+        }
+        Insert: {
+          author_name?: string
+          created_at?: string
+          id?: string
+          message?: string
+          rating?: number
+        }
+        Update: {
+          author_name?: string
+          created_at?: string
+          id?: string
+          message?: string
+          rating?: number
+        }
+        Relationships: []
+      }
       forum_posts: {
         Row: {
           author_name: string
