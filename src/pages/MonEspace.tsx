@@ -395,6 +395,80 @@ export default function MonEspace() {
         </div>
       </main>
 
+      {/* Reservation detail dialog */}
+      <Dialog open={!!viewingReservation} onOpenChange={(open) => !open && setViewingReservation(null)}>
+        <DialogContent className="sm:max-w-md">
+          {viewingReservation && (() => {
+            const r = viewingReservation;
+            const todayStr = new Date().toISOString().split("T")[0];
+            const isFuture = r.date >= todayStr;
+            const isConfirmed = r.status === "confirmé";
+            let canCancel = false;
+            if (isConfirmed && isFuture && r.time) {
+              const [h, m] = r.time.split(":").map(Number);
+              const courseStart = new Date(r.date + "T00:00:00");
+              courseStart.setHours(h, m, 0, 0);
+              const hoursUntil = (courseStart.getTime() - Date.now()) / (1000 * 60 * 60);
+              canCancel = hoursUntil >= 12;
+            }
+
+            const handleCancel = async () => {
+              await supabase.from("reservations").update({ status: "annulé" }).eq("id", r.id);
+              toast({ title: "Réservation annulée" });
+              setViewingReservation(null);
+              const { data } = await supabase.from("reservations").select("*").eq("client_name", CLIENT_NAME).order("date", { ascending: false });
+              if (data) setReservations(data as unknown as Reservation[]);
+            };
+
+            return (
+              <>
+                <DialogHeader>
+                  <Badge variant="outline" className={`w-fit text-[10px] ${statusColors[r.status] || ""}`}>{r.status}</Badge>
+                  <DialogTitle className="font-display text-xl">{r.activity_name}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                    <span>{new Date(r.date + "T00:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span>{r.time}{r.end_time ? ` - ${r.end_time}` : ""}</span>
+                  </div>
+                  {r.participants > 1 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span>{r.participants} participant{r.participants > 1 ? "s" : ""}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sm">
+                    <CreditCard className="h-4 w-4 text-muted-foreground" />
+                    <span>Type : {r.activity_type === "course" ? "Cours" : "Atelier"}</span>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button className="flex-1 gap-1.5" variant="outline" onClick={() => {
+                      setViewingReservation(null);
+                      navigate(`/calendrier?filter=${r.activity_type === "course" ? "yoga" : "poterie"}&activity=${encodeURIComponent(r.activity_name)}`);
+                    }}>
+                      <CalendarDays className="h-4 w-4" /> Voir le planning
+                    </Button>
+                    {canCancel && (
+                      <Button variant="destructive" className="gap-1.5" onClick={handleCancel}>
+                        <XCircle className="h-4 w-4" /> Annuler
+                      </Button>
+                    )}
+                  </div>
+                  {isConfirmed && isFuture && !canCancel && (
+                    <p className="text-[10px] text-muted-foreground text-center">Annulation possible jusqu'à 12h avant la séance.</p>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
       {/* Bottom nav removed — navigation is now in the top Navbar menu */}
 
       <Footer />
