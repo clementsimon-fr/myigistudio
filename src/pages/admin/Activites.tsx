@@ -500,11 +500,10 @@ export default function AdminActivites() {
               </div>
             </div>
 
-            <div>
-              <Label>📧 Modèle de rappel (e-mail)</Label>
-              <Textarea value={form.reminder_template} onChange={e => setForm({ ...form, reminder_template: e.target.value })} rows={3} placeholder="Bonjour {nom}, nous avons hâte de vous retrouver..." />
-              <p className="text-xs text-muted-foreground mt-1">Variables : {"{nom}"}, {"{activité}"}, {"{date}"}, {"{heure}"}</p>
-            </div>
+            <ReminderTemplateEditor
+              value={form.reminder_template}
+              onChange={v => setForm({ ...form, reminder_template: v })}
+            />
 
             <Button className="w-full" onClick={save} disabled={!form.name || form.events.length === 0}>
               {editingActivity ? "Enregistrer les modifications" : "Créer l'activité"}
