@@ -198,7 +198,7 @@ export default function AdminActivites() {
           reminder_template: c.reminder_template || "", modalities: c.modalities || "", source: "course",
           frequency: c.frequency, spots: c.spots, spots_left: c.spots_left,
           schedules: schedulesMap[c.id] || [],
-          intensity: c.intensity || "", reminder_timing: c.reminder_timing || "1j",
+          intensity: c.intensity || "none", reminder_timing: c.reminder_timing || "1j",
         });
       }
     }
