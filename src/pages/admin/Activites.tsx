@@ -509,7 +509,6 @@ export default function AdminActivites() {
                       <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
                       <SelectContent>
                         {instructorsList.map(i => <SelectItem key={i.id} value={i.name}>{i.name}</SelectItem>)}
-                        <SelectItem value="Élodie">Élodie (par défaut)</SelectItem>
                       </SelectContent>
                     </Select>
                   ) : (
