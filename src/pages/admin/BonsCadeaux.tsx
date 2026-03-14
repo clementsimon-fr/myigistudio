@@ -118,13 +118,15 @@ export default function AdminBonsCadeaux() {
   };
 
   const save = async () => {
+    const fullBuyer = [form.buyer_name, form.buyer_last_name].filter(Boolean).join(" ");
+    const fullBenef = [form.beneficiary_name, form.beneficiary_last_name].filter(Boolean).join(" ");
     const payload = {
       type: form.type,
       amount: form.amount,
       card_name: form.card_name,
       sessions: form.sessions,
-      beneficiary_name: form.beneficiary_name,
-      buyer_name: form.buyer_name,
+      beneficiary_name: fullBenef,
+      buyer_name: fullBuyer,
       message: form.message,
       expires_at: form.expires_at,
     };
