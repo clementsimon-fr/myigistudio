@@ -738,7 +738,7 @@ export default function AdminActivites() {
 // ── Activity Card (used for both desktop and mobile in cards view) ──
 function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActivity; onEdit: () => void; onDelete: () => void }) {
   const catLabel = CATEGORIES.find(c => c.value === a.category)?.label || a.category;
-  const intensityLabel = INTENSITY_OPTIONS.find(i => i.value === a.intensity)?.label;
+  const intensityLabel = getIntensityLabel(a.intensity);
   return (
     <div className="rounded-xl border bg-card overflow-hidden hover:shadow-md transition-shadow group">
       {a.image && (
