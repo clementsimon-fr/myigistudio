@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText, MapPin, Settings } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText, MapPin, Settings, LayoutGrid } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ActivityCalendar from "@/components/admin/ActivityCalendar";
@@ -30,11 +30,28 @@ const MODALITIES_VARIABLES = TEMPLATE_VARIABLES.filter(v => ["{activité}", "{da
 const INITIAL_DEFAULT_REMINDER = "Bonjour {nom}, nous avons hâte de vous retrouver pour {activité} le {date} à {heure}. À bientôt !";
 const INITIAL_DEFAULT_MODALITIES = "📍 Adresse : {adresse}\n\n🧘 Merci d'arriver 5 minutes avant le début de la séance.\n🚗 Parking disponible à proximité.\n💧 Pensez à apporter votre bouteille d'eau.";
 
+const REMINDER_TIMINGS = [
+  { value: "7j", label: "1 semaine" },
+  { value: "3j", label: "3 jours" },
+  { value: "1j", label: "1 jour" },
+  { value: "12h", label: "12 heures" },
+  { value: "3h", label: "3 heures" },
+  { value: "1h", label: "1 heure" },
+];
+
+const INTENSITY_OPTIONS = [
+  { value: "", label: "Non défini" },
+  { value: "doux", label: "🌿 Doux" },
+  { value: "equilibre", label: "⚖️ Équilibré" },
+  { value: "dynamique", label: "🔥 Dynamique" },
+];
+
 // ── Inline Template Editor ──
-function TemplateEditor({ value, onChange, variables, readOnly }: {
+function TemplateEditor({ value, onChange, variables, readOnly, showInsertModalities }: {
   value: string; onChange: (v: string) => void;
   variables: { key: string; label: string }[];
   readOnly?: boolean;
+  showInsertModalities?: boolean;
 }) {
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -61,6 +78,12 @@ function TemplateEditor({ value, onChange, variables, readOnly }: {
             <Button key={v.key} type="button" size="sm" variant="outline" className="h-5 text-[10px] px-1.5 font-mono"
               onClick={() => insertVariable(v.key)}>{v.key}</Button>
           ))}
+          {showInsertModalities && (
+            <Button type="button" size="sm" variant="outline" className="h-5 text-[10px] px-1.5 gap-1 border-dashed"
+              onClick={() => insertVariable("{modalités}")}>
+              <MapPin className="h-3 w-3" /> Insérer modalités
+            </Button>
+          )}
         </div>
       )}
     </div>
@@ -78,6 +101,7 @@ interface UnifiedActivity {
   reminder_template: string; modalities: string; source: "course" | "workshop";
   frequency?: string; spots?: number; spots_left?: number; schedules?: Schedule[];
   date?: string; time?: string; end_time?: string; duration?: string; price?: number;
+  intensity?: string; reminder_timing?: string;
 }
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
@@ -114,6 +138,8 @@ interface ActivityForm {
   events: EventSlot[];
   default_reminder: string;
   default_modalities: string;
+  intensity: string;
+  reminder_timing: string;
 }
 
 const emptyEvent = (): EventSlot => ({
@@ -125,6 +151,7 @@ const emptyForm = (): ActivityForm => ({
   name: "", description: "", long_description: "", category: "yoga",
   instructor: "Élodie", image: "", spots: 12, events: [emptyEvent()],
   default_reminder: "", default_modalities: "",
+  intensity: "", reminder_timing: "1j",
 });
 
 export default function AdminActivites() {
@@ -133,7 +160,7 @@ export default function AdminActivites() {
   const [activities, setActivities] = useState<UnifiedActivity[]>([]);
   const [instructorsList, setInstructorsList] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [viewMode, setViewMode] = useState<"list" | "cards" | "calendar">("cards");
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
@@ -144,7 +171,6 @@ export default function AdminActivites() {
 
   const currentDefaultReminder = settingsReady ? getSetting("default_reminder", INITIAL_DEFAULT_REMINDER) : INITIAL_DEFAULT_REMINDER;
   const currentDefaultModalities = settingsReady ? getSetting("default_modalities", INITIAL_DEFAULT_MODALITIES) : INITIAL_DEFAULT_MODALITIES;
-
 
   const fetchData = async () => {
     setLoading(true);
@@ -172,6 +198,7 @@ export default function AdminActivites() {
           reminder_template: c.reminder_template || "", modalities: c.modalities || "", source: "course",
           frequency: c.frequency, spots: c.spots, spots_left: c.spots_left,
           schedules: schedulesMap[c.id] || [],
+          intensity: c.intensity || "", reminder_timing: c.reminder_timing || "1j",
         });
       }
     }
@@ -185,6 +212,7 @@ export default function AdminActivites() {
           reminder_template: w.reminder_template || "", modalities: w.modalities || "", source: "workshop",
           date: w.date, time: w.time, end_time: w.end_time, duration: w.duration,
           price: w.price, spots: w.spots, spots_left: w.spots_left,
+          intensity: w.intensity || "", reminder_timing: w.reminder_timing || "1j",
         });
       }
     }
@@ -229,6 +257,8 @@ export default function AdminActivites() {
       category: a.category, instructor: a.instructor, image: a.image, spots: a.spots || 12, events,
       default_reminder: a.reminder_template || currentDefaultReminder,
       default_modalities: a.modalities || currentDefaultModalities,
+      intensity: a.intensity || "",
+      reminder_timing: a.reminder_timing || "1j",
     });
     setDialogOpen(true);
   };
@@ -237,10 +267,6 @@ export default function AdminActivites() {
     const recurringEvents = form.events.filter(e => e.type === "recurring");
     const ponctuelEvents = form.events.filter(e => e.type === "ponctuel");
     const instrId = instructorsList.find(i => i.name === form.instructor)?.id || null;
-
-    // Resolve templates: empty string means "use default"
-    const resolveReminder = (evt: EventSlot) => evt.reminder_template || "";
-    const resolveModalities = (evt: EventSlot) => evt.modalities || "";
 
     if (editingActivity) {
       if (editingActivity.source === "course") {
@@ -263,6 +289,7 @@ export default function AdminActivites() {
         spots: firstSlot.spots, spots_left: firstSlot.spots,
         day: firstSlot.day, time: firstSlot.time, end_time: firstSlot.end_time,
         duration, days, frequency: "hebdomadaire",
+        intensity: form.intensity, reminder_timing: form.reminder_timing,
       } as any).select("id").single();
       if (data) {
         const scheduleRows = recurringEvents.map(e => ({
@@ -282,6 +309,7 @@ export default function AdminActivites() {
         modalities: form.default_modalities,
         date: evt.date, time: evt.time, end_time: evt.end_time,
         duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
+        intensity: form.intensity, reminder_timing: form.reminder_timing,
       } as any);
     }
 
@@ -315,9 +343,6 @@ export default function AdminActivites() {
 
   const [expandedEvent, setExpandedEvent] = useState<number | null>(null);
 
-
-
-
   if (loading) {
     return (
       <AdminLayout title="Activités">
@@ -329,51 +354,103 @@ export default function AdminActivites() {
   return (
     <AdminLayout title="Activités">
       {/* Toolbar */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-6">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button variant={viewMode === "list" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("list")}>
-            <List className="h-4 w-4" /> Liste
+      <div className="flex flex-col gap-3 mb-6">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant={viewMode === "list" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("list")}>
+              <List className="h-4 w-4" /> Liste
+            </Button>
+            <Button variant={viewMode === "cards" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("cards")}>
+              <LayoutGrid className="h-4 w-4" /> Cards
+            </Button>
+            <Button variant={viewMode === "calendar" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("calendar")}>
+              <CalendarDays className="h-4 w-4" /> Calendrier
+            </Button>
+          </div>
+          <Button size="sm" className="gap-1.5 shrink-0" onClick={openNew}>
+            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Nouvelle activité</span><span className="sm:hidden">+</span>
           </Button>
-          <Button variant={viewMode === "calendar" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("calendar")}>
-            <CalendarDays className="h-4 w-4" /> Calendrier
-          </Button>
-          <div className="hidden md:flex gap-1.5 ml-2">
+        </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+          <div className="flex gap-1.5 flex-wrap">
             <Badge variant={categoryFilter === "all" ? "default" : "outline"} className="cursor-pointer text-xs" onClick={() => setCategoryFilter("all")}>Toutes</Badge>
             {CATEGORIES.map(c => (
               <Badge key={c.value} variant={categoryFilter === c.value ? "default" : "outline"} className="cursor-pointer text-xs" onClick={() => setCategoryFilter(c.value)}>{c.label}</Badge>
             ))}
           </div>
-        </div>
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <div className="relative flex-1 md:w-56">
+          <div className="relative flex-1 w-full sm:w-auto sm:max-w-[220px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input placeholder="Rechercher..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9 text-sm" />
           </div>
-          
-          <Button size="sm" className="gap-1.5 shrink-0" onClick={openNew}>
-            <Plus className="h-4 w-4" /> Nouvelle activité
-          </Button>
         </div>
       </div>
 
       {viewMode === "calendar" ? (
         <ActivityCalendar />
-      ) : (
+      ) : viewMode === "cards" ? (
         <>
           <p className="text-sm text-muted-foreground mb-4">{filtered.length} activité{filtered.length > 1 ? "s" : ""}</p>
-          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(a => (
               <ActivityCard key={`${a.source}-${a.id}`} activity={a} onEdit={() => openEdit(a)} onDelete={() => setDeletingItem({ id: a.id, source: a.source })} />
-            ))}
-          </div>
-          <div className="space-y-3 md:hidden">
-            {filtered.map(a => (
-              <ActivityCardMobile key={`${a.source}-${a.id}`} activity={a} onEdit={() => openEdit(a)} onDelete={() => setDeletingItem({ id: a.id, source: a.source })} />
             ))}
           </div>
           {filtered.length === 0 && (
             <div className="text-center py-12 text-muted-foreground text-sm">Aucune activité trouvée.</div>
           )}
+        </>
+      ) : (
+        <>
+          <p className="text-sm text-muted-foreground mb-4">{filtered.length} activité{filtered.length > 1 ? "s" : ""}</p>
+          <div className="rounded-xl border bg-card overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left p-3 font-medium text-muted-foreground">Nom</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Catégorie</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Intensité</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Intervenant</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Créneaux</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Aucune activité trouvée.</td></tr>
+                ) : filtered.map(a => {
+                  const catLabel = CATEGORIES.find(c => c.value === a.category)?.label || a.category;
+                  const intensityLabel = INTENSITY_OPTIONS.find(i => i.value === a.intensity)?.label || "—";
+                  return (
+                    <tr key={`${a.source}-${a.id}`} className="border-b last:border-0 hover:bg-muted/10">
+                      <td className="p-3">
+                        <div className="font-medium">{a.name}</div>
+                        {a.description && <div className="text-xs text-muted-foreground line-clamp-1">{a.description}</div>}
+                      </td>
+                      <td className="p-3"><Badge variant="outline" className="text-[10px]">{catLabel}</Badge></td>
+                      <td className="p-3 text-xs">{intensityLabel}</td>
+                      <td className="p-3 text-xs">{a.instructor}</td>
+                      <td className="p-3">
+                        {a.source === "course" && a.schedules?.map((s, i) => (
+                          <div key={i} className="text-xs text-muted-foreground">{s.day.slice(0, 3)} {s.time}-{s.end_time} · {s.spots_left}/{s.spots}</div>
+                        ))}
+                        {a.source === "workshop" && (
+                          <div className="text-xs text-muted-foreground">
+                            {a.date ? new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "—"} {a.time}-{a.end_time}
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)}><Pencil className="h-3 w-3" /></Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeletingItem({ id: a.id, source: a.source })}><Trash2 className="h-3 w-3" /></Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
 
@@ -396,6 +473,15 @@ export default function AdminActivites() {
                   <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>{CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Intensité</Label>
+                  <Select value={form.intensity} onValueChange={v => setForm({ ...form, intensity: v })}>
+                    <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                    <SelectContent>
+                      {INTENSITY_OPTIONS.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
+                    </SelectContent>
                   </Select>
                 </div>
                 <div>
@@ -491,7 +577,10 @@ export default function AdminActivites() {
                         <span className="text-muted-foreground text-xs">→</span>
                         <Input type="time" className="w-[100px] h-8 text-xs" value={evt.end_time} onChange={e => updateEvent(idx, { end_time: e.target.value })} />
                         {evt.time && evt.end_time && <span className="text-xs text-muted-foreground">{calcDuration(evt.time, evt.end_time)}</span>}
-                        <Input type="number" className="w-[70px] h-8 text-xs" value={evt.spots} onChange={e => updateEvent(idx, { spots: Number(e.target.value) })} placeholder="Places" />
+                        <div className="flex items-center gap-1">
+                          <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                          <Input type="number" className="w-[70px] h-8 text-xs" value={evt.spots} onChange={e => updateEvent(idx, { spots: Number(e.target.value) })} placeholder="Places" />
+                        </div>
                         {evt.type === "ponctuel" && (
                           <div className="flex items-center gap-1">
                             <Input type="number" className="w-[70px] h-8 text-xs" value={evt.price} onChange={e => updateEvent(idx, { price: Number(e.target.value) })} placeholder="Prix" />
@@ -523,7 +612,33 @@ export default function AdminActivites() {
                               onChange={v => updateEvent(idx, { reminder_template: v })}
                               variables={REMINDER_VARIABLES}
                               readOnly={!isReminderCustom}
+                              showInsertModalities={true}
                             />
+                          </div>
+
+                          {/* Reminder timing */}
+                          <div className="space-y-2">
+                            <Label className="flex items-center gap-1.5 text-xs"><Clock className="h-3.5 w-3.5" /> Timing des rappels</Label>
+                            <div className="flex flex-wrap gap-1.5">
+                              {REMINDER_TIMINGS.map(t => {
+                                const timings = form.reminder_timing.split(",").filter(Boolean);
+                                const isActive = timings.includes(t.value);
+                                return (
+                                  <Button key={t.value} type="button" size="sm"
+                                    variant={isActive ? "default" : "outline"}
+                                    className="h-6 text-[10px] px-2"
+                                    onClick={() => {
+                                      const newTimings = isActive
+                                        ? timings.filter(v => v !== t.value)
+                                        : [...timings, t.value];
+                                      setForm(prev => ({ ...prev, reminder_timing: newTimings.filter(Boolean).join(",") || "1j" }));
+                                    }}>
+                                    {t.label}
+                                  </Button>
+                                );
+                              })}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">Sélectionnez quand envoyer les rappels avant l'événement.</p>
                           </div>
 
                           {/* Modalities */}
@@ -565,7 +680,7 @@ export default function AdminActivites() {
               <p className="text-[11px] text-muted-foreground -mt-2">Ces textes seront utilisés par défaut pour tous les événements de cette activité. Vous pouvez les personnaliser dans les « Détails » de chaque événement.</p>
               <div className="space-y-2">
                 <Label className="flex items-center gap-1.5 text-xs"><Mail className="h-3.5 w-3.5" /> Modèle de rappel par défaut</Label>
-                <TemplateEditor value={form.default_reminder} onChange={v => setForm(prev => ({ ...prev, default_reminder: v }))} variables={REMINDER_VARIABLES} />
+                <TemplateEditor value={form.default_reminder} onChange={v => setForm(prev => ({ ...prev, default_reminder: v }))} variables={REMINDER_VARIABLES} showInsertModalities={true} />
               </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-1.5 text-xs"><MapPin className="h-3.5 w-3.5" /> Modalités par défaut</Label>
@@ -579,8 +694,6 @@ export default function AdminActivites() {
           </div>
         </DialogContent>
       </Dialog>
-
-      
 
       {/* ── Delete confirmation ── */}
       <AlertDialog open={!!deletingItem} onOpenChange={(open) => !open && setDeletingItem(null)}>
@@ -599,9 +712,10 @@ export default function AdminActivites() {
   );
 }
 
-// ── Desktop Activity Card ──
+// ── Activity Card (used for both desktop and mobile in cards view) ──
 function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActivity; onEdit: () => void; onDelete: () => void }) {
   const catLabel = CATEGORIES.find(c => c.value === a.category)?.label || a.category;
+  const intensityLabel = INTENSITY_OPTIONS.find(i => i.value === a.intensity)?.label;
   return (
     <div className="rounded-xl border bg-card overflow-hidden hover:shadow-md transition-shadow group">
       {a.image && (
@@ -620,8 +734,9 @@ function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActi
             <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={onDelete}><Trash2 className="h-3 w-3" /></Button>
           </div>
         </div>
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
           <Badge variant="outline" className="text-[10px]">{catLabel}</Badge>
+          {intensityLabel && <Badge variant="secondary" className="text-[10px]">{intensityLabel}</Badge>}
           <span className="text-xs text-muted-foreground">{a.instructor}</span>
         </div>
         <div className="space-y-1">
@@ -629,7 +744,7 @@ function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActi
             <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
               <Repeat className="h-3 w-3 shrink-0" />
               <span>{s.day.slice(0, 3)} {s.time}-{s.end_time}</span>
-              <span>· {s.spots_left}/{s.spots} places</span>
+              <span>· <Users className="h-3 w-3 inline" /> {s.spots_left}/{s.spots}</span>
             </div>
           ))}
           {a.source === "workshop" && (
@@ -637,40 +752,10 @@ function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActi
               <CalendarIcon className="h-3 w-3 shrink-0" />
               <span>{a.date ? new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "—"} {a.time}-{a.end_time}</span>
               {a.price !== undefined && a.price > 0 && <span className="font-medium text-foreground">{a.price}€</span>}
-              <span>· {a.spots_left}/{a.spots} places</span>
+              <span>· <Users className="h-3 w-3 inline" /> {a.spots_left}/{a.spots}</span>
             </div>
           )}
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Mobile Activity Card ──
-function ActivityCardMobile({ activity: a, onEdit, onDelete }: { activity: UnifiedActivity; onEdit: () => void; onDelete: () => void }) {
-  return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="flex items-start justify-between mb-2">
-        <div>
-          <h4 className="font-medium text-sm">{a.name}</h4>
-          {a.description && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{a.description}</p>}
-        </div>
-        <div className="flex gap-1 shrink-0">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit}><Pencil className="h-3 w-3" /></Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={onDelete}><Trash2 className="h-3 w-3" /></Button>
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        <Badge variant="outline" className="text-[10px]">{a.category}</Badge>
-        {a.source === "course" && a.schedules?.map((s, i) => (
-          <Badge key={i} variant="secondary" className="text-[10px]">{s.day.slice(0, 3)} {s.time}-{s.end_time}</Badge>
-        ))}
-        {a.source === "workshop" && (
-          <Badge variant="secondary" className="text-[10px]">
-            {a.date ? new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "—"} {a.time}
-          </Badge>
-        )}
-        {a.price !== undefined && a.price > 0 && <Badge variant="outline" className="text-[10px]">{a.price}€</Badge>}
       </div>
     </div>
   );

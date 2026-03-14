@@ -305,9 +305,8 @@ export default function Calendrier() {
                   onClick={() => {
                     const newVal = subFilter === name ? "all" : name;
                     setSubFilter(newVal);
-                    // Auto-scroll to first matching date
                     if (newVal !== "all") {
-                      scrollToFirstMatch(newVal);
+                      scrollToFirstMatch({ activityName: newVal, category: filter === "all" ? undefined : filter });
                     }
                   }}
                 >
