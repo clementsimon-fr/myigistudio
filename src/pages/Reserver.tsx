@@ -7,11 +7,21 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Check, Clock, Users, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+
+interface ConditionRow {
+  id: string;
+  type: string;
+  title: string;
+  content: string;
+  applies_to: string[];
+  active: boolean;
+}
 
 interface CourseScheduleRow {
   id: string;
@@ -74,6 +84,9 @@ export default function Reserver() {
   const [participants, setParticipants] = useState(1);
   const [confirmed, setConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [conditions, setConditions] = useState<ConditionRow[]>([]);
+  const [conditionsAccepted, setConditionsAccepted] = useState(false);
+  const [bookingBlocked, setBookingBlocked] = useState<string | null>(null);
 
   useEffect(() => {
     if (!activityType || !activityId) { setLoading(false); return; }
@@ -108,6 +121,14 @@ export default function Reserver() {
           }
         }
       }
+      // Fetch conditions
+      const { data: condData } = await supabase
+        .from("conditions")
+        .select("*")
+        .eq("active", true)
+        .order("sort_order");
+      if (condData) setConditions(condData as unknown as ConditionRow[]);
+
       setLoading(false);
     };
     load();
@@ -168,8 +189,35 @@ export default function Reserver() {
 
   const selectedSlotData = slots.find(s => s.id === selectedSlot);
 
+  // Check if booking is too close to start time (30 min rule)
+  useEffect(() => {
+    if (!selectedSlotData || !selectedDate) { setBookingBlocked(null); return; }
+    const now = new Date();
+    const [h, m] = selectedSlotData.time.split(":").map(Number);
+    const courseStart = new Date(selectedDate);
+    courseStart.setHours(h, m, 0, 0);
+    const diffMs = courseStart.getTime() - now.getTime();
+    const diffMin = diffMs / (1000 * 60);
+    if (diffMin < 30) {
+      setBookingBlocked("Ce cours commence dans moins de 30 minutes et ne peut plus être réservé.");
+    } else {
+      setBookingBlocked(null);
+    }
+  }, [selectedSlotData, selectedDate]);
+
+  // Filter conditions for this activity's category
+  const applicableConditions = useMemo(() => {
+    if (!activity) return [];
+    const cat = activity.category || (activity.type === "course" ? "yoga" : "bien-etre");
+    return conditions.filter(c => c.applies_to.includes(cat));
+  }, [conditions, activity]);
+
   const handleConfirm = async () => {
-    if (!selectedSlotData || !selectedDate) return;
+    if (!selectedSlotData || !selectedDate || bookingBlocked) return;
+    if (applicableConditions.length > 0 && !conditionsAccepted) {
+      toast({ title: "Veuillez accepter les conditions", variant: "destructive" });
+      return;
+    }
     setSubmitting(true);
     const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
     const { error } = await supabase.from("reservations").insert({
@@ -396,9 +444,39 @@ export default function Reserver() {
                         </div>
                       </div>
 
+                      {/* Booking blocked warning */}
+                      {bookingBlocked && (
+                        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                          <p className="text-sm text-destructive">{bookingBlocked}</p>
+                        </div>
+                      )}
+
+                      {/* Conditions */}
+                      {applicableConditions.length > 0 && !bookingBlocked && (
+                        <div className="space-y-3">
+                          {applicableConditions.map(c => (
+                            <div key={c.id} className="rounded-lg border bg-muted/30 p-3">
+                              <p className="text-xs font-semibold text-primary-dark mb-1">{c.title}</p>
+                              <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{c.content}</p>
+                            </div>
+                          ))}
+                          <div className="flex items-start gap-2">
+                            <Checkbox
+                              id="accept-conditions"
+                              checked={conditionsAccepted}
+                              onCheckedChange={(v) => setConditionsAccepted(!!v)}
+                            />
+                            <label htmlFor="accept-conditions" className="text-xs text-muted-foreground cursor-pointer leading-tight">
+                              J'ai lu et j'accepte les conditions ci-dessus
+                            </label>
+                          </div>
+                        </div>
+                      )}
+
                       <Button
                         onClick={handleConfirm}
-                        disabled={submitting}
+                        disabled={submitting || !!bookingBlocked || (applicableConditions.length > 0 && !conditionsAccepted)}
                         className="w-full bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-1.5"
                       >
                         {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}

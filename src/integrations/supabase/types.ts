@@ -44,6 +44,39 @@ export type Database = {
         }
         Relationships: []
       }
+      conditions: {
+        Row: {
+          active: boolean
+          applies_to: string[]
+          content: string
+          created_at: string
+          id: string
+          sort_order: number
+          title: string
+          type: string
+        }
+        Insert: {
+          active?: boolean
+          applies_to?: string[]
+          content?: string
+          created_at?: string
+          id?: string
+          sort_order?: number
+          title?: string
+          type?: string
+        }
+        Update: {
+          active?: boolean
+          applies_to?: string[]
+          content?: string
+          created_at?: string
+          id?: string
+          sort_order?: number
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       course_schedules: {
         Row: {
           course_id: string

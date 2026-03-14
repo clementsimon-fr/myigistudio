@@ -1,4 +1,4 @@
-import { LayoutDashboard, CalendarDays, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut } from "lucide-react";
+import { LayoutDashboard, CalendarDays, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -21,6 +21,7 @@ const items = [
   { title: "Clients", url: "/admin/clients", icon: Users },
   { title: "Tarifs", url: "/admin/tarifs", icon: CreditCard },
   { title: "Bons Cadeaux", url: "/admin/bons-cadeaux", icon: Gift },
+  { title: "Conditions", url: "/admin/conditions", icon: ScrollText },
   { title: "Contenu du site", url: "/admin/contenu", icon: FileText },
 ];
 
