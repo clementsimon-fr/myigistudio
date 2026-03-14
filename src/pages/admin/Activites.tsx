@@ -513,7 +513,7 @@ export default function AdminActivites() {
                                   <FileText className="h-3 w-3" /> Par défaut
                                 </Button>
                                 <Button type="button" size="sm" variant={isReminderCustom ? "default" : "outline"} className="h-6 text-[10px] px-2"
-                                  onClick={() => { if (!isReminderCustom) updateEvent(idx, { reminder_template: currentDefaultReminder }); }}>
+                                  onClick={() => { if (!isReminderCustom) updateEvent(idx, { reminder_template: form.default_reminder }); }}>
                                   Personnalisé
                                 </Button>
                               </div>
