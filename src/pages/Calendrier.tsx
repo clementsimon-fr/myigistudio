@@ -60,9 +60,11 @@ export default function Calendrier() {
   const [searchParams] = useSearchParams();
   const initialFilter = searchParams.get("filter") as FilterCategory | null;
   const targetDate = searchParams.get("date"); // auto-navigate to this date's week
+  const activityName = searchParams.get("activity"); // specific activity name
   const [filter, setFilter] = useState<FilterCategory>(
     initialFilter && CATEGORY_FILTERS.some(f => f.value === initialFilter) ? initialFilter : "all"
   );
+  const [subFilter, setSubFilter] = useState<string>(activityName || "all");
   const [selectedEvent, setSelectedEvent] = useState<ActivityBlock | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     // If a target date is provided, navigate to that week
