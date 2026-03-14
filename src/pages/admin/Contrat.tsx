@@ -1,8 +1,18 @@
+import { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Rocket, Server, Lightbulb, CheckCircle2, Clock, Gift, AlertTriangle, Zap, ArrowRight } from "lucide-react";
+import { Rocket, Server, Lightbulb, CheckCircle2, Clock, Gift, AlertTriangle, Zap, ArrowRight, BarChart3 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface FeatureRequest {
+  id: string;
+  urgency: number;
+  impact: string;
+  status: string;
+  created_at: string;
+}
 
 const phases = [
   {
@@ -29,31 +39,51 @@ const includedItems = [
   "Quota de modifications : ajustements cosmétiques (textes, couleurs, images) dans la limite d'une session de mise à jour groupée par semaine",
 ];
 
-const featureTiers = [
-  {
-    level: "Urgent",
-    price: "Inclus",
-    description: "Intervention prioritaire en cas de blocage du système",
-    color: "bg-destructive/15 text-destructive border-destructive/30",
-    icon: <AlertTriangle className="h-4 w-4" />,
-  },
-  {
-    level: "Important",
-    price: "20€ / ticket",
-    description: "Ex : ajout d'un nouveau type de prestation, modification complexe de la logique de réservation",
-    color: "bg-amber-500/15 text-amber-700 border-amber-500/30",
-    icon: <Zap className="h-4 w-4" />,
-  },
-  {
-    level: "Évolution Majeure",
-    price: "Sur devis",
-    description: "Ex : ajout d'un module boutique e-commerce",
-    color: "bg-primary/15 text-primary-dark border-primary/30",
-    icon: <Lightbulb className="h-4 w-4" />,
-  },
+// 2D pricing grid data
+const GRID_ROWS = [
+  { urgency: "Urgent", delay: "< 24h", icon: <AlertTriangle className="h-3.5 w-3.5" />, color: "text-destructive" },
+  { urgency: "Important", delay: "< 3 jours", icon: <Zap className="h-3.5 w-3.5" />, color: "text-amber-700" },
+  { urgency: "Cool", delay: "< 1 semaine", icon: <Lightbulb className="h-3.5 w-3.5" />, color: "text-primary" },
+  { urgency: "À discuter", delay: "à l'occasion", icon: <Clock className="h-3.5 w-3.5" />, color: "text-muted-foreground" },
 ];
 
+const GRID_COLS = [
+  { impact: "Retouche", color: "text-emerald-700" },
+  { impact: "Amélioration", color: "text-sky-700" },
+  { impact: "Fonctionnalité", color: "text-violet-700" },
+];
+
+function getGridCost(urgencyIdx: number, impactKey: string): string {
+  if (urgencyIdx === 3) return "Sur devis";
+  if (impactKey === "Fonctionnalité") return "20€";
+  return "Inclus";
+}
+
+function getGridCellColor(cost: string): string {
+  if (cost === "Inclus") return "bg-emerald-500/10 text-emerald-700";
+  if (cost === "20€") return "bg-violet-500/10 text-violet-700";
+  return "bg-muted text-muted-foreground";
+}
+
 export default function AdminContrat() {
+  const [tickets, setTickets] = useState<FeatureRequest[]>([]);
+
+  useEffect(() => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    supabase
+      .from("feature_requests")
+      .select("id, urgency, impact, status, created_at")
+      .gte("created_at", startOfMonth)
+      .then(({ data }) => { if (data) setTickets(data as unknown as FeatureRequest[]); });
+  }, []);
+
+  // Monthly stats
+  const paidTickets = tickets.filter(t => t.impact === "fonctionnalite" && t.urgency !== 4);
+  const includedTickets = tickets.filter(t => t.impact !== "fonctionnalite" && t.urgency !== 4);
+  const devisTickets = tickets.filter(t => t.urgency === 4);
+  const monthlyCost = paidTickets.length * 20;
+
   return (
     <AdminLayout title="Contrat">
       <div className="max-w-3xl mx-auto space-y-8">
@@ -144,32 +174,88 @@ export default function AdminContrat() {
 
         <Separator />
 
-        {/* --- Section C: Système de fonctionnalités --- */}
+        {/* --- Section C: Grille tarifaire --- */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
             <Lightbulb className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-display font-bold text-primary-dark">Demandes de Fonctionnalités</h2>
+            <h2 className="text-lg font-display font-bold text-primary-dark">Grille Tarifaire des Demandes</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Système de demande d'évolution selon les priorités. Gérez vos idées depuis l'onglet{" "}
+            Le coût dépend du type de demande et de son niveau d'importance. Gérez vos idées depuis l'onglet{" "}
             <a href="/admin/fonctionnalites" className="text-primary underline underline-offset-2 font-medium">Fonctionnalités</a>.
           </p>
 
-          <div className="space-y-3">
-            {featureTiers.map((tier) => (
-              <Card key={tier.level}>
-                <CardContent className="flex items-center gap-4 py-4 px-5">
-                  <Badge variant="outline" className={`shrink-0 gap-1.5 ${tier.color}`}>
-                    {tier.icon} {tier.level}
-                  </Badge>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-muted-foreground">{tier.description}</p>
-                  </div>
-                  <span className="text-sm font-semibold text-primary-dark whitespace-nowrap">{tier.price}</span>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          {/* 2D Grid */}
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="p-3 text-left text-muted-foreground font-medium text-xs">Importance ↓ / Type →</th>
+                      {GRID_COLS.map(col => (
+                        <th key={col.impact} className={`p-3 text-center font-semibold text-xs ${col.color}`}>{col.impact}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {GRID_ROWS.map((row, rIdx) => (
+                      <tr key={row.urgency} className="border-b last:border-0">
+                        <td className="p-3">
+                          <div className={`flex items-center gap-1.5 font-medium text-xs ${row.color}`}>
+                            {row.icon} {row.urgency}
+                            <span className="text-muted-foreground font-normal ml-1">({row.delay})</span>
+                          </div>
+                        </td>
+                        {GRID_COLS.map(col => {
+                          const cost = getGridCost(rIdx, col.impact);
+                          return (
+                            <td key={col.impact} className="p-3 text-center">
+                              <Badge variant="outline" className={`text-[11px] ${getGridCellColor(cost)}`}>
+                                {cost}
+                              </Badge>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Monthly counter */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                <CardTitle className="text-sm">Ce mois-ci</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-2xl font-bold text-emerald-700">{includedTickets.length}</p>
+                  <p className="text-[11px] text-muted-foreground">Incluses</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-violet-700">{paidTickets.length}</p>
+                  <p className="text-[11px] text-muted-foreground">Payantes</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-muted-foreground">{devisTickets.length}</p>
+                  <p className="text-[11px] text-muted-foreground">Sur devis</p>
+                </div>
+              </div>
+              {monthlyCost > 0 && (
+                <div className="mt-3 pt-3 border-t text-center">
+                  <p className="text-sm text-muted-foreground">Coût estimé supplémentaire</p>
+                  <p className="text-xl font-bold text-primary-dark">{monthlyCost}€</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </section>
       </div>
     </AdminLayout>
