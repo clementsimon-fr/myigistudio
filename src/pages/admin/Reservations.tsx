@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Search, Loader2, XCircle, RotateCcw, List, CalendarDays } from "lucide-react";
+import { Search, Loader2, XCircle, RotateCcw, List, CalendarDays, TrendingUp, Users, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import DailyView from "@/components/admin/DailyView";
@@ -41,14 +41,25 @@ export default function AdminReservations() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [fillRate, setFillRate] = useState(0);
+  const [activitiesCount, setActivitiesCount] = useState(0);
 
   const fetchReservations = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("reservations")
-      .select("*")
-      .order("date", { ascending: false });
-    if (data) setReservations(data as unknown as Reservation[]);
+    const [resData, resSchedules, resCourses, resWorkshops] = await Promise.all([
+      supabase.from("reservations").select("*").order("date", { ascending: false }),
+      supabase.from("course_schedules").select("spots, spots_left"),
+      supabase.from("courses").select("id", { count: "exact", head: true }),
+      supabase.from("workshops").select("id", { count: "exact", head: true }),
+    ]);
+    if (resData.data) setReservations(resData.data as unknown as Reservation[]);
+    if (resSchedules.data && resSchedules.data.length > 0) {
+      const scheds = resSchedules.data as any[];
+      const total = scheds.reduce((s: number, r: any) => s + r.spots, 0);
+      const used = scheds.reduce((s: number, r: any) => s + (r.spots - r.spots_left), 0);
+      setFillRate(total > 0 ? Math.round((used / total) * 100) : 0);
+    }
+    setActivitiesCount((resCourses.count || 0) + (resWorkshops.count || 0));
     setLoading(false);
   };
 
@@ -147,6 +158,40 @@ export default function AdminReservations() {
         >
           <List className="h-4 w-4" /> Liste complète
         </Button>
+      </div>
+
+      {/* Stats cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <CalendarDays className="h-4 w-4 text-primary-dark" />
+            <span className="text-xs text-muted-foreground">Réservations du jour</span>
+          </div>
+          <p className="text-2xl font-bold text-foreground">
+            {reservations.filter(r => r.status === "confirmé" && r.date === new Date().toISOString().split("T")[0]).length}
+          </p>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="h-4 w-4 text-primary" />
+            <span className="text-xs text-muted-foreground">Clients inscrits</span>
+          </div>
+          <p className="text-2xl font-bold text-foreground">{new Set(reservations.map(r => r.client_name)).size}</p>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="h-4 w-4 text-accent" />
+            <span className="text-xs text-muted-foreground">Taux de remplissage</span>
+          </div>
+          <p className="text-2xl font-bold text-foreground">{fillRate}%</p>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Clock className="h-4 w-4 text-primary-dark" />
+            <span className="text-xs text-muted-foreground">Activités</span>
+          </div>
+          <p className="text-2xl font-bold text-foreground">{activitiesCount}</p>
+        </div>
       </div>
 
       {viewMode === "daily" ? (

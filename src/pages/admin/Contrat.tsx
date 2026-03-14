@@ -3,7 +3,8 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Rocket, Server, Lightbulb, CheckCircle2, Clock, Gift, AlertTriangle, Zap, ArrowRight, BarChart3 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Rocket, Server, Lightbulb, CheckCircle2, Clock, Gift, AlertTriangle, Zap, ArrowRight, BarChart3, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface FeatureRequest {
@@ -39,7 +40,12 @@ const includedItems = [
   "Quota de modifications : ajustements cosmétiques (textes, couleurs, images) dans la limite d'une session de mise à jour groupée par semaine",
 ];
 
-// 2D pricing grid data
+const IMPACT_TOOLTIPS: Record<string, string> = {
+  "Retouche": "Changements simples et rapides : modifier un texte, une couleur, une image, corriger une faute.",
+  "Amélioration": "Ajustements de structure : ajouter une section, réorganiser un bloc, modifier un formulaire existant.",
+  "Création": "Développement d'une nouvelle fonctionnalité complète : système de chat, nouveau module, intégration externe.",
+};
+
 const GRID_ROWS = [
   { urgency: "Urgent", delay: "< 24h", icon: <AlertTriangle className="h-3.5 w-3.5" />, color: "text-destructive" },
   { urgency: "Important", delay: "< 3 jours", icon: <Zap className="h-3.5 w-3.5" />, color: "text-amber-700" },
@@ -50,18 +56,17 @@ const GRID_ROWS = [
 const GRID_COLS = [
   { impact: "Retouche", color: "text-emerald-700" },
   { impact: "Amélioration", color: "text-sky-700" },
-  { impact: "Fonctionnalité", color: "text-violet-700" },
+  { impact: "Création", color: "text-violet-700" },
 ];
 
 function getGridCost(urgencyIdx: number, impactKey: string): string {
-  if (urgencyIdx === 3) return "Sur devis";
-  if (impactKey === "Fonctionnalité") return "20€";
+  if (impactKey === "Création") return "50€";
   return "Inclus";
 }
 
 function getGridCellColor(cost: string): string {
   if (cost === "Inclus") return "bg-emerald-500/10 text-emerald-700";
-  if (cost === "20€") return "bg-violet-500/10 text-violet-700";
+  if (cost === "50€") return "bg-violet-500/10 text-violet-700";
   return "bg-muted text-muted-foreground";
 }
 
@@ -78,11 +83,9 @@ export default function AdminContrat() {
       .then(({ data }) => { if (data) setTickets(data as unknown as FeatureRequest[]); });
   }, []);
 
-  // Monthly stats
-  const paidTickets = tickets.filter(t => t.impact === "fonctionnalite" && t.urgency !== 4);
-  const includedTickets = tickets.filter(t => t.impact !== "fonctionnalite" && t.urgency !== 4);
-  const devisTickets = tickets.filter(t => t.urgency === 4);
-  const monthlyCost = paidTickets.length * 20;
+  const paidTickets = tickets.filter(t => t.impact === "fonctionnalite");
+  const includedTickets = tickets.filter(t => t.impact !== "fonctionnalite");
+  const monthlyCost = paidTickets.length * 50;
 
   return (
     <AdminLayout title="Contrat">
@@ -194,7 +197,19 @@ export default function AdminContrat() {
                     <tr className="border-b">
                       <th className="p-3 text-left text-muted-foreground font-medium text-xs">Importance ↓ / Type →</th>
                       {GRID_COLS.map(col => (
-                        <th key={col.impact} className={`p-3 text-center font-semibold text-xs ${col.color}`}>{col.impact}</th>
+                        <th key={col.impact} className={`p-3 text-center font-semibold text-xs ${col.color}`}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help inline-flex items-center gap-1">
+                                {col.impact}
+                                <Info className="h-3 w-3 opacity-50" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[220px] text-xs">
+                              {IMPACT_TOOLTIPS[col.impact]}
+                            </TooltipContent>
+                          </Tooltip>
+                        </th>
                       ))}
                     </tr>
                   </thead>
@@ -234,18 +249,14 @@ export default function AdminContrat() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
                   <p className="text-2xl font-bold text-emerald-700">{includedTickets.length}</p>
                   <p className="text-[11px] text-muted-foreground">Incluses</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-violet-700">{paidTickets.length}</p>
-                  <p className="text-[11px] text-muted-foreground">Payantes</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-muted-foreground">{devisTickets.length}</p>
-                  <p className="text-[11px] text-muted-foreground">Sur devis</p>
+                  <p className="text-[11px] text-muted-foreground">Créations (50€)</p>
                 </div>
               </div>
               {monthlyCost > 0 && (

@@ -1,4 +1,4 @@
-import { LayoutDashboard, CalendarDays, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText, Lightbulb, FileSignature } from "lucide-react";
+import { Bell, CalendarDays, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText, Lightbulb, FileSignature } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -18,8 +18,8 @@ const sidebarGroups = [
   {
     label: "Organisation",
     items: [
-      { title: "Tableau de bord", url: "/admin", icon: LayoutDashboard },
       { title: "Réservations", url: "/admin/reservations", icon: CalendarDays },
+      { title: "Notifications", url: "/admin", icon: Bell },
       { title: "Activités", url: "/admin/activites", icon: BookOpen },
       { title: "Conditions", url: "/admin/conditions", icon: ScrollText },
     ],

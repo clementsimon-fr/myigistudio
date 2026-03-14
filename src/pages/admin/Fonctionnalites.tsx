@@ -44,9 +44,9 @@ const IMPACT_CONFIG: Record<string, { label: string; examples: string; cost: str
     color: "bg-sky-500/15 text-sky-700 border-sky-500/30",
   },
   fonctionnalite: {
-    label: "Fonctionnalité",
+    label: "Création",
     examples: "Système de chat, bons cadeaux multiples, nouveau module",
-    cost: "20€ / ticket",
+    cost: "50€ / ticket",
     color: "bg-violet-500/15 text-violet-700 border-violet-500/30",
   },
 };
@@ -65,8 +65,7 @@ const STATUS_OPTIONS = [
 ];
 
 function getCostLabel(impact: string, urgency: number): { text: string; detail: string } {
-  if (urgency === 4) return { text: "Sur devis", detail: "Cette demande sera discutée et chiffrée sur mesure." };
-  if (impact === "fonctionnalite") return { text: "20€", detail: "Cette fonctionnalité sera facturée en tant que ticket." };
+  if (impact === "fonctionnalite") return { text: "50€", detail: "Cette création sera facturée en tant que ticket." };
   if (urgency === 1) return { text: "Inclus", detail: "Groupée avec vos autres demandes urgentes du jour." };
   return { text: "Inclus", detail: "Inclus dans votre quota hebdomadaire." };
 }

@@ -177,32 +177,55 @@ export default function Calendrier() {
   const nextWeek = () => { const d = new Date(currentWeekStart); d.setDate(d.getDate() + 7); setCurrentWeekStart(d); };
   const goThisWeek = () => { const now = new Date(); const day = now.getDay(); const diff = now.getDate() - day + (day === 0 ? -6 : 1); const m = new Date(now); m.setDate(diff); m.setHours(0, 0, 0, 0); setCurrentWeekStart(m); };
 
-  // Auto-scroll to the week containing the first matching date for a sub-filter
-  const scrollToFirstMatch = (activityName: string) => {
+  const scrollToFirstMatch = (params: { category?: string; activityName?: string }) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    // Check workshops first (ponctuels)
-    const matchingWorkshops = workshops
-      .filter(w => w.name === activityName && w.date >= formatDateStr(today))
+    const todayStr2 = formatDateStr(today);
+
+    // Find matching workshops (ponctuel)
+    const matchingWs = workshops
+      .filter(w => {
+        if (w.date < todayStr2) return false;
+        if (params.activityName && w.name !== params.activityName) return false;
+        if (params.category && w.category !== params.category) return false;
+        return true;
+      })
       .sort((a, b) => a.date.localeCompare(b.date));
-    if (matchingWorkshops.length > 0) {
-      const firstDate = new Date(matchingWorkshops[0].date + "T00:00:00");
-      const day = firstDate.getDay();
-      const diff = firstDate.getDate() - day + (day === 0 ? -6 : 1);
-      const monday = new Date(firstDate);
+
+    // Find matching recurring schedules
+    const matchingScheds = schedules.filter(s => {
+      const course = courses.find(c => c.id === s.course_id);
+      if (!course) return false;
+      if (params.activityName && course.name !== params.activityName) return false;
+      if (params.category && course.category !== params.category) return false;
+      return true;
+    });
+
+    let earliestDate: Date | null = null;
+
+    if (matchingWs.length > 0) {
+      earliestDate = new Date(matchingWs[0].date + "T00:00:00");
+    }
+
+    if (matchingScheds.length > 0) {
+      const dayNames = matchingScheds.map(s => s.day);
+      for (let i = 0; i < 14; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() + i);
+        if (dayNames.includes(DAY_MAP[d.getDay()])) {
+          if (!earliestDate || d < earliestDate) earliestDate = d;
+          break;
+        }
+      }
+    }
+
+    if (earliestDate) {
+      const dayOfWeek = earliestDate.getDay();
+      const diff = earliestDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const monday = new Date(earliestDate);
       monday.setDate(diff);
       monday.setHours(0, 0, 0, 0);
       setCurrentWeekStart(monday);
-      return;
-    }
-    // For recurring courses, find the next occurrence
-    const matchingSchedules = schedules.filter(s => {
-      const course = courses.find(c => c.id === s.course_id);
-      return course && course.name === activityName;
-    });
-    if (matchingSchedules.length > 0) {
-      // Already on this week likely has the day, just stay
-      goThisWeek();
     }
   };
 
@@ -259,7 +282,7 @@ export default function Calendrier() {
         </div>
 
         {/* ─── Sticky filters ─── */}
-        <ActivityFilterBar filter={filter} onFilterChange={(v) => { setFilter(v); setSubFilter("all"); }} />
+        <ActivityFilterBar filter={filter} onFilterChange={(v) => { setFilter(v); setSubFilter("all"); if (v !== "all") scrollToFirstMatch({ category: v }); }} />
 
         {/* Sub-filters for specific activities within category */}
         {filter !== "all" && subFilterOptions.length > 1 && (
@@ -282,9 +305,8 @@ export default function Calendrier() {
                   onClick={() => {
                     const newVal = subFilter === name ? "all" : name;
                     setSubFilter(newVal);
-                    // Auto-scroll to first matching date
                     if (newVal !== "all") {
-                      scrollToFirstMatch(newVal);
+                      scrollToFirstMatch({ activityName: newVal, category: filter as string === "all" ? undefined : filter });
                     }
                   }}
                 >
