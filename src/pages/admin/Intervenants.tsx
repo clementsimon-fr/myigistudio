@@ -263,7 +263,10 @@ export default function AdminIntervenants() {
             <DialogTitle className="font-display">{editingId ? "Modifier" : "Nouvel"} intervenant</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
-            <div><Label>Nom</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Prénom Nom" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Prénom</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Prénom" /></div>
+              <div><Label>Nom</Label><Input value={form.last_name} onChange={e => setForm({ ...form, last_name: e.target.value })} placeholder="Nom" /></div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="email@..." /></div>
               <div><Label>Téléphone</Label><Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="06..." /></div>
