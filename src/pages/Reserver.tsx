@@ -132,7 +132,10 @@ export default function Reserver() {
     if (date < today) return true;
     if (!activity) return true;
     if (activity.type === "course") return !availableDays.has(DAY_NAMES_MAP[date.getDay()]);
-    if (activity.type === "workshop") return !workshopDates.has(date.toISOString().split("T")[0]);
+    if (activity.type === "workshop") {
+      const ds = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      return !workshopDates.has(ds);
+    }
     return true;
   };
 
@@ -150,7 +153,7 @@ export default function Reserver() {
         }));
     }
     if (activity.type === "workshop") {
-      const dateStr = selectedDate.toISOString().split("T")[0];
+      const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
       if (activity.date === dateStr) {
         return [{
           id: activity.id, name: activity.name, time: activity.time,
