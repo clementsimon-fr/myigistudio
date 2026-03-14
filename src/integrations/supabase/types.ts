@@ -198,6 +198,7 @@ export type Database = {
           description: string
           id: string
           status: string
+          target: string
           title: string
           urgency: number
         }
@@ -206,6 +207,7 @@ export type Database = {
           description?: string
           id?: string
           status?: string
+          target?: string
           title?: string
           urgency?: number
         }
@@ -214,6 +216,7 @@ export type Database = {
           description?: string
           id?: string
           status?: string
+          target?: string
           title?: string
           urgency?: number
         }

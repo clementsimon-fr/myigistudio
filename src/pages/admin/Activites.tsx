@@ -12,7 +12,7 @@ import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Us
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ActivityCalendar from "@/components/admin/ActivityCalendar";
-import { useSiteSettings, saveSiteSettings } from "@/hooks/useSiteSettings";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 // ── Template Variables ──
 const TEMPLATE_VARIABLES = [
@@ -142,20 +142,9 @@ export default function AdminActivites() {
   const [form, setForm] = useState<ActivityForm>(emptyForm());
   const [deletingItem, setDeletingItem] = useState<{ id: string; source: "course" | "workshop" } | null>(null);
 
-  // Global defaults dialog
-  const [defaultsDialogOpen, setDefaultsDialogOpen] = useState(false);
-  const [globalReminder, setGlobalReminder] = useState("");
-  const [globalModalities, setGlobalModalities] = useState("");
+  const currentDefaultReminder = settingsReady ? getSetting("default_reminder", INITIAL_DEFAULT_REMINDER) : INITIAL_DEFAULT_REMINDER;
+  const currentDefaultModalities = settingsReady ? getSetting("default_modalities", INITIAL_DEFAULT_MODALITIES) : INITIAL_DEFAULT_MODALITIES;
 
-  useEffect(() => {
-    if (settingsReady) {
-      setGlobalReminder(getSetting("default_reminder", INITIAL_DEFAULT_REMINDER));
-      setGlobalModalities(getSetting("default_modalities", INITIAL_DEFAULT_MODALITIES));
-    }
-  }, [settingsReady]);
-
-  const currentDefaultReminder = globalReminder || INITIAL_DEFAULT_REMINDER;
-  const currentDefaultModalities = globalModalities || INITIAL_DEFAULT_MODALITIES;
 
   const fetchData = async () => {
     setLoading(true);
@@ -238,7 +227,8 @@ export default function AdminActivites() {
     setForm({
       name: a.name, description: a.description, long_description: a.long_description,
       category: a.category, instructor: a.instructor, image: a.image, spots: a.spots || 12, events,
-      default_reminder: currentDefaultReminder, default_modalities: currentDefaultModalities,
+      default_reminder: a.reminder_template || currentDefaultReminder,
+      default_modalities: a.modalities || currentDefaultModalities,
     });
     setDialogOpen(true);
   };
@@ -268,8 +258,8 @@ export default function AdminActivites() {
       const { data } = await supabase.from("courses").insert({
         name: form.name, description: form.description, long_description: form.long_description,
         category: form.category, instructor: form.instructor, instructor_id: instrId,
-        image: form.image, reminder_template: resolveReminder(firstSlot),
-        modalities: resolveModalities(firstSlot),
+        image: form.image, reminder_template: form.default_reminder,
+        modalities: form.default_modalities,
         spots: firstSlot.spots, spots_left: firstSlot.spots,
         day: firstSlot.day, time: firstSlot.time, end_time: firstSlot.end_time,
         duration, days, frequency: "hebdomadaire",
@@ -288,8 +278,8 @@ export default function AdminActivites() {
       await supabase.from("workshops").insert({
         name: form.name, description: form.description, long_description: form.long_description,
         category: form.category, instructor_id: instrId,
-        image: form.image, reminder_template: resolveReminder(evt),
-        modalities: resolveModalities(evt),
+        image: form.image, reminder_template: form.default_reminder,
+        modalities: form.default_modalities,
         date: evt.date, time: evt.time, end_time: evt.end_time,
         duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
       } as any);
@@ -325,15 +315,8 @@ export default function AdminActivites() {
 
   const [expandedEvent, setExpandedEvent] = useState<number | null>(null);
 
-  // Save global defaults
-  const saveGlobalDefaults = async () => {
-    await saveSiteSettings([
-      { key: "default_reminder", value: globalReminder },
-      { key: "default_modalities", value: globalModalities },
-    ]);
-    toast({ title: "Modèles par défaut sauvegardés ✓" });
-    setDefaultsDialogOpen(false);
-  };
+
+
 
   if (loading) {
     return (
@@ -366,9 +349,7 @@ export default function AdminActivites() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input placeholder="Rechercher..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9 text-sm" />
           </div>
-          <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={() => setDefaultsDialogOpen(true)}>
-            <Settings className="h-4 w-4" /> Par défaut
-          </Button>
+          
           <Button size="sm" className="gap-1.5 shrink-0" onClick={openNew}>
             <Plus className="h-4 w-4" /> Nouvelle activité
           </Button>
@@ -532,13 +513,13 @@ export default function AdminActivites() {
                                   <FileText className="h-3 w-3" /> Par défaut
                                 </Button>
                                 <Button type="button" size="sm" variant={isReminderCustom ? "default" : "outline"} className="h-6 text-[10px] px-2"
-                                  onClick={() => { if (!isReminderCustom) updateEvent(idx, { reminder_template: currentDefaultReminder }); }}>
+                                  onClick={() => { if (!isReminderCustom) updateEvent(idx, { reminder_template: form.default_reminder }); }}>
                                   Personnalisé
                                 </Button>
                               </div>
                             </div>
                             <TemplateEditor
-                              value={isReminderCustom ? evt.reminder_template : currentDefaultReminder}
+                              value={isReminderCustom ? evt.reminder_template : form.default_reminder}
                               onChange={v => updateEvent(idx, { reminder_template: v })}
                               variables={REMINDER_VARIABLES}
                               readOnly={!isReminderCustom}
@@ -555,13 +536,13 @@ export default function AdminActivites() {
                                   <FileText className="h-3 w-3" /> Par défaut
                                 </Button>
                                 <Button type="button" size="sm" variant={isModalitiesCustom ? "default" : "outline"} className="h-6 text-[10px] px-2"
-                                  onClick={() => { if (!isModalitiesCustom) updateEvent(idx, { modalities: currentDefaultModalities }); }}>
+                                  onClick={() => { if (!isModalitiesCustom) updateEvent(idx, { modalities: form.default_modalities }); }}>
                                   Personnalisé
                                 </Button>
                               </div>
                             </div>
                             <TemplateEditor
-                              value={isModalitiesCustom ? evt.modalities : currentDefaultModalities}
+                              value={isModalitiesCustom ? evt.modalities : form.default_modalities}
                               onChange={v => updateEvent(idx, { modalities: v })}
                               variables={MODALITIES_VARIABLES}
                               readOnly={!isModalitiesCustom}
@@ -575,6 +556,23 @@ export default function AdminActivites() {
               </div>
             </div>
 
+            {/* ── Modalités et rappels par défaut (per-activity) ── */}
+            <div className="border rounded-lg p-4 space-y-4 bg-muted/10">
+              <div className="flex items-center gap-2">
+                <Settings className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-sm font-semibold mb-0">Modalités et rappels par défaut</Label>
+              </div>
+              <p className="text-[11px] text-muted-foreground -mt-2">Ces textes seront utilisés par défaut pour tous les événements de cette activité. Vous pouvez les personnaliser dans les « Détails » de chaque événement.</p>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5 text-xs"><Mail className="h-3.5 w-3.5" /> Modèle de rappel par défaut</Label>
+                <TemplateEditor value={form.default_reminder} onChange={v => setForm(prev => ({ ...prev, default_reminder: v }))} variables={REMINDER_VARIABLES} />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5 text-xs"><MapPin className="h-3.5 w-3.5" /> Modalités par défaut</Label>
+                <TemplateEditor value={form.default_modalities} onChange={v => setForm(prev => ({ ...prev, default_modalities: v }))} variables={MODALITIES_VARIABLES} />
+              </div>
+            </div>
+
             <Button className="w-full" onClick={save} disabled={!form.name || form.events.length === 0}>
               {editingActivity ? "Enregistrer les modifications" : "Créer l'activité"}
             </Button>
@@ -582,28 +580,7 @@ export default function AdminActivites() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Global Defaults Dialog ── */}
-      <Dialog open={defaultsDialogOpen} onOpenChange={setDefaultsDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="font-display flex items-center gap-2">
-              <Settings className="h-5 w-5" /> Modèles par défaut
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-xs text-muted-foreground">Ces textes seront utilisés par défaut pour toutes les activités. Vous pouvez les personnaliser individuellement dans les détails de chaque événement.</p>
-          <div className="space-y-5 pt-2">
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5 text-sm"><Mail className="h-4 w-4" /> Modèle de rappel par défaut</Label>
-              <TemplateEditor value={globalReminder} onChange={setGlobalReminder} variables={REMINDER_VARIABLES} />
-            </div>
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5 text-sm"><MapPin className="h-4 w-4" /> Modalités par défaut</Label>
-              <TemplateEditor value={globalModalities} onChange={setGlobalModalities} variables={MODALITIES_VARIABLES} />
-            </div>
-            <Button className="w-full" onClick={saveGlobalDefaults}>Enregistrer les modèles par défaut</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      
 
       {/* ── Delete confirmation ── */}
       <AlertDialog open={!!deletingItem} onOpenChange={(open) => !open && setDeletingItem(null)}>

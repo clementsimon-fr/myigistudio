@@ -1,0 +1,1 @@
+ALTER TABLE public.feature_requests ADD COLUMN target text NOT NULL DEFAULT 'autre';

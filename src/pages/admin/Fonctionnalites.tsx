@@ -17,6 +17,7 @@ interface FeatureRequest {
   description: string;
   urgency: number;
   status: string;
+  target: string;
   created_at: string;
 }
 
@@ -24,7 +25,15 @@ const URGENCY_CONFIG: Record<number, { label: string; delay: string; color: stri
   1: { label: "Urgent", delay: "< 24h", color: "bg-destructive/15 text-destructive border-destructive/30" },
   2: { label: "Important", delay: "< 3 jours", color: "bg-amber-500/15 text-amber-700 border-amber-500/30" },
   3: { label: "Cool", delay: "< 1 semaine", color: "bg-primary/15 text-primary-dark border-primary/30" },
+  4: { label: "À discuter", delay: "à l'occasion", color: "bg-muted text-muted-foreground border-muted-foreground/20" },
 };
+
+const TARGET_OPTIONS = [
+  { value: "visiteur", label: "Espace visiteur" },
+  { value: "client", label: "Espace client" },
+  { value: "admin", label: "Espace Admin" },
+  { value: "autre", label: "Autre" },
+];
 
 const STATUS_OPTIONS = [
   { value: "todo", label: "À faire" },
@@ -37,7 +46,7 @@ export default function AdminFonctionnalites() {
   const [items, setItems] = useState<FeatureRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ title: "", description: "", urgency: 3 });
+  const [form, setForm] = useState({ title: "", description: "", urgency: 3, target: "autre" });
 
   const fetchData = async () => {
     setLoading(true);
@@ -50,10 +59,10 @@ export default function AdminFonctionnalites() {
 
   const save = async () => {
     if (!form.title.trim()) return;
-    await supabase.from("feature_requests").insert({ title: form.title, description: form.description, urgency: form.urgency } as any);
+    await supabase.from("feature_requests").insert({ title: form.title, description: form.description, urgency: form.urgency, target: form.target } as any);
     toast({ title: "Idée ajoutée ✓" });
     setDialogOpen(false);
-    setForm({ title: "", description: "", urgency: 3 });
+    setForm({ title: "", description: "", urgency: 3, target: "autre" });
     fetchData();
   };
 
@@ -108,6 +117,15 @@ export default function AdminFonctionnalites() {
             <div><Label>Titre</Label><Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Ajouter un système de..." /></div>
             <div><Label>Description</Label><Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Détails de l'amélioration..." /></div>
             <div>
+              <Label>Pour qui ?</Label>
+              <Select value={form.target} onValueChange={v => setForm({ ...form, target: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {TARGET_OPTIONS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label>Niveau d'importance</Label>
               <Select value={String(form.urgency)} onValueChange={v => setForm({ ...form, urgency: Number(v) })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -143,6 +161,7 @@ function KanbanColumn({ title, icon, items, onStatusChange, onDelete }: {
         {items.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">Aucune idée</p>}
         {items.map(item => {
           const urgCfg = URGENCY_CONFIG[item.urgency] || URGENCY_CONFIG[3];
+          const targetLabel = TARGET_OPTIONS.find(t => t.value === item.target)?.label || item.target;
           return (
             <div key={item.id} className="rounded-lg border bg-card p-3 space-y-2">
               <div className="flex items-start justify-between gap-2">
@@ -152,8 +171,9 @@ function KanbanColumn({ title, icon, items, onStatusChange, onDelete }: {
                 </Button>
               </div>
               {item.description && <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline" className={`text-[10px] ${urgCfg.color}`}>{urgCfg.label} · {urgCfg.delay}</Badge>
+                <Badge variant="secondary" className="text-[10px]">{targetLabel}</Badge>
                 <Select value={item.status} onValueChange={v => onStatusChange(item.id, v)}>
                   <SelectTrigger className="h-6 text-[10px] w-auto min-w-[80px] border-dashed"><SelectValue /></SelectTrigger>
                   <SelectContent>
