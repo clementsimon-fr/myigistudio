@@ -145,64 +145,6 @@ export default function MonEspace() {
             <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
           ) : (
             <>
-              {/* ─── ACCUEIL ─── */}
-              {section === "accueil" && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl border bg-card p-3 md:p-4 text-center">
-                      <p className="text-xl md:text-2xl font-bold text-primary-dark">{totalCredits}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground">Crédits restants</p>
-                    </div>
-                    <div className="rounded-xl border bg-card p-3 md:p-4 text-center">
-                      <p className="text-xl md:text-2xl font-bold text-primary-dark">{upcomingRes.length}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground">Prochaines résa</p>
-                    </div>
-                    <div className="rounded-xl border bg-card p-3 md:p-4 text-center">
-                      <p className="text-xl md:text-2xl font-bold text-primary-dark">{cards.length}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground">Cartes actives</p>
-                    </div>
-                    <div className="rounded-xl border bg-card p-3 md:p-4 text-center">
-                      <p className="text-xl md:text-2xl font-bold text-primary-dark">{reservations.length}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground">Total réservations</p>
-                    </div>
-                  </div>
-
-                  {/* Upcoming */}
-                  {upcomingRes.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground mb-2">Prochaines activités</h3>
-                      <div className="space-y-2">
-                        {upcomingRes.slice(0, 3).map(r => (
-                          <div key={r.id} className="flex items-center gap-3 rounded-lg border bg-card p-3">
-                            <div className="text-center min-w-[40px]">
-                              <p className="text-base font-bold text-primary-dark">{new Date(r.date).getDate()}</p>
-                              <p className="text-[10px] text-muted-foreground uppercase">{new Date(r.date).toLocaleDateString("fr-FR", { month: "short" })}</p>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">{r.activity_name}</p>
-                              <p className="text-xs text-muted-foreground">{r.time}{r.end_time ? ` - ${r.end_time}` : ""}</p>
-                            </div>
-                            <Badge variant="outline" className={`text-[10px] shrink-0 ${statusColors[r.status] || ""}`}>{r.status}</Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Quick actions */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button variant="outline" className="h-auto py-4 flex-col gap-1.5" onClick={() => setSection("reservations")}>
-                      <CalendarDays className="h-5 w-5 text-primary" />
-                      <span className="text-xs">Mes réservations</span>
-                    </Button>
-                    <Button variant="outline" className="h-auto py-4 flex-col gap-1.5" onClick={() => setSection("cartes")}>
-                      <CreditCard className="h-5 w-5 text-primary" />
-                      <span className="text-xs">Mes cartes</span>
-                    </Button>
-                  </div>
-                </div>
-              )}
-
               {/* ─── RÉSERVATIONS ─── */}
               {section === "reservations" && (
                 <div className="space-y-4">
