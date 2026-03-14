@@ -142,20 +142,9 @@ export default function AdminActivites() {
   const [form, setForm] = useState<ActivityForm>(emptyForm());
   const [deletingItem, setDeletingItem] = useState<{ id: string; source: "course" | "workshop" } | null>(null);
 
-  // Global defaults dialog
-  const [defaultsDialogOpen, setDefaultsDialogOpen] = useState(false);
-  const [globalReminder, setGlobalReminder] = useState("");
-  const [globalModalities, setGlobalModalities] = useState("");
+  const currentDefaultReminder = settingsReady ? getSetting("default_reminder", INITIAL_DEFAULT_REMINDER) : INITIAL_DEFAULT_REMINDER;
+  const currentDefaultModalities = settingsReady ? getSetting("default_modalities", INITIAL_DEFAULT_MODALITIES) : INITIAL_DEFAULT_MODALITIES;
 
-  useEffect(() => {
-    if (settingsReady) {
-      setGlobalReminder(getSetting("default_reminder", INITIAL_DEFAULT_REMINDER));
-      setGlobalModalities(getSetting("default_modalities", INITIAL_DEFAULT_MODALITIES));
-    }
-  }, [settingsReady]);
-
-  const currentDefaultReminder = globalReminder || INITIAL_DEFAULT_REMINDER;
-  const currentDefaultModalities = globalModalities || INITIAL_DEFAULT_MODALITIES;
 
   const fetchData = async () => {
     setLoading(true);
