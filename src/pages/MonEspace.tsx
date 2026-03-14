@@ -80,7 +80,7 @@ export default function MonEspace() {
       ]);
       if (resR.data) setReservations(resR.data as unknown as Reservation[]);
       if (resC.data) setCards(resC.data as unknown as ClientCard[]);
-      if (resP.data) { setProfile(resP.data as unknown as Profile); setBioValue((resP.data as any).bio || ""); setShowInCommunity((resP.data as any).show_in_community || false); }
+      if (resP.data) { setProfile(resP.data as unknown as Profile); setBioValue((resP.data as any).bio || ""); setShowInCommunity((resP.data as any).show_in_community || false); setReminderSms((resP.data as any).reminder_sms || false); setReminderEmail((resP.data as any).reminder_email ?? true); }
       if (resF.data) setForumPosts(resF.data as unknown as ForumPost[]);
       if (resCom.data) setCommunityMembers(resCom.data as unknown as Profile[]);
       setLoading(false);
