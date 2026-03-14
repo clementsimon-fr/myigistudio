@@ -29,6 +29,7 @@ interface AggregatedClient {
   phone?: string;
   email?: string;
   address?: string;
+  prestations: string[];
 }
 
 interface ReservationRow {
@@ -87,17 +88,20 @@ export default function AdminClients() {
   const [editClientOpen, setEditClientOpen] = useState(false);
   const [editForm, setEditForm] = useState({ first_name: "", last_name: "", phone: "", email: "", address: "" });
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [newClientType, setNewClientType] = useState<"actuel" | "futur">("actuel");
 
   const [deletingClient, setDeletingClient] = useState<AggregatedClient | null>(null);
 
   const loadClients = async () => {
     setLoading(true);
-    const [resData, voucherData, profilesData] = await Promise.all([
-      supabase.from("reservations").select("client_name, date").order("date", { ascending: true }),
+    const [resData, voucherData, profilesData, cardsData] = await Promise.all([
+      supabase.from("reservations").select("client_name, date, activity_name"),
       supabase.from("gift_vouchers").select("beneficiary_name, buyer_name, created_at"),
       supabase.from("profiles").select("*"),
+      supabase.from("client_cards").select("client_name, card_name"),
     ]);
-    const map = new Map<string, { count: number; first: string; profileId?: string; first_name?: string; last_name?: string; phone?: string; email?: string; address?: string }>();
+    const map = new Map<string, { count: number; first: string; profileId?: string; first_name?: string; last_name?: string; phone?: string; email?: string; address?: string; prestas: Set<string> }>();
 
     if (profilesData.data) {
       for (const p of profilesData.data as any[]) {
@@ -106,6 +110,7 @@ export default function AdminClients() {
           count: 0, first: p.created_at?.split("T")[0] || "",
           profileId: p.id, first_name: p.first_name || "", last_name: p.last_name || "",
           phone: p.phone || "", email: p.email || "", address: p.address || "",
+          prestas: new Set<string>(),
         });
       }
     }
@@ -116,24 +121,38 @@ export default function AdminClients() {
         if (existing) {
           existing.count++;
           if (!existing.first) existing.first = r.date;
+          if (r.activity_name) existing.prestas.add(r.activity_name);
         } else {
-          map.set(r.client_name, { count: 1, first: r.date });
+          const prestas = new Set<string>();
+          if (r.activity_name) prestas.add(r.activity_name);
+          map.set(r.client_name, { count: 1, first: r.date, prestas });
         }
       });
     }
     if (voucherData.data) {
       (voucherData.data as any[]).forEach((v) => {
         [v.beneficiary_name, v.buyer_name].filter(Boolean).forEach((name: string) => {
-          if (name && !map.has(name)) {
-            map.set(name, { count: 0, first: v.created_at?.split("T")[0] || "" });
+          const existing = map.get(name);
+          if (existing) {
+            existing.prestas.add("Bon cadeau");
+          } else {
+            const prestas = new Set<string>(["Bon cadeau"]);
+            map.set(name, { count: 0, first: v.created_at?.split("T")[0] || "", prestas });
           }
         });
+      });
+    }
+    if (cardsData.data) {
+      (cardsData.data as any[]).forEach((c) => {
+        const existing = map.get(c.client_name);
+        if (existing) existing.prestas.add(c.card_name);
       });
     }
     const list: AggregatedClient[] = Array.from(map.entries()).map(([name, v]) => ({
       name, totalReservations: v.count, firstReservation: v.first,
       profileId: v.profileId, first_name: v.first_name, last_name: v.last_name,
       phone: v.phone, email: v.email, address: v.address,
+      prestations: Array.from(v.prestas),
     }));
     setClients(list);
     setLoading(false);
@@ -194,12 +213,15 @@ export default function AdminClients() {
   };
 
   const openNewClient = () => {
+    setIsEditMode(false);
     setEditingProfileId(null);
+    setNewClientType("actuel");
     setEditForm({ first_name: "", last_name: "", phone: "", email: "", address: "" });
     setEditClientOpen(true);
   };
 
   const openEditClient = (client: AggregatedClient) => {
+    setIsEditMode(true);
     setEditingProfileId(client.profileId || null);
     setEditForm({
       first_name: client.first_name || "",
@@ -233,7 +255,7 @@ export default function AdminClients() {
         address: editForm.address,
       } as any);
     }
-    toast({ title: editingProfileId ? "Client modifié ✓" : "Client ajouté ✓" });
+    toast({ title: isEditMode ? "Client modifié ✓" : "Client ajouté ✓" });
     setEditClientOpen(false);
     loadClients();
   };
@@ -279,13 +301,14 @@ export default function AdminClients() {
                 <th className="text-left p-3 font-medium text-muted-foreground">Client</th>
                 <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Téléphone</th>
                 <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Email</th>
+                <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Prestations</th>
                 <th className="text-left p-3 font-medium text-muted-foreground">Réservations</th>
                 <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Aucun client trouvé</td></tr>
+                <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Aucun client trouvé</td></tr>
               ) : filtered.map((c) => (
                 <tr
                   key={c.name}
@@ -300,6 +323,20 @@ export default function AdminClients() {
                   </td>
                   <td className="p-3 hidden md:table-cell text-muted-foreground">{c.phone || "—"}</td>
                   <td className="p-3 hidden md:table-cell text-muted-foreground">{c.email || "—"}</td>
+                  <td className="p-3 hidden lg:table-cell">
+                    {c.prestations.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {c.prestations.slice(0, 3).map((p, i) => (
+                          <Badge key={i} variant="outline" className="text-[10px] px-1.5">{p}</Badge>
+                        ))}
+                        {c.prestations.length > 3 && (
+                          <Badge variant="outline" className="text-[10px] px-1.5">+{c.prestations.length - 3}</Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
                   <td className="p-3">
                     {c.totalReservations === 0
                       ? <Badge variant="outline" className="text-xs">Futur client</Badge>
@@ -453,9 +490,22 @@ export default function AdminClients() {
       <Dialog open={editClientOpen} onOpenChange={setEditClientOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingProfileId ? "Modifier le client" : "Nouveau client"}</DialogTitle>
+            <DialogTitle>{isEditMode ? "Modifier le client" : "Nouveau client"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-2">
+            {!isEditMode && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">Type de client</Label>
+                <div className="flex gap-2">
+                  <Button variant={newClientType === "actuel" ? "default" : "outline"} size="sm" className="flex-1" onClick={() => setNewClientType("actuel")}>
+                    Client actuel
+                  </Button>
+                  <Button variant={newClientType === "futur" ? "default" : "outline"} size="sm" className="flex-1" onClick={() => setNewClientType("futur")}>
+                    Futur client
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Prénom</Label><Input value={editForm.first_name} onChange={e => setEditForm({ ...editForm, first_name: e.target.value })} /></div>
               <div><Label>Nom</Label><Input value={editForm.last_name} onChange={e => setEditForm({ ...editForm, last_name: e.target.value })} /></div>
@@ -467,7 +517,7 @@ export default function AdminClients() {
             <div><Label>Email</Label><Input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} placeholder="sophie@email.com" /></div>
             <div><Label>Adresse</Label><Input value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} placeholder="12 rue de la Paix, 75002 Paris" /></div>
             <Button className="w-full" onClick={saveClient} disabled={!editForm.first_name.trim()}>
-              {editingProfileId ? "Enregistrer" : "Ajouter le client"}
+              {isEditMode ? "Enregistrer" : "Ajouter le client"}
             </Button>
           </div>
         </DialogContent>

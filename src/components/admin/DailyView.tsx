@@ -247,10 +247,10 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
           </span>
         </div>
         {/* Fill progress bar */}
-        <div className="mt-2 h-1.5 rounded-full bg-current/10 overflow-hidden">
+        <div className="mt-2 h-2 rounded-full bg-black/10 overflow-hidden">
           <div
-            className="h-full rounded-full bg-current/40 transition-all"
-            style={{ width: `${fillPct}%` }}
+            className={`h-full rounded-full transition-all ${fillPct >= 80 ? "bg-destructive/60" : fillPct >= 40 ? "bg-primary/50" : "bg-primary/30"}`}
+            style={{ width: `${Math.max(fillPct, 2)}%` }}
           />
         </div>
         {block.instructor && (

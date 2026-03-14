@@ -104,8 +104,18 @@ export default function AdminBonsCadeaux() {
     if (vRes.data) setVouchers(vRes.data as unknown as Voucher[]);
     if (pRes.data) setPricingCards(pRes.data as unknown as PricingCard[]);
     if (clientsRes.data) {
-      const unique = [...new Set((clientsRes.data as any[]).map(r => r.user_name).filter(Boolean))].sort();
-      setExistingClients(unique);
+      const names = new Set<string>();
+      for (const r of clientsRes.data as any[]) {
+        if (r.user_name) names.add(r.user_name);
+        // Also add display name built from first_name/last_name
+        const fn = (r.first_name || "").trim();
+        const ln = (r.last_name || "").trim();
+        if (fn) {
+          const displayName = ln ? `${fn}.${ln.charAt(0).toUpperCase()}` : fn;
+          names.add(displayName);
+        }
+      }
+      setExistingClients([...names].sort());
     }
     const acts: UnifiedActivity[] = [];
     if (coursesRes.data) {
