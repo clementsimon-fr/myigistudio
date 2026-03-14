@@ -23,6 +23,7 @@ const items = [
   { title: "Bons Cadeaux", url: "/admin/bons-cadeaux", icon: Gift },
   { title: "Conditions", url: "/admin/conditions", icon: ScrollText },
   { title: "Contenu du site", url: "/admin/contenu", icon: FileText },
+  { title: "Fonctionnalités", url: "/admin/fonctionnalites", icon: Lightbulb },
 ];
 
 export default function AdminSidebar() {
