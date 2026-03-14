@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { motion } from "framer-motion";
-import { Clock, Users, Euro, Calendar, Loader2, ChevronDown, ChevronUp, Info, ArrowRight } from "lucide-react";
+import { Clock, Users, Euro, Calendar, Loader2, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
