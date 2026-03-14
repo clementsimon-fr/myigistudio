@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const navLinks = [
-  { label: "Activités", to: "/" },
+  { label: "Les activités", to: "/" },
   { label: "Planning & réservation", to: "/calendrier" },
 ];
 
