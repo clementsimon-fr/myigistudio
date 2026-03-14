@@ -35,6 +35,14 @@ interface PricingCard {
   price: number;
 }
 
+interface UnifiedActivity {
+  id: string;
+  name: string;
+  category: string;
+  source: "course" | "workshop";
+  price?: number;
+}
+
 function generateCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "IGI-";
@@ -43,12 +51,17 @@ function generateCode(): string {
 }
 
 type StatusFilter = "all" | "active" | "used" | "expired";
+type ClientType = "existing" | "new";
+type VoucherType = "amount" | "activity";
+
+const YOGA_CATEGORIES = ["yoga"];
 
 export default function AdminBonsCadeaux() {
   const { toast } = useToast();
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [pricingCards, setPricingCards] = useState<PricingCard[]>([]);
   const [existingClients, setExistingClients] = useState<string[]>([]);
+  const [activities, setActivities] = useState<UnifiedActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -57,19 +70,23 @@ export default function AdminBonsCadeaux() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Creation flow state
+  const [step, setStep] = useState<"client" | "voucher">("client");
+  const [buyerClientType, setBuyerClientType] = useState<ClientType>("existing");
+  const [beneficiaryClientType, setBeneficiaryClientType] = useState<ClientType>("new");
+
   const emptyForm = {
-    type: "amount" as "amount" | "card",
+    voucherType: "amount" as VoucherType,
     amount: 0,
     card_name: "",
     sessions: 0,
+    selectedActivity: "",
     beneficiary_name: "",
     beneficiary_last_name: "",
     buyer_name: "",
     buyer_last_name: "",
     message: "",
     expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    buyer_is_existing: false,
-    beneficiary_is_existing: false,
   };
   const [form, setForm] = useState(emptyForm);
   const [buyerSearch, setBuyerSearch] = useState("");
@@ -77,51 +94,74 @@ export default function AdminBonsCadeaux() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [vRes, pRes, clientsRes] = await Promise.all([
+    const [vRes, pRes, clientsRes, coursesRes, workshopsRes] = await Promise.all([
       supabase.from("gift_vouchers").select("*").order("created_at", { ascending: false }),
       supabase.from("pricing_cards").select("id, name, sessions, price").order("sort_order"),
-      supabase.from("reservations").select("client_name"),
+      supabase.from("profiles").select("user_name, first_name, last_name"),
+      supabase.from("courses").select("id, name, category"),
+      supabase.from("workshops").select("id, name, category, price"),
     ]);
     if (vRes.data) setVouchers(vRes.data as unknown as Voucher[]);
     if (pRes.data) setPricingCards(pRes.data as unknown as PricingCard[]);
     if (clientsRes.data) {
-      const unique = [...new Set(clientsRes.data.map(r => r.client_name).filter(Boolean))].sort();
+      const unique = [...new Set((clientsRes.data as any[]).map(r => r.user_name).filter(Boolean))].sort();
       setExistingClients(unique);
     }
+    const acts: UnifiedActivity[] = [];
+    if (coursesRes.data) {
+      for (const c of coursesRes.data as any[]) acts.push({ id: c.id, name: c.name, category: c.category, source: "course" });
+    }
+    if (workshopsRes.data) {
+      for (const w of workshopsRes.data as any[]) acts.push({ id: w.id, name: w.name, category: w.category, source: "workshop", price: w.price });
+    }
+    setActivities(acts);
     setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
 
-  const openNew = () => { setEditingId(null); setForm(emptyForm); setBuyerSearch(""); setBeneficiarySearch(""); setDialogOpen(true); };
+  const openNew = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setBuyerSearch("");
+    setBeneficiarySearch("");
+    setStep("client");
+    setBuyerClientType("existing");
+    setBeneficiaryClientType("new");
+    setDialogOpen(true);
+  };
+
   const openEdit = (v: Voucher) => {
     setEditingId(v.id);
     const buyerParts = v.buyer_name.split(" ");
     const benefParts = v.beneficiary_name.split(" ");
     setForm({
-      type: v.type as "amount" | "card",
+      voucherType: v.type === "amount" ? "amount" : "activity",
       amount: v.amount,
       card_name: v.card_name,
       sessions: v.sessions,
+      selectedActivity: "",
       beneficiary_name: benefParts[0] || "",
       beneficiary_last_name: benefParts.slice(1).join(" "),
       buyer_name: buyerParts[0] || "",
       buyer_last_name: buyerParts.slice(1).join(" "),
       message: v.message,
       expires_at: v.expires_at,
-      buyer_is_existing: false,
-      beneficiary_is_existing: false,
     });
     setBuyerSearch(v.buyer_name);
     setBeneficiarySearch(v.beneficiary_name);
+    setStep("voucher");
     setDialogOpen(true);
   };
 
   const save = async () => {
     const fullBuyer = [form.buyer_name, form.buyer_last_name].filter(Boolean).join(" ");
     const fullBenef = [form.beneficiary_name, form.beneficiary_last_name].filter(Boolean).join(" ");
+
+    const isYogaActivity = form.selectedActivity && isYogaType(form.selectedActivity);
+
     const payload = {
-      type: form.type,
+      type: form.voucherType === "amount" ? "amount" : "card",
       amount: form.amount,
       card_name: form.card_name,
       sessions: form.sessions,
@@ -139,6 +179,12 @@ export default function AdminBonsCadeaux() {
     }
     setDialogOpen(false);
     fetchData();
+  };
+
+  const isYogaType = (activityName: string): boolean => {
+    const act = activities.find(a => a.name === activityName);
+    if (!act) return false;
+    return YOGA_CATEGORIES.includes(act.category) || activityName.toLowerCase().includes("yoga") || activityName.toLowerCase().includes("pilates");
   };
 
   const toggleUsed = async (v: Voucher) => {
@@ -198,7 +244,7 @@ export default function AdminBonsCadeaux() {
 
   return (
     <AdminLayout title="Bons Cadeaux">
-      {/* Header with stats */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-sm text-muted-foreground">{vouchers.length} bon{vouchers.length > 1 ? "s" : ""} cadeau{vouchers.length > 1 ? "x" : ""}</p>
@@ -255,10 +301,10 @@ export default function AdminBonsCadeaux() {
                     </div>
                   </td>
                   <td className="p-3">
-                    <Badge variant="outline" className="text-xs">{v.type === "amount" ? "Montant" : "Formule"}</Badge>
+                    <Badge variant="outline" className="text-xs">{v.type === "amount" ? "Montant" : "Activité"}</Badge>
                   </td>
                   <td className="p-3 font-medium">
-                    {v.type === "amount" ? `${v.amount}€` : `${v.card_name} (${v.sessions} séances)`}
+                    {v.type === "amount" ? `${v.amount}€` : `${v.card_name}${v.sessions ? ` (${v.sessions} séances)` : ""}`}
                   </td>
                   <td className="p-3">{v.beneficiary_name || "—"}</td>
                   <td className="p-3">{v.buyer_name || "—"}</td>
@@ -296,116 +342,237 @@ export default function AdminBonsCadeaux() {
               <Gift className="h-5 w-5" /> {editingId ? "Modifier" : "Nouveau"} bon cadeau
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div>
-              <Label>Type de bon</Label>
-              <Select value={form.type} onValueChange={v => setForm({ ...form, type: v as "amount" | "card" })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="amount">Montant libre (€)</SelectItem>
-                  <SelectItem value="card">Formule / Carte</SelectItem>
-                </SelectContent>
-              </Select>
+
+          {!editingId && step === "client" ? (
+            <div className="space-y-5 pt-2">
+              {/* Step 1: Client selection */}
+              <div>
+                <Label className="text-sm font-semibold">Acheteur</Label>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    variant={buyerClientType === "existing" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setBuyerClientType("existing")}
+                  >
+                    Client existant
+                  </Button>
+                  <Button
+                    variant={buyerClientType === "new" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setBuyerClientType("new")}
+                  >
+                    Nouveau client
+                  </Button>
+                </div>
+                {buyerClientType === "existing" ? (
+                  <div className="relative mt-2">
+                    <Input
+                      value={buyerSearch}
+                      onChange={e => { setBuyerSearch(e.target.value); setForm({ ...form, buyer_name: e.target.value }); }}
+                      placeholder="Rechercher un client…"
+                    />
+                    {buyerSearch.trim() && filteredBuyerClients.length > 0 && buyerSearch !== form.buyer_name && (
+                      <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-32 overflow-y-auto">
+                        {filteredBuyerClients.slice(0, 5).map(c => (
+                          <button key={c} className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent" onClick={() => { setForm({ ...form, buyer_name: c }); setBuyerSearch(c); }}>
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <Input value={form.buyer_name} onChange={e => setForm({ ...form, buyer_name: e.target.value })} placeholder="Prénom" />
+                    <Input value={form.buyer_last_name} onChange={e => setForm({ ...form, buyer_last_name: e.target.value })} placeholder="Nom" />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <Label className="text-sm font-semibold">Bénéficiaire</Label>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    variant={beneficiaryClientType === "existing" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setBeneficiaryClientType("existing")}
+                  >
+                    Client existant
+                  </Button>
+                  <Button
+                    variant={beneficiaryClientType === "new" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setBeneficiaryClientType("new")}
+                  >
+                    Futur client
+                  </Button>
+                </div>
+                {beneficiaryClientType === "existing" ? (
+                  <div className="relative mt-2">
+                    <Input
+                      value={beneficiarySearch}
+                      onChange={e => { setBeneficiarySearch(e.target.value); setForm({ ...form, beneficiary_name: e.target.value }); }}
+                      placeholder="Rechercher un client…"
+                    />
+                    {beneficiarySearch.trim() && filteredBeneficiaryClients.length > 0 && beneficiarySearch !== form.beneficiary_name && (
+                      <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-32 overflow-y-auto">
+                        {filteredBeneficiaryClients.slice(0, 5).map(c => (
+                          <button key={c} className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent" onClick={() => { setForm({ ...form, beneficiary_name: c }); setBeneficiarySearch(c); }}>
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <Input value={form.beneficiary_name} onChange={e => setForm({ ...form, beneficiary_name: e.target.value })} placeholder="Prénom" />
+                    <Input value={form.beneficiary_last_name} onChange={e => setForm({ ...form, beneficiary_last_name: e.target.value })} placeholder="Nom" />
+                  </div>
+                )}
+              </div>
+
+              <Button
+                className="w-full"
+                onClick={() => setStep("voucher")}
+                disabled={!form.buyer_name.trim()}
+              >
+                Continuer
+              </Button>
             </div>
+          ) : (
+            <div className="space-y-4 pt-2">
+              {/* Step 2: Voucher type & details */}
+              {!editingId && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                  <span>Acheteur : <strong className="text-foreground">{[form.buyer_name, form.buyer_last_name].filter(Boolean).join(" ")}</strong></span>
+                  {form.beneficiary_name && <span>→ <strong className="text-foreground">{[form.beneficiary_name, form.beneficiary_last_name].filter(Boolean).join(" ")}</strong></span>}
+                  <Button variant="link" size="sm" className="text-xs h-auto p-0 ml-auto" onClick={() => setStep("client")}>Modifier</Button>
+                </div>
+              )}
 
-            {form.type === "amount" ? (
               <div>
-                <Label>Montant (€)</Label>
-                <Input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} />
+                <Label>Type de bon</Label>
+                <div className="flex gap-2 mt-1">
+                  <Button
+                    variant={form.voucherType === "amount" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setForm({ ...form, voucherType: "amount" })}
+                  >
+                    💰 Montant
+                  </Button>
+                  <Button
+                    variant={form.voucherType === "activity" ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setForm({ ...form, voucherType: "activity" })}
+                  >
+                    🎯 Activité
+                  </Button>
+                </div>
               </div>
-            ) : (
-              <div>
-                <Label>Formule</Label>
-                <Select value={form.card_name} onValueChange={v => {
-                  const card = pricingCards.find(c => c.name === v);
-                  setForm({ ...form, card_name: v, sessions: card?.sessions || 0, amount: card?.price || 0 });
-                }}>
-                  <SelectTrigger><SelectValue placeholder="Choisir une formule..." /></SelectTrigger>
-                  <SelectContent>
-                    {pricingCards.map(c => (
-                      <SelectItem key={c.id} value={c.name}>{c.name} — {c.sessions} séances — {c.price}€</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
-            {/* Buyer */}
-            <div>
-              <Label>Acheteur</Label>
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <div className="relative">
-                  <Input
-                    value={buyerSearch}
-                    onChange={e => {
-                      setBuyerSearch(e.target.value);
-                      setForm({ ...form, buyer_name: e.target.value });
-                    }}
-                    placeholder="Prénom"
-                  />
-                  {buyerSearch.trim() && filteredBuyerClients.length > 0 && buyerSearch !== form.buyer_name && (
-                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-32 overflow-y-auto">
-                      {filteredBuyerClients.slice(0, 5).map(c => (
-                        <button key={c} className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent" onClick={() => { setForm({ ...form, buyer_name: c }); setBuyerSearch(c); }}>
-                          {c}
-                        </button>
-                      ))}
+              {form.voucherType === "amount" ? (
+                <div>
+                  <Label>Montant (€)</Label>
+                  <Input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <Label>Choisir une activité</Label>
+                    <Select value={form.selectedActivity} onValueChange={v => {
+                      const act = activities.find(a => a.name === v);
+                      const isYoga = act && (YOGA_CATEGORIES.includes(act.category) || v.toLowerCase().includes("yoga") || v.toLowerCase().includes("pilates"));
+                      setForm({
+                        ...form,
+                        selectedActivity: v,
+                        card_name: isYoga ? "" : v,
+                        amount: act?.price || 0,
+                      });
+                    }}>
+                      <SelectTrigger><SelectValue placeholder="Choisir une activité..." /></SelectTrigger>
+                      <SelectContent>
+                        {activities.map(a => (
+                          <SelectItem key={`${a.source}-${a.id}`} value={a.name}>
+                            {a.name} {a.price ? `— ${a.price}€` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* If yoga/pilates activity, show pricing cards dropdown */}
+                  {form.selectedActivity && isYogaType(form.selectedActivity) && (
+                    <div>
+                      <Label>Offre Yoga / Carte</Label>
+                      <Select value={form.card_name} onValueChange={v => {
+                        const card = pricingCards.find(c => c.name === v);
+                        setForm({ ...form, card_name: v, sessions: card?.sessions || 0, amount: card?.price || 0 });
+                      }}>
+                        <SelectTrigger><SelectValue placeholder="Choisir une carte..." /></SelectTrigger>
+                        <SelectContent>
+                          {pricingCards.map(c => (
+                            <SelectItem key={c.id} value={c.name}>{c.name} — {c.sessions} séances — {c.price}€</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   )}
-                </div>
-                <Input
-                  value={form.buyer_last_name || ""}
-                  onChange={e => setForm({ ...form, buyer_last_name: e.target.value })}
-                  placeholder="Nom"
-                />
-              </div>
-            </div>
 
-            {/* Beneficiary */}
-            <div>
-              <Label>Bénéficiaire</Label>
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <div className="relative">
-                  <Input
-                    value={beneficiarySearch}
-                    onChange={e => {
-                      setBeneficiarySearch(e.target.value);
-                      setForm({ ...form, beneficiary_name: e.target.value });
-                    }}
-                    placeholder="Prénom"
-                  />
-                  {beneficiarySearch.trim() && filteredBeneficiaryClients.length > 0 && beneficiarySearch !== form.beneficiary_name && (
-                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-32 overflow-y-auto">
-                      {filteredBeneficiaryClients.slice(0, 5).map(c => (
-                        <button key={c} className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent" onClick={() => { setForm({ ...form, beneficiary_name: c }); setBeneficiarySearch(c); }}>
-                          {c}
-                        </button>
-                      ))}
-                    </div>
+                  {/* For non-yoga activities, just show the activity name as card_name */}
+                  {form.selectedActivity && !isYogaType(form.selectedActivity) && (
+                    <p className="text-xs text-muted-foreground">
+                      Le bon cadeau sera valable pour : <strong>{form.selectedActivity}</strong>
+                      {form.amount > 0 && ` — ${form.amount}€`}
+                    </p>
                   )}
                 </div>
-                <Input
-                  value={form.beneficiary_last_name || ""}
-                  onChange={e => setForm({ ...form, beneficiary_last_name: e.target.value })}
-                  placeholder="Nom"
-                />
+              )}
+
+              {/* Buyer/Beneficiary (edit mode only) */}
+              {editingId && (
+                <>
+                  <div>
+                    <Label>Acheteur</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      <Input value={form.buyer_name} onChange={e => setForm({ ...form, buyer_name: e.target.value })} placeholder="Prénom" />
+                      <Input value={form.buyer_last_name} onChange={e => setForm({ ...form, buyer_last_name: e.target.value })} placeholder="Nom" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Bénéficiaire</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      <Input value={form.beneficiary_name} onChange={e => setForm({ ...form, beneficiary_name: e.target.value })} placeholder="Prénom" />
+                      <Input value={form.beneficiary_last_name} onChange={e => setForm({ ...form, beneficiary_last_name: e.target.value })} placeholder="Nom" />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div>
+                <Label>Message personnalisé</Label>
+                <Textarea value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} rows={2} placeholder="Un petit mot pour le destinataire..." />
               </div>
-            </div>
 
-            <div>
-              <Label>Message personnalisé</Label>
-              <Textarea value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} rows={2} placeholder="Un petit mot pour le destinataire..." />
-            </div>
+              <div>
+                <Label>Date d'expiration</Label>
+                <Input type="date" value={form.expires_at} onChange={e => setForm({ ...form, expires_at: e.target.value })} />
+              </div>
 
-            <div>
-              <Label>Date d'expiration</Label>
-              <Input type="date" value={form.expires_at} onChange={e => setForm({ ...form, expires_at: e.target.value })} />
+              <Button className="w-full" onClick={save} disabled={
+                form.voucherType === "amount" ? form.amount <= 0 :
+                !form.selectedActivity && !form.card_name
+              }>
+                {editingId ? "Enregistrer" : "Créer le bon cadeau"}
+              </Button>
             </div>
-
-            <Button className="w-full" onClick={save} disabled={form.type === "amount" ? form.amount <= 0 : !form.card_name}>
-              {editingId ? "Enregistrer" : "Créer le bon cadeau"}
-            </Button>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
