@@ -445,7 +445,7 @@ export default function AdminActivites() {
                         {a.description && <div className="text-xs text-muted-foreground line-clamp-1">{a.description}</div>}
                       </td>
                       <td className="p-3"><Badge variant="outline" className="text-[10px]">{catLabel}</Badge></td>
-                      <td className="p-3 text-xs">{intensityLabel}</td>
+                      <td className="p-3 text-xs">{intensityLabel || "—"}</td>
                       <td className="p-3 text-xs">{a.instructor}</td>
                       <td className="p-3">
                         {a.source === "course" && a.schedules?.map((s, i) => (
