@@ -189,8 +189,35 @@ export default function Reserver() {
 
   const selectedSlotData = slots.find(s => s.id === selectedSlot);
 
+  // Check if booking is too close to start time (30 min rule)
+  useEffect(() => {
+    if (!selectedSlotData || !selectedDate) { setBookingBlocked(null); return; }
+    const now = new Date();
+    const [h, m] = selectedSlotData.time.split(":").map(Number);
+    const courseStart = new Date(selectedDate);
+    courseStart.setHours(h, m, 0, 0);
+    const diffMs = courseStart.getTime() - now.getTime();
+    const diffMin = diffMs / (1000 * 60);
+    if (diffMin < 30) {
+      setBookingBlocked("Ce cours commence dans moins de 30 minutes et ne peut plus être réservé.");
+    } else {
+      setBookingBlocked(null);
+    }
+  }, [selectedSlotData, selectedDate]);
+
+  // Filter conditions for this activity's category
+  const applicableConditions = useMemo(() => {
+    if (!activity) return [];
+    const cat = activity.category || (activity.type === "course" ? "yoga" : "bien-etre");
+    return conditions.filter(c => c.applies_to.includes(cat));
+  }, [conditions, activity]);
+
   const handleConfirm = async () => {
-    if (!selectedSlotData || !selectedDate) return;
+    if (!selectedSlotData || !selectedDate || bookingBlocked) return;
+    if (applicableConditions.length > 0 && !conditionsAccepted) {
+      toast({ title: "Veuillez accepter les conditions", variant: "destructive" });
+      return;
+    }
     setSubmitting(true);
     const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
     const { error } = await supabase.from("reservations").insert({
