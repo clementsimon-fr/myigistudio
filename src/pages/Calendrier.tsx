@@ -59,15 +59,17 @@ export default function Calendrier() {
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
   const initialFilter = searchParams.get("filter") as FilterCategory | null;
+  const targetDate = searchParams.get("date"); // auto-navigate to this date's week
   const [filter, setFilter] = useState<FilterCategory>(
     initialFilter && CATEGORY_FILTERS.some(f => f.value === initialFilter) ? initialFilter : "all"
   );
   const [selectedEvent, setSelectedEvent] = useState<ActivityBlock | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
-    const now = new Date();
-    const day = now.getDay();
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(now);
+    // If a target date is provided, navigate to that week
+    const base = targetDate ? new Date(targetDate + "T00:00:00") : new Date();
+    const day = base.getDay();
+    const diff = base.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(base);
     monday.setDate(diff);
     monday.setHours(0, 0, 0, 0);
     return monday;

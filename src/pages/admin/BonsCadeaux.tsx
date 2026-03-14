@@ -63,7 +63,9 @@ export default function AdminBonsCadeaux() {
     card_name: "",
     sessions: 0,
     beneficiary_name: "",
+    beneficiary_last_name: "",
     buyer_name: "",
+    buyer_last_name: "",
     message: "",
     expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     buyer_is_existing: false,
@@ -94,13 +96,17 @@ export default function AdminBonsCadeaux() {
   const openNew = () => { setEditingId(null); setForm(emptyForm); setBuyerSearch(""); setBeneficiarySearch(""); setDialogOpen(true); };
   const openEdit = (v: Voucher) => {
     setEditingId(v.id);
+    const buyerParts = v.buyer_name.split(" ");
+    const benefParts = v.beneficiary_name.split(" ");
     setForm({
       type: v.type as "amount" | "card",
       amount: v.amount,
       card_name: v.card_name,
       sessions: v.sessions,
-      beneficiary_name: v.beneficiary_name,
-      buyer_name: v.buyer_name,
+      beneficiary_name: benefParts[0] || "",
+      beneficiary_last_name: benefParts.slice(1).join(" "),
+      buyer_name: buyerParts[0] || "",
+      buyer_last_name: buyerParts.slice(1).join(" "),
       message: v.message,
       expires_at: v.expires_at,
       buyer_is_existing: false,
@@ -112,13 +118,15 @@ export default function AdminBonsCadeaux() {
   };
 
   const save = async () => {
+    const fullBuyer = [form.buyer_name, form.buyer_last_name].filter(Boolean).join(" ");
+    const fullBenef = [form.beneficiary_name, form.beneficiary_last_name].filter(Boolean).join(" ");
     const payload = {
       type: form.type,
       amount: form.amount,
       card_name: form.card_name,
       sessions: form.sessions,
-      beneficiary_name: form.beneficiary_name,
-      buyer_name: form.buyer_name,
+      beneficiary_name: fullBenef,
+      buyer_name: fullBuyer,
       message: form.message,
       expires_at: form.expires_at,
     };
@@ -322,51 +330,65 @@ export default function AdminBonsCadeaux() {
               </div>
             )}
 
-            {/* Buyer with autocomplete */}
+            {/* Buyer */}
             <div>
               <Label>Acheteur</Label>
-              <div className="relative">
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <div className="relative">
+                  <Input
+                    value={buyerSearch}
+                    onChange={e => {
+                      setBuyerSearch(e.target.value);
+                      setForm({ ...form, buyer_name: e.target.value });
+                    }}
+                    placeholder="Prénom"
+                  />
+                  {buyerSearch.trim() && filteredBuyerClients.length > 0 && buyerSearch !== form.buyer_name && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-32 overflow-y-auto">
+                      {filteredBuyerClients.slice(0, 5).map(c => (
+                        <button key={c} className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent" onClick={() => { setForm({ ...form, buyer_name: c }); setBuyerSearch(c); }}>
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <Input
-                  value={buyerSearch}
-                  onChange={e => {
-                    setBuyerSearch(e.target.value);
-                    setForm({ ...form, buyer_name: e.target.value });
-                  }}
-                  placeholder="Nom de l'acheteur (existant ou nouveau)"
+                  value={form.buyer_last_name || ""}
+                  onChange={e => setForm({ ...form, buyer_last_name: e.target.value })}
+                  placeholder="Nom"
                 />
-                {buyerSearch.trim() && filteredBuyerClients.length > 0 && buyerSearch !== form.buyer_name && (
-                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-32 overflow-y-auto">
-                    {filteredBuyerClients.slice(0, 5).map(c => (
-                      <button key={c} className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent" onClick={() => { setForm({ ...form, buyer_name: c }); setBuyerSearch(c); }}>
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Beneficiary with autocomplete */}
+            {/* Beneficiary */}
             <div>
               <Label>Bénéficiaire</Label>
-              <div className="relative">
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <div className="relative">
+                  <Input
+                    value={beneficiarySearch}
+                    onChange={e => {
+                      setBeneficiarySearch(e.target.value);
+                      setForm({ ...form, beneficiary_name: e.target.value });
+                    }}
+                    placeholder="Prénom"
+                  />
+                  {beneficiarySearch.trim() && filteredBeneficiaryClients.length > 0 && beneficiarySearch !== form.beneficiary_name && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-32 overflow-y-auto">
+                      {filteredBeneficiaryClients.slice(0, 5).map(c => (
+                        <button key={c} className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent" onClick={() => { setForm({ ...form, beneficiary_name: c }); setBeneficiarySearch(c); }}>
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <Input
-                  value={beneficiarySearch}
-                  onChange={e => {
-                    setBeneficiarySearch(e.target.value);
-                    setForm({ ...form, beneficiary_name: e.target.value });
-                  }}
-                  placeholder="Nom du destinataire (existant ou nouveau)"
+                  value={form.beneficiary_last_name || ""}
+                  onChange={e => setForm({ ...form, beneficiary_last_name: e.target.value })}
+                  placeholder="Nom"
                 />
-                {beneficiarySearch.trim() && filteredBeneficiaryClients.length > 0 && beneficiarySearch !== form.beneficiary_name && (
-                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-md max-h-32 overflow-y-auto">
-                    {filteredBeneficiaryClients.slice(0, 5).map(c => (
-                      <button key={c} className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent" onClick={() => { setForm({ ...form, beneficiary_name: c }); setBeneficiarySearch(c); }}>
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
 

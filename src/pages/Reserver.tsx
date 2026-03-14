@@ -8,7 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle, Gift } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
 import { fr } from "date-fns/locale";
@@ -88,6 +88,8 @@ export default function Reserver() {
   const [conditions, setConditions] = useState<ConditionRow[]>([]);
   const [conditionsAccepted, setConditionsAccepted] = useState(false);
   const [bookingBlocked, setBookingBlocked] = useState<string | null>(null);
+  const [voucherCode, setVoucherCode] = useState("");
+  const [voucherStatus, setVoucherStatus] = useState<"idle" | "valid" | "invalid" | "checking">("idle");
 
   useEffect(() => {
     if (!activityType || !activityId) { setLoading(false); return; }
@@ -452,6 +454,46 @@ export default function Reserver() {
                           <p className="text-sm text-destructive">{bookingBlocked}</p>
                         </div>
                       )}
+
+                      {/* Gift voucher code */}
+                      <div className="space-y-2">
+                        <Label className="text-sm flex items-center gap-1.5">
+                          <Gift className="h-3.5 w-3.5" /> Code bon cadeau (optionnel)
+                        </Label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="IGI-XXXXXXXX"
+                            value={voucherCode}
+                            onChange={e => { setVoucherCode(e.target.value.toUpperCase()); setVoucherStatus("idle"); }}
+                            className="font-mono text-sm"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={!voucherCode.trim() || voucherStatus === "checking"}
+                            onClick={async () => {
+                              setVoucherStatus("checking");
+                              const { data } = await supabase
+                                .from("gift_vouchers")
+                                .select("id, used, expires_at")
+                                .eq("code", voucherCode.trim())
+                                .single();
+                              if (!data) { setVoucherStatus("invalid"); return; }
+                              if ((data as any).used || new Date((data as any).expires_at) < new Date()) { setVoucherStatus("invalid"); return; }
+                              setVoucherStatus("valid");
+                            }}
+                          >
+                            Vérifier
+                          </Button>
+                        </div>
+                        {voucherStatus === "valid" && (
+                          <p className="text-xs text-primary-dark font-medium">✓ Bon cadeau valide</p>
+                        )}
+                        {voucherStatus === "invalid" && (
+                          <p className="text-xs text-destructive">Code invalide, expiré ou déjà utilisé</p>
+                        )}
+                      </div>
 
                       {/* Conditions */}
                       {applicableConditions.length > 0 && !bookingBlocked && (
