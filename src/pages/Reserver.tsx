@@ -7,11 +7,21 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Check, Clock, Users, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+
+interface ConditionRow {
+  id: string;
+  type: string;
+  title: string;
+  content: string;
+  applies_to: string[];
+  active: boolean;
+}
 
 interface CourseScheduleRow {
   id: string;
