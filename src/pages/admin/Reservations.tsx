@@ -46,11 +46,20 @@ export default function AdminReservations() {
 
   const fetchReservations = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("reservations")
-      .select("*")
-      .order("date", { ascending: false });
-    if (data) setReservations(data as unknown as Reservation[]);
+    const [resData, resSchedules, resCourses, resWorkshops] = await Promise.all([
+      supabase.from("reservations").select("*").order("date", { ascending: false }),
+      supabase.from("course_schedules").select("spots, spots_left"),
+      supabase.from("courses").select("id", { count: "exact", head: true }),
+      supabase.from("workshops").select("id", { count: "exact", head: true }),
+    ]);
+    if (resData.data) setReservations(resData.data as unknown as Reservation[]);
+    if (resSchedules.data && resSchedules.data.length > 0) {
+      const scheds = resSchedules.data as any[];
+      const total = scheds.reduce((s: number, r: any) => s + r.spots, 0);
+      const used = scheds.reduce((s: number, r: any) => s + (r.spots - r.spots_left), 0);
+      setFillRate(total > 0 ? Math.round((used / total) * 100) : 0);
+    }
+    setActivitiesCount((resCourses.count || 0) + (resWorkshops.count || 0));
     setLoading(false);
   };
 
