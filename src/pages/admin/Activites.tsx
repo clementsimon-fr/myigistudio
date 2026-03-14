@@ -775,7 +775,7 @@ function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActi
               <CalendarIcon className="h-3 w-3 shrink-0" />
               <span>{a.date ? new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "—"} {a.time}-{a.end_time}</span>
               {a.price !== undefined && a.price > 0 && <span className="font-medium text-foreground">{a.price}€</span>}
-              <span>· <Users className="h-3 w-3 inline" /> {a.spots_left}/{a.spots}</span>
+              <span>· <Users className="h-3 w-3 inline" /> {(a.spots || 0) - (a.spots_left || 0)}/{a.spots}</span>
             </div>
           )}
         </div>
