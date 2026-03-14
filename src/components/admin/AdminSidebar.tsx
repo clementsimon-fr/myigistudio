@@ -1,4 +1,4 @@
-import { LayoutDashboard, CalendarDays, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText, Lightbulb } from "lucide-react";
+import { LayoutDashboard, CalendarDays, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText, Lightbulb, FileSignature } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -24,6 +24,7 @@ const items = [
   { title: "Conditions", url: "/admin/conditions", icon: ScrollText },
   { title: "Contenu du site", url: "/admin/contenu", icon: FileText },
   { title: "Fonctionnalités", url: "/admin/fonctionnalites", icon: Lightbulb },
+  { title: "Contrat", url: "/admin/contrat", icon: FileSignature },
 ];
 
 export default function AdminSidebar() {
