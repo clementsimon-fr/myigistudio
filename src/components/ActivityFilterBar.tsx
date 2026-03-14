@@ -38,8 +38,8 @@ export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFi
 
   return (
     <div className="sticky top-16 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
-      {/* Level 1: View tabs */}
-      <div className="container">
+      {/* Level 1: View tabs — mobile only */}
+      <div className="container md:hidden">
         <div className="flex items-center justify-center gap-2 pt-2 pb-1">
           {VIEW_TABS.map(tab => {
             const isActive = tab.to === "/" ? (currentPath === "/" || currentPath === "/activites") : currentPath === tab.to;
@@ -62,7 +62,7 @@ export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFi
       </div>
 
       {/* Level 2: Category filters */}
-      <div className="container pb-2 pt-1">
+      <div className="container pb-2 pt-1 md:pt-2">
         <div className="flex flex-wrap items-center justify-center gap-1.5">
           {CATEGORY_FILTERS.map(f => (
             <Button

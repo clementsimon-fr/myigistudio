@@ -100,47 +100,33 @@ export default function Navbar() {
 
       {open && (
         <div className="md:hidden border-t bg-background p-4 space-y-2">
-          {navLinks.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              onClick={() => setOpen(false)}
-              className={`block px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-                location.pathname === link.to
-                  ? "text-primary-dark bg-muted"
-                  : "text-foreground/70"
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
-          <div className="pt-2 border-t flex flex-col gap-2">
-            {isClientSpace ? (
-              <>
-                {clientSections.map((item) => (
-                  <Link key={item.to} to={item.to} onClick={() => setOpen(false)}>
-                    <Button variant="ghost" className="w-full justify-start gap-2">
-                      <item.icon className="h-4 w-4" />
-                      {item.label}
-                    </Button>
-                  </Link>
-                ))}
+          {isClientSpace ? (
+            <>
+              {clientSections.map((item) => (
+                <Link key={item.to} to={item.to} onClick={() => setOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start gap-2">
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Button>
+                </Link>
+              ))}
+              <div className="pt-2 border-t">
                 <Link to="/login" onClick={() => setOpen(false)}>
                   <Button variant="ghost" className="w-full justify-start gap-2 text-destructive">
                     <LogOut className="h-4 w-4" />
                     Déconnexion
                   </Button>
                 </Link>
-              </>
-            ) : (
-              <Link to="/login" onClick={() => setOpen(false)}>
-                <Button variant="ghost" className="w-full justify-start gap-2">
-                  <User className="h-4 w-4" />
-                  Connexion
-                </Button>
-              </Link>
-            )}
-          </div>
+              </div>
+            </>
+          ) : (
+            <Link to="/login" onClick={() => setOpen(false)}>
+              <Button variant="ghost" className="w-full justify-start gap-2">
+                <User className="h-4 w-4" />
+                Connexion
+              </Button>
+            </Link>
+          )}
         </div>
       )}
     </nav>
