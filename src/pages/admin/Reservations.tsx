@@ -41,6 +41,8 @@ export default function AdminReservations() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [fillRate, setFillRate] = useState(0);
+  const [activitiesCount, setActivitiesCount] = useState(0);
 
   const fetchReservations = async () => {
     setLoading(true);
