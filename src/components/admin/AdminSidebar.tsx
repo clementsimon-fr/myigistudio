@@ -44,6 +44,7 @@ const sidebarGroups = [
       { title: "Contenu du site", url: "/admin/contenu", icon: FileText },
       { title: "Contrat", url: "/admin/contrat", icon: FileSignature },
       { title: "Fonctionnalités", url: "/admin/fonctionnalites", icon: Lightbulb },
+      { title: "Paramètres", url: "/admin/parametres", icon: UserCircle },
     ],
   },
 ];

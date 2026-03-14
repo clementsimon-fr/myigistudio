@@ -150,7 +150,14 @@ export default function DailyView() {
     for (const sched of daySchedules) {
       const course = courses.find(c => c.id === sched.course_id);
       if (!course) continue;
-      const matchingResas = resas.filter(r => r.schedule_id === sched.id && r.status === "confirmé");
+      // Match by schedule_id first, then fallback to activity_name + date for reservations without schedule_id
+      const matchingResas = resas.filter(r => 
+        r.status === "confirmé" && (
+          r.schedule_id === sched.id ||
+          (!r.schedule_id && r.course_id === sched.course_id && r.date === ds) ||
+          (!r.schedule_id && !r.course_id && r.activity_name.trim().toLowerCase().includes(course.name.trim().toLowerCase()) && r.date === ds)
+        )
+      );
       result.push({
         id: `${sched.id}-${ds}`,
         title: course.name,
@@ -167,7 +174,12 @@ export default function DailyView() {
 
     const dayWorkshops = workshops.filter(w => w.date === ds);
     for (const ws of dayWorkshops) {
-      const matchingResas = resas.filter(r => r.workshop_id === ws.id && r.status === "confirmé");
+      const matchingResas = resas.filter(r => 
+        r.status === "confirmé" && (
+          r.workshop_id === ws.id ||
+          (!r.workshop_id && r.activity_name.trim().toLowerCase().includes(ws.name.trim().toLowerCase()) && r.date === ds)
+        )
+      );
       result.push({
         id: ws.id,
         title: ws.name,

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Loader2, Trash2, Lightbulb, CheckCircle2, Info } from "lucide-react";
+import { Plus, Loader2, Trash2, Lightbulb, CheckCircle2, Info, Sparkles, Settings2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,6 +21,14 @@ interface FeatureRequest {
   impact: string;
   ticket_group: string | null;
   created_at: string;
+}
+
+interface FeatureExample {
+  id: string;
+  title: string;
+  description: string;
+  impact: string;
+  target: string;
 }
 
 const URGENCY_CONFIG: Record<number, { label: string; delay: string; color: string }> = {
@@ -81,14 +89,21 @@ function generateTicketGroup(urgency: number, impact: string): string | null {
 export default function AdminFonctionnalites() {
   const { toast } = useToast();
   const [items, setItems] = useState<FeatureRequest[]>([]);
+  const [examples, setExamples] = useState<FeatureExample[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [exampleDialogOpen, setExampleDialogOpen] = useState(false);
+  const [exampleForm, setExampleForm] = useState({ title: "", description: "", impact: "retouche", target: "autre" });
   const [form, setForm] = useState({ title: "", description: "", urgency: 3, target: "autre", impact: "retouche" });
 
   const fetchData = async () => {
     setLoading(true);
-    const { data } = await supabase.from("feature_requests").select("*").order("urgency").order("created_at", { ascending: false });
-    if (data) setItems(data as unknown as FeatureRequest[]);
+    const [itemsRes, examplesRes] = await Promise.all([
+      supabase.from("feature_requests").select("*").order("urgency").order("created_at", { ascending: false }),
+      supabase.from("feature_examples").select("*").order("created_at", { ascending: false }),
+    ]);
+    if (itemsRes.data) setItems(itemsRes.data as unknown as FeatureRequest[]);
+    if (examplesRes.data) setExamples(examplesRes.data as unknown as FeatureExample[]);
     setLoading(false);
   };
 
@@ -98,17 +113,37 @@ export default function AdminFonctionnalites() {
     if (!form.title.trim()) return;
     const ticket_group = generateTicketGroup(form.urgency, form.impact);
     await supabase.from("feature_requests").insert({
-      title: form.title,
-      description: form.description,
-      urgency: form.urgency,
-      target: form.target,
-      impact: form.impact,
-      ticket_group,
+      title: form.title, description: form.description,
+      urgency: form.urgency, target: form.target,
+      impact: form.impact, ticket_group,
     } as any);
     toast({ title: "Idée ajoutée ✓" });
     setDialogOpen(false);
     setForm({ title: "", description: "", urgency: 3, target: "autre", impact: "retouche" });
     fetchData();
+  };
+
+  const addFromExample = async (ex: FeatureExample) => {
+    await supabase.from("feature_requests").insert({
+      title: ex.title, description: ex.description,
+      urgency: 3, target: ex.target, impact: ex.impact,
+    } as any);
+    toast({ title: "Fonctionnalité ajoutée ✓" });
+    fetchData();
+  };
+
+  const saveExample = async () => {
+    if (!exampleForm.title.trim()) return;
+    await supabase.from("feature_examples").insert(exampleForm as any);
+    toast({ title: "Exemple créé" });
+    setExampleDialogOpen(false);
+    setExampleForm({ title: "", description: "", impact: "retouche", target: "autre" });
+    fetchData();
+  };
+
+  const deleteExample = async (id: string) => {
+    await supabase.from("feature_examples").delete().eq("id", id);
+    setExamples(prev => prev.filter(e => e.id !== id));
   };
 
   const updateStatus = async (id: string, status: string) => {
@@ -138,11 +173,48 @@ export default function AdminFonctionnalites() {
 
   return (
     <AdminLayout title="Fonctionnalités">
+      {/* Feature examples suggestions */}
+      {examples.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
+            <Sparkles className="h-4 w-4" /> Suggestions de fonctionnalités
+          </h3>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {examples.map(ex => {
+              const impactCfg = IMPACT_CONFIG[ex.impact] || IMPACT_CONFIG["retouche"];
+              const cost = getCostLabel(ex.impact, 3);
+              return (
+                <div key={ex.id} className="rounded-lg border bg-card p-3 flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="text-sm font-medium">{ex.title}</h4>
+                    <Button size="icon" variant="ghost" className="h-5 w-5 opacity-20 hover:opacity-100 shrink-0" onClick={() => deleteExample(ex.id)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  {ex.description && <p className="text-xs text-muted-foreground line-clamp-2">{ex.description}</p>}
+                  <div className="flex items-center gap-1.5 mt-auto">
+                    <Badge variant="outline" className={`text-[10px] ${impactCfg.color}`}>{impactCfg.label} · {cost.text}</Badge>
+                    <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 ml-auto gap-1" onClick={() => addFromExample(ex)}>
+                      <Plus className="h-3 w-3" /> Ajouter
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-muted-foreground">{items.length} idée{items.length > 1 ? "s" : ""} d'amélioration</p>
-        <Button size="sm" className="gap-1.5" onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4" /> Nouvelle idée
-        </Button>
+        <div className="flex gap-1.5">
+          <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground/50 text-[10px] h-7" onClick={() => setExampleDialogOpen(true)}>
+            <Settings2 className="h-3 w-3" /> Gérer exemples
+          </Button>
+          <Button size="sm" className="gap-1.5" onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4" /> Nouvelle idée
+          </Button>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">
@@ -151,6 +223,7 @@ export default function AdminFonctionnalites() {
         <KanbanColumn title="Terminé" icon={<CheckCircle2 className="h-4 w-4" />} items={doneItems} onStatusChange={updateStatus} onDelete={deleteItem} />
       </div>
 
+      {/* New idea dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -195,8 +268,6 @@ export default function AdminFonctionnalites() {
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Cost recap */}
             <div className="rounded-lg border bg-muted/30 p-3 flex items-start gap-2.5">
               <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
               <div className="text-sm">
@@ -204,8 +275,41 @@ export default function AdminFonctionnalites() {
                 <span className="text-muted-foreground ml-1">— {costInfo.detail}</span>
               </div>
             </div>
-
             <Button className="w-full" onClick={save} disabled={!form.title.trim()}>Ajouter</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create example dialog (discreet) */}
+      <Dialog open={exampleDialogOpen} onOpenChange={setExampleDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Créer un exemple de fonctionnalité</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div><Label className="text-xs">Titre</Label><Input value={exampleForm.title} onChange={e => setExampleForm({ ...exampleForm, title: e.target.value })} placeholder="Système de paiement en ligne" className="text-sm" /></div>
+            <div><Label className="text-xs">Description</Label><Textarea value={exampleForm.description} onChange={e => setExampleForm({ ...exampleForm, description: e.target.value })} rows={2} placeholder="Description..." className="text-sm" /></div>
+            <div>
+              <Label className="text-xs">Type</Label>
+              <Select value={exampleForm.impact} onValueChange={v => setExampleForm({ ...exampleForm, impact: v })}>
+                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(IMPACT_CONFIG).map(([val, cfg]) => (
+                    <SelectItem key={val} value={val}>{cfg.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Cible</Label>
+              <Select value={exampleForm.target} onValueChange={v => setExampleForm({ ...exampleForm, target: v })}>
+                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {TARGET_OPTIONS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button size="sm" className="w-full" onClick={saveExample} disabled={!exampleForm.title.trim()}>Créer l'exemple</Button>
           </div>
         </DialogContent>
       </Dialog>

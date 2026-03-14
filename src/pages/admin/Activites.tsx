@@ -39,12 +39,30 @@ const REMINDER_TIMINGS = [
   { value: "1h", label: "1 heure" },
 ];
 
-const INTENSITY_OPTIONS = [
+const YOGA_INTENSITY = [
   { value: "none", label: "Non défini" },
   { value: "doux", label: "🌿 Doux" },
   { value: "equilibre", label: "⚖️ Équilibré" },
   { value: "dynamique", label: "🔥 Dynamique" },
 ];
+
+const ATELIER_INTENSITY = [
+  { value: "none", label: "Non défini" },
+  { value: "novice", label: "🌱 Novice" },
+  { value: "amateur", label: "🎨 Amateur" },
+  { value: "experimente", label: "⭐ Expérimenté" },
+];
+
+function getIntensityOptions(category: string) {
+  if (category === "yoga") return YOGA_INTENSITY;
+  return ATELIER_INTENSITY;
+}
+
+function getIntensityLabel(value: string | undefined) {
+  if (!value || value === "none") return undefined;
+  const all = [...YOGA_INTENSITY, ...ATELIER_INTENSITY];
+  return all.find(i => i.value === value)?.label;
+}
 
 // ── Inline Template Editor ──
 function TemplateEditor({ value, onChange, variables, readOnly, showInsertModalities }: {
@@ -149,7 +167,7 @@ const emptyEvent = (): EventSlot => ({
 
 const emptyForm = (): ActivityForm => ({
   name: "", description: "", long_description: "", category: "yoga",
-  instructor: "Élodie", image: "", spots: 12, events: [emptyEvent()],
+  instructor: "", image: "", spots: 12, events: [emptyEvent()],
   default_reminder: "", default_modalities: "",
   intensity: "none", reminder_timing: "1j",
 });
@@ -419,7 +437,7 @@ export default function AdminActivites() {
                   <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Aucune activité trouvée.</td></tr>
                 ) : filtered.map(a => {
                   const catLabel = CATEGORIES.find(c => c.value === a.category)?.label || a.category;
-                  const intensityLabel = INTENSITY_OPTIONS.find(i => i.value === a.intensity)?.label || "—";
+                  const intensityLabel = getIntensityLabel(a.intensity);
                   return (
                     <tr key={`${a.source}-${a.id}`} className="border-b last:border-0 hover:bg-muted/10">
                       <td className="p-3">
@@ -427,7 +445,7 @@ export default function AdminActivites() {
                         {a.description && <div className="text-xs text-muted-foreground line-clamp-1">{a.description}</div>}
                       </td>
                       <td className="p-3"><Badge variant="outline" className="text-[10px]">{catLabel}</Badge></td>
-                      <td className="p-3 text-xs">{intensityLabel}</td>
+                      <td className="p-3 text-xs">{intensityLabel || "—"}</td>
                       <td className="p-3 text-xs">{a.instructor}</td>
                       <td className="p-3">
                         {a.source === "course" && a.schedules?.map((s, i) => (
@@ -480,7 +498,7 @@ export default function AdminActivites() {
                   <Select value={form.intensity} onValueChange={v => setForm({ ...form, intensity: v })}>
                     <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
                     <SelectContent>
-                      {INTENSITY_OPTIONS.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
+                      {getIntensityOptions(form.category).map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -491,7 +509,6 @@ export default function AdminActivites() {
                       <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
                       <SelectContent>
                         {instructorsList.map(i => <SelectItem key={i.id} value={i.name}>{i.name}</SelectItem>)}
-                        <SelectItem value="Élodie">Élodie (par défaut)</SelectItem>
                       </SelectContent>
                     </Select>
                   ) : (
@@ -582,6 +599,12 @@ export default function AdminActivites() {
                           <Input type="number" className="w-[70px] h-8 text-xs" value={evt.spots} onChange={e => updateEvent(idx, { spots: Number(e.target.value) })} placeholder="Places" />
                         </div>
                         {evt.type === "ponctuel" && (
+                          <div className="flex items-center gap-1">
+                            <Input type="number" className="w-[70px] h-8 text-xs" value={evt.price} onChange={e => updateEvent(idx, { price: Number(e.target.value) })} placeholder="Prix" />
+                            <span className="text-xs text-muted-foreground">€</span>
+                          </div>
+                        )}
+                        {evt.type === "recurring" && (
                           <div className="flex items-center gap-1">
                             <Input type="number" className="w-[70px] h-8 text-xs" value={evt.price} onChange={e => updateEvent(idx, { price: Number(e.target.value) })} placeholder="Prix" />
                             <span className="text-xs text-muted-foreground">€</span>
@@ -715,7 +738,7 @@ export default function AdminActivites() {
 // ── Activity Card (used for both desktop and mobile in cards view) ──
 function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActivity; onEdit: () => void; onDelete: () => void }) {
   const catLabel = CATEGORIES.find(c => c.value === a.category)?.label || a.category;
-  const intensityLabel = INTENSITY_OPTIONS.find(i => i.value === a.intensity)?.label;
+  const intensityLabel = getIntensityLabel(a.intensity);
   return (
     <div className="rounded-xl border bg-card overflow-hidden hover:shadow-md transition-shadow group">
       {a.image && (

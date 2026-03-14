@@ -25,11 +25,12 @@ const statusColors: Record<string, string> = {
 };
 const CLIENT_NAME = "Sophie";
 
-type Section = "reservations" | "cartes" | "profil" | "feedback";
+type Section = "reservations" | "cartes" | "cadeaux" | "profil" | "feedback";
 
 const NAV_ITEMS: { value: Section; label: string; icon: typeof CalendarDays }[] = [
-  { value: "reservations", label: "Résa", icon: CalendarDays },
+  { value: "reservations", label: "Réservations", icon: CalendarDays },
   { value: "cartes", label: "Cartes Yoga", icon: CreditCard },
+  { value: "cadeaux", label: "Bons Cadeaux", icon: Star },
   { value: "feedback", label: "Feedback", icon: Star },
   { value: "profil", label: "Profil", icon: User },
 ];
@@ -99,9 +100,8 @@ export default function MonEspace() {
   const filteredRes = resFilter === "all" ? reservations : resFilter === "yoga" ? yogaRes : resFilter === "poterie" ? potteryRes : atelierRes;
 
   const saveProfile = async () => {
-    if (profile) await supabase.from("profiles").update({ bio: bioValue, show_in_community: showInCommunity, reminder_sms: reminderSms, reminder_email: reminderEmail } as any).eq("id", profile.id);
-    else await supabase.from("profiles").insert({ user_name: CLIENT_NAME, bio: bioValue, show_in_community: showInCommunity, reminder_sms: reminderSms, reminder_email: reminderEmail } as any);
-    setEditingBio(false);
+    if (profile) await supabase.from("profiles").update({ reminder_sms: reminderSms, reminder_email: reminderEmail } as any).eq("id", profile.id);
+    else await supabase.from("profiles").insert({ user_name: CLIENT_NAME, reminder_sms: reminderSms, reminder_email: reminderEmail } as any);
     toast({ title: "Profil mis à jour ✓" });
   };
 
@@ -238,6 +238,11 @@ export default function MonEspace() {
                 </div>
               )}
 
+              {/* ─── BONS CADEAUX ─── */}
+              {section === "cadeaux" && (
+                <GiftVoucherSection clientName={CLIENT_NAME} />
+              )}
+
               {/* ─── PROFIL ─── */}
               {section === "profil" && (
                 <div className="space-y-4">
@@ -254,34 +259,8 @@ export default function MonEspace() {
                       </div>
                     </div>
 
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between mb-1">
-                        <Label className="text-xs">Ma bio</Label>
-                        {!editingBio && <Button variant="ghost" size="sm" className="gap-1 h-6 text-xs" onClick={() => setEditingBio(true)}><Pencil className="h-3 w-3" /> Modifier</Button>}
-                      </div>
-                      {editingBio ? (
-                        <div className="space-y-2">
-                          <Textarea value={bioValue} onChange={e => setBioValue(e.target.value)} rows={3} placeholder="Présentez-vous..." className="text-sm" />
-                          <div className="flex gap-2">
-                            <Button size="sm" className="text-xs" onClick={saveProfile}>Enregistrer</Button>
-                            <Button size="sm" variant="outline" className="text-xs" onClick={() => setEditingBio(false)}>Annuler</Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">{bioValue || "Aucune bio pour le moment."}</p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-lg border p-3">
-                      <div>
-                        <p className="text-sm font-medium">Visibilité communauté</p>
-                        <p className="text-[10px] text-muted-foreground">Les membres verront votre profil</p>
-                      </div>
-                      <Switch checked={showInCommunity} onCheckedChange={setShowInCommunity} />
-                    </div>
-
                     {/* Reminder preferences */}
-                    <div className="space-y-2 mt-4">
+                    <div className="space-y-2">
                       <div className="flex items-center gap-1.5 mb-1">
                         <Bell className="h-4 w-4 text-primary-dark" />
                         <p className="text-sm font-medium">Préférences de rappel</p>
@@ -302,7 +281,7 @@ export default function MonEspace() {
                       </div>
                     </div>
 
-                    {(showInCommunity !== (profile?.show_in_community ?? false) || reminderSms !== (profile?.reminder_sms ?? false) || reminderEmail !== (profile?.reminder_email ?? true)) && (
+                    {(reminderSms !== (profile?.reminder_sms ?? false) || reminderEmail !== (profile?.reminder_email ?? true)) && (
                       <Button size="sm" className="text-xs mt-2" onClick={saveProfile}>Sauvegarder</Button>
                     )}
                   </div>
@@ -432,6 +411,39 @@ export default function MonEspace() {
       </AlertDialog>
 
       <Footer />
+    </div>
+  );
+}
+
+function GiftVoucherSection({ clientName }: { clientName: string }) {
+  const [vouchers, setVouchers] = useState<{ id: string; code: string; type: string; amount: number; sessions: number; card_name: string; message: string; used: boolean; expires_at: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.from("gift_vouchers").select("*").eq("beneficiary_name", clientName).order("created_at", { ascending: false }).then(({ data }) => {
+      if (data) setVouchers(data as any);
+      setLoading(false);
+    });
+  }, [clientName]);
+
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-lg font-display font-bold text-primary-dark">Mes bons cadeaux</h2>
+      {vouchers.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">Aucun bon cadeau pour le moment.</p>
+      ) : vouchers.map(v => (
+        <div key={v.id} className="rounded-xl border bg-card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-sm text-primary-dark">{v.card_name || (v.type === "amount" ? `Bon de ${v.amount}€` : `${v.sessions} séances`)}</h3>
+            <Badge variant={v.used ? "secondary" : "default"} className="text-xs">{v.used ? "Utilisé" : "Actif"}</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">Code : <span className="font-mono font-medium">{v.code}</span></p>
+          <p className="text-xs text-muted-foreground">Expire le {new Date(v.expires_at).toLocaleDateString("fr-FR")}</p>
+          {v.message && <p className="text-xs text-muted-foreground mt-1 italic">"{v.message}"</p>}
+        </div>
+      ))}
     </div>
   );
 }

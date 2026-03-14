@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Loader2, Clock, Plus, Trash2 } from "lucide-react";
+import { Search, Loader2, Clock, Plus, Trash2, Pencil, UserPlus } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,12 @@ interface AggregatedClient {
   name: string;
   totalReservations: number;
   firstReservation: string;
+  profileId?: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
 }
 
 interface ReservationRow {
@@ -40,6 +46,18 @@ interface PricingCard {
   validity: string;
 }
 
+interface GiftVoucher {
+  id: string;
+  code: string;
+  type: string;
+  amount: number;
+  sessions: number;
+  card_name: string;
+  message: string;
+  used: boolean;
+  expires_at: string;
+}
+
 export default function AdminClients() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -50,6 +68,7 @@ export default function AdminClients() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clientReservations, setClientReservations] = useState<ReservationRow[]>([]);
   const [clientCards, setClientCards] = useState<ClientCard[]>([]);
+  const [clientVouchers, setClientVouchers] = useState<GiftVoucher[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
   // Add card dialog
@@ -58,37 +77,55 @@ export default function AdminClients() {
   const [selectedPricing, setSelectedPricing] = useState("");
   const [addingCard, setAddingCard] = useState(false);
 
+  // Edit/Add client dialog
+  const [editClientOpen, setEditClientOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ user_name: "", first_name: "", last_name: "", phone: "", email: "", address: "" });
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+
   const loadClients = async () => {
     setLoading(true);
-    const [resData, voucherData] = await Promise.all([
+    const [resData, voucherData, profilesData] = await Promise.all([
       supabase.from("reservations").select("client_name, date").order("date", { ascending: true }),
       supabase.from("gift_vouchers").select("beneficiary_name, buyer_name, created_at"),
+      supabase.from("profiles").select("*"),
     ]);
-    const map = new Map<string, { count: number; first: string; source: string }>();
+    const map = new Map<string, { count: number; first: string; profileId?: string; first_name?: string; last_name?: string; phone?: string; email?: string; address?: string }>();
+
+    // Add profiles first
+    if (profilesData.data) {
+      for (const p of profilesData.data as any[]) {
+        map.set(p.user_name, {
+          count: 0, first: p.created_at?.split("T")[0] || "",
+          profileId: p.id, first_name: p.first_name || "", last_name: p.last_name || "",
+          phone: p.phone || "", email: p.email || "", address: p.address || "",
+        });
+      }
+    }
+
     if (resData.data) {
       (resData.data as any[]).forEach((r) => {
         const existing = map.get(r.client_name);
         if (existing) {
           existing.count++;
+          if (!existing.first) existing.first = r.date;
         } else {
-          map.set(r.client_name, { count: 1, first: r.date, source: "client" });
+          map.set(r.client_name, { count: 1, first: r.date });
         }
       });
     }
-    // Add gift voucher beneficiaries/buyers as "future clients" if not already in map
     if (voucherData.data) {
       (voucherData.data as any[]).forEach((v) => {
         [v.beneficiary_name, v.buyer_name].filter(Boolean).forEach((name: string) => {
           if (name && !map.has(name)) {
-            map.set(name, { count: 0, first: v.created_at?.split("T")[0] || "", source: "voucher" });
+            map.set(name, { count: 0, first: v.created_at?.split("T")[0] || "" });
           }
         });
       });
     }
     const list: AggregatedClient[] = Array.from(map.entries()).map(([name, v]) => ({
-      name,
-      totalReservations: v.count,
-      firstReservation: v.first,
+      name, totalReservations: v.count, firstReservation: v.first,
+      profileId: v.profileId, first_name: v.first_name, last_name: v.last_name,
+      phone: v.phone, email: v.email, address: v.address,
     }));
     setClients(list);
     setLoading(false);
@@ -99,12 +136,14 @@ export default function AdminClients() {
   const openClientDetail = async (clientName: string) => {
     setSelectedClient(clientName);
     setLoadingDetail(true);
-    const [resReservations, resCards] = await Promise.all([
+    const [resReservations, resCards, resVouchers] = await Promise.all([
       supabase.from("reservations").select("id, activity_name, date, time, status").eq("client_name", clientName).order("date", { ascending: false }),
       supabase.from("client_cards").select("*").eq("client_name", clientName).order("created_at", { ascending: false }),
+      supabase.from("gift_vouchers").select("*").or(`beneficiary_name.eq.${clientName},buyer_name.eq.${clientName}`).order("created_at", { ascending: false }),
     ]);
     if (resReservations.data) setClientReservations(resReservations.data as unknown as ReservationRow[]);
     if (resCards.data) setClientCards(resCards.data as unknown as ClientCard[]);
+    if (resVouchers.data) setClientVouchers(resVouchers.data as unknown as GiftVoucher[]);
     setLoadingDetail(false);
   };
 
@@ -118,28 +157,20 @@ export default function AdminClients() {
     if (!selectedClient || !selectedPricing) return;
     const pricing = pricingCards.find(p => p.id === selectedPricing);
     if (!pricing) return;
-
     setAddingCard(true);
-    // Calculate expiry from validity string
     const now = new Date();
     const match = pricing.validity.match(/(\d+)/);
     const months = match ? parseInt(match[1]) : 1;
     const expiresAt = new Date(now);
     expiresAt.setMonth(expiresAt.getMonth() + months);
-
     const { error } = await supabase.from("client_cards").insert({
-      client_name: selectedClient,
-      card_name: pricing.name,
-      total_sessions: pricing.sessions,
-      used_sessions: 0,
+      client_name: selectedClient, card_name: pricing.name,
+      total_sessions: pricing.sessions, used_sessions: 0,
       expires_at: expiresAt.toISOString().split("T")[0],
     } as any);
-
-    if (error) {
-      toast({ title: "Erreur", variant: "destructive" });
-    } else {
+    if (error) toast({ title: "Erreur", variant: "destructive" });
+    else {
       toast({ title: "Carte ajoutée" });
-      // Refresh cards
       const { data } = await supabase.from("client_cards").select("*").eq("client_name", selectedClient).order("created_at", { ascending: false });
       if (data) setClientCards(data as unknown as ClientCard[]);
     }
@@ -154,8 +185,57 @@ export default function AdminClients() {
     toast({ title: "Carte supprimée" });
   };
 
+  const openNewClient = () => {
+    setEditingProfileId(null);
+    setEditForm({ user_name: "", first_name: "", last_name: "", phone: "", email: "", address: "" });
+    setEditClientOpen(true);
+  };
+
+  const openEditClient = (client: AggregatedClient) => {
+    setEditingProfileId(client.profileId || null);
+    setEditForm({
+      user_name: client.name,
+      first_name: client.first_name || "",
+      last_name: client.last_name || "",
+      phone: client.phone || "",
+      email: client.email || "",
+      address: client.address || "",
+    });
+    setEditClientOpen(true);
+  };
+
+  const saveClient = async () => {
+    if (!editForm.user_name.trim() && !editForm.first_name.trim()) return;
+    const displayName = editForm.user_name || `${editForm.first_name} ${editForm.last_name}`.trim();
+    if (editingProfileId) {
+      await supabase.from("profiles").update({
+        user_name: displayName,
+        first_name: editForm.first_name,
+        last_name: editForm.last_name,
+        phone: editForm.phone,
+        email: editForm.email,
+        address: editForm.address,
+      } as any).eq("id", editingProfileId);
+    } else {
+      await supabase.from("profiles").insert({
+        user_name: displayName,
+        first_name: editForm.first_name,
+        last_name: editForm.last_name,
+        phone: editForm.phone,
+        email: editForm.email,
+        address: editForm.address,
+      } as any);
+    }
+    toast({ title: editingProfileId ? "Client modifié ✓" : "Client ajouté ✓" });
+    setEditClientOpen(false);
+    loadClients();
+  };
+
   const filtered = clients.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    (c.first_name || "").toLowerCase().includes(search.toLowerCase()) ||
+    (c.last_name || "").toLowerCase().includes(search.toLowerCase()) ||
+    (c.email || "").toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -165,6 +245,9 @@ export default function AdminClients() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Rechercher un client…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
+        <Button size="sm" className="gap-1.5" onClick={openNewClient}>
+          <UserPlus className="h-4 w-4" /> Ajouter un client
+        </Button>
         <p className="text-sm text-muted-foreground self-center">{filtered.length} client{filtered.length > 1 ? "s" : ""}</p>
       </div>
 
@@ -176,26 +259,39 @@ export default function AdminClients() {
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="text-left p-3 font-medium text-muted-foreground">Nom</th>
+                <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Téléphone</th>
+                <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Email</th>
                 <th className="text-left p-3 font-medium text-muted-foreground">Réservations</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Inscrit depuis</th>
+                <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={3} className="p-6 text-center text-muted-foreground">Aucun client trouvé</td></tr>
+                <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Aucun client trouvé</td></tr>
               ) : filtered.map((c) => (
                 <tr
                   key={c.name}
                   className="border-b last:border-0 hover:bg-muted/10 cursor-pointer"
                   onClick={() => openClientDetail(c.name)}
                 >
-                  <td className="p-3 font-medium">{c.name}</td>
+                  <td className="p-3">
+                    <div className="font-medium">{c.name}</div>
+                    {(c.first_name || c.last_name) && c.name !== `${c.first_name} ${c.last_name}`.trim() && (
+                      <div className="text-xs text-muted-foreground">{c.first_name} {c.last_name}</div>
+                    )}
+                  </td>
+                  <td className="p-3 hidden md:table-cell text-muted-foreground">{c.phone || "—"}</td>
+                  <td className="p-3 hidden md:table-cell text-muted-foreground">{c.email || "—"}</td>
                   <td className="p-3">
                     {c.totalReservations === 0
                       ? <Badge variant="outline" className="text-xs">Futur client</Badge>
                       : c.totalReservations}
                   </td>
-                  <td className="p-3">{c.firstReservation ? new Date(c.firstReservation).toLocaleDateString("fr-FR") : "—"}</td>
+                  <td className="p-3 text-right">
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openEditClient(c); }}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -254,6 +350,24 @@ export default function AdminClients() {
                 )}
               </div>
 
+              {/* Gift vouchers */}
+              {clientVouchers.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-primary-dark mb-3">Bons cadeaux</h3>
+                  <div className="space-y-2">
+                    {clientVouchers.map(v => (
+                      <div key={v.id} className="rounded-lg border p-3 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">{v.card_name || (v.type === "amount" ? `${v.amount}€` : `${v.sessions} séances`)}</p>
+                          <p className="text-xs text-muted-foreground">Code : {v.code} · Exp. {new Date(v.expires_at).toLocaleDateString("fr-FR")}</p>
+                        </div>
+                        <Badge variant={v.used ? "secondary" : "default"} className="text-xs">{v.used ? "Utilisé" : "Actif"}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Reservations history */}
               <div>
                 <h3 className="text-sm font-semibold text-primary-dark mb-3">Historique des réservations</h3>
@@ -307,6 +421,28 @@ export default function AdminClients() {
             </div>
             <Button onClick={handleAddCard} disabled={!selectedPricing || addingCard} className="w-full">
               {addingCard ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ajouter"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit/Add Client Dialog */}
+      <Dialog open={editClientOpen} onOpenChange={setEditClientOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingProfileId ? "Modifier le client" : "Nouveau client"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Prénom</Label><Input value={editForm.first_name} onChange={e => setEditForm({ ...editForm, first_name: e.target.value })} /></div>
+              <div><Label>Nom</Label><Input value={editForm.last_name} onChange={e => setEditForm({ ...editForm, last_name: e.target.value })} /></div>
+            </div>
+            <div><Label>Nom d'affichage</Label><Input value={editForm.user_name} onChange={e => setEditForm({ ...editForm, user_name: e.target.value })} placeholder={`${editForm.first_name} ${editForm.last_name}`.trim() || "Sophie"} /></div>
+            <div><Label>Téléphone</Label><Input type="tel" value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} placeholder="06 12 34 56 78" /></div>
+            <div><Label>Email</Label><Input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} placeholder="sophie@email.com" /></div>
+            <div><Label>Adresse</Label><Input value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} placeholder="12 rue de la Paix, 75002 Paris" /></div>
+            <Button className="w-full" onClick={saveClient} disabled={!editForm.user_name.trim() && !editForm.first_name.trim()}>
+              {editingProfileId ? "Enregistrer" : "Ajouter le client"}
             </Button>
           </div>
         </DialogContent>

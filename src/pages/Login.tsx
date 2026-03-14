@@ -25,7 +25,7 @@ export default function Login() {
           </Button>
 
           <Button
-            onClick={() => navigate("/admin")}
+            onClick={() => navigate("/admin/reservations")}
             variant="outline"
             className="w-full h-14 text-base gap-3 border-primary-dark text-primary-dark hover:bg-primary-dark/10"
           >
