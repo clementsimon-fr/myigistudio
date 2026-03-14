@@ -60,10 +60,13 @@ export default function MonEspace() {
   const [editingBio, setEditingBio] = useState(false);
   const [bioValue, setBioValue] = useState("");
   const [showInCommunity, setShowInCommunity] = useState(false);
+  const [reminderSms, setReminderSms] = useState(false);
+  const [reminderEmail, setReminderEmail] = useState(true);
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostCategory, setNewPostCategory] = useState("general");
   const [forumFilter, setForumFilter] = useState("all");
   const [resFilter, setResFilter] = useState("all");
+  const [viewingReservation, setViewingReservation] = useState<Reservation | null>(null);
 
   useEffect(() => {
     const load = async () => {
