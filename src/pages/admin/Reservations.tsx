@@ -3,7 +3,6 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Search, Loader2, XCircle, RotateCcw, List, CalendarDays, TrendingUp, Users, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,24 +32,34 @@ const statusStyles: Record<string, string> = {
   "liste d'attente": "bg-accent/20 text-accent-foreground",
 };
 
+const CATEGORY_FILTERS = [
+  { value: "all", label: "Toutes" },
+  { value: "yoga", label: "Yoga" },
+  { value: "poterie", label: "Poterie" },
+  { value: "bien-etre", label: "Bien-être" },
+];
+
 export default function AdminReservations() {
   const { toast } = useToast();
-  const [viewMode, setViewMode] = useState<"list" | "daily">("daily");
+  const [viewMode, setViewMode] = useState<"list" | "planning">("planning");
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [fillRate, setFillRate] = useState(0);
   const [activitiesCount, setActivitiesCount] = useState(0);
+
+  // Map activity names to categories
+  const [activityCategories, setActivityCategories] = useState<Record<string, string>>({});
 
   const fetchReservations = async () => {
     setLoading(true);
     const [resData, resSchedules, resCourses, resWorkshops] = await Promise.all([
       supabase.from("reservations").select("*").order("date", { ascending: false }),
       supabase.from("course_schedules").select("spots, spots_left"),
-      supabase.from("courses").select("id", { count: "exact", head: true }),
-      supabase.from("workshops").select("id", { count: "exact", head: true }),
+      supabase.from("courses").select("id, name, category"),
+      supabase.from("workshops").select("id, name, category, spots, spots_left"),
     ]);
     if (resData.data) setReservations(resData.data as unknown as Reservation[]);
     if (resSchedules.data && resSchedules.data.length > 0) {
@@ -59,17 +68,27 @@ export default function AdminReservations() {
       const used = scheds.reduce((s: number, r: any) => s + (r.spots - r.spots_left), 0);
       setFillRate(total > 0 ? Math.round((used / total) * 100) : 0);
     }
-    setActivitiesCount((resCourses.count || 0) + (resWorkshops.count || 0));
+    // Build category map
+    const catMap: Record<string, string> = {};
+    if (resCourses.data) {
+      for (const c of resCourses.data as any[]) catMap[c.name.toLowerCase()] = c.category;
+    }
+    if (resWorkshops.data) {
+      for (const w of resWorkshops.data as any[]) catMap[w.name.toLowerCase()] = w.category;
+    }
+    setActivityCategories(catMap);
+    setActivitiesCount(((resCourses.data as any[])?.length || 0) + ((resWorkshops.data as any[])?.length || 0));
     setLoading(false);
   };
 
   useEffect(() => { fetchReservations(); }, []);
 
   const filtered = reservations.filter((r) => {
-    const matchSearch = r.client_name.toLowerCase().includes(search.toLowerCase()) ||
+    const matchSearch = !search.trim() || r.client_name.toLowerCase().includes(search.toLowerCase()) ||
       r.activity_name.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "all" || r.status === statusFilter;
-    return matchSearch && matchStatus;
+    const matchCategory = categoryFilter === "all" ||
+      activityCategories[r.activity_name.toLowerCase()] === categoryFilter;
+    return matchSearch && matchCategory;
   });
 
   const confirmCancel = async () => {
@@ -123,7 +142,6 @@ export default function AdminReservations() {
     fetchReservations();
   };
 
-  // Stats
   const totalConfirmed = reservations.filter(r => r.status === "confirmé").length;
   const totalCancelled = reservations.filter(r => r.status === "annulé").length;
   const upcoming = reservations.filter(r => r.status === "confirmé" && r.date >= new Date().toISOString().split("T")[0]).length;
@@ -140,106 +158,109 @@ export default function AdminReservations() {
 
   return (
     <AdminLayout title="Réservations">
-      {/* View toggle */}
-      <div className="flex items-center gap-2 mb-4">
-        <Button
-          variant={viewMode === "daily" ? "default" : "outline"}
-          size="sm"
-          className="gap-1.5"
-          onClick={() => setViewMode("daily")}
-        >
-          <CalendarDays className="h-4 w-4" /> Planning
-        </Button>
-        <Button
-          variant={viewMode === "list" ? "default" : "outline"}
-          size="sm"
-          className="gap-1.5"
-          onClick={() => setViewMode("list")}
-        >
-          <List className="h-4 w-4" /> Liste complète
-        </Button>
-      </div>
-
-      {/* Stats cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <CalendarDays className="h-4 w-4 text-primary-dark" />
-            <span className="text-xs text-muted-foreground">Réservations du jour</span>
+      {/* Views & Filters bar */}
+      <div className="flex flex-col gap-3 mb-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Button
+              variant={viewMode === "list" ? "default" : "outline"}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setViewMode("list")}
+            >
+              <List className="h-4 w-4" /> Liste
+            </Button>
+            <Button
+              variant={viewMode === "planning" ? "default" : "outline"}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setViewMode("planning")}
+            >
+              <CalendarDays className="h-4 w-4" /> Planning
+            </Button>
           </div>
-          <p className="text-2xl font-bold text-foreground">
-            {reservations.filter(r => r.status === "confirmé" && r.date === new Date().toISOString().split("T")[0]).length}
-          </p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Users className="h-4 w-4 text-primary" />
-            <span className="text-xs text-muted-foreground">Clients inscrits</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {CATEGORY_FILTERS.map(f => (
+              <Badge
+                key={f.value}
+                variant={categoryFilter === f.value ? "default" : "outline"}
+                className="cursor-pointer text-xs"
+                onClick={() => setCategoryFilter(f.value)}
+              >
+                {f.label}
+              </Badge>
+            ))}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-8 w-40 text-xs"
+              />
+            </div>
           </div>
-          <p className="text-2xl font-bold text-foreground">{new Set(reservations.map(r => r.client_name)).size}</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp className="h-4 w-4 text-accent" />
-            <span className="text-xs text-muted-foreground">Taux de remplissage</span>
-          </div>
-          <p className="text-2xl font-bold text-foreground">{fillRate}%</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Clock className="h-4 w-4 text-primary-dark" />
-            <span className="text-xs text-muted-foreground">Activités</span>
-          </div>
-          <p className="text-2xl font-bold text-foreground">{activitiesCount}</p>
         </div>
       </div>
 
-      {viewMode === "daily" ? (
-        <DailyView />
+      {/* Stats cards — shown only in Planning mode */}
+      {viewMode === "planning" && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="rounded-xl border bg-card p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <CalendarDays className="h-4 w-4 text-primary-dark" />
+              <span className="text-xs text-muted-foreground">Réservations du jour</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">
+              {reservations.filter(r => r.status === "confirmé" && r.date === new Date().toISOString().split("T")[0]).length}
+            </p>
+          </div>
+          <div className="rounded-xl border bg-card p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Users className="h-4 w-4 text-primary" />
+              <span className="text-xs text-muted-foreground">Clients inscrits</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{new Set(reservations.map(r => r.client_name)).size}</p>
+          </div>
+          <div className="rounded-xl border bg-card p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="h-4 w-4 text-accent" />
+              <span className="text-xs text-muted-foreground">Taux de remplissage</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{fillRate}%</p>
+          </div>
+          <div className="rounded-xl border bg-card p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Clock className="h-4 w-4 text-primary-dark" />
+              <span className="text-xs text-muted-foreground">Activités</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{activitiesCount}</p>
+          </div>
+        </div>
+      )}
+
+      {viewMode === "planning" ? (
+        <DailyView categoryFilter={categoryFilter} />
       ) : (
         <>
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="rounded-xl border bg-card p-4 text-center">
-              <p className="text-2xl font-bold text-primary-dark">{reservations.length}</p>
+              <p className="text-2xl font-bold text-primary-dark">{filtered.length}</p>
               <p className="text-xs text-muted-foreground">Total</p>
             </div>
             <div className="rounded-xl border bg-card p-4 text-center">
-              <p className="text-2xl font-bold text-primary-dark">{totalConfirmed}</p>
+              <p className="text-2xl font-bold text-primary-dark">{filtered.filter(r => r.status === "confirmé").length}</p>
               <p className="text-xs text-muted-foreground">Confirmées</p>
             </div>
             <div className="rounded-xl border bg-card p-4 text-center">
-              <p className="text-2xl font-bold text-primary-dark">{upcoming}</p>
+              <p className="text-2xl font-bold text-primary-dark">{filtered.filter(r => r.status === "confirmé" && r.date >= new Date().toISOString().split("T")[0]).length}</p>
               <p className="text-xs text-muted-foreground">À venir</p>
             </div>
             <div className="rounded-xl border bg-card p-4 text-center">
-              <p className="text-2xl font-bold text-destructive">{totalCancelled}</p>
+              <p className="text-2xl font-bold text-destructive">{filtered.filter(r => r.status === "annulé").length}</p>
               <p className="text-xs text-muted-foreground">Annulées</p>
             </div>
-          </div>
-
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher un client ou activité…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value="confirmé">Confirmé</SelectItem>
-                <SelectItem value="annulé">Annulé</SelectItem>
-                <SelectItem value="liste d'attente">Liste d'attente</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Table */}

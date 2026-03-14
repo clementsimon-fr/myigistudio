@@ -449,7 +449,7 @@ export default function AdminActivites() {
                       <td className="p-3 text-xs">{a.instructor}</td>
                       <td className="p-3">
                         {a.source === "course" && a.schedules?.map((s, i) => (
-                          <div key={i} className="text-xs text-muted-foreground">{s.day.slice(0, 3)} {s.time}-{s.end_time} · {s.spots_left}/{s.spots}</div>
+                          <div key={i} className="text-xs text-muted-foreground">{s.day.slice(0, 3)} {s.time}-{s.end_time} · {s.spots - s.spots_left}/{s.spots}</div>
                         ))}
                         {a.source === "workshop" && (
                           <div className="text-xs text-muted-foreground">
@@ -767,7 +767,7 @@ function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActi
             <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
               <Repeat className="h-3 w-3 shrink-0" />
               <span>{s.day.slice(0, 3)} {s.time}-{s.end_time}</span>
-              <span>· <Users className="h-3 w-3 inline" /> {s.spots_left}/{s.spots}</span>
+              <span>· <Users className="h-3 w-3 inline" /> {s.spots - s.spots_left}/{s.spots}</span>
             </div>
           ))}
           {a.source === "workshop" && (
@@ -775,7 +775,7 @@ function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActi
               <CalendarIcon className="h-3 w-3 shrink-0" />
               <span>{a.date ? new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "—"} {a.time}-{a.end_time}</span>
               {a.price !== undefined && a.price > 0 && <span className="font-medium text-foreground">{a.price}€</span>}
-              <span>· <Users className="h-3 w-3 inline" /> {a.spots_left}/{a.spots}</span>
+              <span>· <Users className="h-3 w-3 inline" /> {(a.spots || 0) - (a.spots_left || 0)}/{a.spots}</span>
             </div>
           )}
         </div>
