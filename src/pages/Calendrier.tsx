@@ -65,6 +65,7 @@ export default function Calendrier() {
     initialFilter && CATEGORY_FILTERS.some(f => f.value === initialFilter) ? initialFilter : "all"
   );
   const [subFilter, setSubFilter] = useState<string>(activityName || "all");
+  const [initialScrollDone, setInitialScrollDone] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<ActivityBlock | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     // If a target date is provided, navigate to that week
@@ -92,6 +93,61 @@ export default function Calendrier() {
     };
     fetchAll();
   }, []);
+
+  // Auto-scroll to first available date when arriving from Activités with an activity filter
+  useEffect(() => {
+    if (loading || (!activityName && !initialFilter)) return;
+    // Use the loaded data to find the first matching date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr2 = formatDateStr(today);
+
+    let earliestDate: Date | null = null;
+
+    // Check workshops
+    const matchingWs = workshops
+      .filter(w => {
+        if (w.date < todayStr2) return false;
+        if (activityName && w.name !== activityName) return false;
+        if (initialFilter && initialFilter !== "all" && w.category !== initialFilter) return false;
+        return true;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    if (matchingWs.length > 0) {
+      earliestDate = new Date(matchingWs[0].date + "T00:00:00");
+    }
+
+    // Check recurring courses
+    const matchingScheds = schedules.filter(s => {
+      const course = courses.find(c => c.id === s.course_id);
+      if (!course) return false;
+      if (activityName && course.name !== activityName) return false;
+      if (initialFilter && initialFilter !== "all" && course.category !== initialFilter) return false;
+      return true;
+    });
+
+    if (matchingScheds.length > 0) {
+      const dayNames = matchingScheds.map(s => s.day);
+      for (let i = 0; i < 14; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() + i);
+        if (dayNames.includes(DAY_MAP[d.getDay()])) {
+          if (!earliestDate || d < earliestDate) earliestDate = d;
+          break;
+        }
+      }
+    }
+
+    if (earliestDate) {
+      const dayOfWeek = earliestDate.getDay();
+      const diff = earliestDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const monday = new Date(earliestDate);
+      monday.setDate(diff);
+      monday.setHours(0, 0, 0, 0);
+      setCurrentWeekStart(monday);
+    }
+  }, [loading, courses, schedules, workshops, activityName, initialFilter]);
 
   const weekDays = useMemo(() => getWeekDays(currentWeekStart), [currentWeekStart]);
 
