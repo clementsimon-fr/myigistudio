@@ -314,15 +314,8 @@ export default function AdminActivites() {
 
   const [expandedEvent, setExpandedEvent] = useState<number | null>(null);
 
-  // Save global defaults
-  const saveGlobalDefaults = async () => {
-    await saveSiteSettings([
-      { key: "default_reminder", value: globalReminder },
-      { key: "default_modalities", value: globalModalities },
-    ]);
-    toast({ title: "Modèles par défaut sauvegardés ✓" });
-    setDefaultsDialogOpen(false);
-  };
+
+
 
   if (loading) {
     return (
