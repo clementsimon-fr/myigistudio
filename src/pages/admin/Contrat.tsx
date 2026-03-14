@@ -4,7 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Rocket, Server, Lightbulb, CheckCircle2, Clock, Gift, AlertTriangle, Zap, ArrowRight, BarChart3, Info } from "lucide-react";
+import {
+  Rocket, Server, Lightbulb, CheckCircle2, Clock, Gift, AlertTriangle, Zap,
+  BarChart3, Info, Palette, Database, Upload, HeartHandshake, ShieldCheck, Calendar
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface FeatureRequest {
@@ -15,25 +18,95 @@ interface FeatureRequest {
   created_at: string;
 }
 
-const phases = [
+// ── Timeline phases ──
+const timelinePhases = [
   {
-    name: "Phase 1 — Prototype",
-    description: "Conception de l'interface, premier rendu et itérations",
-    amount: 300,
-    status: "En cours",
-    offered: true,
-    icon: <Rocket className="h-5 w-5" />,
+    name: "Prototype Fictif",
+    subtitle: "Validation du concept",
+    icon: Palette,
+    status: "done" as const,
+    cost: "250 €",
+    costNote: "Offert",
+    explanation:
+      "C'est la « maquette » interactive de votre projet. Elle permet de tester l'ergonomie et le parcours de vos clients sans risque, pour valider que l'outil répond parfaitement à vos besoins avant de construire le moteur réel.",
+    detail:
+      "Logiques de navigation, design visuel, sans connexion ni base de données réelle.",
   },
   {
-    name: "Phase 2 — Déploiement",
-    description: "Configuration authentification, intégration Stripe, synchronisation des calendriers et transfert des historiques clients",
-    amount: 300,
-    status: "À venir",
-    offered: true,
-    icon: <ArrowRight className="h-5 w-5" />,
+    name: "Développement",
+    subtitle: "Version fonctionnelle",
+    icon: Database,
+    status: "in_progress" as const,
+    cost: "250 €",
+    costNote: "Offert",
+    explanation:
+      "Nous créons le moteur de l'application. À cette étape, l'application est opérationnelle : on peut créer un compte, réserver et payer. C'est une page blanche prête à recevoir votre activité.",
+    detail:
+      "Mise en place de la base de données, sécurité des comptes, intégration du système de paiement Stripe.",
+  },
+  {
+    name: "Déploiement",
+    subtitle: "Version complète & Migration",
+    icon: Upload,
+    status: "upcoming" as const,
+    cost: "250 €",
+    costNote: "Offert",
+    explanation:
+      "C'est le « Grand Saut ». Nous récupérons tous vos clients actuels de SimplyBook et Calendly pour les installer dans MyIgiStudio.\n\nÉtape 1 : Migration de l'historique et reconnaissance automatique par numéro de téléphone.\nÉtape 2 : Envoi d'une invitation officielle (Mail/SMS) à vos clients pour qu'ils découvrent leur nouvel espace.",
+    detail:
+      "Importation ETL, algorithme de matching, routage automatisé des notifications de bienvenue.",
+  },
+  {
+    name: "Suivi",
+    subtitle: "Garantie de lancement",
+    icon: HeartHandshake,
+    status: "upcoming" as const,
+    cost: null,
+    costNote: "Inclus dans l'abonnement",
+    explanation:
+      "Une fois l'application entre les mains de vos clients, je reste à vos côtés pour corriger les éventuels petits ajustements et m'assurer que tout fonctionne avec fluidité pendant les premières semaines.",
+    detail:
+      "Correction de bugs (Maintenance Corrective) et optimisation des performances.",
+  },
+  {
+    name: "Maintien & Évolution",
+    subtitle: "La vie de l'app",
+    icon: ShieldCheck,
+    status: "upcoming" as const,
+    cost: null,
+    costNote: "Inclus dans l'abonnement",
+    explanation:
+      "Votre application vit et grandit. Cette phase couvre l'hébergement sécurisé et les petites évolutions de forme pour que MyIgiStudio reste toujours moderne et performant.",
+    detail:
+      "Maintenance évolutive, mises à jour de sécurité, support prioritaire.",
   },
 ];
 
+const STATUS_CONFIG = {
+  done: {
+    label: "Terminé",
+    emoji: "✅",
+    badge: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
+    line: "bg-emerald-500",
+    dot: "bg-emerald-500 border-emerald-500",
+  },
+  in_progress: {
+    label: "En cours",
+    emoji: "⏳",
+    badge: "bg-amber-500/15 text-amber-700 border-amber-500/30",
+    line: "bg-amber-400",
+    dot: "bg-amber-400 border-amber-400 animate-pulse",
+  },
+  upcoming: {
+    label: "À venir",
+    emoji: "🗓️",
+    badge: "bg-muted text-muted-foreground border-muted-foreground/20",
+    line: "bg-border",
+    dot: "bg-muted-foreground/30 border-muted-foreground/30",
+  },
+};
+
+// ── Legacy data ──
 const includedItems = [
   "Hébergement sécurisé et maintenance corrective (correction de bugs)",
   "Mises à jour de sécurité",
@@ -41,9 +114,9 @@ const includedItems = [
 ];
 
 const IMPACT_TOOLTIPS: Record<string, string> = {
-  "Retouche": "Changements simples et rapides : modifier un texte, une couleur, une image, corriger une faute.",
-  "Amélioration": "Ajustements de structure : ajouter une section, réorganiser un bloc, modifier un formulaire existant.",
-  "Création": "Développement d'une nouvelle fonctionnalité complète : système de chat, nouveau module, intégration externe.",
+  Retouche: "Changements simples et rapides : modifier un texte, une couleur, une image, corriger une faute.",
+  Amélioration: "Ajustements de structure : ajouter une section, réorganiser un bloc, modifier un formulaire existant.",
+  Création: "Développement d'une nouvelle fonctionnalité complète : système de chat, nouveau module, intégration externe.",
 };
 
 const GRID_ROWS = [
@@ -59,7 +132,7 @@ const GRID_COLS = [
   { impact: "Création", color: "text-violet-700" },
 ];
 
-function getGridCost(urgencyIdx: number, impactKey: string): string {
+function getGridCost(_urgencyIdx: number, impactKey: string): string {
   if (impactKey === "Création") return "50€";
   return "Inclus";
 }
@@ -68,6 +141,63 @@ function getGridCellColor(cost: string): string {
   if (cost === "Inclus") return "bg-emerald-500/10 text-emerald-700";
   if (cost === "50€") return "bg-violet-500/10 text-violet-700";
   return "bg-muted text-muted-foreground";
+}
+
+// ── Timeline Step Component ──
+function TimelineStep({ phase, isLast }: { phase: typeof timelinePhases[0]; isLast: boolean }) {
+  const config = STATUS_CONFIG[phase.status];
+  const Icon = phase.icon;
+
+  return (
+    <div className="relative flex gap-4">
+      {/* Vertical line + dot */}
+      <div className="flex flex-col items-center">
+        <div className={`h-10 w-10 rounded-full border-2 flex items-center justify-center shrink-0 ${config.dot} bg-card`}>
+          <Icon className={`h-5 w-5 ${phase.status === "done" ? "text-emerald-600" : phase.status === "in_progress" ? "text-amber-600" : "text-muted-foreground/50"}`} />
+        </div>
+        {!isLast && (
+          <div className={`w-0.5 flex-1 min-h-[2rem] ${config.line}`} />
+        )}
+      </div>
+
+      {/* Content card */}
+      <div className="pb-8 flex-1">
+        <Card className={`overflow-hidden transition-shadow ${phase.status === "in_progress" ? "ring-1 ring-amber-400/40 shadow-md" : ""}`}>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <CardTitle className="text-base font-display text-primary-dark">{phase.name}</CardTitle>
+                <CardDescription className="text-xs mt-0.5">{phase.subtitle}</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                {phase.cost && (
+                  <Badge variant="outline" className="gap-1 bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-[11px]">
+                    <Gift className="h-3 w-3" />
+                    <span className="line-through opacity-60 mr-1">{phase.cost}</span>
+                    Offert
+                  </Badge>
+                )}
+                <Badge variant="outline" className={`text-[11px] ${config.badge}`}>
+                  {phase.status === "in_progress" && <Clock className="h-3 w-3 mr-1" />}
+                  {config.label} {config.emoji}
+                </Badge>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-1 space-y-3">
+            <p className="text-sm text-foreground/80 whitespace-pre-line leading-relaxed">{phase.explanation}</p>
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="text-[11px] text-muted-foreground font-medium mb-1">🔧 Détail technique</p>
+              <p className="text-xs text-muted-foreground">{phase.detail}</p>
+            </div>
+            {!phase.cost && (
+              <p className="text-xs text-muted-foreground italic">{phase.costNote}</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
 }
 
 export default function AdminContrat() {
@@ -91,51 +221,19 @@ export default function AdminContrat() {
     <AdminLayout title="Contrat">
       <div className="max-w-3xl mx-auto space-y-8">
 
-        {/* --- Section A: Déploiement --- */}
+        {/* --- Section A: Timeline Déploiement --- */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
             <Rocket className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-display font-bold text-primary-dark">État du Déploiement</h2>
           </div>
-          <p className="text-sm text-muted-foreground">Investissement initial pour la mise en place de votre plateforme.</p>
+          <p className="text-sm text-muted-foreground">
+            Les 5 étapes clés de la mise en place de MyIgiStudio, de la maquette à la vie de l'application.
+          </p>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            {phases.map((phase) => (
-              <Card key={phase.name} className="relative overflow-hidden">
-                {phase.offered && (
-                  <div className="absolute top-3 right-3">
-                    <Badge variant="outline" className="gap-1 bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-[11px]">
-                      <Gift className="h-3 w-3" /> Offert
-                    </Badge>
-                  </div>
-                )}
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-2 text-primary-dark">
-                    {phase.icon}
-                    <CardTitle className="text-base">{phase.name}</CardTitle>
-                  </div>
-                  <CardDescription className="text-xs mt-1">{phase.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-2">
-                  <div className="flex items-end gap-2">
-                    <span className="text-2xl font-bold text-primary-dark line-through opacity-50">{phase.amount}€</span>
-                    <span className="text-sm text-muted-foreground mb-0.5">offert</span>
-                  </div>
-                  <div className="mt-3">
-                    <Badge
-                      variant="outline"
-                      className={`text-[11px] ${
-                        phase.status === "En cours"
-                          ? "bg-amber-500/15 text-amber-700 border-amber-500/30"
-                          : "bg-muted text-muted-foreground border-muted-foreground/20"
-                      }`}
-                    >
-                      {phase.status === "En cours" ? <Clock className="h-3 w-3 mr-1" /> : null}
-                      {phase.status}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
+          <div className="mt-2">
+            {timelinePhases.map((phase, i) => (
+              <TimelineStep key={phase.name} phase={phase} isLast={i === timelinePhases.length - 1} />
             ))}
           </div>
         </section>
@@ -188,7 +286,6 @@ export default function AdminContrat() {
             <a href="/admin/fonctionnalites" className="text-primary underline underline-offset-2 font-medium">Fonctionnalités</a>.
           </p>
 
-          {/* 2D Grid */}
           <Card>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -240,7 +337,6 @@ export default function AdminContrat() {
             </CardContent>
           </Card>
 
-          {/* Monthly counter */}
           <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2">
