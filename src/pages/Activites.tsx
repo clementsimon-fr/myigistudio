@@ -286,7 +286,7 @@ function WorkshopCard({ ws, i, onDescription, instructorPhoto }: { ws: Workshop;
               <Info className="h-3 w-3" /> Description
             </Button>
           )}
-          <Link to={`/calendrier?filter=${ws.category}`} className="flex-1">
+          <Link to={`/calendrier?filter=${ws.category}&date=${ws.date}`} className="flex-1">
             <Button size="sm" className="w-full text-xs">Réserver</Button>
           </Link>
         </div>
