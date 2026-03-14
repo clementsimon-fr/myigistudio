@@ -258,8 +258,8 @@ export default function AdminActivites() {
       const { data } = await supabase.from("courses").insert({
         name: form.name, description: form.description, long_description: form.long_description,
         category: form.category, instructor: form.instructor, instructor_id: instrId,
-        image: form.image, reminder_template: resolveReminder(firstSlot),
-        modalities: resolveModalities(firstSlot),
+        image: form.image, reminder_template: form.default_reminder,
+        modalities: form.default_modalities,
         spots: firstSlot.spots, spots_left: firstSlot.spots,
         day: firstSlot.day, time: firstSlot.time, end_time: firstSlot.end_time,
         duration, days, frequency: "hebdomadaire",
