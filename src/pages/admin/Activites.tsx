@@ -449,7 +449,7 @@ export default function AdminActivites() {
                       <td className="p-3 text-xs">{a.instructor}</td>
                       <td className="p-3">
                         {a.source === "course" && a.schedules?.map((s, i) => (
-                          <div key={i} className="text-xs text-muted-foreground">{s.day.slice(0, 3)} {s.time}-{s.end_time} · {s.spots_left}/{s.spots}</div>
+                          <div key={i} className="text-xs text-muted-foreground">{s.day.slice(0, 3)} {s.time}-{s.end_time} · {s.spots - s.spots_left}/{s.spots}</div>
                         ))}
                         {a.source === "workshop" && (
                           <div className="text-xs text-muted-foreground">
