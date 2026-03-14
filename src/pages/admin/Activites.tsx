@@ -573,6 +573,23 @@ export default function AdminActivites() {
               </div>
             </div>
 
+            {/* ── Modalités et rappels par défaut (per-activity) ── */}
+            <div className="border rounded-lg p-4 space-y-4 bg-muted/10">
+              <div className="flex items-center gap-2">
+                <Settings className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-sm font-semibold mb-0">Modalités et rappels par défaut</Label>
+              </div>
+              <p className="text-[11px] text-muted-foreground -mt-2">Ces textes seront utilisés par défaut pour tous les événements de cette activité. Vous pouvez les personnaliser dans les « Détails » de chaque événement.</p>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5 text-xs"><Mail className="h-3.5 w-3.5" /> Modèle de rappel par défaut</Label>
+                <TemplateEditor value={form.default_reminder} onChange={v => setForm(prev => ({ ...prev, default_reminder: v }))} variables={REMINDER_VARIABLES} />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5 text-xs"><MapPin className="h-3.5 w-3.5" /> Modalités par défaut</Label>
+                <TemplateEditor value={form.default_modalities} onChange={v => setForm(prev => ({ ...prev, default_modalities: v }))} variables={MODALITIES_VARIABLES} />
+              </div>
+            </div>
+
             <Button className="w-full" onClick={save} disabled={!form.name || form.events.length === 0}>
               {editingActivity ? "Enregistrer les modifications" : "Créer l'activité"}
             </Button>
