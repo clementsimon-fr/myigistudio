@@ -388,7 +388,7 @@ export default function MonEspace() {
 
       {/* Bottom nav removed — navigation is now in the top Navbar menu */}
 
-      <div className="hidden md:block"><Footer /></div>
+      <Footer />
     </div>
   );
 }
