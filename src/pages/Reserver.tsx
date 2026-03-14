@@ -153,7 +153,7 @@ export default function Reserver() {
         }));
     }
     if (activity.type === "workshop") {
-      const dateStr = selectedDate.toISOString().split("T")[0];
+      const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
       if (activity.date === dateStr) {
         return [{
           id: activity.id, name: activity.name, time: activity.time,

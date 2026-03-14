@@ -16,9 +16,8 @@ const navLinks = [
 ];
 
 const clientSections = [
-  { label: "Accueil", to: "/mon-espace?section=accueil", icon: Home },
   { label: "Réservations", to: "/mon-espace?section=reservations", icon: CalendarDays },
-  { label: "Mes cartes", to: "/mon-espace?section=cartes", icon: CreditCard },
+  { label: "Mes cartes Yoga", to: "/mon-espace?section=cartes", icon: CreditCard },
   { label: "Forum", to: "/mon-espace?section=communaute", icon: MessageSquare },
   { label: "Profil", to: "/mon-espace?section=profil", icon: User },
 ];

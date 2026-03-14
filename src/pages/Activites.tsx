@@ -161,11 +161,9 @@ export default function Activites() {
                               <InstructorBadge instructor={course.instructor} photo={photo} />
                             </div>
                             <div className="flex gap-2">
-                              {(course.long_description || course.description) && (
-                                <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => setDescriptionCourse(course)}>
-                                  <Info className="h-3 w-3" /> Description
-                                </Button>
-                              )}
+                              <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => setDescriptionCourse(course)}>
+                                <Info className="h-3 w-3" /> Description
+                              </Button>
                               <Link to="/calendrier?filter=yoga" className="flex-1">
                                 <Button size="sm" className="w-full text-xs">Réserver</Button>
                               </Link>
