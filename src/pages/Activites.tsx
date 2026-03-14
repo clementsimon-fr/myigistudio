@@ -159,7 +159,7 @@ export default function Activites() {
                               <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => setDescriptionCourse(course)}>
                                 <Info className="h-3 w-3" /> Description
                               </Button>
-                              <Link to="/calendrier?filter=yoga" className="flex-1">
+                              <Link to={`/calendrier?filter=yoga&activity=${encodeURIComponent(course.name)}`} className="flex-1">
                                 <Button size="sm" className="w-full text-xs">Réserver</Button>
                               </Link>
                             </div>
@@ -230,7 +230,7 @@ export default function Activites() {
                   <InstructorBadge instructor={descriptionCourse.instructor} photo={getInstructorPhoto(descriptionCourse.instructor_id, descriptionCourse.instructor)} />
                   <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionCourse.schedules[0]?.spots || descriptionCourse.spots} places max</div>
                 </div>
-                <Link to="/calendrier?filter=yoga"><Button className="w-full">Réserver</Button></Link>
+                <Link to={`/calendrier?filter=yoga&activity=${encodeURIComponent(descriptionCourse.name)}`}><Button className="w-full">Réserver</Button></Link>
               </div>
             </>
           )}
@@ -251,7 +251,7 @@ export default function Activites() {
                   <div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {descriptionWs.duration}</div>
                   <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionWs.spots} places max</div>
                 </div>
-                <Link to={`/calendrier?filter=${descriptionWs.category}&date=${descriptionWs.date}`}><Button className="w-full">Réserver</Button></Link>
+                <Link to={`/calendrier?filter=${descriptionWs.category}&date=${descriptionWs.date}&activity=${encodeURIComponent(descriptionWs.name)}`}><Button className="w-full">Réserver</Button></Link>
               </div>
             </>
           )}
@@ -286,7 +286,7 @@ function WorkshopCard({ ws, i, onDescription, instructorPhoto }: { ws: Workshop;
               <Info className="h-3 w-3" /> Description
             </Button>
           )}
-          <Link to={`/calendrier?filter=${ws.category}&date=${ws.date}`} className="flex-1">
+          <Link to={`/calendrier?filter=${ws.category}&date=${ws.date}&activity=${encodeURIComponent(ws.name)}`} className="flex-1">
             <Button size="sm" className="w-full text-xs">Réserver</Button>
           </Link>
         </div>

@@ -60,9 +60,11 @@ export default function Calendrier() {
   const [searchParams] = useSearchParams();
   const initialFilter = searchParams.get("filter") as FilterCategory | null;
   const targetDate = searchParams.get("date"); // auto-navigate to this date's week
+  const activityName = searchParams.get("activity"); // specific activity name
   const [filter, setFilter] = useState<FilterCategory>(
     initialFilter && CATEGORY_FILTERS.some(f => f.value === initialFilter) ? initialFilter : "all"
   );
+  const [subFilter, setSubFilter] = useState<string>(activityName || "all");
   const [selectedEvent, setSelectedEvent] = useState<ActivityBlock | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     // If a target date is provided, navigate to that week
@@ -107,8 +109,8 @@ export default function Calendrier() {
         if (sched.day !== dayName) continue;
         const course = courses.find(c => c.id === sched.course_id);
         if (!course) continue;
-        const effectiveFilter = filter === "all" ? filter : filter;
-        if (effectiveFilter !== "all" && course.category !== effectiveFilter) continue;
+        if (filter !== "all" && course.category !== filter) continue;
+        if (subFilter !== "all" && course.name !== subFilter) continue;
         blocks.push({
           id: `${sched.id}-${dateStr}`, title: course.name, description: course.description || "",
           category: course.category, time: sched.time, end_time: sched.end_time,
@@ -120,6 +122,7 @@ export default function Calendrier() {
       for (const ws of workshops) {
         if (ws.date !== dateStr) continue;
         if (filter !== "all" && ws.category !== filter) continue;
+        if (subFilter !== "all" && ws.name !== subFilter) continue;
         blocks.push({
           id: ws.id, title: ws.name, description: ws.description || "",
           category: ws.category, time: ws.time, end_time: ws.end_time,
@@ -131,19 +134,29 @@ export default function Calendrier() {
       blocks.sort((a, b) => a.time.localeCompare(b.time));
       return { date, blocks };
     });
-  }, [weekDays, courses, schedules, workshops, filter]);
+  }, [weekDays, courses, schedules, workshops, filter, subFilter]);
+
+  // Unique activity names for current category (for sub-filters)
+  const subFilterOptions = useMemo(() => {
+    if (filter === "all") return [];
+    const names = new Set<string>();
+    courses.filter(c => c.category === filter).forEach(c => names.add(c.name));
+    workshops.filter(w => w.category === filter).forEach(w => names.add(w.name));
+    return Array.from(names).sort();
+  }, [filter, courses, workshops]);
 
   // Count total upcoming dates for the active filter
   const matchingDatesCount = useMemo(() => {
-    if (filter === "all") return 0;
+    if (filter === "all" && subFilter === "all") return 0;
     const today = formatDateStr(new Date());
     let count = 0;
-    // Recurring courses: count unique schedule days
     const filteredSchedules = schedules.filter(s => {
       const course = courses.find(c => c.id === s.course_id);
-      return course && course.category === filter;
+      if (!course) return false;
+      if (filter !== "all" && course.category !== filter) return false;
+      if (subFilter !== "all" && course.name !== subFilter) return false;
+      return true;
     });
-    // Count in next 8 weeks
     for (let w = 0; w < 8; w++) {
       for (let d = 0; d < 7; d++) {
         const date = new Date();
@@ -152,10 +165,13 @@ export default function Calendrier() {
         count += filteredSchedules.filter(s => s.day === dayName).length;
       }
     }
-    // Ponctuel workshops
-    count += workshops.filter(ws => ws.category === filter && ws.date >= today).length;
+    count += workshops.filter(ws => {
+      if (filter !== "all" && ws.category !== filter) return false;
+      if (subFilter !== "all" && ws.name !== subFilter) return false;
+      return ws.date >= today;
+    }).length;
     return count;
-  }, [filter, courses, schedules, workshops]);
+  }, [filter, subFilter, courses, schedules, workshops]);
 
   const prevWeek = () => { const d = new Date(currentWeekStart); d.setDate(d.getDate() - 7); setCurrentWeekStart(d); };
   const nextWeek = () => { const d = new Date(currentWeekStart); d.setDate(d.getDate() + 7); setCurrentWeekStart(d); };
@@ -214,12 +230,40 @@ export default function Calendrier() {
         </div>
 
         {/* ─── Sticky filters ─── */}
-        <ActivityFilterBar filter={filter} onFilterChange={setFilter} />
+        <ActivityFilterBar filter={filter} onFilterChange={(v) => { setFilter(v); setSubFilter("all"); }} />
 
-        {filter !== "all" && matchingDatesCount > 0 && (
-          <div className="container max-w-5xl pt-3 pb-0">
+        {/* Sub-filters for specific activities within category */}
+        {filter !== "all" && subFilterOptions.length > 1 && (
+          <div className="container max-w-5xl pt-2 pb-0">
+            <div className="flex flex-wrap items-center gap-1.5 justify-center">
+              <Button
+                variant={subFilter === "all" ? "default" : "outline"}
+                size="sm"
+                className="rounded-full h-6 text-[11px] px-3"
+                onClick={() => setSubFilter("all")}
+              >
+                Tout voir
+              </Button>
+              {subFilterOptions.map(name => (
+                <Button
+                  key={name}
+                  variant={subFilter === name ? "default" : "outline"}
+                  size="sm"
+                  className="rounded-full h-6 text-[11px] px-3"
+                  onClick={() => setSubFilter(subFilter === name ? "all" : name)}
+                >
+                  {name}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(filter !== "all" || subFilter !== "all") && matchingDatesCount > 0 && (
+          <div className="container max-w-5xl pt-2 pb-0">
             <Badge variant="secondary" className="text-xs font-medium">
-              {matchingDatesCount} date{matchingDatesCount > 1 ? "s" : ""} trouvée{matchingDatesCount > 1 ? "s" : ""} dans les 8 prochaines semaines
+              {matchingDatesCount} date{matchingDatesCount > 1 ? "s" : ""} trouvée{matchingDatesCount > 1 ? "s" : ""}
+              {subFilter !== "all" ? ` pour ${subFilter}` : ""}
             </Badge>
           </div>
         )}

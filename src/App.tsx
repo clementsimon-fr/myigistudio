@@ -18,6 +18,7 @@ import AdminTarifs from "./pages/admin/Tarifs";
 import AdminContenu from "./pages/admin/Contenu";
 import AdminBonsCadeaux from "./pages/admin/BonsCadeaux";
 import AdminConditions from "./pages/admin/Conditions";
+import AdminFonctionnalites from "./pages/admin/Fonctionnalites";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
           <Route path="/admin/contenu" element={<AdminContenu />} />
           <Route path="/admin/bons-cadeaux" element={<AdminBonsCadeaux />} />
           <Route path="/admin/conditions" element={<AdminConditions />} />
+          <Route path="/admin/fonctionnalites" element={<AdminFonctionnalites />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
