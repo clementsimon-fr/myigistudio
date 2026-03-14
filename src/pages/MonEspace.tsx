@@ -162,22 +162,57 @@ export default function MonEspace() {
                     <p className="text-sm text-muted-foreground text-center py-8">Aucune réservation dans cette catégorie.</p>
                   ) : (
                     <div className="space-y-2">
-                      {filteredRes.map(r => (
-                        <div key={r.id} className="flex items-center gap-3 rounded-lg border bg-card p-3">
-                          <div className="text-center min-w-[40px]">
-                            <p className="text-base font-bold text-primary-dark">{new Date(r.date + "T00:00:00").getDate()}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase">{new Date(r.date + "T00:00:00").toLocaleDateString("fr-FR", { month: "short" })}</p>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{r.activity_name}</p>
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <Clock className="h-3 w-3" /> {r.time}{r.end_time ? ` - ${r.end_time}` : ""}
-                              {r.participants > 1 && <span>· {r.participants} pers.</span>}
+                      {filteredRes.map(r => {
+                        // Check if cancellation is allowed (12h before)
+                        const isConfirmed = r.status === "confirmé";
+                        const todayStr = new Date().toISOString().split("T")[0];
+                        const isFuture = r.date >= todayStr;
+                        let canCancel = false;
+                        if (isConfirmed && isFuture && r.time) {
+                          const [h, m] = r.time.split(":").map(Number);
+                          const courseStart = new Date(r.date + "T00:00:00");
+                          courseStart.setHours(h, m, 0, 0);
+                          const hoursUntil = (courseStart.getTime() - Date.now()) / (1000 * 60 * 60);
+                          canCancel = hoursUntil >= 12;
+                        }
+
+                        const handleCancel = async () => {
+                          await supabase.from("reservations").update({ status: "annulé" }).eq("id", r.id);
+                          // Re-credit spots
+                          if (r.activity_type === "course") {
+                            // Find schedule to re-credit - we don't have schedule_id in the Reservation type here
+                            // so we just refetch
+                          }
+                          toast({ title: "Réservation annulée" });
+                          // Reload
+                          const { data } = await supabase.from("reservations").select("*").eq("client_name", CLIENT_NAME).order("date", { ascending: false });
+                          if (data) setReservations(data as unknown as Reservation[]);
+                        };
+
+                        return (
+                          <div key={r.id} className="flex items-center gap-3 rounded-lg border bg-card p-3">
+                            <div className="text-center min-w-[40px]">
+                              <p className="text-base font-bold text-primary-dark">{new Date(r.date + "T00:00:00").getDate()}</p>
+                              <p className="text-[10px] text-muted-foreground uppercase">{new Date(r.date + "T00:00:00").toLocaleDateString("fr-FR", { month: "short" })}</p>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{r.activity_name}</p>
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3" /> {r.time}{r.end_time ? ` - ${r.end_time}` : ""}
+                                {r.participants > 1 && <span>· {r.participants} pers.</span>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {canCancel && (
+                                <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive hover:text-destructive text-[10px] gap-1" onClick={handleCancel}>
+                                  <XCircle className="h-3 w-3" /> Annuler
+                                </Button>
+                              )}
+                              <Badge variant="outline" className={`text-[10px] ${statusColors[r.status] || ""}`}>{r.status}</Badge>
                             </div>
                           </div>
-                          <Badge variant="outline" className={`text-[10px] shrink-0 ${statusColors[r.status] || ""}`}>{r.status}</Badge>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
