@@ -10,35 +10,26 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarDays, CreditCard, Clock, LogOut, Plus, Loader2, User, MessageSquare, Send, Pencil, XCircle, Star, ArrowRight, Bell, MapPin } from "lucide-react";
+import { CalendarDays, CreditCard, Clock, LogOut, Plus, Loader2, User, Send, Pencil, XCircle, Star, ArrowRight, Bell, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface Reservation { id: string; client_name: string; activity_name: string; activity_type: string; date: string; time: string; end_time: string; participants: number; status: string; created_at: string; course_id: string | null; workshop_id: string | null; }
 interface ClientCard { id: string; client_name: string; card_name: string; total_sessions: number; used_sessions: number; expires_at: string; }
 interface Profile { id: string; user_name: string; bio: string; show_in_community: boolean; avatar_url: string; reminder_sms: boolean; reminder_email: boolean; }
-interface ForumPost { id: string; author_name: string; category: string; content: string; created_at: string; }
 
 const statusColors: Record<string, string> = {
   "confirmé": "bg-primary/15 text-primary-dark border-primary/30",
   "annulé": "bg-destructive/10 text-destructive border-destructive/30",
   "liste d'attente": "bg-accent/20 text-accent-foreground border-accent/30",
 };
-const FORUM_CATEGORIES = [
-  { value: "general", label: "Général" },
-  { value: "yoga", label: "Yoga & Pilates" },
-  { value: "poterie", label: "Poterie" },
-  { value: "ateliers", label: "Ateliers" },
-];
 const CLIENT_NAME = "Sophie";
 
-type Section = "reservations" | "cartes" | "profil" | "communaute" | "feedback";
+type Section = "reservations" | "cartes" | "profil" | "feedback";
 
 const NAV_ITEMS: { value: Section; label: string; icon: typeof CalendarDays }[] = [
   { value: "reservations", label: "Résa", icon: CalendarDays },
   { value: "cartes", label: "Cartes Yoga", icon: CreditCard },
-  { value: "communaute", label: "Forum", icon: MessageSquare },
   { value: "feedback", label: "Feedback", icon: Star },
   { value: "profil", label: "Profil", icon: User },
 ];
@@ -56,17 +47,12 @@ export default function MonEspace() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [cards, setCards] = useState<ClientCard[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [forumPosts, setForumPosts] = useState<ForumPost[]>([]);
-  const [communityMembers, setCommunityMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingBio, setEditingBio] = useState(false);
   const [bioValue, setBioValue] = useState("");
   const [showInCommunity, setShowInCommunity] = useState(false);
   const [reminderSms, setReminderSms] = useState(false);
   const [reminderEmail, setReminderEmail] = useState(true);
-  const [newPostContent, setNewPostContent] = useState("");
-  const [newPostCategory, setNewPostCategory] = useState("general");
-  const [forumFilter, setForumFilter] = useState("all");
   const [resFilter, setResFilter] = useState("all");
   const [viewingReservation, setViewingReservation] = useState<Reservation | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState<Reservation | null>(null);
@@ -75,18 +61,14 @@ export default function MonEspace() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [resR, resC, resP, resF, resCom] = await Promise.all([
+      const [resR, resC, resP] = await Promise.all([
         supabase.from("reservations").select("*").eq("client_name", CLIENT_NAME).order("date", { ascending: false }),
         supabase.from("client_cards").select("*").eq("client_name", CLIENT_NAME).order("created_at", { ascending: false }),
         supabase.from("profiles").select("*").eq("user_name", CLIENT_NAME).maybeSingle(),
-        supabase.from("forum_posts").select("*").order("created_at", { ascending: false }).limit(50),
-        supabase.from("profiles").select("*").eq("show_in_community", true).order("user_name"),
       ]);
       if (resR.data) setReservations(resR.data as unknown as Reservation[]);
       if (resC.data) setCards(resC.data as unknown as ClientCard[]);
       if (resP.data) { setProfile(resP.data as unknown as Profile); setBioValue((resP.data as any).bio || ""); setShowInCommunity((resP.data as any).show_in_community || false); setReminderSms((resP.data as any).reminder_sms || false); setReminderEmail((resP.data as any).reminder_email ?? true); }
-      if (resF.data) setForumPosts(resF.data as unknown as ForumPost[]);
-      if (resCom.data) setCommunityMembers(resCom.data as unknown as Profile[]);
       setLoading(false);
     };
     load();
@@ -113,7 +95,6 @@ export default function MonEspace() {
   const yogaRes = reservations.filter(r => r.activity_type === "course");
   const potteryRes = reservations.filter(r => r.activity_type === "workshop" && (r.activity_name.toLowerCase().includes("poterie") || r.activity_name.toLowerCase().includes("tour") || r.activity_name.toLowerCase().includes("modelage")));
   const atelierRes = reservations.filter(r => r.activity_type === "workshop" && !potteryRes.includes(r));
-  const totalCredits = cards.reduce((sum, c) => sum + (c.total_sessions - c.used_sessions), 0);
 
   const filteredRes = resFilter === "all" ? reservations : resFilter === "yoga" ? yogaRes : resFilter === "poterie" ? potteryRes : atelierRes;
 
@@ -122,15 +103,6 @@ export default function MonEspace() {
     else await supabase.from("profiles").insert({ user_name: CLIENT_NAME, bio: bioValue, show_in_community: showInCommunity, reminder_sms: reminderSms, reminder_email: reminderEmail } as any);
     setEditingBio(false);
     toast({ title: "Profil mis à jour ✓" });
-  };
-
-  const postToForum = async () => {
-    if (!newPostContent.trim()) return;
-    await supabase.from("forum_posts").insert({ author_name: CLIENT_NAME, category: newPostCategory, content: newPostContent.trim() });
-    setNewPostContent("");
-    const { data } = await supabase.from("forum_posts").select("*").order("created_at", { ascending: false }).limit(50);
-    if (data) setForumPosts(data as unknown as ForumPost[]);
-    toast({ title: "Message publié ✓" });
   };
 
   const handleCancelReservation = async (r: Reservation) => {
@@ -142,7 +114,16 @@ export default function MonEspace() {
     if (data) setReservations(data as unknown as Reservation[]);
   };
 
-  const filteredPosts = forumFilter === "all" ? forumPosts : forumPosts.filter(p => p.category === forumFilter);
+  // Compute cancellation info for the cancelConfirm reservation
+  const getCancelInfo = (r: Reservation) => {
+    const [h, m] = r.time.split(":").map(Number);
+    const courseStart = new Date(r.date + "T00:00:00");
+    courseStart.setHours(h, m, 0, 0);
+    const hoursUntil = (courseStart.getTime() - Date.now()) / (1000 * 60 * 60);
+    const canCancel = hoursUntil >= 12;
+    const hoursText = Math.floor(hoursUntil) + "h";
+    return { canCancel, hoursText };
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -327,67 +308,6 @@ export default function MonEspace() {
                   </div>
                 </div>
               )}
-
-              {/* ─── COMMUNAUTÉ ─── */}
-              {section === "communaute" && (
-                <div className="space-y-4">
-                  {communityMembers.length > 0 && (
-                    <div>
-                      <h3 className="text-xs font-medium text-muted-foreground mb-2">Membres actifs</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {communityMembers.map(m => (
-                          <div key={m.id} className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 bg-card text-xs">
-                            <div className="h-5 w-5 rounded-full bg-primary/15 flex items-center justify-center">
-                              <User className="h-2.5 w-2.5 text-primary-dark" />
-                            </div>
-                            <span className="font-medium">{m.user_name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="rounded-xl border bg-card p-3 space-y-2">
-                    <div className="flex gap-2">
-                      <Select value={newPostCategory} onValueChange={setNewPostCategory}>
-                        <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>{FORUM_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <Textarea value={newPostContent} onChange={e => setNewPostContent(e.target.value)} rows={2} placeholder="Partagez avec la communauté..." className="text-sm" />
-                    <Button size="sm" className="gap-1 text-xs" onClick={postToForum} disabled={!newPostContent.trim()}>
-                      <Send className="h-3 w-3" /> Publier
-                    </Button>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5">
-                    <Button size="sm" variant={forumFilter === "all" ? "default" : "outline"} className="rounded-full text-xs h-7" onClick={() => setForumFilter("all")}>Tous</Button>
-                    {FORUM_CATEGORIES.map(c => (
-                      <Button key={c.value} size="sm" variant={forumFilter === c.value ? "default" : "outline"} className="rounded-full text-xs h-7" onClick={() => setForumFilter(c.value)}>{c.label}</Button>
-                    ))}
-                  </div>
-
-                  <div className="space-y-2">
-                    {filteredPosts.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-6">Aucun message. Soyez le premier !</p>
-                    ) : filteredPosts.map(post => (
-                      <div key={post.id} className="rounded-lg border bg-card p-3">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="flex items-center gap-1.5">
-                            <div className="h-6 w-6 rounded-full bg-primary/15 flex items-center justify-center">
-                              <User className="h-3 w-3 text-primary-dark" />
-                            </div>
-                            <span className="text-xs font-medium">{post.author_name}</span>
-                            <Badge variant="outline" className="text-[10px]">{FORUM_CATEGORIES.find(c => c.value === post.category)?.label || post.category}</Badge>
-                          </div>
-                          <span className="text-[10px] text-muted-foreground">{new Date(post.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
-                        </div>
-                        <p className="text-sm text-foreground whitespace-pre-line">{post.content}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </>
           )}
 
@@ -453,15 +373,12 @@ export default function MonEspace() {
                   )}
 
                   <div className="flex gap-2 pt-2">
-                    {canCancel && (
+                    {isConfirmed && isFuture && (
                       <Button variant="destructive" className="flex-1 gap-1.5" onClick={() => setCancelConfirm(r)}>
                         <XCircle className="h-4 w-4" /> Annuler la réservation
                       </Button>
                     )}
                   </div>
-                  {isConfirmed && isFuture && !canCancel && (
-                    <p className="text-[10px] text-muted-foreground text-center">Annulation possible jusqu'à 12h avant la séance.</p>
-                  )}
                 </div>
               </>
             );
@@ -472,21 +389,45 @@ export default function MonEspace() {
       {/* Cancel confirmation dialog */}
       <AlertDialog open={!!cancelConfirm} onOpenChange={(open) => !open && setCancelConfirm(null)}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer l'annulation</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <span>Êtes-vous sûr(e) de vouloir annuler cette réservation ?</span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Retour</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => cancelConfirm && handleCancelReservation(cancelConfirm)}
-            >
-              Confirmer l'annulation
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          {cancelConfirm && (() => {
+            const { canCancel, hoursText } = getCancelInfo(cancelConfirm);
+            return (
+              <>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmer l'annulation</AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div className="space-y-3">
+                      {canCancel ? (
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                          <p className="text-sm text-foreground">
+                            Vous annulez <strong>{hoursText}</strong> avant l'atelier, vous serez remboursé(e)s si vous avez payé(e)s.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+                          <p className="text-sm text-foreground">
+                            Votre annulation intervient moins de <strong>12h</strong> avant la séance. Conformément aux conditions générales que vous avez accepté(e)s, votre annulation ne sera pas remboursée.
+                          </p>
+                        </div>
+                      )}
+                      <p className="text-sm text-muted-foreground">
+                        En annulant, nous espérons que vous allez bien, et, nous vous remercions de prévenir l'intervenant. À bientôt ❤️
+                      </p>
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Retour</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => handleCancelReservation(cancelConfirm)}
+                  >
+                    Confirmer l'annulation
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </>
+            );
+          })()}
         </AlertDialogContent>
       </AlertDialog>
 
