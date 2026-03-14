@@ -767,7 +767,7 @@ function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActi
             <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
               <Repeat className="h-3 w-3 shrink-0" />
               <span>{s.day.slice(0, 3)} {s.time}-{s.end_time}</span>
-              <span>· <Users className="h-3 w-3 inline" /> {s.spots_left}/{s.spots}</span>
+              <span>· <Users className="h-3 w-3 inline" /> {s.spots - s.spots_left}/{s.spots}</span>
             </div>
           ))}
           {a.source === "workshop" && (
