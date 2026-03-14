@@ -455,12 +455,18 @@ export default function Reserver() {
                       {/* Conditions */}
                       {applicableConditions.length > 0 && !bookingBlocked && (
                         <div className="space-y-3">
-                          {applicableConditions.map(c => (
-                            <div key={c.id} className="rounded-lg border bg-muted/30 p-3">
-                              <p className="text-xs font-semibold text-primary-dark mb-1">{c.title}</p>
-                              <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{c.content}</p>
-                            </div>
-                          ))}
+                          <Accordion type="multiple" className="w-full">
+                            {applicableConditions.map(c => (
+                              <AccordionItem key={c.id} value={c.id} className="border rounded-lg bg-muted/30 px-3">
+                                <AccordionTrigger className="py-2 text-xs font-semibold text-primary-dark hover:no-underline">
+                                  {c.title}
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                  <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{c.content}</p>
+                                </AccordionContent>
+                              </AccordionItem>
+                            ))}
+                          </Accordion>
                           <div className="flex items-start gap-2">
                             <Checkbox
                               id="accept-conditions"
