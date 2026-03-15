@@ -27,7 +27,7 @@ export interface DemoNotification {
 export interface DemoProfile {
   id: string;
   name: string;
-  role: "admin" | "client" | "visitor";
+  role: "admin" | "client" | "visitor" | "fournisseur";
   credits: number;
   cards: DemoCard[];
   reservations: DemoReservation[];
