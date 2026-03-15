@@ -272,12 +272,12 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
               const activeBg = catFilter?.activeBg || "bg-primary-dark";
               return (
                 <>
-                  <Button variant={subFilter === "all" ? "ghost" : "outline"} size="sm"
-                    className={`rounded-full h-6 text-[11px] px-3 ${subFilter === "all" ? `${activeBg} text-white hover:text-white hover:opacity-90` : ""}`}
+                  <Button variant={subFilter === "all" ? null as any : "outline"} size="sm"
+                    className={`rounded-full h-6 text-[11px] px-3 ${subFilter === "all" ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
                     onClick={() => setSubFilter("all")}>Tout voir</Button>
                   {subFilterOptions.map(name => (
-                    <Button key={name} variant={subFilter === name ? "ghost" : "outline"} size="sm"
-                      className={`rounded-full h-6 text-[11px] px-3 ${subFilter === name ? `${activeBg} text-white hover:text-white hover:opacity-90` : ""}`}
+                    <Button key={name} variant={subFilter === name ? null as any : "outline"} size="sm"
+                      className={`rounded-full h-6 text-[11px] px-3 ${subFilter === name ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
                       onClick={() => {
                         const newVal = subFilter === name ? "all" : name;
                         setSubFilter(newVal);

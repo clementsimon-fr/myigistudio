@@ -59,7 +59,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, view, onView
             return (
               <Button
                 key={f.value}
-                variant={isActive ? "ghost" : "outline"}
+                variant={isActive ? null as any : "outline"}
                 size="sm"
                 onClick={() => onFilterChange(f.value)}
                 className={`rounded-full gap-1 h-6 text-[11px] px-2 ${
