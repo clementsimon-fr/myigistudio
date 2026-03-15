@@ -205,7 +205,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   return (
     <DemoContext.Provider value={{
       currentProfile, setCurrentProfile, demoNotifications, addNotification,
-      addCredits, useCredit, addReservation, createTempProfile, getDefaultProfile,
+      addCredits, useCredit, addReservation, createTempProfile, getDefaultProfile, tempProfiles,
     }}>
       {children}
     </DemoContext.Provider>
