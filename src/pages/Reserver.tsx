@@ -440,25 +440,8 @@ export default function Reserver() {
             )}
           </div>
 
-          {/* Demo: Login step */}
-          {bookingStep === "login" && (
-            <div className="rounded-xl border bg-card p-6 mb-6 space-y-4">
-              <h2 className="font-display font-semibold text-primary-dark">Connexion rapide</h2>
-              <p className="text-sm text-muted-foreground">Entrez votre prénom pour continuer (mode démo)</p>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Votre prénom"
-                  value={tempName}
-                  onChange={e => setTempName(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleLoginSubmit()}
-                />
-                <Button onClick={handleLoginSubmit} disabled={!tempName.trim()}>Continuer</Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Ou <Link to="/login" className="underline text-primary-dark">choisissez un profil existant</Link>
-              </p>
-            </div>
-          )}
+
+
 
           {/* Demo: Credits step */}
           {bookingStep === "credits" && (
