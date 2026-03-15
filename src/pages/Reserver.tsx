@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -8,12 +8,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle, Gift } from "lucide-react";
+import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle, Gift, CreditCard, ShoppingCart } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useDemoContext } from "@/contexts/DemoContext";
+import MockStripeModal from "@/components/demo/MockStripeModal";
 
 interface ConditionRow {
   id: string;
@@ -46,6 +48,7 @@ interface AvailableSlot {
   type: "course" | "workshop";
   sourceId: string;
   scheduleId?: string;
+  price?: number;
 }
 
 function calcDuration(start: string, end: string): string {
@@ -66,9 +69,19 @@ const DAY_NAMES_MAP: Record<number, string> = {
   4: "Jeudi", 5: "Vendredi", 6: "Samedi",
 };
 
+const CARD_OPTIONS = [
+  { sessions: 1, price: 18, label: "1 cours" },
+  { sessions: 5, price: 70, label: "Carte 5 cours" },
+  { sessions: 10, price: 130, label: "Carte 10 cours" },
+];
+
+type BookingStep = "select" | "login" | "credits" | "confirm";
+
 export default function Reserver() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
+  const { currentProfile, createTempProfile, addCredits, useCredit, addReservation, addNotification } = useDemoContext();
 
   const activityType = searchParams.get("type") as "course" | "workshop" | null;
   const activityId = searchParams.get("id");
@@ -91,6 +104,15 @@ export default function Reserver() {
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherStatus, setVoucherStatus] = useState<"idle" | "valid" | "invalid" | "checking">("idle");
 
+  // Demo state
+  const [bookingStep, setBookingStep] = useState<BookingStep>("select");
+  const [tempName, setTempName] = useState("");
+  const [selectedCard, setSelectedCard] = useState<typeof CARD_OPTIONS[0] | null>(null);
+  const [showStripeModal, setShowStripeModal] = useState(false);
+  const [stripeAmount, setStripeAmount] = useState(0);
+  const [stripeDescription, setStripeDescription] = useState("");
+  const [paymentPurpose, setPaymentPurpose] = useState<"card" | "workshop">("card");
+
   useEffect(() => {
     if (!activityType || !activityId) { setLoading(false); return; }
     const load = async () => {
@@ -104,7 +126,6 @@ export default function Reserver() {
         if (schedRes.data) {
           const scheds = schedRes.data as unknown as CourseScheduleRow[];
           setSchedules(scheds);
-          // Direct booking: pre-select date and slot
           if (preselectedDate && preselectedScheduleId) {
             const d = new Date(preselectedDate + "T00:00:00");
             setSelectedDate(d);
@@ -124,26 +145,22 @@ export default function Reserver() {
           }
         }
       }
-      // Fetch conditions
       const { data: condData } = await supabase
         .from("conditions")
         .select("*")
         .eq("active", true)
         .order("sort_order");
       if (condData) setConditions(condData as unknown as ConditionRow[]);
-
       setLoading(false);
     };
     load();
   }, [activityType, activityId, preselectedDate, preselectedScheduleId]);
 
-  // Available days for courses
   const availableDays = useMemo(() => {
     if (!activity || activity.type !== "course") return new Set<string>();
     return new Set(schedules.filter(s => s.spots_left > 0).map(s => s.day));
   }, [activity, schedules]);
 
-  // Workshop dates
   const workshopDates = useMemo(() => {
     if (!activity || activity.type !== "workshop") return new Set<string>();
     const today = new Date().toISOString().split("T")[0];
@@ -183,7 +200,7 @@ export default function Reserver() {
           id: activity.id, name: activity.name, time: activity.time,
           end_time: activity.end_time || "", duration: calcDuration(activity.time, activity.end_time || "") || activity.duration,
           instructor: "Élodie", spots: activity.spots, spotsLeft: activity.spots_left,
-          type: "workshop" as const, sourceId: activity.id,
+          type: "workshop" as const, sourceId: activity.id, price: activity.price,
         }];
       }
     }
@@ -192,7 +209,6 @@ export default function Reserver() {
 
   const selectedSlotData = slots.find(s => s.id === selectedSlot);
 
-  // Check if booking is too close to start time (30 min rule)
   useEffect(() => {
     if (!selectedSlotData || !selectedDate) { setBookingBlocked(null); return; }
     const now = new Date();
@@ -208,14 +224,90 @@ export default function Reserver() {
     }
   }, [selectedSlotData, selectedDate]);
 
-  // Filter conditions for this activity's category
   const applicableConditions = useMemo(() => {
     if (!activity) return [];
     const cat = activity.category || (activity.type === "course" ? "yoga" : "bien-etre");
     return conditions.filter(c => c.applies_to.includes(cat));
   }, [conditions, activity]);
 
-  const handleConfirm = async () => {
+  // Determine if user needs credits for this activity
+  const needsCredits = activity?.type === "course";
+  const isWorkshopDirect = activity?.type === "workshop";
+
+  const handleProceedToConfirm = () => {
+    // Step 1: Check if logged in
+    if (!currentProfile) {
+      setBookingStep("login");
+      return;
+    }
+    // Step 2: Check credits for courses
+    if (needsCredits && currentProfile.credits <= 0) {
+      setBookingStep("credits");
+      return;
+    }
+    // Step 3: For workshops, trigger payment
+    if (isWorkshopDirect) {
+      const price = activity.price || 35;
+      setStripeAmount(price);
+      setStripeDescription(`${activity.name} — Paiement direct`);
+      setPaymentPurpose("workshop");
+      setShowStripeModal(true);
+      return;
+    }
+    // Otherwise go straight to confirm
+    handleFinalConfirm();
+  };
+
+  const handleLoginSubmit = () => {
+    if (!tempName.trim()) return;
+    createTempProfile(tempName.trim());
+    // After login, check credits
+    if (needsCredits) {
+      setBookingStep("credits");
+    } else if (isWorkshopDirect) {
+      const price = activity.price || 35;
+      setStripeAmount(price);
+      setStripeDescription(`${activity.name} — Paiement direct`);
+      setPaymentPurpose("workshop");
+      setShowStripeModal(true);
+      setBookingStep("select");
+    } else {
+      setBookingStep("select");
+      handleFinalConfirm();
+    }
+  };
+
+  const handleBuyCard = (card: typeof CARD_OPTIONS[0]) => {
+    setSelectedCard(card);
+    setStripeAmount(card.price);
+    setStripeDescription(`${card.label} — MyIgiStudio`);
+    setPaymentPurpose("card");
+    setShowStripeModal(true);
+  };
+
+  const handleStripeSuccess = () => {
+    setShowStripeModal(false);
+    if (paymentPurpose === "card" && selectedCard) {
+      addCredits(selectedCard.sessions, selectedCard.label);
+      addNotification(
+        `${currentProfile?.name || "Client"} vient d'acheter une ${selectedCard.label}`,
+        "purchase"
+      );
+      toast({ title: `${selectedCard.label} achetée avec succès ! 🎉` });
+      setBookingStep("select");
+      // Now they have credits, proceed to confirm
+      setTimeout(() => handleFinalConfirm(), 300);
+    } else if (paymentPurpose === "workshop") {
+      addNotification(
+        `${currentProfile?.name || "Client"} a payé pour ${activity?.name}`,
+        "purchase"
+      );
+      toast({ title: "Paiement confirmé ! 🎉" });
+      handleFinalConfirm();
+    }
+  };
+
+  const handleFinalConfirm = async () => {
     if (!selectedSlotData || !selectedDate || bookingBlocked) return;
     if (applicableConditions.length > 0 && !conditionsAccepted) {
       toast({ title: "Veuillez accepter les conditions", variant: "destructive" });
@@ -223,8 +315,10 @@ export default function Reserver() {
     }
     setSubmitting(true);
     const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+    const clientName = currentProfile?.name || "Visiteur";
+
     const { error } = await supabase.from("reservations").insert({
-      client_name: "Sophie",
+      client_name: clientName,
       activity_name: selectedSlotData.name,
       activity_type: selectedSlotData.type,
       course_id: selectedSlotData.type === "course" ? selectedSlotData.sourceId : null,
@@ -250,23 +344,39 @@ export default function Reserver() {
       await supabase.from("workshops").update({ spots_left: selectedSlotData.spotsLeft - participants }).eq("id", selectedSlotData.sourceId);
     }
 
-    // Decrement credit from oldest active card
-    const { data: activeCards } = await supabase
-      .from("client_cards")
-      .select("*")
-      .eq("client_name", "Sophie")
-      .gte("expires_at", new Date().toISOString().split("T")[0])
-      .order("expires_at", { ascending: true });
-
-    if (activeCards && activeCards.length > 0) {
-      const card = (activeCards as any[]).find(c => c.used_sessions < c.total_sessions);
-      if (card) {
-        await supabase.from("client_cards").update({ used_sessions: card.used_sessions + 1 } as any).eq("id", card.id);
+    // Decrement demo credit for courses
+    if (needsCredits) {
+      useCredit();
+      // Also update DB card
+      const { data: activeCards } = await supabase
+        .from("client_cards")
+        .select("*")
+        .eq("client_name", clientName)
+        .gte("expires_at", new Date().toISOString().split("T")[0])
+        .order("expires_at", { ascending: true });
+      if (activeCards && activeCards.length > 0) {
+        const card = (activeCards as any[]).find(c => c.used_sessions < c.total_sessions);
+        if (card) {
+          await supabase.from("client_cards").update({ used_sessions: card.used_sessions + 1 } as any).eq("id", card.id);
+        }
       }
     }
 
+    // Add demo reservation & notification
+    addReservation(selectedSlotData.name, dateStr, selectedSlotData.time);
+    addNotification(
+      `${clientName} a réservé ${selectedSlotData.name} du ${selectedDate.toLocaleDateString("fr-FR")}`,
+      "reservation"
+    );
+
     setSubmitting(false);
     setConfirmed(true);
+    setBookingStep("select");
+  };
+
+  const handleConfirmClick = () => {
+    if (bookingStep === "login" || bookingStep === "credits") return;
+    handleProceedToConfirm();
   };
 
   if (loading) {
@@ -279,7 +389,6 @@ export default function Reserver() {
     );
   }
 
-  // No activity selected — redirect-like message
   if (!activityType || !activityId || !activity) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -313,7 +422,7 @@ export default function Reserver() {
             </div>
             <h1 className="text-2xl font-display font-bold text-primary-dark mb-3">Réservation confirmée !</h1>
             <p className="text-muted-foreground mb-2">
-              <strong>{selectedSlotData?.name}</strong> pour <strong>Sophie</strong>
+              <strong>{selectedSlotData?.name}</strong> pour <strong>{currentProfile?.name || "Visiteur"}</strong>
             </p>
             <p className="text-sm text-muted-foreground mb-6">
               {selectedDate?.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} à {selectedSlotData?.time}
@@ -347,8 +456,62 @@ export default function Reserver() {
             )}
           </div>
 
+          {/* Demo: Login step */}
+          {bookingStep === "login" && (
+            <div className="rounded-xl border bg-card p-6 mb-6 space-y-4">
+              <h2 className="font-display font-semibold text-primary-dark">Connexion rapide</h2>
+              <p className="text-sm text-muted-foreground">Entrez votre prénom pour continuer (mode démo)</p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Votre prénom"
+                  value={tempName}
+                  onChange={e => setTempName(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleLoginSubmit()}
+                />
+                <Button onClick={handleLoginSubmit} disabled={!tempName.trim()}>Continuer</Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Ou <Link to="/login" className="underline text-primary-dark">choisissez un profil existant</Link>
+              </p>
+            </div>
+          )}
+
+          {/* Demo: Credits step */}
+          {bookingStep === "credits" && (
+            <div className="rounded-xl border bg-card p-6 mb-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-primary-dark" />
+                <h2 className="font-display font-semibold text-primary-dark">Crédits insuffisants</h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Vous avez <strong>{currentProfile?.credits || 0}</strong> crédit(s). Achetez une carte pour réserver ce cours.
+              </p>
+              <div className="grid gap-2">
+                {CARD_OPTIONS.map(card => (
+                  <button
+                    key={card.sessions}
+                    onClick={() => handleBuyCard(card)}
+                    className="flex items-center justify-between rounded-lg border bg-background p-3 hover:border-primary-dark/40 transition-colors text-left"
+                  >
+                    <div>
+                      <p className="font-medium text-sm">{card.label}</p>
+                      <p className="text-xs text-muted-foreground">{(card.price / card.sessions).toFixed(0)}€ / cours</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-primary-dark">{card.price}€</span>
+                      <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setBookingStep("select")}>
+                ← Retour
+              </Button>
+            </div>
+          )}
+
           <div className={`grid ${directBooking ? "" : "md:grid-cols-2"} gap-6`}>
-            {/* Calendar - hidden in direct booking mode */}
+            {/* Calendar */}
             {!directBooking && (
             <div>
               <h2 className="text-sm font-semibold text-primary-dark mb-3">Choisissez une date</h2>
@@ -426,6 +589,16 @@ export default function Reserver() {
                           <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setParticipants(Math.min(selectedSlotData.spotsLeft, participants + 1))}>+</Button>
                         </div>
                       </div>
+
+                      {/* Demo credit info */}
+                      {currentProfile && needsCredits && (
+                        <div className="rounded-lg bg-muted/50 p-3 flex items-center gap-2">
+                          <CreditCard className="h-4 w-4 text-primary-dark" />
+                          <span className="text-sm">
+                            <strong>{currentProfile.credits}</strong> crédit{currentProfile.credits > 1 ? "s" : ""} disponible{currentProfile.credits > 1 ? "s" : ""}
+                          </span>
+                        </div>
+                      )}
 
                       {/* Summary */}
                       <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-sm">
@@ -524,7 +697,7 @@ export default function Reserver() {
                       )}
 
                       <Button
-                        onClick={handleConfirm}
+                        onClick={handleConfirmClick}
                         disabled={submitting || !!bookingBlocked || (applicableConditions.length > 0 && !conditionsAccepted)}
                         className="w-full bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-1.5"
                       >
@@ -544,6 +717,15 @@ export default function Reserver() {
         </div>
       </main>
       <Footer />
+
+      {/* Mock Stripe Modal */}
+      <MockStripeModal
+        open={showStripeModal}
+        onClose={() => setShowStripeModal(false)}
+        onSuccess={handleStripeSuccess}
+        amount={stripeAmount}
+        description={stripeDescription}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, User, CalendarDays, CreditCard, MessageSquare, LogOut } from "lucide-react";
+import { Menu, X, User, CalendarDays, CreditCard, MessageSquare, LogOut, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useDemoContext } from "@/contexts/DemoContext";
 
 const clientSections = [
   { label: "Réservations", to: "/mon-espace?section=reservations", icon: CalendarDays },
@@ -20,7 +21,9 @@ const clientSections = [
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const { currentProfile, setCurrentProfile } = useDemoContext();
   const isClientSpace = location.pathname === "/mon-espace";
+  const isLoggedIn = !!currentProfile;
 
   return (
     <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b">
@@ -32,18 +35,18 @@ export default function Navbar() {
         </Link>
 
         <div className="hidden md:flex items-center gap-3">
-          {isClientSpace ? (
+          {isLoggedIn ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-2">
                   <div className="h-7 w-7 rounded-full bg-primary/15 flex items-center justify-center">
                     <User className="h-4 w-4 text-primary-dark" />
                   </div>
-                  Mon espace
+                  {currentProfile.name}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                {clientSections.map((item) => (
+                {currentProfile.role === "client" && clientSections.map((item) => (
                   <DropdownMenuItem key={item.to} asChild>
                     <Link to={item.to} className="flex items-center gap-2">
                       <item.icon className="h-4 w-4" />
@@ -51,12 +54,19 @@ export default function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                 ))}
-                <DropdownMenuSeparator />
+                {currentProfile.role === "client" && <DropdownMenuSeparator />}
                 <DropdownMenuItem asChild>
-                  <Link to="/login" className="flex items-center gap-2 text-destructive">
-                    <LogOut className="h-4 w-4" />
-                    Déconnexion
+                  <Link to="/login" className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    Changer de profil
                   </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center gap-2 text-destructive cursor-pointer"
+                  onClick={() => setCurrentProfile(null)}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Déconnexion
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -77,9 +87,10 @@ export default function Navbar() {
 
       {open && (
         <div className="md:hidden border-t bg-background p-4 space-y-2">
-          {isClientSpace ? (
+          {isLoggedIn ? (
             <>
-              {clientSections.map((item) => (
+              <p className="text-xs text-muted-foreground px-2 mb-1">Connecté : {currentProfile.name}</p>
+              {currentProfile.role === "client" && clientSections.map((item) => (
                 <Link key={item.to} to={item.to} onClick={() => setOpen(false)}>
                   <Button variant="ghost" className="w-full justify-start gap-2">
                     <item.icon className="h-4 w-4" />
@@ -87,13 +98,17 @@ export default function Navbar() {
                   </Button>
                 </Link>
               ))}
-              <div className="pt-2 border-t">
+              <div className="pt-2 border-t space-y-1">
                 <Link to="/login" onClick={() => setOpen(false)}>
-                  <Button variant="ghost" className="w-full justify-start gap-2 text-destructive">
-                    <LogOut className="h-4 w-4" />
-                    Déconnexion
+                  <Button variant="ghost" className="w-full justify-start gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    Changer de profil
                   </Button>
                 </Link>
+                <Button variant="ghost" className="w-full justify-start gap-2 text-destructive" onClick={() => { setCurrentProfile(null); setOpen(false); }}>
+                  <LogOut className="h-4 w-4" />
+                  Déconnexion
+                </Button>
               </div>
             </>
           ) : (
