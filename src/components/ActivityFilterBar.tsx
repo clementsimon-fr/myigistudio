@@ -54,18 +54,26 @@ export default function ActivityFilterBar({ filter, onFilterChange, view, onView
       {/* Category pills — compact, no label */}
       <div className="container pb-1.5 pt-0.5">
         <div className="flex items-center justify-center gap-1 flex-wrap">
-          {CATEGORY_FILTERS.map(f => (
-            <Button
-              key={f.value}
-              variant={filter === f.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => onFilterChange(f.value)}
-              className="rounded-full gap-1 h-6 text-[11px] px-2"
-            >
-              {f.dot && <div className={`w-1.5 h-1.5 rounded-full ${f.dot}`} />}
-              {f.label}
-            </Button>
-          ))}
+          {CATEGORY_FILTERS.map(f => {
+            const isActive = filter === f.value;
+            const activeClass = isActive
+              ? f.activeBg
+                ? `${f.activeBg} text-white border-transparent hover:opacity-90`
+                : "bg-primary-dark text-primary-dark-foreground border-transparent"
+              : "";
+            return (
+              <Button
+                key={f.value}
+                variant={isActive ? "default" : "outline"}
+                size="sm"
+                onClick={() => onFilterChange(f.value)}
+                className={`rounded-full gap-1 h-6 text-[11px] px-2 ${activeClass}`}
+              >
+                {f.dot && <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : f.dot}`} />}
+                {f.label}
+              </Button>
+            );
+          })}
         </div>
       </div>
     </div>
