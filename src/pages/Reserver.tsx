@@ -107,7 +107,6 @@ export default function Reserver() {
   // Demo state
   const [bookingStep, setBookingStep] = useState<BookingStep>("select");
   const [selectedCard, setSelectedCard] = useState<typeof CARD_OPTIONS[0] | null>(null);
-  const [selectedCard, setSelectedCard] = useState<typeof CARD_OPTIONS[0] | null>(null);
   const [showStripeModal, setShowStripeModal] = useState(false);
   const [stripeAmount, setStripeAmount] = useState(0);
   const [stripeDescription, setStripeDescription] = useState("");
