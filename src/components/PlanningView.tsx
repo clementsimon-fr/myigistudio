@@ -267,16 +267,27 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
       {filter !== "all" && subFilterOptions.length > 1 && (
         <div className="container max-w-5xl pt-2 pb-0">
           <div className="flex flex-wrap items-center gap-1.5 justify-center">
-            <Button variant={subFilter === "all" ? "default" : "outline"} size="sm" className="rounded-full h-6 text-[11px] px-3" onClick={() => setSubFilter("all")}>Tout voir</Button>
-            {subFilterOptions.map(name => (
-              <Button key={name} variant={subFilter === name ? "default" : "outline"} size="sm" className="rounded-full h-6 text-[11px] px-3"
-                onClick={() => {
-                  const newVal = subFilter === name ? "all" : name;
-                  setSubFilter(newVal);
-                  if (newVal !== "all") scrollToFirstMatch({ activityName: newVal, category: filter });
-                }}
-              >{name}</Button>
-            ))}
+            {(() => {
+              const catFilter = CATEGORY_FILTERS.find(f => f.value === filter);
+              const activeBg = catFilter?.activeBg || "bg-primary-dark";
+              return (
+                <>
+                  <Button variant={subFilter === "all" ? "ghost" : "outline"} size="sm"
+                    className={`rounded-full h-6 text-[11px] px-3 ${subFilter === "all" ? `${activeBg} text-white hover:text-white hover:opacity-90` : ""}`}
+                    onClick={() => setSubFilter("all")}>Tout voir</Button>
+                  {subFilterOptions.map(name => (
+                    <Button key={name} variant={subFilter === name ? "ghost" : "outline"} size="sm"
+                      className={`rounded-full h-6 text-[11px] px-3 ${subFilter === name ? `${activeBg} text-white hover:text-white hover:opacity-90` : ""}`}
+                      onClick={() => {
+                        const newVal = subFilter === name ? "all" : name;
+                        setSubFilter(newVal);
+                        if (newVal !== "all") scrollToFirstMatch({ activityName: newVal, category: filter });
+                      }}
+                    >{name}</Button>
+                  ))}
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
