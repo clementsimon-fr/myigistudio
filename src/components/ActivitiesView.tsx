@@ -1,0 +1,221 @@
+import { useState, useMemo } from "react";
+import { motion } from "framer-motion";
+import { Info, Users, Euro, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import PricingSection from "@/components/home/PricingSection";
+import TeamSection from "@/components/home/TeamSection";
+import type { FilterCategory } from "@/components/ActivityFilterBar";
+import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
+
+const PLACEHOLDER_IMG = "/placeholder.svg";
+
+interface ActivitiesViewProps {
+  courses: Course[];
+  workshops: Workshop[];
+  schedules: Schedule[];
+  filter: FilterCategory;
+  getInstructorPhoto: (id: string | null, name?: string) => string | undefined;
+  onSwitchToPlanning: (params?: { filter?: FilterCategory; activity?: string; date?: string }) => void;
+}
+
+function InstructorBadge({ instructor, photo }: { instructor: string; photo?: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <Avatar className="h-5 w-5">
+        {photo ? <AvatarImage src={photo} alt={instructor} /> : null}
+        <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{instructor.charAt(0)}</AvatarFallback>
+      </Avatar>
+      <span>{instructor}</span>
+    </div>
+  );
+}
+
+function WorkshopCard({ ws, i, onDescription, instructorPhoto, onBook }: {
+  ws: Workshop; i: number; onDescription: (w: Workshop) => void; instructorPhoto?: string;
+  onBook: (ws: Workshop) => void;
+}) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow">
+      <div className="aspect-[4/3] overflow-hidden bg-muted">
+        <img src={ws.image || PLACEHOLDER_IMG} alt={ws.name} className="w-full h-full object-cover" loading="lazy" />
+      </div>
+      <div className="p-4 md:p-5">
+        <h3 className="font-display font-semibold text-base md:text-lg text-primary-dark leading-tight mb-2">{ws.name}</h3>
+        <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{ws.description}</p>
+        <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
+          {instructorPhoto && (
+            <div className="flex items-center gap-1.5">
+              <Avatar className="h-5 w-5">
+                <AvatarImage src={instructorPhoto} />
+                <AvatarFallback className="text-[9px] bg-primary/10 text-primary">I</AvatarFallback>
+              </Avatar>
+            </div>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {(ws.long_description || ws.description) && (
+            <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => onDescription(ws)}>
+              <Info className="h-3 w-3" /> Description
+            </Button>
+          )}
+          <Button size="sm" className="flex-1 text-xs" onClick={() => onBook(ws)}>Réserver</Button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+export default function ActivitiesView({ courses, workshops, schedules, filter, getInstructorPhoto, onSwitchToPlanning }: ActivitiesViewProps) {
+  const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
+  const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
+
+  // Build courses with their schedules for display
+  const coursesWithSchedules = useMemo(() => {
+    const schedulesMap: Record<string, { day: string; time: string; end_time: string; spots: number; spots_left: number }[]> = {};
+    for (const s of schedules) {
+      if (!schedulesMap[s.course_id]) schedulesMap[s.course_id] = [];
+      schedulesMap[s.course_id].push({ day: s.day, time: s.time, end_time: s.end_time, spots: s.spots, spots_left: s.spots_left });
+    }
+    return courses.filter(c => c.category === "yoga").map(c => ({
+      ...c,
+      schedules: schedulesMap[c.id] || [],
+    }));
+  }, [courses, schedules]);
+
+  const potteryWorkshops = workshops.filter(w => w.category === "poterie");
+  const wellbeingWorkshops = workshops.filter(w => w.category === "bien-etre");
+
+  const showYoga = filter === "all" || filter === "yoga";
+  const showPoterie = filter === "all" || filter === "poterie";
+  const showAteliers = filter === "all" || filter === "bien-etre";
+
+  const handleBookCourse = (course: Course) => {
+    onSwitchToPlanning({ filter: "yoga", activity: course.name });
+  };
+
+  const handleBookWorkshop = (ws: Workshop) => {
+    onSwitchToPlanning({ filter: ws.category as FilterCategory, activity: ws.name, date: ws.date });
+  };
+
+  return (
+    <>
+      {/* ─── Yoga & Pilates ─── */}
+      {showYoga && coursesWithSchedules.length > 0 && (
+        <section className="py-12 md:py-16">
+          <div className="container">
+            <h2 className="text-xl md:text-3xl font-display font-bold text-primary-dark mb-6 md:mb-8 text-center">Yoga & Pilates</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+              {coursesWithSchedules.map((course, i) => {
+                const photo = getInstructorPhoto(course.instructor_id, course.instructor);
+                return (
+                  <motion.div key={course.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow">
+                    <div className="aspect-[4/3] overflow-hidden bg-muted">
+                      <img src={course.image || PLACEHOLDER_IMG} alt={course.name} className="w-full h-full object-cover" loading="lazy" />
+                    </div>
+                    <div className="p-4 md:p-5">
+                      <h3 className="font-display font-semibold text-base md:text-lg text-primary-dark leading-tight mb-2">{course.name}</h3>
+                      {course.description && <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{course.description}</p>}
+                      <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
+                        <InstructorBadge instructor={course.instructor} photo={photo} />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => setDescriptionCourse(course)}>
+                          <Info className="h-3 w-3" /> Description
+                        </Button>
+                        <Button size="sm" className="flex-1 text-xs" onClick={() => handleBookCourse(course)}>Réserver</Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ─── Poterie ─── */}
+      {showPoterie && potteryWorkshops.length > 0 && (
+        <section className={`py-12 md:py-16 ${showYoga && coursesWithSchedules.length > 0 ? "bg-secondary/10" : ""}`}>
+          <div className="container">
+            <h2 className="text-xl md:text-3xl font-display font-bold text-primary-dark mb-6 md:mb-8 text-center">Poterie</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+              {potteryWorkshops.map((ws, i) => (
+                <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} onBook={handleBookWorkshop} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ─── Ateliers & Stages ─── */}
+      {showAteliers && wellbeingWorkshops.length > 0 && (
+        <section className="py-12 md:py-16">
+          <div className="container">
+            <h2 className="text-xl md:text-3xl font-display font-bold text-primary-dark mb-6 md:mb-8 text-center">Ateliers & Stages</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+              {wellbeingWorkshops.map((ws, i) => (
+                <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} onBook={handleBookWorkshop} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <PricingSection />
+      <TeamSection />
+
+      <section className="py-12 md:py-16">
+        <div className="container max-w-2xl text-center">
+          <h2 className="text-xl md:text-2xl font-display font-bold text-primary-dark mb-4">Infos Pratiques</h2>
+          <div className="space-y-3 text-muted-foreground text-sm">
+            <p>Arrivez 10 minutes avant le cours · Tapis fournis · Tenue confortable</p>
+            <p>Annulation gratuite jusqu'à 24h avant le cours. Au-delà, le crédit est débité.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Course description dialog */}
+      <Dialog open={!!descriptionCourse} onOpenChange={(open) => !open && setDescriptionCourse(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          {descriptionCourse && (
+            <>
+              <DialogHeader><DialogTitle className="font-display">{descriptionCourse.name}</DialogTitle></DialogHeader>
+              <div className="space-y-4 pt-2">
+                <img src={descriptionCourse.image || PLACEHOLDER_IMG} alt={descriptionCourse.name} className="w-full rounded-lg object-cover max-h-64" />
+                <div className="text-sm text-muted-foreground whitespace-pre-line">{descriptionCourse.long_description || descriptionCourse.description}</div>
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <InstructorBadge instructor={descriptionCourse.instructor} photo={getInstructorPhoto(descriptionCourse.instructor_id, descriptionCourse.instructor)} />
+                  <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionCourse.spots} places max</div>
+                </div>
+                <Button className="w-full" onClick={() => { setDescriptionCourse(null); handleBookCourse(descriptionCourse); }}>Réserver</Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Workshop description dialog */}
+      <Dialog open={!!descriptionWs} onOpenChange={(open) => !open && setDescriptionWs(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          {descriptionWs && (
+            <>
+              <DialogHeader><DialogTitle className="font-display">{descriptionWs.name}</DialogTitle></DialogHeader>
+              <div className="space-y-4 pt-2">
+                <img src={descriptionWs.image || PLACEHOLDER_IMG} alt={descriptionWs.name} className="w-full rounded-lg object-cover max-h-64" />
+                <div className="text-sm text-muted-foreground whitespace-pre-line">{descriptionWs.long_description || descriptionWs.description}</div>
+                <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1.5"><Euro className="h-3.5 w-3.5" /> {descriptionWs.price}€</div>
+                  <div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {descriptionWs.duration}</div>
+                  <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionWs.spots} places max</div>
+                </div>
+                <Button className="w-full" onClick={() => { const ws = descriptionWs; setDescriptionWs(null); handleBookWorkshop(ws); }}>Réserver</Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

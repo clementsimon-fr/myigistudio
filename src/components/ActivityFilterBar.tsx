@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Link, useLocation } from "react-router-dom";
+import type { ViewMode } from "@/pages/Discover";
 
 export type FilterCategory = "all" | "yoga" | "poterie" | "bien-etre";
 
@@ -16,53 +16,43 @@ export const CATEGORY_STYLES: Record<string, { block: string; dot: string }> = {
   "bien-etre": { block: "bg-secondary/20 border-secondary/40 text-secondary-foreground", dot: "bg-[hsl(18,68%,54%)]" },
 };
 
-const VIEW_TABS = [
-  { label: "Les activités", to: "/" },
-  { label: "Planning & réservation", to: "/calendrier" },
+const VIEW_TABS: { label: string; value: ViewMode }[] = [
+  { label: "Les activités", value: "activites" },
+  { label: "Planning & réservation", value: "planning" },
 ];
 
 interface ActivityFilterBarProps {
   filter: FilterCategory;
   onFilterChange: (value: FilterCategory) => void;
+  view: ViewMode;
+  onViewChange: (value: ViewMode) => void;
 }
 
-export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFilterBarProps) {
-  const location = useLocation();
-  const currentPath = location.pathname;
-
-  const handleFilterChange = (value: FilterCategory) => {
-    onFilterChange(value);
-    // Scroll to top of content when changing filter
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
+export default function ActivityFilterBar({ filter, onFilterChange, view, onViewChange }: ActivityFilterBarProps) {
   return (
     <div className="sticky top-16 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
-      {/* Level 1: View tabs — mobile only */}
-      <div className="container md:hidden">
+      {/* View tabs — always visible */}
+      <div className="container">
         <div className="flex items-center justify-center gap-2 pt-2 pb-1">
-          {VIEW_TABS.map(tab => {
-            const isActive = tab.to === "/" ? (currentPath === "/" || currentPath === "/activites") : currentPath === tab.to;
-            return (
-              <Link key={tab.to} to={tab.to + (filter !== "all" ? `?filter=${filter}` : "")}>
-                <Button
-                  size="sm"
-                  className={`rounded-full px-5 text-sm font-semibold transition-colors ${
-                    isActive
-                      ? "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90"
-                      : "bg-primary/15 text-primary-dark hover:bg-primary/25"
-                  }`}
-                >
-                  {tab.label}
-                </Button>
-              </Link>
-            );
-          })}
+          {VIEW_TABS.map(tab => (
+            <Button
+              key={tab.value}
+              size="sm"
+              onClick={() => onViewChange(tab.value)}
+              className={`rounded-full px-5 text-sm font-semibold transition-colors ${
+                view === tab.value
+                  ? "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90"
+                  : "bg-primary/15 text-primary-dark hover:bg-primary/25"
+              }`}
+            >
+              {tab.label}
+            </Button>
+          ))}
         </div>
       </div>
 
-      {/* Level 2: Category filters */}
-      <div className="container pb-2 pt-1 md:pt-2">
+      {/* Category filters */}
+      <div className="container pb-2 pt-1">
         <div className="flex flex-col items-center gap-1">
           <span className="text-xs font-medium text-muted-foreground">Filtre</span>
           <div className="flex items-center justify-center gap-1.5 flex-wrap">
@@ -71,7 +61,7 @@ export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFi
                 key={f.value}
                 variant={filter === f.value ? "default" : "outline"}
                 size="sm"
-                onClick={() => handleFilterChange(f.value)}
+                onClick={() => onFilterChange(f.value)}
                 className="rounded-full gap-1.5 h-7 text-xs"
               >
                 {f.dot && <div className={`w-2 h-2 rounded-full ${f.dot}`} />}
