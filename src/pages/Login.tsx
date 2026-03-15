@@ -1,8 +1,9 @@
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Shield, User, UserPlus, Eye } from "lucide-react";
+import { Shield, User, UserPlus, Eye, Wrench } from "lucide-react";
 import { useDemoContext } from "@/contexts/DemoContext";
 
 const PROFILE_CARDS = [
+  { id: "fournisseur", name: "Fournisseur", subtitle: "Accès complet", icon: Wrench, defaultNavigateTo: "/admin/reservations", supportsReturn: false },
   { id: "elodie", name: "Élodie", subtitle: "Administratrice", icon: Shield, defaultNavigateTo: "/admin/reservations", supportsReturn: false },
   { id: "marion", name: "Marion", subtitle: "Nouvelle cliente", icon: UserPlus, defaultNavigateTo: "/mon-espace", supportsReturn: true },
   { id: "sophie", name: "Sophie", subtitle: "Cliente existante", icon: User, defaultNavigateTo: "/mon-espace", supportsReturn: true },

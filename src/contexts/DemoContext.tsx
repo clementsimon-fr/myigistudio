@@ -211,10 +211,15 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     return DEFAULT_PROFILES[id] ? { ...DEFAULT_PROFILES[id], cards: DEFAULT_PROFILES[id].cards.map(c => ({ ...c })), reservations: [] } : undefined;
   }, []);
 
+  const clearTempProfiles = useCallback(() => {
+    setTempProfiles([]);
+    localStorage.removeItem(LS_TEMP_PROFILES_KEY);
+  }, []);
+
   return (
     <DemoContext.Provider value={{
       currentProfile, setCurrentProfile, demoNotifications, addNotification,
-      addCredits, useCredit, addReservation, createTempProfile, getDefaultProfile, tempProfiles,
+      addCredits, useCredit, addReservation, createTempProfile, getDefaultProfile, tempProfiles, clearTempProfiles,
     }}>
       {children}
     </DemoContext.Provider>

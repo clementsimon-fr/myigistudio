@@ -30,7 +30,7 @@ interface ActivityFilterBarProps {
 
 export default function ActivityFilterBar({ filter, onFilterChange, view, onViewChange }: ActivityFilterBarProps) {
   return (
-    <div className="sticky top-16 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
+    <div className="sticky top-16 z-30 bg-emerald-50/60 backdrop-blur border-b">
       {/* View tabs — compact */}
       <div className="container">
         <div className="flex items-center justify-center gap-1.5 pt-1.5 pb-1">

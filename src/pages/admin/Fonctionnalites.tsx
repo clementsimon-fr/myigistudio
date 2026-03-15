@@ -213,9 +213,11 @@ export default function AdminFonctionnalites() {
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-muted-foreground">{items.length} idée{items.length > 1 ? "s" : ""} d'amélioration</p>
         <div className="flex gap-1.5">
-          <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground/50 text-[10px] h-7" onClick={() => setExampleDialogOpen(true)}>
-            <Settings2 className="h-3 w-3" /> Gérer exemples
-          </Button>
+          {isFournisseur && (
+            <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground/50 text-[10px] h-7" onClick={() => setExampleDialogOpen(true)}>
+              <Settings2 className="h-3 w-3" /> Gérer exemples
+            </Button>
+          )}
           <Button size="sm" className="gap-1.5" onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" /> Nouvelle idée
           </Button>
