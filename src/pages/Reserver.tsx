@@ -235,9 +235,10 @@ export default function Reserver() {
   const isWorkshopDirect = activity?.type === "workshop";
 
   const handleProceedToConfirm = () => {
-    // Step 1: Check if logged in
+    // Step 1: Check if logged in — redirect to login page
     if (!currentProfile) {
-      setBookingStep("login");
+      const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+      navigate(`/login?returnTo=${returnTo}`);
       return;
     }
     // Step 2: Check credits for courses
