@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { CalendarDays, CreditCard, Clock, LogOut, Plus, Loader2, User, Send, Pencil, XCircle, Star, ArrowRight, Bell, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useDemoContext } from "@/contexts/DemoContext";
 
 interface Reservation { id: string; client_name: string; activity_name: string; activity_type: string; date: string; time: string; end_time: string; participants: number; status: string; created_at: string; course_id: string | null; workshop_id: string | null; }
 interface ClientCard { id: string; client_name: string; card_name: string; total_sessions: number; used_sessions: number; expires_at: string; }
