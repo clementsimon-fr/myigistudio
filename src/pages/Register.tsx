@@ -10,17 +10,18 @@ export default function Register() {
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get("returnTo");
   const { createTempProfile } = useDemoContext();
-  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
+  const [name, setName] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createTempProfile(form.name.trim());
+    if (!name.trim()) return;
+    createTempProfile(name.trim());
     navigate(returnTo || "/mon-espace");
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link to="/" className="text-3xl font-display font-bold text-primary-dark">
             MyIgi<span className="text-primary italic">Studio</span>
@@ -31,22 +32,10 @@ export default function Register() {
         <div className="rounded-xl border bg-card p-6 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="name">Nom complet</Label>
-              <Input id="name" placeholder="Prénom Nom" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <Label htmlFor="name">Prénom</Label>
+              <Input id="name" placeholder="Ex : Marc" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
             </div>
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="votre@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-            </div>
-            <div>
-              <Label htmlFor="phone">Téléphone</Label>
-              <Input id="phone" type="tel" placeholder="06 12 34 56 78" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
-            </div>
-            <div>
-              <Label htmlFor="password">Mot de passe</Label>
-              <Input id="password" type="password" placeholder="••••••••" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-            </div>
-            <Button type="submit" className="w-full bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
+            <Button type="submit" className="w-full">
               Créer mon compte
             </Button>
           </form>
