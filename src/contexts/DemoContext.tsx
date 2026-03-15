@@ -102,6 +102,13 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     } catch { return []; }
   });
 
+  const [tempProfiles, setTempProfiles] = useState<DemoProfile[]>(() => {
+    try {
+      const saved = localStorage.getItem(LS_TEMP_PROFILES_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
   useEffect(() => {
     if (currentProfile) localStorage.setItem(LS_PROFILE_KEY, JSON.stringify(currentProfile));
     else localStorage.removeItem(LS_PROFILE_KEY);
