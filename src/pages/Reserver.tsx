@@ -154,6 +154,13 @@ export default function Reserver() {
     };
     load();
   }, [activityType, activityId, preselectedDate, preselectedScheduleId]);
+  // Redirect unauthenticated visitors immediately when direct booking
+  useEffect(() => {
+    if (!loading && directBooking && !currentProfile) {
+      const returnTo = window.location.pathname + window.location.search;
+      navigate("/login?returnTo=" + encodeURIComponent(returnTo), { replace: true });
+    }
+  }, [loading, directBooking, currentProfile, navigate]);
 
   const availableDays = useMemo(() => {
     if (!activity || activity.type !== "course") return new Set<string>();
