@@ -360,7 +360,7 @@ export default function Reserver() {
   };
 
   const handleConfirmClick = () => {
-    if (bookingStep === "login" || bookingStep === "credits") return;
+    if (bookingStep === "credits") return;
     handleProceedToConfirm();
   };
 
