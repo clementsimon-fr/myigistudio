@@ -87,6 +87,7 @@ interface DemoContextValue {
   createTempProfile: (name: string) => void;
   getDefaultProfile: (id: string) => DemoProfile | undefined;
   tempProfiles: DemoProfile[];
+  clearTempProfiles: () => void;
 }
 
 const DemoContext = createContext<DemoContextValue | null>(null);
