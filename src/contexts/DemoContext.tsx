@@ -118,6 +118,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(LS_NOTIFS_KEY, JSON.stringify(demoNotifications));
   }, [demoNotifications]);
 
+  useEffect(() => {
+    localStorage.setItem(LS_TEMP_PROFILES_KEY, JSON.stringify(tempProfiles));
+  }, [tempProfiles]);
+
   const setCurrentProfile = useCallback((profile: DemoProfile | null) => {
     setCurrentProfileState(profile);
   }, []);
