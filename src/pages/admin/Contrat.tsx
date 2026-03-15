@@ -4,11 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Rocket, Server, Lightbulb, CheckCircle2, Clock, Gift, AlertTriangle, Zap,
-  BarChart3, Info, Palette, Database, Upload, HeartHandshake, ShieldCheck, Calendar
+  BarChart3, Info, Palette, Database, Upload, HeartHandshake, ShieldCheck, Calendar,
+  ChevronDown, Pencil, Save, X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useDemoContext } from "@/contexts/DemoContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface FeatureRequest {
   id: string;
@@ -106,7 +113,6 @@ const STATUS_CONFIG = {
   },
 };
 
-// ── Legacy data ──
 const includedItems = [
   "Hébergement sécurisé et maintenance corrective (correction de bugs)",
   "Mises à jour de sécurité",
@@ -143,14 +149,17 @@ function getGridCellColor(cost: string): string {
   return "bg-muted text-muted-foreground";
 }
 
-// ── Timeline Step Component ──
-function TimelineStep({ phase, isLast }: { phase: typeof timelinePhases[0]; isLast: boolean }) {
+// ── Timeline Step Component with Collapsible ──
+function TimelineStep({ phase, isLast, isFournisseur, onEdit }: {
+  phase: typeof timelinePhases[0]; isLast: boolean; isFournisseur: boolean;
+  onEdit?: (phase: typeof timelinePhases[0]) => void;
+}) {
   const config = STATUS_CONFIG[phase.status];
   const Icon = phase.icon;
+  const [isOpen, setIsOpen] = useState(phase.status === "in_progress");
 
   return (
     <div className="relative flex gap-4">
-      {/* Vertical line + dot */}
       <div className="flex flex-col items-center">
         <div className={`h-10 w-10 rounded-full border-2 flex items-center justify-center shrink-0 ${config.dot} bg-card`}>
           <Icon className={`h-5 w-5 ${phase.status === "done" ? "text-emerald-600" : phase.status === "in_progress" ? "text-amber-600" : "text-muted-foreground/50"}`} />
@@ -160,48 +169,67 @@ function TimelineStep({ phase, isLast }: { phase: typeof timelinePhases[0]; isLa
         )}
       </div>
 
-      {/* Content card */}
-      <div className="pb-8 flex-1">
-        <Card className={`overflow-hidden transition-shadow ${phase.status === "in_progress" ? "ring-1 ring-amber-400/40 shadow-md" : ""}`}>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div>
-                <CardTitle className="text-base font-display text-primary-dark">{phase.name}</CardTitle>
-                <CardDescription className="text-xs mt-0.5">{phase.subtitle}</CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                {phase.cost && (
-                  <Badge variant="outline" className="gap-1 bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-[11px]">
-                    <Gift className="h-3 w-3" />
-                    <span className="line-through opacity-60 mr-1">{phase.cost}</span>
-                    Offert
-                  </Badge>
+      <div className="pb-6 flex-1">
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+          <div className={`rounded-xl border overflow-hidden transition-shadow ${phase.status === "in_progress" ? "ring-1 ring-amber-400/40 shadow-md" : ""}`}>
+            <CollapsibleTrigger asChild>
+              <button className="w-full text-left px-4 py-3 flex items-center justify-between gap-2 hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div>
+                    <span className="text-base font-display font-semibold text-primary-dark">{phase.name}</span>
+                    <span className="text-xs text-muted-foreground ml-2 hidden sm:inline">{phase.subtitle}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {phase.cost && (
+                      <Badge variant="outline" className="gap-1 bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-[11px]">
+                        <Gift className="h-3 w-3" />
+                        <span className="line-through opacity-60 mr-1">{phase.cost}</span>
+                        Offert
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className={`text-[11px] ${config.badge}`}>
+                      {phase.status === "in_progress" && <Clock className="h-3 w-3 mr-1" />}
+                      {config.label} {config.emoji}
+                    </Badge>
+                  </div>
+                </div>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="px-4 pb-4 pt-1 space-y-3 border-t">
+                <p className="text-sm text-foreground/80 whitespace-pre-line leading-relaxed">{phase.explanation}</p>
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-[11px] text-muted-foreground font-medium mb-1">🔧 Détail technique</p>
+                  <p className="text-xs text-muted-foreground">{phase.detail}</p>
+                </div>
+                {!phase.cost && (
+                  <p className="text-xs text-muted-foreground italic">{phase.costNote}</p>
                 )}
-                <Badge variant="outline" className={`text-[11px] ${config.badge}`}>
-                  {phase.status === "in_progress" && <Clock className="h-3 w-3 mr-1" />}
-                  {config.label} {config.emoji}
-                </Badge>
+                {isFournisseur && onEdit && (
+                  <Button size="sm" variant="ghost" className="gap-1 text-xs text-muted-foreground" onClick={(e) => { e.stopPropagation(); onEdit(phase); }}>
+                    <Pencil className="h-3 w-3" /> Modifier
+                  </Button>
+                )}
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-1 space-y-3">
-            <p className="text-sm text-foreground/80 whitespace-pre-line leading-relaxed">{phase.explanation}</p>
-            <div className="rounded-lg bg-muted/50 p-3">
-              <p className="text-[11px] text-muted-foreground font-medium mb-1">🔧 Détail technique</p>
-              <p className="text-xs text-muted-foreground">{phase.detail}</p>
-            </div>
-            {!phase.cost && (
-              <p className="text-xs text-muted-foreground italic">{phase.costNote}</p>
-            )}
-          </CardContent>
-        </Card>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
       </div>
     </div>
   );
 }
 
 export default function AdminContrat() {
+  const { currentProfile } = useDemoContext();
+  const { toast } = useToast();
+  const isFournisseur = currentProfile?.role === "fournisseur";
   const [tickets, setTickets] = useState<FeatureRequest[]>([]);
+  
+  // Editing state for fournisseur
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [editPrice, setEditPrice] = useState("50");
+  const [editIncluded, setEditIncluded] = useState(includedItems.join("\n"));
 
   useEffect(() => {
     const now = new Date();
@@ -216,6 +244,10 @@ export default function AdminContrat() {
   const paidTickets = tickets.filter(t => t.impact === "fonctionnalite");
   const includedTickets = tickets.filter(t => t.impact !== "fonctionnalite");
   const monthlyCost = paidTickets.length * 50;
+
+  const handleEditPhase = (phase: typeof timelinePhases[0]) => {
+    toast({ title: `Édition de "${phase.name}" — Fonctionnalité à venir` });
+  };
 
   return (
     <AdminLayout title="Contrat">
@@ -233,7 +265,13 @@ export default function AdminContrat() {
 
           <div className="mt-2">
             {timelinePhases.map((phase, i) => (
-              <TimelineStep key={phase.name} phase={phase} isLast={i === timelinePhases.length - 1} />
+              <TimelineStep
+                key={phase.name}
+                phase={phase}
+                isLast={i === timelinePhases.length - 1}
+                isFournisseur={isFournisseur}
+                onEdit={handleEditPhase}
+              />
             ))}
           </div>
         </section>
@@ -242,35 +280,65 @@ export default function AdminContrat() {
 
         {/* --- Section B: Abonnement --- */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Server className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-display font-bold text-primary-dark">Abonnement de Service</h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Server className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-display font-bold text-primary-dark">Abonnement de Service</h2>
+            </div>
+            {isFournisseur && editingSection !== "abonnement" && (
+              <Button size="sm" variant="ghost" className="gap-1 text-xs text-muted-foreground" onClick={() => setEditingSection("abonnement")}>
+                <Pencil className="h-3 w-3" /> Modifier
+              </Button>
+            )}
           </div>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+          {editingSection === "abonnement" && isFournisseur ? (
+            <Card>
+              <CardContent className="pt-6 space-y-4">
                 <div>
-                  <CardTitle className="text-base">Forfait MCO & Évolutions</CardTitle>
-                  <CardDescription className="text-xs mt-1">Maintien en Condition Opérationnelle</CardDescription>
+                  <label className="text-sm font-medium">Prix mensuel (€)</label>
+                  <Input value={editPrice} onChange={e => setEditPrice(e.target.value)} className="mt-1 w-32" />
                 </div>
-                <div className="text-right">
-                  <span className="text-3xl font-bold text-primary-dark">50€</span>
-                  <span className="text-sm text-muted-foreground"> / mois</span>
+                <div>
+                  <label className="text-sm font-medium">Inclus (un par ligne)</label>
+                  <Textarea value={editIncluded} onChange={e => setEditIncluded(e.target.value)} rows={4} className="mt-1" />
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <ul className="space-y-2.5">
-                {includedItems.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+                <div className="flex gap-2">
+                  <Button size="sm" className="gap-1" onClick={() => { toast({ title: "Abonnement mis à jour ✓" }); setEditingSection(null); }}>
+                    <Save className="h-3 w-3" /> Sauvegarder
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingSection(null)}>
+                    <X className="h-3 w-3" /> Annuler
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">Forfait MCO & Évolutions</CardTitle>
+                    <CardDescription className="text-xs mt-1">Maintien en Condition Opérationnelle</CardDescription>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-3xl font-bold text-primary-dark">50€</span>
+                    <span className="text-sm text-muted-foreground"> / mois</span>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <ul className="space-y-2.5">
+                  {includedItems.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
         </section>
 
         <Separator />

@@ -317,7 +317,7 @@ export default function AdminClients() {
           <AlertDialogHeader>
             <AlertDialogTitle>Réinitialiser toutes les données clients ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action supprimera tous les comptes clients, leurs réservations et leurs cartes. Cette action est irréversible.
+              Cette action supprimera tous les comptes clients, leurs réservations, cartes, bons cadeaux et messages du forum. Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

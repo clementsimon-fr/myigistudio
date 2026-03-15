@@ -6,7 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import PricingSection from "@/components/home/PricingSection";
 import TeamSection from "@/components/home/TeamSection";
-import type { FilterCategory } from "@/components/ActivityFilterBar";
+import { CATEGORY_STYLES, type FilterCategory } from "@/components/ActivityFilterBar";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 
 const PLACEHOLDER_IMG = "/placeholder.svg";
@@ -32,17 +32,22 @@ function InstructorBadge({ instructor, photo }: { instructor: string; photo?: st
   );
 }
 
+function getCategoryStyle(category: string) {
+  return CATEGORY_STYLES[category] || { block: "", dot: "", text: "text-primary-dark", bookBtn: "bg-primary hover:bg-primary/90 text-primary-foreground" };
+}
+
 function WorkshopCard({ ws, i, onDescription, instructorPhoto, onBook }: {
   ws: Workshop; i: number; onDescription: (w: Workshop) => void; instructorPhoto?: string;
   onBook: (ws: Workshop) => void;
 }) {
+  const style = getCategoryStyle(ws.category);
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow">
       <div className="aspect-[4/3] overflow-hidden bg-muted">
         <img src={ws.image || PLACEHOLDER_IMG} alt={ws.name} className="w-full h-full object-cover" loading="lazy" />
       </div>
       <div className="p-4 md:p-5">
-        <h3 className="font-display font-semibold text-base md:text-lg text-primary-dark leading-tight mb-2">{ws.name}</h3>
+        <h3 className={`font-display font-semibold text-base md:text-lg leading-tight mb-2 ${style.text}`}>{ws.name}</h3>
         <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{ws.description}</p>
         <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
           {instructorPhoto && (
@@ -60,7 +65,7 @@ function WorkshopCard({ ws, i, onDescription, instructorPhoto, onBook }: {
               <Info className="h-3 w-3" /> Description
             </Button>
           )}
-          <Button size="sm" className="flex-1 text-xs" onClick={() => onBook(ws)}>Réserver</Button>
+          <Button size="sm" className={`flex-1 text-xs ${style.bookBtn}`} onClick={() => onBook(ws)}>Réserver</Button>
         </div>
       </div>
     </motion.div>
@@ -71,7 +76,6 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
 
-  // Build courses with their schedules for display
   const coursesWithSchedules = useMemo(() => {
     const schedulesMap: Record<string, { day: string; time: string; end_time: string; spots: number; spots_left: number }[]> = {};
     for (const s of schedules) {
@@ -91,6 +95,9 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const showPoterie = filter === "all" || filter === "poterie";
   const showAteliers = filter === "all" || filter === "bien-etre";
 
+  const yogaStyle = getCategoryStyle("yoga");
+  const potteryStyle = getCategoryStyle("poterie");
+
   const handleBookCourse = (course: Course) => {
     onSwitchToPlanning({ filter: "yoga", activity: course.name });
   };
@@ -105,7 +112,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
       {showYoga && coursesWithSchedules.length > 0 && (
         <section className="py-12 md:py-16">
           <div className="container">
-            <h2 className="text-xl md:text-3xl font-display font-bold text-primary-dark mb-6 md:mb-8 text-center">Yoga & Pilates</h2>
+            <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${yogaStyle.text}`}>Yoga & Pilates</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {coursesWithSchedules.map((course, i) => {
                 const photo = getInstructorPhoto(course.instructor_id, course.instructor);
@@ -115,7 +122,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                       <img src={course.image || PLACEHOLDER_IMG} alt={course.name} className="w-full h-full object-cover" loading="lazy" />
                     </div>
                     <div className="p-4 md:p-5">
-                      <h3 className="font-display font-semibold text-base md:text-lg text-primary-dark leading-tight mb-2">{course.name}</h3>
+                      <h3 className={`font-display font-semibold text-base md:text-lg leading-tight mb-2 ${yogaStyle.text}`}>{course.name}</h3>
                       {course.description && <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{course.description}</p>}
                       <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
                         <InstructorBadge instructor={course.instructor} photo={photo} />
@@ -124,7 +131,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                         <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => setDescriptionCourse(course)}>
                           <Info className="h-3 w-3" /> Description
                         </Button>
-                        <Button size="sm" className="flex-1 text-xs" onClick={() => handleBookCourse(course)}>Réserver</Button>
+                        <Button size="sm" className={`flex-1 text-xs ${yogaStyle.bookBtn}`} onClick={() => handleBookCourse(course)}>Réserver</Button>
                       </div>
                     </div>
                   </motion.div>
@@ -139,7 +146,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
       {showPoterie && potteryWorkshops.length > 0 && (
         <section className={`py-12 md:py-16 ${showYoga && coursesWithSchedules.length > 0 ? "bg-secondary/10" : ""}`}>
           <div className="container">
-            <h2 className="text-xl md:text-3xl font-display font-bold text-primary-dark mb-6 md:mb-8 text-center">Poterie</h2>
+            <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${potteryStyle.text}`}>Poterie</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {potteryWorkshops.map((ws, i) => (
                 <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} onBook={handleBookWorkshop} />
@@ -153,7 +160,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
       {showAteliers && wellbeingWorkshops.length > 0 && (
         <section className="py-12 md:py-16">
           <div className="container">
-            <h2 className="text-xl md:text-3xl font-display font-bold text-primary-dark mb-6 md:mb-8 text-center">Ateliers & Stages</h2>
+            <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${getCategoryStyle("bien-etre").text}`}>Ateliers & Stages</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {wellbeingWorkshops.map((ws, i) => (
                 <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} onBook={handleBookWorkshop} />
@@ -189,7 +196,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                   <InstructorBadge instructor={descriptionCourse.instructor} photo={getInstructorPhoto(descriptionCourse.instructor_id, descriptionCourse.instructor)} />
                   <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionCourse.spots} places max</div>
                 </div>
-                <Button className="w-full" onClick={() => { setDescriptionCourse(null); handleBookCourse(descriptionCourse); }}>Réserver</Button>
+                <Button className={`w-full ${yogaStyle.bookBtn}`} onClick={() => { setDescriptionCourse(null); handleBookCourse(descriptionCourse); }}>Réserver</Button>
               </div>
             </>
           )}
@@ -210,7 +217,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                   <div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {descriptionWs.duration}</div>
                   <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionWs.spots} places max</div>
                 </div>
-                <Button className="w-full" onClick={() => { const ws = descriptionWs; setDescriptionWs(null); handleBookWorkshop(ws); }}>Réserver</Button>
+                <Button className={`w-full ${getCategoryStyle(descriptionWs.category).bookBtn}`} onClick={() => { const ws = descriptionWs; setDescriptionWs(null); handleBookWorkshop(ws); }}>Réserver</Button>
               </div>
             </>
           )}

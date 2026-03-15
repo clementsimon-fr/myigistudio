@@ -51,11 +51,12 @@ interface PlanningViewProps {
   filter: FilterCategory;
   initialActivity?: string | null;
   initialDate?: string | null;
+  subFilter: string;
+  onSubFilterChange: (value: string) => void;
 }
 
-export default function PlanningView({ courses, schedules, workshops, filter, initialActivity, initialDate }: PlanningViewProps) {
+export default function PlanningView({ courses, schedules, workshops, filter, initialActivity, initialDate, subFilter, onSubFilterChange }: PlanningViewProps) {
   const navigate = useNavigate();
-  const [subFilter, setSubFilter] = useState<string>(initialActivity || "all");
   const [selectedEvent, setSelectedEvent] = useState<ActivityBlock | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const base = initialDate ? new Date(initialDate + "T00:00:00") : new Date();
@@ -67,36 +68,27 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
     return monday;
   });
 
-  // Auto-scroll to first available date
-  useEffect(() => {
-    if (!initialActivity && filter === "all") return;
-
+  const scrollToFirstMatch = (params: { category?: string; activityName?: string }) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = formatDateStr(today);
-    let earliestDate: Date | null = null;
-
     const matchingWs = workshops
       .filter(w => {
         if (w.date < todayStr) return false;
-        if (initialActivity && w.name !== initialActivity) return false;
-        if (filter !== "all" && w.category !== filter) return false;
+        if (params.activityName && w.name !== params.activityName) return false;
+        if (params.category && w.category !== params.category) return false;
         return true;
       })
       .sort((a, b) => a.date.localeCompare(b.date));
-
-    if (matchingWs.length > 0) {
-      earliestDate = new Date(matchingWs[0].date + "T00:00:00");
-    }
-
     const matchingScheds = schedules.filter(s => {
       const course = courses.find(c => c.id === s.course_id);
       if (!course) return false;
-      if (initialActivity && course.name !== initialActivity) return false;
-      if (filter !== "all" && course.category !== filter) return false;
+      if (params.activityName && course.name !== params.activityName) return false;
+      if (params.category && course.category !== params.category) return false;
       return true;
     });
-
+    let earliestDate: Date | null = null;
+    if (matchingWs.length > 0) earliestDate = new Date(matchingWs[0].date + "T00:00:00");
     if (matchingScheds.length > 0) {
       const dayNames = matchingScheds.map(s => s.day);
       for (let i = 0; i < 14; i++) {
@@ -108,7 +100,6 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
         }
       }
     }
-
     if (earliestDate) {
       const dayOfWeek = earliestDate.getDay();
       const diff = earliestDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
@@ -117,6 +108,12 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
       monday.setHours(0, 0, 0, 0);
       setCurrentWeekStart(monday);
     }
+  };
+
+  // Auto-scroll to first available date
+  useEffect(() => {
+    if (!initialActivity && filter === "all") return;
+    scrollToFirstMatch({ activityName: initialActivity || undefined, category: filter !== "all" ? filter : undefined });
   }, [initialActivity, filter, courses, schedules, workshops]);
 
   const weekDays = useMemo(() => getWeekDays(currentWeekStart), [currentWeekStart]);
@@ -197,45 +194,11 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
     return count;
   }, [filter, subFilter, courses, schedules, workshops]);
 
-  const scrollToFirstMatch = (params: { category?: string; activityName?: string }) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = formatDateStr(today);
-    const matchingWs = workshops
-      .filter(w => {
-        if (w.date < todayStr) return false;
-        if (params.activityName && w.name !== params.activityName) return false;
-        if (params.category && w.category !== params.category) return false;
-        return true;
-      })
-      .sort((a, b) => a.date.localeCompare(b.date));
-    const matchingScheds = schedules.filter(s => {
-      const course = courses.find(c => c.id === s.course_id);
-      if (!course) return false;
-      if (params.activityName && course.name !== params.activityName) return false;
-      if (params.category && course.category !== params.category) return false;
-      return true;
-    });
-    let earliestDate: Date | null = null;
-    if (matchingWs.length > 0) earliestDate = new Date(matchingWs[0].date + "T00:00:00");
-    if (matchingScheds.length > 0) {
-      const dayNames = matchingScheds.map(s => s.day);
-      for (let i = 0; i < 14; i++) {
-        const d = new Date(today);
-        d.setDate(d.getDate() + i);
-        if (dayNames.includes(DAY_MAP[d.getDay()])) {
-          if (!earliestDate || d < earliestDate) earliestDate = d;
-          break;
-        }
-      }
-    }
-    if (earliestDate) {
-      const dayOfWeek = earliestDate.getDay();
-      const diff = earliestDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-      const monday = new Date(earliestDate);
-      monday.setDate(diff);
-      monday.setHours(0, 0, 0, 0);
-      setCurrentWeekStart(monday);
+  // Handle sub-filter change with auto-scroll
+  const handleSubFilterChange = (name: string) => {
+    onSubFilterChange(name);
+    if (name !== "all") {
+      scrollToFirstMatch({ activityName: name, category: filter !== "all" ? filter : undefined });
     }
   };
 
@@ -262,35 +225,6 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
           <p className="text-sm text-muted-foreground">Retrouvez toutes nos activités et réservez en un clic</p>
         </div>
       </div>
-
-      {/* Sub-filters */}
-      {filter !== "all" && subFilterOptions.length > 1 && (
-        <div className="container max-w-5xl pt-2 pb-0">
-          <div className="flex flex-wrap items-center gap-1.5 justify-center">
-            {(() => {
-              const catFilter = CATEGORY_FILTERS.find(f => f.value === filter);
-              const activeBg = catFilter?.activeBg || "bg-primary-dark";
-              return (
-                <>
-                  <Button variant={subFilter === "all" ? null as any : "outline"} size="sm"
-                    className={`rounded-full h-6 text-[11px] px-3 ${subFilter === "all" ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
-                    onClick={() => setSubFilter("all")}>Tout voir</Button>
-                  {subFilterOptions.map(name => (
-                    <Button key={name} variant={subFilter === name ? null as any : "outline"} size="sm"
-                      className={`rounded-full h-6 text-[11px] px-3 ${subFilter === name ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
-                      onClick={() => {
-                        const newVal = subFilter === name ? "all" : name;
-                        setSubFilter(newVal);
-                        if (newVal !== "all") scrollToFirstMatch({ activityName: newVal, category: filter });
-                      }}
-                    >{name}</Button>
-                  ))}
-                </>
-              );
-            })()}
-          </div>
-        </div>
-      )}
 
       {(filter !== "all" || subFilter !== "all") && matchingDatesCount > 0 && (
         <div className="container max-w-5xl pt-2 pb-0">
@@ -381,21 +315,19 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
               <div className="space-y-4 pt-2">
                 {selectedEvent.description && <p className="text-sm text-muted-foreground leading-relaxed">{selectedEvent.description}</p>}
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" /><span>{selectedEvent.time} - {selectedEvent.end_time} · {calcDuration(selectedEvent.time, selectedEvent.end_time)}</span></div>
-                  <div className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /><span>{selectedEvent.instructor}</span></div>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    {selectedEvent.spotsLeft === 0 ? <span className="text-destructive font-medium">Complet</span> : <span>{selectedEvent.spotsLeft} place{selectedEvent.spotsLeft > 1 ? "s" : ""} disponible{selectedEvent.spotsLeft > 1 ? "s" : ""}</span>}
-                  </div>
+                  <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" />{selectedEvent.time} – {selectedEvent.end_time} ({calcDuration(selectedEvent.time, selectedEvent.end_time)})</div>
+                  <div className="flex items-center gap-2"><Users className="h-4 w-4 text-muted-foreground" />{selectedEvent.spotsLeft} place{selectedEvent.spotsLeft > 1 ? "s" : ""} restante{selectedEvent.spotsLeft > 1 ? "s" : ""}</div>
+                  <div className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" />{selectedEvent.instructor}</div>
                   {selectedEvent.price !== undefined && selectedEvent.price > 0 && <div className="text-lg font-bold text-primary-dark">{selectedEvent.price}€</div>}
                 </div>
-                <Button className="w-full gap-1.5" disabled={selectedEvent.spotsLeft === 0} onClick={() => {
-                  const eventDate = dayBlocks.find(db => db.blocks.some(b => b.id === selectedEvent.id))?.date || new Date();
-                  setSelectedEvent(null);
-                  handleBook(selectedEvent, eventDate);
-                }}>
-                  {selectedEvent.spotsLeft === 0 ? "Complet" : (<>Réserver <ArrowRight className="h-4 w-4" /></>)}
-                </Button>
+                {selectedEvent.spotsLeft > 0 && (() => {
+                  const matchingDay = dayBlocks.find(db => db.blocks.some(b => b.id === selectedEvent.id));
+                  return matchingDay ? (
+                    <Button className="w-full gap-2" onClick={() => { handleBook(selectedEvent, matchingDay.date); setSelectedEvent(null); }}>
+                      Réserver <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  ) : null;
+                })()}
               </div>
             </>
           )}

@@ -22,7 +22,6 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const { currentProfile, setCurrentProfile } = useDemoContext();
-  const isClientSpace = location.pathname === "/mon-espace";
   const isLoggedIn = !!currentProfile;
 
   return (
@@ -38,7 +37,7 @@ export default function Navbar() {
           {isLoggedIn ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2">
+                <Button variant="ghost" size="default" className="gap-2">
                   <div className="h-7 w-7 rounded-full bg-primary/15 flex items-center justify-center">
                     <User className="h-4 w-4 text-primary-dark" />
                   </div>
@@ -72,7 +71,7 @@ export default function Navbar() {
             </DropdownMenu>
           ) : (
             <Link to="/login">
-              <Button variant="ghost" size="sm" className="gap-2">
+              <Button variant="default" size="default" className="gap-2">
                 <User className="h-4 w-4" />
                 Connexion
               </Button>
@@ -113,7 +112,7 @@ export default function Navbar() {
             </>
           ) : (
             <Link to="/login" onClick={() => setOpen(false)}>
-              <Button variant="ghost" className="w-full justify-start gap-2">
+              <Button variant="default" className="w-full justify-center gap-2">
                 <User className="h-4 w-4" />
                 Connexion
               </Button>
