@@ -190,6 +190,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       reservations: [],
     };
     setCurrentProfileState(profile);
+    setTempProfiles(prev => {
+      // Avoid duplicates by name
+      if (prev.some(p => p.name.toLowerCase() === name.toLowerCase())) return prev;
+      return [...prev, profile];
+    });
     addNotification(`${name} a créé un compte`, "account");
   }, [addNotification]);
 
