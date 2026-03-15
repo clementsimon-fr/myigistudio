@@ -3,17 +3,17 @@ import type { ViewMode } from "@/pages/Discover";
 
 export type FilterCategory = "all" | "yoga" | "poterie" | "bien-etre";
 
-export const CATEGORY_FILTERS: { value: FilterCategory; label: string; dot?: string }[] = [
+export const CATEGORY_FILTERS: { value: FilterCategory; label: string; dot?: string; activeBg?: string }[] = [
   { value: "all", label: "Toutes" },
-  { value: "yoga", label: "Yoga & Pilates", dot: "bg-[hsl(148,18%,56%)]" },
-  { value: "poterie", label: "Poterie", dot: "bg-[hsl(40,76%,60%)]" },
-  { value: "bien-etre", label: "Ateliers", dot: "bg-[hsl(18,68%,54%)]" },
+  { value: "yoga", label: "Yoga & Pilates", dot: "bg-[hsl(210,60%,55%)]", activeBg: "bg-[hsl(210,60%,55%)]" },
+  { value: "poterie", label: "Poterie", dot: "bg-[hsl(40,76%,60%)]", activeBg: "bg-[hsl(40,76%,60%)]" },
+  { value: "bien-etre", label: "Ateliers", dot: "bg-[hsl(0,55%,58%)]", activeBg: "bg-[hsl(0,55%,58%)]" },
 ];
 
 export const CATEGORY_STYLES: Record<string, { block: string; dot: string }> = {
-  yoga: { block: "bg-primary/10 border-primary/30 text-primary-dark", dot: "bg-[hsl(148,18%,56%)]" },
-  poterie: { block: "bg-accent/15 border-accent/35 text-accent-foreground", dot: "bg-[hsl(40,76%,60%)]" },
-  "bien-etre": { block: "bg-secondary/20 border-secondary/40 text-secondary-foreground", dot: "bg-[hsl(18,68%,54%)]" },
+  yoga: { block: "bg-[hsl(210,60%,55%)]/10 border-[hsl(210,60%,55%)]/30 text-[hsl(210,60%,35%)]", dot: "bg-[hsl(210,60%,55%)]" },
+  poterie: { block: "bg-[hsl(40,76%,60%)]/10 border-[hsl(40,76%,60%)]/30 text-[hsl(40,76%,35%)]", dot: "bg-[hsl(40,76%,60%)]" },
+  "bien-etre": { block: "bg-[hsl(0,55%,58%)]/10 border-[hsl(0,55%,58%)]/30 text-[hsl(0,55%,38%)]", dot: "bg-[hsl(0,55%,58%)]" },
 };
 
 const VIEW_TABS: { label: string; value: ViewMode }[] = [
@@ -54,18 +54,26 @@ export default function ActivityFilterBar({ filter, onFilterChange, view, onView
       {/* Category pills — compact, no label */}
       <div className="container pb-1.5 pt-0.5">
         <div className="flex items-center justify-center gap-1 flex-wrap">
-          {CATEGORY_FILTERS.map(f => (
-            <Button
-              key={f.value}
-              variant={filter === f.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => onFilterChange(f.value)}
-              className="rounded-full gap-1 h-6 text-[11px] px-2"
-            >
-              {f.dot && <div className={`w-1.5 h-1.5 rounded-full ${f.dot}`} />}
-              {f.label}
-            </Button>
-          ))}
+          {CATEGORY_FILTERS.map(f => {
+            const isActive = filter === f.value;
+            const activeClass = isActive
+              ? f.activeBg
+                ? `${f.activeBg} text-white border-transparent hover:opacity-90`
+                : "bg-primary-dark text-primary-dark-foreground border-transparent"
+              : "";
+            return (
+              <Button
+                key={f.value}
+                variant={isActive ? "default" : "outline"}
+                size="sm"
+                onClick={() => onFilterChange(f.value)}
+                className={`rounded-full gap-1 h-6 text-[11px] px-2 ${activeClass}`}
+              >
+                {f.dot && <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : f.dot}`} />}
+                {f.label}
+              </Button>
+            );
+          })}
         </div>
       </div>
     </div>
