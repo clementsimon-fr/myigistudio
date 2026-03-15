@@ -24,7 +24,7 @@ const statusColors: Record<string, string> = {
   "annulé": "bg-destructive/10 text-destructive border-destructive/30",
   "liste d'attente": "bg-accent/20 text-accent-foreground border-accent/30",
 };
-const CLIENT_NAME = "Sophie";
+// CLIENT_NAME now comes from DemoContext
 
 type Section = "reservations" | "cartes" | "cadeaux" | "profil" | "feedback";
 
