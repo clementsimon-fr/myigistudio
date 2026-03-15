@@ -259,24 +259,8 @@ export default function Reserver() {
     handleFinalConfirm();
   };
 
-  const handleLoginSubmit = () => {
-    if (!tempName.trim()) return;
-    createTempProfile(tempName.trim());
-    // After login, check credits
-    if (needsCredits) {
-      setBookingStep("credits");
-    } else if (isWorkshopDirect) {
-      const price = activity.price || 35;
-      setStripeAmount(price);
-      setStripeDescription(`${activity.name} — Paiement direct`);
-      setPaymentPurpose("workshop");
-      setShowStripeModal(true);
-      setBookingStep("select");
-    } else {
-      setBookingStep("select");
-      handleFinalConfirm();
-    }
-  };
+  // handleLoginSubmit removed — login is now handled via redirect to /login page
+
 
   const handleBuyCard = (card: typeof CARD_OPTIONS[0]) => {
     setSelectedCard(card);
