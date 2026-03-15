@@ -81,7 +81,7 @@ export default function Reserver() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { currentProfile, createTempProfile, addCredits, useCredit, addReservation, addNotification } = useDemoContext();
+  const { currentProfile, addCredits, useCredit, addReservation, addNotification } = useDemoContext();
 
   const activityType = searchParams.get("type") as "course" | "workshop" | null;
   const activityId = searchParams.get("id");
