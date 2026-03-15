@@ -1,6 +1,6 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Shield, User, UserPlus, Eye } from "lucide-react";
+import { Shield, User, UserPlus, Eye, Clock } from "lucide-react";
 import { useDemoContext } from "@/contexts/DemoContext";
 
 const PROFILE_CARDS = [
@@ -10,8 +10,9 @@ const PROFILE_CARDS = [
     subtitle: "Administratrice",
     icon: Shield,
     description: "Gère le studio, les cours et les réservations",
-    navigateTo: "/admin/reservations",
+    defaultNavigateTo: "/admin/reservations",
     accent: "bg-primary-dark text-primary-dark-foreground",
+    supportsReturn: false,
   },
   {
     id: "marion",
@@ -19,8 +20,9 @@ const PROFILE_CARDS = [
     subtitle: "Nouvelle cliente",
     icon: UserPlus,
     description: "0 crédit · Pas encore de carte",
-    navigateTo: "/mon-espace",
+    defaultNavigateTo: "/mon-espace",
     accent: "bg-secondary text-secondary-foreground",
+    supportsReturn: true,
   },
   {
     id: "sophie",
@@ -28,8 +30,9 @@ const PROFILE_CARDS = [
     subtitle: "Cliente existante",
     icon: User,
     description: "4 crédits · Carte 10 cours active",
-    navigateTo: "/mon-espace",
+    defaultNavigateTo: "/mon-espace",
     accent: "bg-primary text-primary-foreground",
+    supportsReturn: true,
   },
   {
     id: "visitor",
@@ -37,23 +40,32 @@ const PROFILE_CARDS = [
     subtitle: "Déconnexion",
     icon: Eye,
     description: "Parcourir le site sans profil",
-    navigateTo: "/",
+    defaultNavigateTo: "/",
     accent: "bg-muted text-muted-foreground",
+    supportsReturn: false,
   },
 ];
 
 export default function Login() {
   const navigate = useNavigate();
-  const { setCurrentProfile, getDefaultProfile } = useDemoContext();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
+  const { setCurrentProfile, getDefaultProfile, tempProfiles } = useDemoContext();
 
   const handleSelect = (card: typeof PROFILE_CARDS[0]) => {
     if (card.id === "visitor") {
       setCurrentProfile(null);
+      navigate(card.defaultNavigateTo);
     } else {
       const profile = getDefaultProfile(card.id);
       if (profile) setCurrentProfile(profile);
+      navigate(card.supportsReturn && returnTo ? returnTo : card.defaultNavigateTo);
     }
-    navigate(card.navigateTo);
+  };
+
+  const handleSelectTemp = (profile: typeof tempProfiles[0]) => {
+    setCurrentProfile(profile);
+    navigate(returnTo || "/mon-espace");
   };
 
   return (
@@ -83,7 +95,36 @@ export default function Login() {
           ))}
         </div>
 
-        <div className="mt-4 text-center">
+        {/* Temp profiles (recently created) */}
+        {tempProfiles.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold text-primary-dark mb-2 flex items-center gap-1.5">
+              <Clock className="h-4 w-4" /> Profils récents
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {tempProfiles.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => handleSelectTemp(p)}
+                  className="rounded-lg border bg-card p-3 text-left transition-all hover:shadow-sm hover:border-primary-dark/30 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <h4 className="font-medium text-sm text-primary-dark">{p.name}</h4>
+                  <p className="text-[11px] text-muted-foreground">
+                    {p.credits} crédit{p.credits !== 1 ? "s" : ""} · {p.cards.length} carte{p.cards.length !== 1 ? "s" : ""}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-col items-center gap-2">
+          <Link
+            to={`/register${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
+            className="text-sm font-medium text-primary-dark hover:underline"
+          >
+            Créer un nouveau compte →
+          </Link>
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
             ← Retour à l'accueil
           </Link>

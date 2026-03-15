@@ -75,13 +75,13 @@ const CARD_OPTIONS = [
   { sessions: 10, price: 130, label: "Carte 10 cours" },
 ];
 
-type BookingStep = "select" | "login" | "credits" | "confirm";
+type BookingStep = "select" | "credits" | "confirm";
 
 export default function Reserver() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { currentProfile, createTempProfile, addCredits, useCredit, addReservation, addNotification } = useDemoContext();
+  const { currentProfile, addCredits, useCredit, addReservation, addNotification } = useDemoContext();
 
   const activityType = searchParams.get("type") as "course" | "workshop" | null;
   const activityId = searchParams.get("id");
@@ -106,7 +106,6 @@ export default function Reserver() {
 
   // Demo state
   const [bookingStep, setBookingStep] = useState<BookingStep>("select");
-  const [tempName, setTempName] = useState("");
   const [selectedCard, setSelectedCard] = useState<typeof CARD_OPTIONS[0] | null>(null);
   const [showStripeModal, setShowStripeModal] = useState(false);
   const [stripeAmount, setStripeAmount] = useState(0);
@@ -235,9 +234,10 @@ export default function Reserver() {
   const isWorkshopDirect = activity?.type === "workshop";
 
   const handleProceedToConfirm = () => {
-    // Step 1: Check if logged in
+    // Step 1: Check if logged in — redirect to login page
     if (!currentProfile) {
-      setBookingStep("login");
+      const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+      navigate(`/login?returnTo=${returnTo}`);
       return;
     }
     // Step 2: Check credits for courses
@@ -258,24 +258,8 @@ export default function Reserver() {
     handleFinalConfirm();
   };
 
-  const handleLoginSubmit = () => {
-    if (!tempName.trim()) return;
-    createTempProfile(tempName.trim());
-    // After login, check credits
-    if (needsCredits) {
-      setBookingStep("credits");
-    } else if (isWorkshopDirect) {
-      const price = activity.price || 35;
-      setStripeAmount(price);
-      setStripeDescription(`${activity.name} — Paiement direct`);
-      setPaymentPurpose("workshop");
-      setShowStripeModal(true);
-      setBookingStep("select");
-    } else {
-      setBookingStep("select");
-      handleFinalConfirm();
-    }
-  };
+  // handleLoginSubmit removed — login is now handled via redirect to /login page
+
 
   const handleBuyCard = (card: typeof CARD_OPTIONS[0]) => {
     setSelectedCard(card);
@@ -375,7 +359,7 @@ export default function Reserver() {
   };
 
   const handleConfirmClick = () => {
-    if (bookingStep === "login" || bookingStep === "credits") return;
+    if (bookingStep === "credits") return;
     handleProceedToConfirm();
   };
 
@@ -456,25 +440,8 @@ export default function Reserver() {
             )}
           </div>
 
-          {/* Demo: Login step */}
-          {bookingStep === "login" && (
-            <div className="rounded-xl border bg-card p-6 mb-6 space-y-4">
-              <h2 className="font-display font-semibold text-primary-dark">Connexion rapide</h2>
-              <p className="text-sm text-muted-foreground">Entrez votre prénom pour continuer (mode démo)</p>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Votre prénom"
-                  value={tempName}
-                  onChange={e => setTempName(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleLoginSubmit()}
-                />
-                <Button onClick={handleLoginSubmit} disabled={!tempName.trim()}>Continuer</Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Ou <Link to="/login" className="underline text-primary-dark">choisissez un profil existant</Link>
-              </p>
-            </div>
-          )}
+
+
 
           {/* Demo: Credits step */}
           {bookingStep === "credits" && (

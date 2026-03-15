@@ -78,12 +78,14 @@ interface DemoContextValue {
   addReservation: (activityName: string, date: string, time: string) => void;
   createTempProfile: (name: string) => void;
   getDefaultProfile: (id: string) => DemoProfile | undefined;
+  tempProfiles: DemoProfile[];
 }
 
 const DemoContext = createContext<DemoContextValue | null>(null);
 
 const LS_PROFILE_KEY = "demo_profile";
 const LS_NOTIFS_KEY = "demo_notifications";
+const LS_TEMP_PROFILES_KEY = "demo_temp_profiles";
 
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [currentProfile, setCurrentProfileState] = useState<DemoProfile | null>(() => {
@@ -100,6 +102,13 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     } catch { return []; }
   });
 
+  const [tempProfiles, setTempProfiles] = useState<DemoProfile[]>(() => {
+    try {
+      const saved = localStorage.getItem(LS_TEMP_PROFILES_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
   useEffect(() => {
     if (currentProfile) localStorage.setItem(LS_PROFILE_KEY, JSON.stringify(currentProfile));
     else localStorage.removeItem(LS_PROFILE_KEY);
@@ -108,6 +117,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem(LS_NOTIFS_KEY, JSON.stringify(demoNotifications));
   }, [demoNotifications]);
+
+  useEffect(() => {
+    localStorage.setItem(LS_TEMP_PROFILES_KEY, JSON.stringify(tempProfiles));
+  }, [tempProfiles]);
 
   const setCurrentProfile = useCallback((profile: DemoProfile | null) => {
     setCurrentProfileState(profile);
@@ -177,6 +190,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       reservations: [],
     };
     setCurrentProfileState(profile);
+    setTempProfiles(prev => {
+      // Avoid duplicates by name
+      if (prev.some(p => p.name.toLowerCase() === name.toLowerCase())) return prev;
+      return [...prev, profile];
+    });
     addNotification(`${name} a créé un compte`, "account");
   }, [addNotification]);
 
@@ -187,7 +205,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   return (
     <DemoContext.Provider value={{
       currentProfile, setCurrentProfile, demoNotifications, addNotification,
-      addCredits, useCredit, addReservation, createTempProfile, getDefaultProfile,
+      addCredits, useCredit, addReservation, createTempProfile, getDefaultProfile, tempProfiles,
     }}>
       {children}
     </DemoContext.Provider>
