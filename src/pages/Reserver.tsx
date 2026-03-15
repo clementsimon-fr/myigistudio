@@ -75,7 +75,7 @@ const CARD_OPTIONS = [
   { sessions: 10, price: 130, label: "Carte 10 cours" },
 ];
 
-type BookingStep = "select" | "login" | "credits" | "confirm";
+type BookingStep = "select" | "credits" | "confirm";
 
 export default function Reserver() {
   const [searchParams] = useSearchParams();

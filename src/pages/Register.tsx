@@ -1,16 +1,21 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useDemoContext } from "@/contexts/DemoContext";
 
 export default function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
+  const { createTempProfile } = useDemoContext();
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate("/mon-espace");
+    createTempProfile(form.name.trim());
+    navigate(returnTo || "/mon-espace");
   };
 
   return (
@@ -48,7 +53,7 @@ export default function Register() {
 
           <div className="mt-4 text-center text-sm text-muted-foreground">
             Déjà un compte ?{" "}
-            <Link to="/login" className="text-primary-dark font-medium hover:underline">
+            <Link to={`/login${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`} className="text-primary-dark font-medium hover:underline">
               Se connecter
             </Link>
           </div>
