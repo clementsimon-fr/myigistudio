@@ -27,13 +27,21 @@ export interface DemoNotification {
 export interface DemoProfile {
   id: string;
   name: string;
-  role: "admin" | "client" | "visitor";
+  role: "admin" | "client" | "visitor" | "fournisseur";
   credits: number;
   cards: DemoCard[];
   reservations: DemoReservation[];
 }
 
 const DEFAULT_PROFILES: Record<string, DemoProfile> = {
+  fournisseur: {
+    id: "fournisseur",
+    name: "Fournisseur",
+    role: "fournisseur",
+    credits: 0,
+    cards: [],
+    reservations: [],
+  },
   elodie: {
     id: "elodie",
     name: "Élodie",
@@ -79,6 +87,7 @@ interface DemoContextValue {
   createTempProfile: (name: string) => void;
   getDefaultProfile: (id: string) => DemoProfile | undefined;
   tempProfiles: DemoProfile[];
+  clearTempProfiles: () => void;
 }
 
 const DemoContext = createContext<DemoContextValue | null>(null);
@@ -202,10 +211,15 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     return DEFAULT_PROFILES[id] ? { ...DEFAULT_PROFILES[id], cards: DEFAULT_PROFILES[id].cards.map(c => ({ ...c })), reservations: [] } : undefined;
   }, []);
 
+  const clearTempProfiles = useCallback(() => {
+    setTempProfiles([]);
+    localStorage.removeItem(LS_TEMP_PROFILES_KEY);
+  }, []);
+
   return (
     <DemoContext.Provider value={{
       currentProfile, setCurrentProfile, demoNotifications, addNotification,
-      addCredits, useCredit, addReservation, createTempProfile, getDefaultProfile, tempProfiles,
+      addCredits, useCredit, addReservation, createTempProfile, getDefaultProfile, tempProfiles, clearTempProfiles,
     }}>
       {children}
     </DemoContext.Provider>

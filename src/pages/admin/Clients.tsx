@@ -5,11 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Search, Loader2, Clock, Plus, Trash2, Pencil, UserPlus } from "lucide-react";
+import { Search, Loader2, Clock, Plus, Trash2, Pencil, UserPlus, RotateCcw } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useDemoContext } from "@/contexts/DemoContext";
 
 function makeDisplayName(firstName: string, lastName: string): string {
   const fn = (firstName || "").trim();
@@ -70,6 +71,8 @@ interface GiftVoucher {
 
 export default function AdminClients() {
   const { toast } = useToast();
+  const { clearTempProfiles } = useDemoContext();
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<AggregatedClient[]>([]);
@@ -271,6 +274,18 @@ export default function AdminClients() {
     loadClients();
   };
 
+  const handleResetAll = async () => {
+    await Promise.all([
+      supabase.from("reservations").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
+      supabase.from("client_cards").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
+      supabase.from("profiles").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
+    ]);
+    clearTempProfiles();
+    toast({ title: "Données clients réinitialisées ✓" });
+    setResetDialogOpen(false);
+    loadClients();
+  };
+
   const filtered = clients.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     (c.first_name || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -288,8 +303,29 @@ export default function AdminClients() {
         <Button size="sm" className="gap-1.5" onClick={openNewClient}>
           <UserPlus className="h-4 w-4" /> Ajouter un client
         </Button>
+        <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setResetDialogOpen(true)}>
+          <RotateCcw className="h-4 w-4" /> Réinitialiser
+        </Button>
         <p className="text-sm text-muted-foreground self-center">{filtered.length} client{filtered.length > 1 ? "s" : ""}</p>
       </div>
+
+      {/* Reset confirmation dialog */}
+      <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Réinitialiser toutes les données clients ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action supprimera tous les comptes clients, leurs réservations et leurs cartes. Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetAll} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Tout supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>

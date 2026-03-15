@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Loader2, Trash2, Lightbulb, CheckCircle2, Info, Sparkles, Settings2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useDemoContext } from "@/contexts/DemoContext";
 
 interface FeatureRequest {
   id: string;
@@ -88,6 +89,8 @@ function generateTicketGroup(urgency: number, impact: string): string | null {
 
 export default function AdminFonctionnalites() {
   const { toast } = useToast();
+  const { currentProfile } = useDemoContext();
+  const isFournisseur = currentProfile?.role === "fournisseur";
   const [items, setItems] = useState<FeatureRequest[]>([]);
   const [examples, setExamples] = useState<FeatureExample[]>([]);
   const [loading, setLoading] = useState(true);
@@ -185,11 +188,13 @@ export default function AdminFonctionnalites() {
               const cost = getCostLabel(ex.impact, 3);
               return (
                 <div key={ex.id} className="rounded-lg border bg-card p-3 flex flex-col gap-2">
-                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start justify-between gap-2">
                     <h4 className="text-sm font-medium">{ex.title}</h4>
-                    <Button size="icon" variant="ghost" className="h-5 w-5 opacity-20 hover:opacity-100 shrink-0" onClick={() => deleteExample(ex.id)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    {isFournisseur && (
+                      <Button size="icon" variant="ghost" className="h-5 w-5 opacity-20 hover:opacity-100 shrink-0" onClick={() => deleteExample(ex.id)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                   {ex.description && <p className="text-xs text-muted-foreground line-clamp-2">{ex.description}</p>}
                   <div className="flex items-center gap-1.5 mt-auto">
@@ -208,9 +213,11 @@ export default function AdminFonctionnalites() {
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-muted-foreground">{items.length} idée{items.length > 1 ? "s" : ""} d'amélioration</p>
         <div className="flex gap-1.5">
-          <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground/50 text-[10px] h-7" onClick={() => setExampleDialogOpen(true)}>
-            <Settings2 className="h-3 w-3" /> Gérer exemples
-          </Button>
+          {isFournisseur && (
+            <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground/50 text-[10px] h-7" onClick={() => setExampleDialogOpen(true)}>
+              <Settings2 className="h-3 w-3" /> Gérer exemples
+            </Button>
+          )}
           <Button size="sm" className="gap-1.5" onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" /> Nouvelle idée
           </Button>
