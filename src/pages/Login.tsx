@@ -1,16 +1,11 @@
-import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Shield, User, UserPlus, Eye, ChevronDown, ChevronUp } from "lucide-react";
+import { Shield, User, UserPlus, Eye } from "lucide-react";
 import { useDemoContext } from "@/contexts/DemoContext";
 
 const PROFILE_CARDS = [
   { id: "elodie", name: "Élodie", subtitle: "Administratrice", icon: Shield, defaultNavigateTo: "/admin/reservations", supportsReturn: false },
   { id: "marion", name: "Marion", subtitle: "Nouvelle cliente", icon: UserPlus, defaultNavigateTo: "/mon-espace", supportsReturn: true },
   { id: "sophie", name: "Sophie", subtitle: "Cliente existante", icon: User, defaultNavigateTo: "/mon-espace", supportsReturn: true },
-  { id: "visitor", name: "Visiteur", subtitle: "Déconnexion", icon: Eye, defaultNavigateTo: "/", supportsReturn: false },
 ];
 
 export default function Login() {
@@ -19,52 +14,20 @@ export default function Login() {
   const returnTo = searchParams.get("returnTo");
   const { setCurrentProfile, getDefaultProfile, tempProfiles } = useDemoContext();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [showDemo, setShowDemo] = useState(false);
-
-  const allProfiles = [
-    { id: "elodie", name: "Élodie", email: "elodie@myigistudio.fr" },
-    { id: "sophie", name: "Sophie", email: "sophie@email.fr" },
-    { id: "marion", name: "Marion", email: "marion@email.fr" },
-    ...tempProfiles.map(p => ({ id: p.id, name: p.name, email: `${p.name.toLowerCase().replace(/\s+/g, ".")}@email.fr` })),
-  ];
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    const trimmed = email.trim().toLowerCase();
-    const match = allProfiles.find(
-      p => p.email.toLowerCase() === trimmed || p.name.toLowerCase() === trimmed
-    );
-    if (match) {
-      const tp = tempProfiles.find(p => p.id === match.id);
-      if (tp) {
-        setCurrentProfile(tp);
-        navigate(returnTo || "/mon-espace");
-      } else {
-        const card = PROFILE_CARDS.find(c => c.id === match.id);
-        const profile = getDefaultProfile(match.id);
-        if (profile && card) {
-          setCurrentProfile(profile);
-          navigate(card.supportsReturn && returnTo ? returnTo : card.defaultNavigateTo);
-        }
-      }
-    } else {
-      setError("Aucun compte trouvé avec cet identifiant.");
-    }
+  const handleSelect = (card: typeof PROFILE_CARDS[0]) => {
+    const profile = getDefaultProfile(card.id);
+    if (profile) setCurrentProfile(profile);
+    navigate(card.supportsReturn && returnTo ? returnTo : card.defaultNavigateTo);
   };
 
-  const handleQuickSelect = (card: typeof PROFILE_CARDS[0]) => {
-    if (card.id === "visitor") {
-      setCurrentProfile(null);
-      navigate(card.defaultNavigateTo);
-    } else {
-      const profile = getDefaultProfile(card.id);
-      if (profile) setCurrentProfile(profile);
-      navigate(card.supportsReturn && returnTo ? returnTo : card.defaultNavigateTo);
-    }
+  const handleTempSelect = (profile: typeof tempProfiles[0]) => {
+    setCurrentProfile(profile);
+    navigate(returnTo || "/mon-espace");
+  };
+
+  const handleVisitor = () => {
+    setCurrentProfile(null);
+    navigate("/");
   };
 
   return (
@@ -80,71 +43,59 @@ export default function Login() {
           )}
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email ou nom</Label>
-            <Input
-              id="email"
-              type="text"
-              placeholder="sophie@email.fr"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Mot de passe</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-            />
-          </div>
+        <div className="space-y-2">
+          {PROFILE_CARDS.map(card => (
+            <button
+              key={card.id}
+              onClick={() => handleSelect(card)}
+              className="w-full flex items-center gap-3 rounded-lg border bg-card p-4 text-left hover:border-primary/40 hover:bg-accent/50 transition-colors"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <card.icon className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">{card.name}</p>
+                <p className="text-sm text-muted-foreground">{card.subtitle}</p>
+              </div>
+            </button>
+          ))}
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {tempProfiles.map(p => (
+            <button
+              key={p.id}
+              onClick={() => handleTempSelect(p)}
+              className="w-full flex items-center gap-3 rounded-lg border bg-card p-4 text-left hover:border-primary/40 hover:bg-accent/50 transition-colors"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
+                <User className="h-5 w-5 text-secondary-foreground" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">{p.name}</p>
+                <p className="text-sm text-muted-foreground">Cliente</p>
+              </div>
+            </button>
+          ))}
+        </div>
 
-          <Button type="submit" className="w-full">Se connecter</Button>
-        </form>
-
-        <div className="mt-6 text-center space-y-2">
+        <div className="mt-4 space-y-3">
           <Link
             to={`/register${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
-            className="text-sm font-medium text-primary hover:underline"
+            className="block w-full rounded-lg border-2 border-dashed border-primary/30 p-4 text-center text-sm font-medium text-primary hover:border-primary hover:bg-primary/5 transition-colors"
           >
-            Pas encore de compte ? Créer un compte →
+            <UserPlus className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+            Créer un compte
           </Link>
-        </div>
 
-        {/* Discrete demo section */}
-        <div className="mt-8 border-t pt-4">
           <button
-            onClick={() => setShowDemo(!showDemo)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mx-auto transition-colors"
+            onClick={handleVisitor}
+            className="flex items-center justify-center gap-1.5 w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
           >
-            Accès rapide démo
-            {showDemo ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            <Eye className="h-4 w-4" />
+            Continuer en tant que visiteur
           </button>
-
-          {showDemo && (
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
-              {PROFILE_CARDS.map(card => (
-                <button
-                  key={card.id}
-                  onClick={() => handleQuickSelect(card)}
-                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
-                >
-                  <card.icon className="h-3 w-3" />
-                  {card.name}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
-        <div className="mt-4 text-center">
+        <div className="mt-6 text-center">
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
             ← Retour à l'accueil
           </Link>
