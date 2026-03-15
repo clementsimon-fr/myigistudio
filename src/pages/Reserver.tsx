@@ -692,8 +692,16 @@ export default function Reserver() {
                         disabled={submitting || !!bookingBlocked || (applicableConditions.length > 0 && !conditionsAccepted)}
                         className="w-full bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-1.5"
                       >
-                        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                        Confirmer la réservation
+                        {submitting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : isWorkshopDirect ? (
+                          <ShoppingCart className="h-4 w-4" />
+                        ) : (
+                          <Check className="h-4 w-4" />
+                        )}
+                        {isWorkshopDirect
+                          ? `Payer ${selectedSlotData?.price || activity.price || ""} € et réserver`
+                          : "Confirmer la réservation"}
                       </Button>
                     </div>
                   )}
