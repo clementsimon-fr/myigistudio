@@ -84,6 +84,7 @@ const DemoContext = createContext<DemoContextValue | null>(null);
 
 const LS_PROFILE_KEY = "demo_profile";
 const LS_NOTIFS_KEY = "demo_notifications";
+const LS_TEMP_PROFILES_KEY = "demo_temp_profiles";
 
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [currentProfile, setCurrentProfileState] = useState<DemoProfile | null>(() => {
