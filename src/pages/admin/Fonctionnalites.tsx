@@ -89,6 +89,8 @@ function generateTicketGroup(urgency: number, impact: string): string | null {
 
 export default function AdminFonctionnalites() {
   const { toast } = useToast();
+  const { currentProfile } = useDemoContext();
+  const isFournisseur = currentProfile?.role === "fournisseur";
   const [items, setItems] = useState<FeatureRequest[]>([]);
   const [examples, setExamples] = useState<FeatureExample[]>([]);
   const [loading, setLoading] = useState(true);
