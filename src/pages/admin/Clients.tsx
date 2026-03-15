@@ -71,6 +71,8 @@ interface GiftVoucher {
 
 export default function AdminClients() {
   const { toast } = useToast();
+  const { clearTempProfiles } = useDemoContext();
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<AggregatedClient[]>([]);
