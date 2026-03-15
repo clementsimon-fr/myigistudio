@@ -10,13 +10,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const navLinks = [
-  { label: "Les activités", to: "/" },
-  { label: "Planning & réservation", to: "/calendrier" },
-];
-
-const mobileNavLinks: typeof navLinks = [];
-
 const clientSections = [
   { label: "Réservations", to: "/mon-espace?section=reservations", icon: CalendarDays },
   { label: "Mes cartes Yoga", to: "/mon-espace?section=cartes", icon: CreditCard },
@@ -37,22 +30,6 @@ export default function Navbar() {
             MyIgi<span className="text-primary">Studio</span>
           </span>
         </Link>
-
-        <div className="hidden md:flex items-center gap-1">
-          {navLinks.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors hover:bg-muted ${
-                location.pathname === link.to
-                  ? "text-primary-dark bg-muted"
-                  : "text-foreground/70"
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </div>
 
         <div className="hidden md:flex items-center gap-3">
           {isClientSpace ? (
