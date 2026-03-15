@@ -78,6 +78,7 @@ interface DemoContextValue {
   addReservation: (activityName: string, date: string, time: string) => void;
   createTempProfile: (name: string) => void;
   getDefaultProfile: (id: string) => DemoProfile | undefined;
+  tempProfiles: DemoProfile[];
 }
 
 const DemoContext = createContext<DemoContextValue | null>(null);
