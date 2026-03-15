@@ -40,6 +40,8 @@ export default function MonEspace() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { currentProfile } = useDemoContext();
+  const CLIENT_NAME = currentProfile?.name || "Sophie";
   const sectionParam = searchParams.get("section") as Section | null;
   const [section, setSection] = useState<Section>(sectionParam || "reservations");
 
