@@ -34,6 +34,14 @@ export interface DemoProfile {
 }
 
 const DEFAULT_PROFILES: Record<string, DemoProfile> = {
+  fournisseur: {
+    id: "fournisseur",
+    name: "Fournisseur",
+    role: "fournisseur",
+    credits: 0,
+    cards: [],
+    reservations: [],
+  },
   elodie: {
     id: "elodie",
     name: "Élodie",
