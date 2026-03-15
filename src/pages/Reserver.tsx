@@ -592,6 +592,23 @@ export default function Reserver() {
                           <span className="text-muted-foreground">Participants</span>
                           <span className="font-medium">{participants}</span>
                         </div>
+                        {isWorkshopDirect && selectedSlotData.price != null && (
+                          <div className="flex justify-between border-t pt-2 mt-1">
+                            <span className="text-muted-foreground">Prix</span>
+                            <span className="font-semibold text-primary-dark">{selectedSlotData.price} €</span>
+                          </div>
+                        )}
+                        <div className="pt-1">
+                          {needsCredits ? (
+                            <Badge variant="secondary" className="gap-1 text-xs">
+                              <CreditCard className="h-3 w-3" /> 1 crédit sera déduit
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="gap-1 text-xs">
+                              <ShoppingCart className="h-3 w-3" /> Paiement par carte
+                            </Badge>
+                          )}
+                        </div>
                       </div>
 
                       {/* Booking blocked warning */}
