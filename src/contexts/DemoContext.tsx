@@ -214,6 +214,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   const clearTempProfiles = useCallback(() => {
     setTempProfiles([]);
     localStorage.removeItem(LS_TEMP_PROFILES_KEY);
+    setDemoNotifications([]);
+    localStorage.removeItem(LS_NOTIFS_KEY);
   }, []);
 
   return (

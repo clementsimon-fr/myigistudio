@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
@@ -23,15 +23,23 @@ export default function Discover() {
   const [filter, setFilter] = useState<FilterCategory>(
     initialFilter && CATEGORY_FILTERS.some(f => f.value === initialFilter) ? initialFilter : "all"
   );
-  // Track activity/date for planning auto-scroll
   const [planningActivity, setPlanningActivity] = useState<string | null>(initialActivity);
   const [planningDate, setPlanningDate] = useState<string | null>(initialDate);
+  const [subFilter, setSubFilter] = useState<string>("all");
 
   const { courses, schedules, workshops, loading, getInstructorPhoto } = useActivitiesData();
 
+  // Compute sub-filter options based on current category filter
+  const subFilterOptions = useMemo(() => {
+    if (filter === "all") return [];
+    const names = new Set<string>();
+    courses.filter(c => c.category === filter).forEach(c => names.add(c.name));
+    workshops.filter(w => w.category === filter).forEach(w => names.add(w.name));
+    return Array.from(names).sort();
+  }, [filter, courses, workshops]);
+
   const handleViewChange = useCallback((v: ViewMode) => {
     setView(v);
-    // Update URL without navigation
     const params = new URLSearchParams();
     if (v === "planning") params.set("view", "planning");
     if (filter !== "all") params.set("filter", filter);
@@ -41,6 +49,7 @@ export default function Discover() {
 
   const handleFilterChange = useCallback((f: FilterCategory) => {
     setFilter(f);
+    setSubFilter("all"); // Reset sub-filter, auto-show "Tout" for new category
     setPlanningActivity(null);
     setPlanningDate(null);
     const params = new URLSearchParams();
@@ -49,9 +58,21 @@ export default function Discover() {
     setSearchParams(params, { replace: true });
   }, [view, setSearchParams]);
 
+  const handleSubFilterChange = useCallback((value: string) => {
+    setSubFilter(value);
+    if (value !== "all") {
+      setPlanningActivity(value);
+    } else {
+      setPlanningActivity(null);
+    }
+  }, []);
+
   const handleSwitchToPlanning = useCallback((params?: { filter?: FilterCategory; activity?: string; date?: string }) => {
     if (params?.filter) setFilter(params.filter);
-    if (params?.activity) setPlanningActivity(params.activity);
+    if (params?.activity) {
+      setPlanningActivity(params.activity);
+      setSubFilter(params.activity);
+    }
     if (params?.date) setPlanningDate(params.date);
     setView("planning");
 
@@ -91,6 +112,9 @@ export default function Discover() {
           onFilterChange={handleFilterChange}
           view={view}
           onViewChange={handleViewChange}
+          subFilterOptions={view === "planning" ? subFilterOptions : undefined}
+          subFilter={subFilter}
+          onSubFilterChange={handleSubFilterChange}
         />
 
         {loading ? (
@@ -112,6 +136,8 @@ export default function Discover() {
             filter={filter}
             initialActivity={planningActivity}
             initialDate={planningDate}
+            subFilter={subFilter}
+            onSubFilterChange={handleSubFilterChange}
           />
         )}
       </main>

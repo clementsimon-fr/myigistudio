@@ -279,6 +279,8 @@ export default function AdminClients() {
       supabase.from("reservations").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
       supabase.from("client_cards").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
       supabase.from("profiles").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
+      supabase.from("gift_vouchers").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
+      supabase.from("forum_posts").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
     ]);
     clearTempProfiles();
     toast({ title: "Données clients réinitialisées ✓" });
@@ -315,7 +317,7 @@ export default function AdminClients() {
           <AlertDialogHeader>
             <AlertDialogTitle>Réinitialiser toutes les données clients ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action supprimera tous les comptes clients, leurs réservations et leurs cartes. Cette action est irréversible.
+              Cette action supprimera tous les comptes clients, leurs réservations, cartes, bons cadeaux et messages du forum. Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
