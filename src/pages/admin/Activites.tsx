@@ -392,9 +392,20 @@ export default function AdminActivites() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <div className="flex gap-1.5 flex-wrap">
             <Badge variant={categoryFilter === "all" ? "default" : "outline"} className="cursor-pointer text-xs" onClick={() => setCategoryFilter("all")}>Toutes</Badge>
-            {CATEGORIES.map(c => (
-              <Badge key={c.value} variant={categoryFilter === c.value ? "default" : "outline"} className="cursor-pointer text-xs" onClick={() => setCategoryFilter(c.value)}>{c.label}</Badge>
-            ))}
+            {CATEGORIES.map(c => {
+              const isActive = categoryFilter === c.value;
+              return (
+                <Badge
+                  key={c.value}
+                  variant={isActive ? "default" : "outline"}
+                  className={`cursor-pointer text-xs gap-1 ${isActive && c.activeBg ? `${c.activeBg} text-white border-transparent hover:opacity-90` : ""}`}
+                  onClick={() => setCategoryFilter(c.value)}
+                >
+                  {c.dot && <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : c.dot}`} />}
+                  {c.label}
+                </Badge>
+              );
+            })}
           </div>
           <div className="relative flex-1 w-full sm:w-auto sm:max-w-[220px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
