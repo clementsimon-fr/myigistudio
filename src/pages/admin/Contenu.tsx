@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Save, Megaphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +13,7 @@ import { saveSiteSettings } from "@/hooks/useSiteSettings";
 interface Field {
   key: string;
   label: string;
-  type: "text" | "textarea";
+  type: "text" | "textarea" | "activity-select";
 }
 
 interface SectionDef {
@@ -32,43 +33,79 @@ const SECTIONS: SectionDef[] = [
   {
     title: "Événement à la une",
     fields: [
-      { key: "featured_event_title", label: "Titre de l'événement", type: "text" },
-      { key: "featured_event_link", label: "Lien (URL ou chemin, ex: /?view=planning&filter=bien-etre)", type: "text" },
+      { key: "featured_event_activity_id", label: "Activité à mettre en avant", type: "activity-select" },
+      { key: "featured_event_title", label: "Titre personnalisé (optionnel — sinon le nom de l'activité)", type: "text" },
     ],
   },
 ];
+
+interface ActivityOption {
+  id: string;
+  name: string;
+  type: "course" | "workshop";
+  category: string;
+  date?: string;
+}
 
 export default function AdminContenu() {
   const { toast } = useToast();
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [workshops, setWorkshops] = useState<any[]>([]);
+  const [activityOptions, setActivityOptions] = useState<ActivityOption[]>([]);
 
   useEffect(() => {
     Promise.all([
       supabase.from("site_settings").select("key, value"),
-      supabase.from("workshops").select("id, name, date").gte("date", new Date().toISOString().split("T")[0]).order("date", { ascending: true }).limit(5),
-    ]).then(([settingsRes, workshopsRes]) => {
+      supabase.from("courses").select("id, name, category"),
+      supabase.from("workshops").select("id, name, category, date").order("date", { ascending: true }),
+    ]).then(([settingsRes, coursesRes, workshopsRes]) => {
       const map: Record<string, string> = {};
       if (settingsRes.data) for (const r of settingsRes.data) map[r.key] = r.value;
       setValues(map);
-      if (workshopsRes.data) setWorkshops(workshopsRes.data as any[]);
+
+      const opts: ActivityOption[] = [];
+      if (coursesRes.data) {
+        for (const c of coursesRes.data as any[]) {
+          opts.push({ id: c.id, name: c.name, type: "course", category: c.category });
+        }
+      }
+      if (workshopsRes.data) {
+        for (const w of workshopsRes.data as any[]) {
+          opts.push({ id: w.id, name: w.name, type: "workshop", category: w.category, date: w.date });
+        }
+      }
+      setActivityOptions(opts);
       setLoading(false);
     });
   }, []);
 
   const handleSave = async () => {
     setSaving(true);
-    const entries = Object.entries(values)
-      .filter(([key]) => SECTIONS.some(s => s.fields.some(f => f.key === key)))
-      .map(([key, value]) => ({ key, value }));
+    // Build the link from selected activity
+    const actId = values.featured_event_activity_id;
+    const activity = activityOptions.find(a => a.id === actId);
+    let link = "";
+    if (activity) {
+      link = `/reserver?type=${activity.type}&id=${activity.id}`;
+      if (activity.date) link += `&date=${activity.date}`;
+      // If no custom title, use activity name
+      if (!values.featured_event_title?.trim()) {
+        values.featured_event_title = activity.name;
+      }
+    }
+    values.featured_event_link = link;
+
+    const allKeys = ["hero_welcome", "hero_title", "hero_subtitle", "featured_event_title", "featured_event_link", "featured_event_activity_id"];
+    const entries = allKeys
+      .filter(key => values[key] !== undefined)
+      .map(key => ({ key, value: values[key] || "" }));
     await saveSiteSettings(entries);
     toast({ title: "Contenu enregistré ✓" });
     setSaving(false);
   };
 
-  const hasFeaturedEvent = !!(values.featured_event_title?.trim());
+  const hasFeaturedEvent = !!(values.featured_event_activity_id?.trim() || values.featured_event_title?.trim());
 
   if (loading) {
     return (
@@ -92,27 +129,9 @@ export default function AdminContenu() {
             {idx === 1 && (
               <p className="text-xs text-muted-foreground">
                 {hasFeaturedEvent
-                  ? "✅ Un événement à la une sera affiché sur la page d'accueil."
-                  : "Laissez le titre vide pour ne rien afficher."}
+                  ? "✅ Un événement à la une sera affiché sur la page d'accueil. Le visiteur pourra cliquer pour réserver directement."
+                  : "Sélectionnez une activité pour afficher un bandeau sur la page d'accueil."}
               </p>
-            )}
-            {idx === 1 && workshops.length > 0 && !values.featured_event_title && (
-              <div className="rounded-lg bg-muted/50 p-3 space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Événements à venir :</p>
-                {workshops.map(w => (
-                  <button
-                    key={w.id}
-                    className="block text-xs text-primary-dark hover:underline"
-                    onClick={() => setValues(prev => ({
-                      ...prev,
-                      featured_event_title: w.name,
-                      featured_event_link: `/?view=planning&filter=bien-etre&activity=${encodeURIComponent(w.name)}`,
-                    }))}
-                  >
-                    {w.name} — {new Date(w.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
-                  </button>
-                ))}
-              </div>
             )}
             {section.fields.map(field => (
               <div key={field.key}>
@@ -122,13 +141,38 @@ export default function AdminContenu() {
                     value={values[field.key] || ""}
                     onChange={e => setValues(prev => ({ ...prev, [field.key]: e.target.value }))}
                     rows={3}
-                    placeholder={`Valeur par défaut si vide`}
+                    placeholder="Valeur par défaut si vide"
                   />
+                ) : field.type === "activity-select" ? (
+                  <Select
+                    value={values[field.key] || "none"}
+                    onValueChange={v => {
+                      const newVal = v === "none" ? "" : v;
+                      setValues(prev => ({ ...prev, [field.key]: newVal }));
+                      // Auto-fill title
+                      if (newVal) {
+                        const act = activityOptions.find(a => a.id === newVal);
+                        if (act && !values.featured_event_title?.trim()) {
+                          setValues(prev => ({ ...prev, featured_event_title: act.name }));
+                        }
+                      }
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Choisir une activité..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Aucun événement —</SelectItem>
+                      {activityOptions.map(a => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name} {a.date ? `(${new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })})` : "(récurrent)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Input
                     value={values[field.key] || ""}
                     onChange={e => setValues(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    placeholder={`Valeur par défaut si vide`}
+                    placeholder="Valeur par défaut si vide"
                   />
                 )}
               </div>
