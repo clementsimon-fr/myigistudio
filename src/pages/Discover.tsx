@@ -6,9 +6,10 @@ import Footer from "@/components/layout/Footer";
 import ActivityFilterBar, { type FilterCategory, CATEGORY_FILTERS } from "@/components/ActivityFilterBar";
 import ActivitiesView from "@/components/ActivitiesView";
 import PlanningView from "@/components/PlanningView";
+import PlanningTypeView from "@/components/PlanningTypeView";
 import { useActivitiesData } from "@/hooks/useActivitiesData";
 
-export type ViewMode = "activites" | "planning";
+export type ViewMode = "activites" | "planning" | "planning-type";
 
 export default function Discover() {
   const [searchParams, setSearchParams] = useSearchParams();
