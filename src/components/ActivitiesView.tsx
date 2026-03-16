@@ -288,6 +288,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         workshops={workshops}
         schedules={schedules}
         highlightCategory={frequencyCategory}
+        specificActivity={frequencyActivity}
       />
     </>
   );
