@@ -8,7 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle, Gift, CreditCard, ShoppingCart, Sparkles, LogIn, UserPlus, User } from "lucide-react";
+import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle, Gift, CreditCard, ShoppingCart, Sparkles, LogIn, UserPlus, User, Star } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
 import { fr } from "date-fns/locale";
@@ -51,6 +51,17 @@ interface AvailableSlot {
   price?: number;
 }
 
+interface PricingCard {
+  id: string;
+  name: string;
+  sessions: number;
+  price: number;
+  validity: string;
+  popular: boolean;
+  sort_order: number;
+  payment_info: string;
+}
+
 function calcDuration(start: string, end: string): string {
   if (!start || !end) return "";
   const [sh, sm] = start.split(":").map(Number);
@@ -68,12 +79,6 @@ const DAY_NAMES_MAP: Record<number, string> = {
   0: "Dimanche", 1: "Lundi", 2: "Mardi", 3: "Mercredi",
   4: "Jeudi", 5: "Vendredi", 6: "Samedi",
 };
-
-const CARD_OPTIONS = [
-  { sessions: 1, price: 18, label: "1 cours" },
-  { sessions: 5, price: 70, label: "Carte 5 cours" },
-  { sessions: 10, price: 130, label: "Carte 10 cours" },
-];
 
 // Steps for the booking flow
 type BookingStep = "auth" | "register" | "login" | "offers" | "confirm";
@@ -111,11 +116,27 @@ export default function Reserver() {
   const [registerName, setRegisterName] = useState("");
 
   // Stripe state
-  const [selectedCard, setSelectedCard] = useState<typeof CARD_OPTIONS[0] | null>(null);
+  const [selectedCard, setSelectedCard] = useState<PricingCard | null>(null);
   const [showStripeModal, setShowStripeModal] = useState(false);
   const [stripeAmount, setStripeAmount] = useState(0);
   const [stripeDescription, setStripeDescription] = useState("");
   const [paymentPurpose, setPaymentPurpose] = useState<"card" | "workshop">("card");
+
+  // Pricing cards from DB
+  const [pricingCards, setPricingCards] = useState<PricingCard[]>([]);
+
+  // Voucher-only mode (skip purchase, use gift voucher instead)
+  const [useVoucherMode, setUseVoucherMode] = useState(false);
+  const [offerVoucherCode, setOfferVoucherCode] = useState("");
+  const [offerVoucherStatus, setOfferVoucherStatus] = useState<"idle" | "valid" | "invalid" | "checking">("idle");
+  const [offerVoucherData, setOfferVoucherData] = useState<any>(null);
+
+  // Load pricing cards from DB
+  useEffect(() => {
+    supabase.from("pricing_cards").select("*").order("sort_order").then(({ data }) => {
+      if (data) setPricingCards(data as unknown as PricingCard[]);
+    });
+  }, []);
 
   // Determine initial step based on profile
   useEffect(() => {
@@ -277,23 +298,56 @@ export default function Reserver() {
   };
 
   // --- Card purchase ---
-  const handleBuyCard = (card: typeof CARD_OPTIONS[0]) => {
+  const handleBuyCard = (card: PricingCard) => {
     setSelectedCard(card);
     setStripeAmount(card.price);
-    setStripeDescription(`${card.label} — MyIgiStudio`);
+    setStripeDescription(`${card.name} — MyIgiStudio`);
     setPaymentPurpose("card");
     setShowStripeModal(true);
+  };
+
+  // --- Voucher validation in offers step ---
+  const handleValidateOfferVoucher = async () => {
+    if (!offerVoucherCode.trim()) return;
+    setOfferVoucherStatus("checking");
+    const { data } = await supabase
+      .from("gift_vouchers")
+      .select("*")
+      .eq("code", offerVoucherCode.trim().toUpperCase())
+      .single();
+    if (!data) { setOfferVoucherStatus("invalid"); setOfferVoucherData(null); return; }
+    const voucher = data as any;
+    if (voucher.used || new Date(voucher.expires_at) < new Date()) {
+      setOfferVoucherStatus("invalid");
+      setOfferVoucherData(null);
+      return;
+    }
+    setOfferVoucherStatus("valid");
+    setOfferVoucherData(voucher);
+  };
+
+  const handleUseVoucher = () => {
+    if (!offerVoucherData) return;
+    // Add credits from voucher
+    const sessions = offerVoucherData.sessions || 1;
+    addCredits(sessions, `Bon cadeau ${offerVoucherData.code}`);
+    addNotification(
+      `${currentProfile?.name || "Client"} a utilisé un bon cadeau (${offerVoucherData.code})`,
+      "purchase"
+    );
+    toast({ title: `Bon cadeau activé ! ${sessions} crédit${sessions > 1 ? "s" : ""} ajouté${sessions > 1 ? "s" : ""} 🎉` });
+    setBookingStep("confirm");
   };
 
   const handleStripeSuccess = () => {
     setShowStripeModal(false);
     if (paymentPurpose === "card" && selectedCard) {
-      addCredits(selectedCard.sessions, selectedCard.label);
+      addCredits(selectedCard.sessions, selectedCard.name);
       addNotification(
-        `${currentProfile?.name || "Client"} vient d'acheter une ${selectedCard.label}`,
+        `${currentProfile?.name || "Client"} vient d'acheter une ${selectedCard.name}`,
         "purchase"
       );
-      toast({ title: `${selectedCard.label} achetée avec succès ! 🎉` });
+      toast({ title: `${selectedCard.name} achetée avec succès ! 🎉` });
       setBookingStep("confirm");
     } else if (paymentPurpose === "workshop") {
       addNotification(
@@ -367,12 +421,8 @@ export default function Reserver() {
     );
 
     setSubmitting(false);
-    // Redirect to mon-espace (with welcome flag for new users)
-    if (isNewUser) {
-      navigate("/mon-espace?welcome=1");
-    } else {
-      navigate("/mon-espace");
-    }
+    // Always redirect to mon-espace with welcome flag
+    navigate("/mon-espace?welcome=1");
   };
 
   const handleConfirmClick = () => {
@@ -390,6 +440,10 @@ export default function Reserver() {
     }
     handleFinalConfirm();
   };
+
+  // Unit price for savings calc
+  const unitCard = pricingCards.find(c => c.sessions === 1);
+  const unitPrice = unitCard ? unitCard.price : null;
 
   // --- Loading ---
   if (loading) {
@@ -425,7 +479,7 @@ export default function Reserver() {
     );
   }
 
-  // Client-only profiles for login selection
+  // Client-only profiles for login selection (filter out admin and fournisseur)
   const clientDefaultProfiles = [
     { id: "marion", name: "Marion", subtitle: "Nouvelle cliente" },
     { id: "sophie", name: "Sophie", subtitle: "Cliente existante (4 crédits)" },
@@ -447,6 +501,12 @@ export default function Reserver() {
             </h1>
             {activity.description && (
               <p className="text-muted-foreground mt-1 text-sm">{activity.description}</p>
+            )}
+            {/* Show connected user name */}
+            {currentProfile && (
+              <p className="text-sm text-primary-dark font-medium mt-2">
+                Connecté en tant que <strong>{currentProfile.name}</strong>
+              </p>
             )}
           </div>
 
@@ -599,66 +659,183 @@ export default function Reserver() {
           )}
 
           {/* ═══════════════════════════════════════════════ */}
-          {/* STEP: OFFERS — Buy a card (for courses only) */}
+          {/* STEP: OFFERS — Buy a card OR use gift voucher */}
           {/* ═══════════════════════════════════════════════ */}
           {bookingStep === "offers" && currentProfile && needsCredits && (
-            <div className="max-w-md mx-auto space-y-6">
-              <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-6 space-y-4">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary-dark" />
-                  <h2 className="font-display font-semibold text-primary-dark">
-                    {currentProfile.cards.length > 0 ? "Rechargez vos crédits" : "Comment ça marche ?"}
-                  </h2>
-                </div>
+            <div className="max-w-2xl mx-auto space-y-6">
+              {/* Greeting */}
+              <div className="text-center">
+                <h2 className="text-xl font-display font-semibold text-primary-dark">
+                  {currentProfile.name}, choisissez votre formule
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {currentProfile.cards.length === 0
+                    ? "Les cours de Yoga & Pilates fonctionnent avec un système de crédits. Choisissez la formule qui vous correspond."
+                    : "Vous n'avez plus de crédits. Rechargez pour continuer à réserver."
+                  }
+                </p>
+              </div>
 
-                {currentProfile.cards.length === 0 && (
-                  <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      Les cours de Yoga & Pilates fonctionnent avec un <strong>système de crédits</strong> :
-                    </p>
-                    <div className="grid gap-2">
-                      <div className="flex items-start gap-3">
-                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground flex items-center justify-center text-xs font-bold">1</span>
-                        <p className="text-sm">Achetez une <strong>carte de cours</strong></p>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground flex items-center justify-center text-xs font-bold">2</span>
-                        <p className="text-sm">Chaque réservation utilise <strong>1 crédit</strong></p>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground flex items-center justify-center text-xs font-bold">3</span>
-                        <p className="text-sm">Réservez autant de cours que vous voulez !</p>
-                      </div>
+              {/* How it works for first-timers */}
+              {currentProfile.cards.length === 0 && (
+                <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-5 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary-dark" />
+                    <h3 className="font-display font-semibold text-primary-dark">Comment ça marche ?</h3>
+                  </div>
+                  <div className="grid gap-2">
+                    <div className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground flex items-center justify-center text-xs font-bold">1</span>
+                      <p className="text-sm">Achetez une <strong>carte de cours</strong> ou utilisez un <strong>bon cadeau</strong></p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground flex items-center justify-center text-xs font-bold">2</span>
+                      <p className="text-sm">Chaque réservation utilise <strong>1 crédit</strong></p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground flex items-center justify-center text-xs font-bold">3</span>
+                      <p className="text-sm">Réservez autant de cours que vous voulez !</p>
                     </div>
                   </div>
-                )}
-
-                {currentProfile.cards.length > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Vous n'avez plus de crédits. Choisissez une carte pour continuer.
-                  </p>
-                )}
-
-                <div className="border-t pt-4 space-y-2">
-                  <p className="text-xs font-semibold text-primary-dark uppercase tracking-wide">Choisissez votre carte</p>
-                  {CARD_OPTIONS.map(card => (
-                    <button
-                      key={card.sessions}
-                      onClick={() => handleBuyCard(card)}
-                      className="w-full flex items-center justify-between rounded-lg border bg-background p-3 hover:border-primary-dark/40 transition-colors text-left"
-                    >
-                      <div>
-                        <p className="font-medium text-sm">{card.label}</p>
-                        <p className="text-xs text-muted-foreground">{(card.price / card.sessions).toFixed(0)}€ / cours</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-primary-dark">{card.price}€</span>
-                        <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    </button>
-                  ))}
                 </div>
-              </div>
+              )}
+
+              {/* Pricing cards grid — same style as PricingSection but without bullet points */}
+              {!useVoucherMode && (
+                <>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {pricingCards.map(card => {
+                      const perSession = card.sessions > 0 && card.sessions < 9999 ? card.price / card.sessions : null;
+                      const savingsPercent = unitPrice && perSession && card.sessions > 1
+                        ? Math.round((1 - perSession / unitPrice) * 100)
+                        : null;
+
+                      return (
+                        <div
+                          key={card.id}
+                          className={cn(
+                            "relative rounded-xl border p-5 bg-card flex flex-col cursor-pointer transition-all hover:shadow-md",
+                            card.popular
+                              ? "border-primary-dark shadow-lg ring-2 ring-primary-dark/20"
+                              : "hover:border-primary/40"
+                          )}
+                          onClick={() => handleBuyCard(card)}
+                        >
+                          {card.popular && (
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                              <Star className="h-3 w-3" /> Populaire
+                            </div>
+                          )}
+
+                          <h3 className="font-display font-semibold text-lg text-primary-dark">{card.name}</h3>
+                          <div className="mt-3 mb-1">
+                            <span className="text-3xl font-bold text-foreground">{card.price}€</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-1">
+                            {card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`} · {card.validity}
+                          </p>
+
+                          {perSession !== null && (
+                            <p className="text-xs text-muted-foreground mb-1">
+                              {perSession.toFixed(2)}€ / cours
+                              {savingsPercent && savingsPercent > 0 && (
+                                <span className="ml-1.5 text-primary font-semibold">-{savingsPercent}%</span>
+                              )}
+                            </p>
+                          )}
+                          {card.sessions >= 9999 && (
+                            <p className="text-xs text-muted-foreground mb-1">Accès illimité</p>
+                          )}
+
+                          {card.payment_info && (
+                            <p className="text-xs text-primary italic mb-3">{card.payment_info}</p>
+                          )}
+
+                          <div className="mt-auto pt-3">
+                            <Button
+                              className={cn(
+                                "w-full",
+                                card.popular ? "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90" : ""
+                              )}
+                              variant={card.popular ? "default" : "outline"}
+                            >
+                              <ShoppingCart className="h-4 w-4 mr-1.5" /> Choisir
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Separator + voucher option */}
+                  <div className="relative flex items-center gap-4">
+                    <div className="flex-1 border-t" />
+                    <span className="text-sm text-muted-foreground">ou</span>
+                    <div className="flex-1 border-t" />
+                  </div>
+
+                  <button
+                    onClick={() => setUseVoucherMode(true)}
+                    className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 p-4 text-primary-dark font-medium hover:bg-primary/10 transition-colors"
+                  >
+                    <Gift className="h-5 w-5" /> J'ai un bon cadeau
+                  </button>
+                </>
+              )}
+
+              {/* Voucher input mode */}
+              {useVoucherMode && (
+                <div className="rounded-xl border bg-card p-6 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Gift className="h-5 w-5 text-primary-dark" />
+                    <h3 className="font-display font-semibold text-primary-dark">Utiliser un bon cadeau</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Saisissez le code de votre bon cadeau pour l'activer et créditer votre compte.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="IGI-XXXXXXXX"
+                      value={offerVoucherCode}
+                      onChange={e => { setOfferVoucherCode(e.target.value.toUpperCase()); setOfferVoucherStatus("idle"); setOfferVoucherData(null); }}
+                      className="font-mono text-sm"
+                      autoFocus
+                    />
+                    <Button
+                      variant="outline"
+                      disabled={!offerVoucherCode.trim() || offerVoucherStatus === "checking"}
+                      onClick={handleValidateOfferVoucher}
+                    >
+                      {offerVoucherStatus === "checking" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Vérifier"}
+                    </Button>
+                  </div>
+                  {offerVoucherStatus === "valid" && offerVoucherData && (
+                    <div className="space-y-3">
+                      <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
+                        <p className="text-sm text-primary-dark font-medium">
+                          ✓ Bon cadeau valide — {offerVoucherData.sessions || 1} crédit{(offerVoucherData.sessions || 1) > 1 ? "s" : ""}
+                        </p>
+                        {offerVoucherData.card_name && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{offerVoucherData.card_name}</p>
+                        )}
+                      </div>
+                      <Button className="w-full" onClick={handleUseVoucher}>
+                        <Gift className="h-4 w-4 mr-1.5" /> Activer mon bon cadeau
+                      </Button>
+                    </div>
+                  )}
+                  {offerVoucherStatus === "invalid" && (
+                    <p className="text-xs text-destructive">Code invalide, expiré ou déjà utilisé.</p>
+                  )}
+
+                  <button
+                    onClick={() => { setUseVoucherMode(false); setOfferVoucherCode(""); setOfferVoucherStatus("idle"); }}
+                    className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors text-center"
+                  >
+                    ← Voir les cartes de cours
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -666,235 +843,183 @@ export default function Reserver() {
           {/* STEP: CONFIRM — Reservation form */}
           {/* ═══════════════════════════════════════════════ */}
           {bookingStep === "confirm" && currentProfile && (
-            <div className={`grid ${directBooking ? "" : "md:grid-cols-2"} gap-6`}>
-              {/* Calendar (only if not direct booking) */}
-              {!directBooking && (
-                <div>
-                  <h2 className="text-sm font-semibold text-primary-dark mb-3">Choisissez une date</h2>
-                  <div className="rounded-xl border bg-card p-4 flex justify-center">
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={(d) => { setSelectedDate(d); setSelectedSlot(""); }}
-                      locale={fr}
-                      disabled={isDateDisabled}
-                      className={cn("p-3 pointer-events-auto")}
-                    />
+            <div className="max-w-2xl mx-auto space-y-6">
+              {/* Section 1: Activity header */}
+              <div>
+                <h2 className="text-xl font-display font-semibold text-primary-dark">
+                  Réserver : {activity.name}
+                </h2>
+                {activity.description && (
+                  <p className="text-muted-foreground mt-1 text-sm">{activity.description}</p>
+                )}
+              </div>
+
+              {/* Section 2: Activity info */}
+              {selectedSlotData && selectedDate && (
+                <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-sm">
+                  <h3 className="text-xs font-semibold text-primary-dark uppercase tracking-wide mb-2">
+                    Infos de l'activité
+                  </h3>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Date</span>
+                    <span className="font-medium">{selectedDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</span>
                   </div>
-                  {activity.type === "course" && availableDays.size > 0 && (
-                    <p className="text-xs text-muted-foreground mt-2 text-center">
-                      Disponible : {Array.from(availableDays).join(", ")}
-                    </p>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Horaire</span>
+                    <span className="font-medium">{selectedSlotData.time} - {selectedSlotData.end_time}</span>
+                  </div>
+                  {selectedSlotData.duration && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Durée</span>
+                      <span className="font-medium">{selectedSlotData.duration}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Places restantes</span>
+                    <span className="font-medium">{selectedSlotData.spotsLeft}/{selectedSlotData.spots}</span>
+                  </div>
+                  {isWorkshopDirect && selectedSlotData.price != null && (
+                    <div className="flex justify-between border-t pt-2 mt-1">
+                      <span className="text-muted-foreground">Prix</span>
+                      <span className="font-semibold text-primary-dark">{selectedSlotData.price} €</span>
+                    </div>
                   )}
                 </div>
               )}
 
-              {/* Slot + participants + confirm */}
-              <div className="space-y-4">
-                {selectedDate ? (
-                  <>
-                    <h2 className="text-sm font-semibold text-primary-dark">
-                      {selectedDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
-                    </h2>
+              {/* Section 3: Credits/voucher status */}
+              {needsCredits && (
+                <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">
+                  <p className="text-sm font-medium text-primary-dark">
+                    {currentProfile.name}, vous avez <strong>{currentProfile.credits} crédit{currentProfile.credits > 1 ? "s" : ""}</strong> disponible{currentProfile.credits > 1 ? "s" : ""}.
+                  </p>
+                  {voucherStatus === "valid" && (
+                    <p className="text-xs text-primary-dark mt-1">+ Bon cadeau validé ✓</p>
+                  )}
+                  <Badge variant="secondary" className="gap-1 text-xs mt-2">
+                    <CreditCard className="h-3 w-3" /> 1 crédit sera déduit
+                  </Badge>
+                </div>
+              )}
+              {isWorkshopDirect && (
+                <div className="rounded-lg bg-accent/10 border border-accent/30 p-4">
+                  <Badge variant="outline" className="gap-1 text-xs">
+                    <ShoppingCart className="h-3 w-3" /> Paiement par carte
+                  </Badge>
+                </div>
+              )}
 
-                    {slots.length > 0 ? (
-                      <div className="space-y-2">
-                        {slots.map(slot => (
-                          <div
-                            key={slot.id}
-                            onClick={() => slot.spotsLeft > 0 && setSelectedSlot(slot.id)}
-                            className={cn(
-                              "rounded-lg border p-3 cursor-pointer transition-all",
-                              selectedSlot === slot.id ? "border-primary-dark ring-2 ring-primary-dark/20 bg-primary/5" : "hover:border-primary-dark/50",
-                              slot.spotsLeft === 0 && "opacity-50 cursor-not-allowed"
-                            )}
-                          >
-                            <div className="flex items-center gap-3 text-sm">
-                              <Clock className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{slot.time}{slot.end_time ? ` - ${slot.end_time}` : ""}</span>
-                              <span className="text-muted-foreground">· {slot.duration}</span>
-                            </div>
-                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                              <Users className="h-3 w-3" />
-                              {slot.spotsLeft === 0 ? (
-                                <span className="text-destructive font-medium">Complet</span>
-                              ) : (
-                                <span>{slot.spotsLeft}/{slot.spots} places</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground py-4">Aucun créneau disponible.</p>
-                    )}
-
-                    {selectedSlotData && (
-                      <div className="space-y-4 pt-2">
-                        {/* Participants */}
-                        <div>
-                          <Label className="text-sm">Participants</Label>
-                          <div className="flex items-center gap-3 mt-1">
-                            <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setParticipants(Math.max(1, participants - 1))}>-</Button>
-                            <Input
-                              type="number" min={1} max={selectedSlotData.spotsLeft}
-                              value={participants}
-                              onChange={(e) => setParticipants(Math.min(Number(e.target.value), selectedSlotData.spotsLeft))}
-                              className="w-16 text-center h-8"
-                            />
-                            <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setParticipants(Math.min(selectedSlotData.spotsLeft, participants + 1))}>+</Button>
-                          </div>
-                        </div>
-
-                        {/* Credits info */}
-                        {needsCredits && currentProfile.credits > 0 && (
-                          <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 flex items-center gap-2">
-                            <CreditCard className="h-4 w-4 text-primary-dark" />
-                            <span className="text-sm">
-                              <strong>{currentProfile.credits}</strong> crédit{currentProfile.credits > 1 ? "s" : ""} disponible{currentProfile.credits > 1 ? "s" : ""}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Summary */}
-                        <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Activité</span>
-                            <span className="font-medium">{selectedSlotData.name}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Date</span>
-                            <span className="font-medium">{selectedDate.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Horaire</span>
-                            <span className="font-medium">{selectedSlotData.time} - {selectedSlotData.end_time}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Participants</span>
-                            <span className="font-medium">{participants}</span>
-                          </div>
-                          {isWorkshopDirect && selectedSlotData.price != null && (
-                            <div className="flex justify-between border-t pt-2 mt-1">
-                              <span className="text-muted-foreground">Prix</span>
-                              <span className="font-semibold text-primary-dark">{selectedSlotData.price} €</span>
-                            </div>
-                          )}
-                          <div className="pt-1">
-                            {needsCredits ? (
-                              <Badge variant="secondary" className="gap-1 text-xs">
-                                <CreditCard className="h-3 w-3" /> 1 crédit sera déduit
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="gap-1 text-xs">
-                                <ShoppingCart className="h-3 w-3" /> Paiement par carte
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Booking blocked warning */}
-                        {bookingBlocked && (
-                          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
-                            <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                            <p className="text-sm text-destructive">{bookingBlocked}</p>
-                          </div>
-                        )}
-
-                        {/* Gift voucher code */}
-                        <div className="space-y-2">
-                          <Label className="text-sm flex items-center gap-1.5">
-                            <Gift className="h-3.5 w-3.5" /> Code bon cadeau (optionnel)
-                          </Label>
-                          <div className="flex gap-2">
-                            <Input
-                              placeholder="IGI-XXXXXXXX"
-                              value={voucherCode}
-                              onChange={e => { setVoucherCode(e.target.value.toUpperCase()); setVoucherStatus("idle"); }}
-                              className="font-mono text-sm"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={!voucherCode.trim() || voucherStatus === "checking"}
-                              onClick={async () => {
-                                setVoucherStatus("checking");
-                                const { data } = await supabase
-                                  .from("gift_vouchers")
-                                  .select("id, used, expires_at")
-                                  .eq("code", voucherCode.trim())
-                                  .single();
-                                if (!data) { setVoucherStatus("invalid"); return; }
-                                if ((data as any).used || new Date((data as any).expires_at) < new Date()) { setVoucherStatus("invalid"); return; }
-                                setVoucherStatus("valid");
-                              }}
-                            >
-                              Vérifier
-                            </Button>
-                          </div>
-                          {voucherStatus === "valid" && (
-                            <p className="text-xs text-primary-dark font-medium">✓ Bon cadeau valide</p>
-                          )}
-                          {voucherStatus === "invalid" && (
-                            <p className="text-xs text-destructive">Code invalide, expiré ou déjà utilisé</p>
-                          )}
-                        </div>
-
-                        {/* Conditions */}
-                        {applicableConditions.length > 0 && !bookingBlocked && (
-                          <div className="space-y-3">
-                            <Accordion type="multiple" className="w-full">
-                              {applicableConditions.map(c => (
-                                <AccordionItem key={c.id} value={c.id} className="border rounded-lg bg-muted/30 px-3">
-                                  <AccordionTrigger className="py-2 text-xs font-semibold text-primary-dark hover:no-underline">
-                                    {c.title}
-                                  </AccordionTrigger>
-                                  <AccordionContent>
-                                    <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{c.content}</p>
-                                  </AccordionContent>
-                                </AccordionItem>
-                              ))}
-                            </Accordion>
-                            <div className="flex items-start gap-2">
-                              <Checkbox
-                                id="accept-conditions"
-                                checked={conditionsAccepted}
-                                onCheckedChange={(v) => setConditionsAccepted(!!v)}
-                              />
-                              <label htmlFor="accept-conditions" className="text-xs text-muted-foreground cursor-pointer leading-tight">
-                                J'ai lu et j'accepte les conditions ci-dessus
-                              </label>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Confirm button */}
-                        <Button
-                          onClick={handleConfirmClick}
-                          disabled={submitting || !!bookingBlocked || (applicableConditions.length > 0 && !conditionsAccepted)}
-                          className="w-full bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-1.5"
-                        >
-                          {submitting ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : isWorkshopDirect ? (
-                            <ShoppingCart className="h-4 w-4" />
-                          ) : (
-                            <Check className="h-4 w-4" />
-                          )}
-                          {isWorkshopDirect
-                            ? `Payer ${selectedSlotData?.price || activity.price || ""} € et réserver`
-                            : "Confirmer la réservation"}
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="py-8 text-center">
-                    <p className="text-sm text-muted-foreground">Sélectionnez une date pour voir les créneaux disponibles.</p>
+              {/* Section 4: Participants */}
+              {selectedSlotData && (
+                <div>
+                  <Label className="text-sm font-semibold text-primary-dark">Nombre de participants</Label>
+                  <div className="flex items-center gap-3 mt-2">
+                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setParticipants(Math.max(1, participants - 1))}>-</Button>
+                    <Input
+                      type="number" min={1} max={selectedSlotData.spotsLeft}
+                      value={participants}
+                      onChange={(e) => setParticipants(Math.min(Number(e.target.value), selectedSlotData.spotsLeft))}
+                      className="w-16 text-center h-8"
+                    />
+                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setParticipants(Math.min(selectedSlotData.spotsLeft, participants + 1))}>+</Button>
                   </div>
+                </div>
+              )}
+
+              {/* Section 5: Conditions */}
+              {bookingBlocked && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                  <p className="text-sm text-destructive">{bookingBlocked}</p>
+                </div>
+              )}
+
+              {/* Gift voucher code (optional, in confirm step) */}
+              {needsCredits && (
+                <div className="space-y-2">
+                  <Label className="text-sm flex items-center gap-1.5">
+                    <Gift className="h-3.5 w-3.5" /> Code bon cadeau (optionnel)
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="IGI-XXXXXXXX"
+                      value={voucherCode}
+                      onChange={e => { setVoucherCode(e.target.value.toUpperCase()); setVoucherStatus("idle"); }}
+                      className="font-mono text-sm"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!voucherCode.trim() || voucherStatus === "checking"}
+                      onClick={async () => {
+                        setVoucherStatus("checking");
+                        const { data } = await supabase
+                          .from("gift_vouchers")
+                          .select("id, used, expires_at")
+                          .eq("code", voucherCode.trim())
+                          .single();
+                        if (!data) { setVoucherStatus("invalid"); return; }
+                        if ((data as any).used || new Date((data as any).expires_at) < new Date()) { setVoucherStatus("invalid"); return; }
+                        setVoucherStatus("valid");
+                      }}
+                    >
+                      Vérifier
+                    </Button>
+                  </div>
+                  {voucherStatus === "valid" && (
+                    <p className="text-xs text-primary-dark font-medium">✓ Bon cadeau valide</p>
+                  )}
+                  {voucherStatus === "invalid" && (
+                    <p className="text-xs text-destructive">Code invalide, expiré ou déjà utilisé</p>
+                  )}
+                </div>
+              )}
+
+              {applicableConditions.length > 0 && !bookingBlocked && (
+                <div className="space-y-3">
+                  <Accordion type="multiple" className="w-full">
+                    {applicableConditions.map(c => (
+                      <AccordionItem key={c.id} value={c.id} className="border rounded-lg bg-muted/30 px-3">
+                        <AccordionTrigger className="py-2 text-xs font-semibold text-primary-dark hover:no-underline">
+                          {c.title}
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{c.content}</p>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="accept-conditions"
+                      checked={conditionsAccepted}
+                      onCheckedChange={(v) => setConditionsAccepted(!!v)}
+                    />
+                    <label htmlFor="accept-conditions" className="text-xs text-muted-foreground cursor-pointer leading-tight">
+                      J'ai lu et j'accepte les conditions ci-dessus
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Confirm button */}
+              <Button
+                onClick={handleConfirmClick}
+                disabled={submitting || !!bookingBlocked || (applicableConditions.length > 0 && !conditionsAccepted)}
+                className="w-full bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-1.5"
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isWorkshopDirect ? (
+                  <ShoppingCart className="h-4 w-4" />
+                ) : (
+                  <Check className="h-4 w-4" />
                 )}
-              </div>
+                {isWorkshopDirect
+                  ? `Payer ${selectedSlotData?.price || activity.price || ""} € et réserver`
+                  : "Confirmer la réservation"}
+              </Button>
             </div>
           )}
         </div>
