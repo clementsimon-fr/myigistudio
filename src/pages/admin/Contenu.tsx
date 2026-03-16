@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Megaphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { saveSiteSettings } from "@/hooks/useSiteSettings";
@@ -22,43 +22,18 @@ interface SectionDef {
 
 const SECTIONS: SectionDef[] = [
   {
-    title: "Page d'accueil — Hero",
+    title: "Section Héro",
     fields: [
-      { key: "hero_welcome", label: "Texte d'accueil", type: "text" },
-      { key: "hero_title", label: "Titre principal", type: "text" },
+      { key: "hero_welcome", label: "Texte d'accueil (ex: BIENVENUE CHEZ)", type: "text" },
+      { key: "hero_title", label: "Titre principal (ex: MyIgiStudio)", type: "text" },
       { key: "hero_subtitle", label: "Sous-titre", type: "textarea" },
     ],
   },
   {
-    title: "Page d'accueil — Activités",
+    title: "Événement à la une",
     fields: [
-      { key: "services_title", label: "Titre section", type: "text" },
-      { key: "services_subtitle", label: "Sous-titre", type: "text" },
-      { key: "service_yoga_desc", label: "Description Yoga", type: "textarea" },
-      { key: "service_poterie_desc", label: "Description Poterie", type: "textarea" },
-      { key: "service_ateliers_desc", label: "Description Ateliers", type: "textarea" },
-    ],
-  },
-  {
-    title: "Page Yoga",
-    fields: [
-      { key: "yoga_page_title", label: "Titre", type: "text" },
-      { key: "yoga_page_subtitle", label: "Sous-titre", type: "textarea" },
-      { key: "yoga_infos", label: "Infos pratiques", type: "textarea" },
-    ],
-  },
-  {
-    title: "Page Poterie",
-    fields: [
-      { key: "poterie_page_title", label: "Titre", type: "text" },
-      { key: "poterie_page_subtitle", label: "Sous-titre", type: "textarea" },
-    ],
-  },
-  {
-    title: "Page Ateliers",
-    fields: [
-      { key: "ateliers_page_title", label: "Titre", type: "text" },
-      { key: "ateliers_page_subtitle", label: "Sous-titre", type: "textarea" },
+      { key: "featured_event_title", label: "Titre de l'événement", type: "text" },
+      { key: "featured_event_link", label: "Lien (URL ou chemin, ex: /?view=planning&filter=bien-etre)", type: "text" },
     ],
   },
 ];
@@ -68,12 +43,17 @@ export default function AdminContenu() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [workshops, setWorkshops] = useState<any[]>([]);
 
   useEffect(() => {
-    supabase.from("site_settings").select("key, value").then(({ data }) => {
+    Promise.all([
+      supabase.from("site_settings").select("key, value"),
+      supabase.from("workshops").select("id, name, date").gte("date", new Date().toISOString().split("T")[0]).order("date", { ascending: true }).limit(5),
+    ]).then(([settingsRes, workshopsRes]) => {
       const map: Record<string, string> = {};
-      if (data) for (const r of data) map[r.key] = r.value;
+      if (settingsRes.data) for (const r of settingsRes.data) map[r.key] = r.value;
       setValues(map);
+      if (workshopsRes.data) setWorkshops(workshopsRes.data as any[]);
       setLoading(false);
     });
   }, []);
@@ -88,6 +68,8 @@ export default function AdminContenu() {
     setSaving(false);
   };
 
+  const hasFeaturedEvent = !!(values.featured_event_title?.trim());
+
   if (loading) {
     return (
       <AdminLayout title="Contenu du site">
@@ -101,9 +83,37 @@ export default function AdminContenu() {
   return (
     <AdminLayout title="Contenu du site">
       <div className="max-w-2xl space-y-8">
-        {SECTIONS.map(section => (
+        {SECTIONS.map((section, idx) => (
           <div key={section.title} className="rounded-xl border bg-card p-5 space-y-4">
-            <h3 className="font-display font-semibold text-primary-dark">{section.title}</h3>
+            <h3 className="font-display font-semibold text-primary-dark flex items-center gap-2">
+              {idx === 1 && <Megaphone className="h-4 w-4" />}
+              {section.title}
+            </h3>
+            {idx === 1 && (
+              <p className="text-xs text-muted-foreground">
+                {hasFeaturedEvent
+                  ? "✅ Un événement à la une sera affiché sur la page d'accueil."
+                  : "Laissez le titre vide pour ne rien afficher."}
+              </p>
+            )}
+            {idx === 1 && workshops.length > 0 && !values.featured_event_title && (
+              <div className="rounded-lg bg-muted/50 p-3 space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Événements à venir :</p>
+                {workshops.map(w => (
+                  <button
+                    key={w.id}
+                    className="block text-xs text-primary-dark hover:underline"
+                    onClick={() => setValues(prev => ({
+                      ...prev,
+                      featured_event_title: w.name,
+                      featured_event_link: `/?view=planning&filter=bien-etre&activity=${encodeURIComponent(w.name)}`,
+                    }))}
+                  >
+                    {w.name} — {new Date(w.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+                  </button>
+                ))}
+              </div>
+            )}
             {section.fields.map(field => (
               <div key={field.key}>
                 <Label className="text-xs text-muted-foreground">{field.label}</Label>
