@@ -1,10 +1,10 @@
-import { useMemo } from "react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useMemo, useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-const DAYS_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+const DAYS_SHORT = ["L", "M", "M", "J", "V", "S", "D"];
 
 function getDayFromDate(dateStr: string): string | null {
   try {
@@ -22,6 +22,27 @@ interface PlanningTypeViewProps {
   workshops: Workshop[];
   schedules: Schedule[];
   filter?: string;
+}
+
+function TimePopover({ slots, dotColor }: { slots: TimeSlot[]; dotColor: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className={`inline-flex items-center justify-center w-5 h-5 rounded text-[9px] font-bold text-white cursor-pointer hover:opacity-80 ${dotColor}`}
+          onClick={() => setOpen(true)}
+        >
+          ✕
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" className="w-auto p-2 text-xs">
+        {slots.map((s, i) => (
+          <div key={i} className="whitespace-nowrap">{s.time} – {s.end_time}</div>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 export default function PlanningTypeView({ courses, workshops, schedules, filter }: PlanningTypeViewProps) {
@@ -76,7 +97,7 @@ export default function PlanningTypeView({ courses, workshops, schedules, filter
         <h2 className="text-xl md:text-2xl font-display font-bold text-primary-dark mb-6 text-center">
           Semaine type
         </h2>
-        <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="space-y-6 max-w-3xl mx-auto">
           {grouped.map(([category, activities]) => {
             const style = CATEGORY_STYLES[category];
             const dotColor = style?.dot || "bg-primary";
@@ -89,9 +110,9 @@ export default function PlanningTypeView({ courses, workshops, schedules, filter
                   <table className="w-full border-collapse text-sm">
                     <thead>
                       <tr className="border-b bg-muted/30">
-                        <th className="text-left py-2 px-3 font-medium text-muted-foreground min-w-[120px]">Activité</th>
-                        {DAYS_SHORT.map(d => (
-                          <th key={d} className="py-2 px-1.5 font-medium text-muted-foreground text-center w-10">{d}</th>
+                        <th className="text-left py-2 px-3 font-medium text-muted-foreground min-w-[90px]">Activité</th>
+                        {DAYS_SHORT.map((d, i) => (
+                          <th key={`${d}-${i}`} className="py-2 px-1 font-medium text-muted-foreground text-center w-8">{d}</th>
                         ))}
                       </tr>
                     </thead>
@@ -101,24 +122,15 @@ export default function PlanningTypeView({ courses, workshops, schedules, filter
                           <td className="py-2.5 px-3">
                             <div className="flex items-center gap-2">
                               <div className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
-                              <span className="font-medium text-sm">{a.name}</span>
+                              <span className="font-medium text-xs">{a.name}</span>
                             </div>
                           </td>
                           {DAYS.map(day => {
                             const daySlots = a.slots.filter(s => s.day === day);
                             return (
-                              <td key={day} className="py-2.5 px-1.5 text-center">
+                              <td key={day} className="py-2.5 px-1 text-center">
                                 {daySlots.length > 0 ? (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold text-white cursor-default ${dotColor}`}>✕</span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="text-xs">
-                                      {daySlots.map((s, i) => (
-                                        <div key={i}>{s.time} – {s.end_time}</div>
-                                      ))}
-                                    </TooltipContent>
-                                  </Tooltip>
+                                  <TimePopover slots={daySlots} dotColor={dotColor} />
                                 ) : (
                                   <span className="text-muted-foreground/20">·</span>
                                 )}
