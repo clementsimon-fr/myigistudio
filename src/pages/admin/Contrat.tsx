@@ -364,13 +364,13 @@ export default function AdminContrat() {
           </p>
 
           <div className="mt-2">
-            {timelinePhases.map((phase, i) => (
+            {phases.map((phase, i) => (
               <TimelineStep
                 key={phase.name}
                 phase={phase}
-                isLast={i === timelinePhases.length - 1}
+                isLast={i === phases.length - 1}
                 isFournisseur={isFournisseur}
-                onEdit={handleEditPhase}
+                onSave={handleSavePhase}
               />
             ))}
           </div>
