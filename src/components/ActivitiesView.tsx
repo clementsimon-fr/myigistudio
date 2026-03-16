@@ -211,7 +211,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${getCategoryStyle("bien-etre").text}`}>Ateliers & Stages</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {wellbeingWorkshops.map((ws, i) => (
-                <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} onBook={handleBookWorkshop} onFrequency={() => openFrequency("bien-etre")} />
+                <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} onBook={handleBookWorkshop} onFrequency={() => openFrequency("bien-etre", ws.name)} />
               ))}
             </div>
           </div>
