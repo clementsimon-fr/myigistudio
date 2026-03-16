@@ -12,6 +12,7 @@ import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Us
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ActivityCalendar from "@/components/admin/ActivityCalendar";
+import DailyView from "@/components/admin/DailyView";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 // ── Template Variables ──
@@ -178,7 +179,7 @@ export default function AdminActivites() {
   const [activities, setActivities] = useState<UnifiedActivity[]>([]);
   const [instructorsList, setInstructorsList] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"list" | "cards" | "calendar">("cards");
+  const [viewMode, setViewMode] = useState<"list" | "cards" | "calendar" | "planning">("cards");
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
@@ -363,30 +364,28 @@ export default function AdminActivites() {
 
   if (loading) {
     return (
-      <AdminLayout title="Activités">
+      <AdminLayout title="Activités et réservations">
         <div className="flex items-center justify-center h-64"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout title="Activités">
+    <AdminLayout title="Activités et réservations">
       {/* Toolbar */}
       <div className="flex flex-col gap-3 mb-6">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button variant={viewMode === "list" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("list")}>
-              <List className="h-4 w-4" /> Liste
-            </Button>
-            <Button variant={viewMode === "cards" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("cards")}>
-              <LayoutGrid className="h-4 w-4" /> Cards
-            </Button>
-            <Button variant={viewMode === "calendar" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("calendar")}>
-              <CalendarDays className="h-4 w-4" /> Calendrier
-            </Button>
-          </div>
-          <Button size="sm" className="gap-1.5 shrink-0" onClick={openNew}>
-            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Nouvelle activité</span><span className="sm:hidden">+</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant={viewMode === "list" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("list")}>
+            <List className="h-4 w-4" /> Liste
+          </Button>
+          <Button variant={viewMode === "cards" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("cards")}>
+            <LayoutGrid className="h-4 w-4" /> Cards
+          </Button>
+          <Button variant={viewMode === "calendar" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("calendar")}>
+            <CalendarDays className="h-4 w-4" /> Calendrier
+          </Button>
+          <Button variant={viewMode === "planning" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("planning")}>
+            <CalendarDays className="h-4 w-4" /> Planning
           </Button>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
@@ -412,16 +411,24 @@ export default function AdminActivites() {
             <Input placeholder="Rechercher..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9 text-sm" />
           </div>
         </div>
+        {/* Add activity button — shown in list and cards views */}
+        {(viewMode === "list" || viewMode === "cards") && (
+          <Button size="sm" className="gap-1.5 bg-foreground text-background hover:bg-foreground/90 self-start" onClick={openNew}>
+            <Plus className="h-4 w-4" /> Nouvelle activité
+          </Button>
+        )}
       </div>
 
-      {viewMode === "calendar" ? (
+      {viewMode === "planning" ? (
+        <DailyView categoryFilter={categoryFilter} />
+      ) : viewMode === "calendar" ? (
         <ActivityCalendar />
       ) : viewMode === "cards" ? (
         <>
           <p className="text-sm text-muted-foreground mb-4">{filtered.length} activité{filtered.length > 1 ? "s" : ""}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(a => (
-              <ActivityCard key={`${a.source}-${a.id}`} activity={a} onEdit={() => openEdit(a)} onDelete={() => setDeletingItem({ id: a.id, source: a.source })} />
+              <ActivityCard key={`${a.source}-${a.id}`} activity={a} onEdit={() => openEdit(a)} />
             ))}
           </div>
           {filtered.length === 0 && (
@@ -476,10 +483,7 @@ export default function AdminActivites() {
                         )}
                       </td>
                       <td className="p-3 text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)}><Pencil className="h-3 w-3" /></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeletingItem({ id: a.id, source: a.source })}><Trash2 className="h-3 w-3" /></Button>
-                        </div>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)}><Pencil className="h-3 w-3" /></Button>
                       </td>
                     </tr>
                   );
@@ -622,18 +626,10 @@ export default function AdminActivites() {
                           <Users className="h-3.5 w-3.5 text-muted-foreground" />
                           <Input type="number" className="w-[70px] h-8 text-xs" value={evt.spots} onChange={e => updateEvent(idx, { spots: Number(e.target.value) })} placeholder="Places" />
                         </div>
-                        {evt.type === "ponctuel" && (
-                          <div className="flex items-center gap-1">
-                            <Input type="number" className="w-[70px] h-8 text-xs" value={evt.price} onChange={e => updateEvent(idx, { price: Number(e.target.value) })} placeholder="Prix" />
-                            <span className="text-xs text-muted-foreground">€</span>
-                          </div>
-                        )}
-                        {evt.type === "recurring" && (
-                          <div className="flex items-center gap-1">
-                            <Input type="number" className="w-[70px] h-8 text-xs" value={evt.price} onChange={e => updateEvent(idx, { price: Number(e.target.value) })} placeholder="Prix" />
-                            <span className="text-xs text-muted-foreground">€</span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1">
+                          <Input type="number" className="w-[70px] h-8 text-xs" value={evt.price} onChange={e => updateEvent(idx, { price: Number(e.target.value) })} placeholder="Prix" />
+                          <span className="text-xs text-muted-foreground">€</span>
+                        </div>
                       </div>
 
                       {/* ── Expanded: Rappel + Modalités per event ── */}
@@ -735,6 +731,15 @@ export default function AdminActivites() {
               </div>
             </div>
 
+            {/* Delete button inside editor */}
+            {editingActivity && (
+              <div className="border-t pt-4">
+                <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => { setDialogOpen(false); setDeletingItem({ id: editingActivity.id, source: editingActivity.source }); }}>
+                  <Trash2 className="h-3.5 w-3.5" /> Supprimer cette activité
+                </Button>
+              </div>
+            )}
+
             <Button className="w-full" onClick={save} disabled={!form.name || form.events.length === 0}>
               {editingActivity ? "Enregistrer les modifications" : "Créer l'activité"}
             </Button>
@@ -759,8 +764,8 @@ export default function AdminActivites() {
   );
 }
 
-// ── Activity Card (used for both desktop and mobile in cards view) ──
-function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActivity; onEdit: () => void; onDelete: () => void }) {
+// ── Activity Card ──
+function ActivityCard({ activity: a, onEdit }: { activity: UnifiedActivity; onEdit: () => void }) {
   const cat = CATEGORIES.find(c => c.value === a.category);
   const catLabel = cat?.label || a.category;
   const catDot = cat?.dot || "";
@@ -772,7 +777,7 @@ function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActi
   };
   const titleColor = CATEGORY_TEXT[a.category] || "text-primary-dark";
   return (
-    <div className="rounded-xl border bg-card overflow-hidden hover:shadow-md transition-shadow group">
+    <div className="rounded-xl border bg-card overflow-hidden hover:shadow-md transition-shadow group cursor-pointer" onClick={onEdit}>
       {a.image && (
         <div className="aspect-[16/7] overflow-hidden bg-muted">
           <img src={a.image} alt={a.name} className="w-full h-full object-cover" />
@@ -785,8 +790,7 @@ function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActi
             {a.description && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{a.description}</p>}
           </div>
           <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit}><Pencil className="h-3 w-3" /></Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={onDelete}><Trash2 className="h-3 w-3" /></Button>
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEdit(); }}><Pencil className="h-3 w-3" /></Button>
           </div>
         </div>
         <div className="flex items-center gap-2 mb-2 flex-wrap">
