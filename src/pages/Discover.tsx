@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { useSearchParams, Link } from "react-router-dom";
+import { Loader2, Megaphone } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import ActivityFilterBar, { type FilterCategory, CATEGORY_FILTERS } from "@/components/ActivityFilterBar";
@@ -8,11 +8,13 @@ import ActivitiesView from "@/components/ActivitiesView";
 import PlanningView from "@/components/PlanningView";
 import PlanningTypeView from "@/components/PlanningTypeView";
 import { useActivitiesData } from "@/hooks/useActivitiesData";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 export type ViewMode = "activites" | "planning" | "planning-type";
 
 export default function Discover() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { get: getSetting, ready: settingsReady } = useSiteSettings();
 
   const initialView = searchParams.get("view") === "planning" ? "planning" : searchParams.get("view") === "planning-type" ? "planning-type" : "activites";
   const initialFilter = searchParams.get("filter") as FilterCategory | null;
@@ -29,7 +31,16 @@ export default function Discover() {
 
   const { courses, schedules, workshops, loading, getInstructorPhoto } = useActivitiesData();
 
-  // Compute sub-filter options based on current category filter
+  // Site settings for hero and featured event
+  const heroWelcome = settingsReady ? getSetting("hero_welcome", "") : "";
+  const heroTitle = settingsReady ? getSetting("hero_title", "") : "";
+  const heroSubtitle = settingsReady ? getSetting("hero_subtitle", "") : "";
+  const featuredEventTitle = settingsReady ? getSetting("featured_event_title", "") : "";
+  const featuredEventLink = settingsReady ? getSetting("featured_event_link", "") : "";
+
+  const hasCustomHero = !!(heroWelcome || heroTitle || heroSubtitle);
+  const hasFeaturedEvent = !!featuredEventTitle;
+
   const subFilterOptions = useMemo(() => {
     if (filter === "all") return [];
     const names = new Set<string>();
@@ -89,10 +100,34 @@ export default function Discover() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1">
-        {/* Minimal tagline */}
-        <div className="bg-secondary/30 py-3 text-center">
-          <p className="text-sm text-muted-foreground">Yoga, Pilates, Poterie & Bien-être</p>
-        </div>
+        {/* Featured event banner */}
+        {hasFeaturedEvent && (
+          <Link
+            to={featuredEventLink || "/"}
+            className="block bg-[hsl(0,55%,58%)] text-white text-center py-2.5 px-4 text-sm font-medium hover:bg-[hsl(0,55%,50%)] transition-colors"
+          >
+            <div className="container flex items-center justify-center gap-2">
+              <Megaphone className="h-4 w-4" />
+              <span>{featuredEventTitle}</span>
+              <span className="text-white/70">— Cliquez ici pour en savoir plus</span>
+            </div>
+          </Link>
+        )}
+
+        {/* Hero section or minimal tagline */}
+        {hasCustomHero ? (
+          <div className="bg-secondary/30 py-8 text-center">
+            <div className="container max-w-2xl space-y-2">
+              {heroWelcome && <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">{heroWelcome}</p>}
+              {heroTitle && <h1 className="text-2xl md:text-4xl font-display font-bold text-primary-dark">{heroTitle}</h1>}
+              {heroSubtitle && <p className="text-sm text-muted-foreground whitespace-pre-line">{heroSubtitle}</p>}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-secondary/30 py-3 text-center">
+            <p className="text-sm text-muted-foreground">Yoga, Pilates, Poterie & Bien-être</p>
+          </div>
+        )}
 
         {/* Navigation + Filters */}
         <ActivityFilterBar
