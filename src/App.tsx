@@ -20,6 +20,7 @@ import AdminBonsCadeaux from "./pages/admin/BonsCadeaux";
 import AdminConditions from "./pages/admin/Conditions";
 import AdminFonctionnalites from "./pages/admin/Fonctionnalites";
 import AdminContrat from "./pages/admin/Contrat";
+import AdminPlanningType from "./pages/admin/PlanningType";
 import AdminParametres from "./pages/admin/Parametres";
 import NotFound from "./pages/NotFound";
 
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/admin/conditions" element={<AdminConditions />} />
             <Route path="/admin/fonctionnalites" element={<AdminFonctionnalites />} />
             <Route path="/admin/contrat" element={<AdminContrat />} />
+            <Route path="/admin/planning-type" element={<AdminPlanningType />} />
             <Route path="/admin/parametres" element={<AdminParametres />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

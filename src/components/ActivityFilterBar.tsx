@@ -35,12 +35,11 @@ export const CATEGORY_STYLES: Record<string, { block: string; dot: string; text:
   },
 };
 
-type NavTab = { label: string; value: ViewMode | "reserver" };
+type NavTab = { label: string; value: ViewMode };
 
 const NAV_TABS: NavTab[] = [
   { label: "Découvrir", value: "activites" },
-  { label: "Planning", value: "planning" },
-  { label: "Réserver", value: "reserver" },
+  { label: "Réserver", value: "planning" },
 ];
 
 interface ActivityFilterBarProps {
@@ -60,11 +59,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, view, onView
   const activeBg = catFilter?.activeBg || "bg-primary-dark";
 
   const handleNavClick = (tab: NavTab) => {
-    if (tab.value === "reserver") {
-      navigate("/reserver");
-    } else {
-      onViewChange(tab.value);
-    }
+    onViewChange(tab.value);
   };
 
   const currentNav = view === "planning" ? "planning" : "activites";
@@ -78,9 +73,9 @@ export default function ActivityFilterBar({ filter, onFilterChange, view, onView
             {NAV_TABS.map(tab => (
               <Button
                 key={tab.value}
-                size="sm"
+                size="default"
                 onClick={() => handleNavClick(tab)}
-                className={`rounded-md px-3 text-xs h-8 font-semibold transition-colors ${
+                className={`rounded-md px-5 text-sm h-10 font-semibold transition-colors ${
                   currentNav === tab.value
                     ? "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90"
                     : "bg-primary/15 text-primary-dark hover:bg-primary/25"
