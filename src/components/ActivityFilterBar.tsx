@@ -59,11 +59,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, view, onView
   const activeBg = catFilter?.activeBg || "bg-primary-dark";
 
   const handleNavClick = (tab: NavTab) => {
-    if (tab.value === "reserver") {
-      navigate("/reserver");
-    } else {
-      onViewChange(tab.value);
-    }
+    onViewChange(tab.value);
   };
 
   const currentNav = view === "planning" ? "planning" : "activites";
