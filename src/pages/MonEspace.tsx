@@ -425,38 +425,20 @@ export default function MonEspace() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Welcome popup for new users */}
+      {/* Welcome popup after booking */}
       <Dialog open={showWelcome} onOpenChange={setShowWelcome}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-display text-xl text-primary-dark">
-              Bienvenue {CLIENT_NAME} ! 🎉
+              Inscription validée ! 🎉
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 pt-2">
+          <div className="space-y-4 pt-2">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Voici <strong>votre espace client</strong>. Vous y retrouverez :
+              Nous avons hâte de vous voir. Vous voici dans <strong>votre espace client</strong>.
             </p>
-            <div className="grid gap-2">
-              <div className="flex items-start gap-2">
-                <CalendarDays className="h-4 w-4 text-primary-dark mt-0.5 shrink-0" />
-                <p className="text-sm">Vos <strong>réservations</strong> passées et à venir</p>
-              </div>
-              <div className="flex items-start gap-2">
-                <CreditCard className="h-4 w-4 text-primary-dark mt-0.5 shrink-0" />
-                <p className="text-sm">Vos <strong>cartes de cours</strong> et crédits restants</p>
-              </div>
-              <div className="flex items-start gap-2">
-                <Star className="h-4 w-4 text-primary-dark mt-0.5 shrink-0" />
-                <p className="text-sm">Vos <strong>bons cadeaux</strong> et l'envoi de feedbacks</p>
-              </div>
-              <div className="flex items-start gap-2">
-                <User className="h-4 w-4 text-primary-dark mt-0.5 shrink-0" />
-                <p className="text-sm">Vos <strong>préférences</strong> de rappel et profil</p>
-              </div>
-            </div>
-            <Button className="w-full mt-2" onClick={() => setShowWelcome(false)}>
-              C'est compris !
+            <Button className="w-full" onClick={() => setShowWelcome(false)}>
+              Ok
             </Button>
           </div>
         </DialogContent>
