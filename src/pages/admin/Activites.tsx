@@ -447,7 +447,9 @@ export default function AdminActivites() {
                 {filtered.length === 0 ? (
                   <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Aucune activité trouvée.</td></tr>
                 ) : filtered.map(a => {
-                  const catLabel = CATEGORIES.find(c => c.value === a.category)?.label || a.category;
+                  const cat = CATEGORIES.find(c => c.value === a.category);
+                  const catLabel = cat?.label || a.category;
+                  const catDot = cat?.dot || "";
                   const intensityLabel = getIntensityLabel(a.intensity);
                   return (
                     <tr key={`${a.source}-${a.id}`} className="border-b last:border-0 hover:bg-muted/10">
@@ -455,7 +457,12 @@ export default function AdminActivites() {
                         <div className="font-medium">{a.name}</div>
                         {a.description && <div className="text-xs text-muted-foreground line-clamp-1">{a.description}</div>}
                       </td>
-                      <td className="p-3"><Badge variant="outline" className="text-[10px]">{catLabel}</Badge></td>
+                      <td className="p-3">
+                        <Badge variant="outline" className="text-[10px] gap-1">
+                          {catDot && <div className={`w-1.5 h-1.5 rounded-full ${catDot}`} />}
+                          {catLabel}
+                        </Badge>
+                      </td>
                       <td className="p-3 text-xs">{intensityLabel || "—"}</td>
                       <td className="p-3 text-xs">{a.instructor}</td>
                       <td className="p-3">
