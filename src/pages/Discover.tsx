@@ -14,7 +14,7 @@ export type ViewMode = "activites" | "planning" | "planning-type";
 export default function Discover() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const initialView = searchParams.get("view") === "planning" ? "planning" : "activites";
+  const initialView = searchParams.get("view") === "planning" ? "planning" : searchParams.get("view") === "planning-type" ? "planning-type" : "activites";
   const initialFilter = searchParams.get("filter") as FilterCategory | null;
   const initialActivity = searchParams.get("activity");
   const initialDate = searchParams.get("date");
