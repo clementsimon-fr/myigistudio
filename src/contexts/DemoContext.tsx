@@ -221,6 +221,12 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(LS_TEMP_PROFILES_KEY);
     setDemoNotifications([]);
     localStorage.removeItem(LS_NOTIFS_KEY);
+    // Also disconnect current profile if it's a demo client (Marion/Sophie or temp)
+    setCurrentProfileState(prev => {
+      if (!prev) return prev;
+      if (prev.role === "client") return null;
+      return prev;
+    });
   }, []);
 
   return (
