@@ -290,14 +290,15 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
           })}
         </div>
 
-        {/* Legend */}
-        <div className="flex flex-wrap gap-4 mt-8 text-xs text-muted-foreground justify-center">
+        {/* Legend + Contact */}
+        <div className="flex flex-wrap items-center gap-4 mt-8 text-xs text-muted-foreground justify-center">
           {Object.entries(CATEGORY_STYLES).map(([key, val]) => (
             <div key={key} className="flex items-center gap-1.5">
               <div className={`w-3 h-3 rounded-full ${val.dot}`} />
               {key === "yoga" ? "Yoga & Pilates" : key === "poterie" ? "Poterie" : "Bien-être"}
             </div>
           ))}
+          <ContactElodieButton variant="ghost" className="text-xs" />
         </div>
       </div>
 

@@ -50,6 +50,10 @@ const DEFAULT_PROFILES: Record<string, DemoProfile> = {
     cards: [],
     reservations: [],
   },
+};
+
+// Demo client profiles (resettable)
+const DEMO_CLIENT_PROFILES: Record<string, DemoProfile> = {
   marion: {
     id: "marion",
     name: "Marion",
