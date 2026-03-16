@@ -181,6 +181,9 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
             <p>Arrivez 10 minutes avant le cours · Tapis fournis · Tenue confortable</p>
             <p>Annulation gratuite jusqu'à 24h avant le cours. Au-delà, le crédit est débité.</p>
           </div>
+          <div className="mt-4">
+            <ContactElodieButton variant="outline" />
+          </div>
         </div>
       </section>
 

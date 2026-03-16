@@ -393,7 +393,7 @@ export default function Reserver() {
     setShowConfirmVoucher(false);
   };
 
-  const handleStripeSuccess = () => {
+  const handleStripeSuccess = async () => {
     setShowStripeModal(false);
     if (paymentPurpose === "card" && selectedCard) {
       addCredits(selectedCard.sessions, selectedCard.name);
@@ -401,6 +401,15 @@ export default function Reserver() {
         `${currentProfile?.name || "Client"} vient d'acheter une ${selectedCard.name}`,
         "purchase"
       );
+      // Persist card in DB
+      const clientName = currentProfile?.name || "Client";
+      await supabase.from("client_cards").insert({
+        client_name: clientName,
+        card_name: selectedCard.name,
+        total_sessions: selectedCard.sessions,
+        used_sessions: 0,
+        expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      } as any);
       toast({ title: `${selectedCard.name} achetée avec succès ! 🎉` });
       setBookingStep("confirm");
     } else if (paymentPurpose === "workshop") {
