@@ -761,8 +761,16 @@ export default function AdminActivites() {
 
 // ── Activity Card (used for both desktop and mobile in cards view) ──
 function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActivity; onEdit: () => void; onDelete: () => void }) {
-  const catLabel = CATEGORIES.find(c => c.value === a.category)?.label || a.category;
+  const cat = CATEGORIES.find(c => c.value === a.category);
+  const catLabel = cat?.label || a.category;
+  const catDot = cat?.dot || "";
   const intensityLabel = getIntensityLabel(a.intensity);
+  const CATEGORY_TEXT: Record<string, string> = {
+    yoga: "text-[hsl(210,60%,40%)]",
+    poterie: "text-[hsl(40,76%,35%)]",
+    "bien-etre": "text-[hsl(0,55%,38%)]",
+  };
+  const titleColor = CATEGORY_TEXT[a.category] || "text-primary-dark";
   return (
     <div className="rounded-xl border bg-card overflow-hidden hover:shadow-md transition-shadow group">
       {a.image && (
@@ -773,7 +781,7 @@ function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActi
       <div className="p-4">
         <div className="flex items-start justify-between mb-2">
           <div>
-            <h3 className="font-display font-semibold text-sm text-primary-dark">{a.name}</h3>
+            <h3 className={`font-display font-semibold text-sm ${titleColor}`}>{a.name}</h3>
             {a.description && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{a.description}</p>}
           </div>
           <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -782,7 +790,10 @@ function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActi
           </div>
         </div>
         <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <Badge variant="outline" className="text-[10px]">{catLabel}</Badge>
+          <Badge variant="outline" className="text-[10px] gap-1">
+            {catDot && <div className={`w-1.5 h-1.5 rounded-full ${catDot}`} />}
+            {catLabel}
+          </Badge>
           {intensityLabel && <Badge variant="secondary" className="text-[10px]">{intensityLabel}</Badge>}
           <span className="text-xs text-muted-foreground">{a.instructor}</span>
         </div>
