@@ -857,13 +857,19 @@ export default function Reserver() {
                 </div>
               )}
 
-              {/* Separator */}
+              {/* Separator + Contact Élodie */}
               {!useVoucherMode && (
                 <>
-                  <div className="relative flex items-center gap-4">
-                    <div className="flex-1 border-t" />
-                    <span className="text-sm text-muted-foreground">ou choisissez une carte</span>
-                    <div className="flex-1 border-t" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="flex-1 border-t" />
+                      <span className="text-sm text-muted-foreground">ou choisissez une carte</span>
+                      <div className="flex-1 border-t" />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-center">
+                    <ContactElodieButton variant="outline" />
                   </div>
 
                   {/* Pricing cards grid */}

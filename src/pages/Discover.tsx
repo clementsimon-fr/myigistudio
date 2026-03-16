@@ -89,8 +89,8 @@ export default function Discover() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1">
-        {/* ─── Hero (mobile only) ─── */}
-        <section className="relative overflow-hidden bg-secondary/30 py-12 md:hidden">
+        {/* ─── Hero ─── */}
+        <section className="relative overflow-hidden bg-secondary/30 py-12">
           <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-primary/10 blur-3xl" />
           <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-accent/10 blur-3xl" />
           <div className="container relative">
