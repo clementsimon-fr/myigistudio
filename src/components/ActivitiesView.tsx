@@ -1,16 +1,19 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Info, Users, Euro, Clock } from "lucide-react";
+import { Info, Users, Euro, Clock, CalendarRange } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import PricingSection from "@/components/home/PricingSection";
 import TeamSection from "@/components/home/TeamSection";
 import ContactElodieButton from "@/components/ContactElodieButton";
+import FrequencyDialog from "@/components/FrequencyDialog";
 import { CATEGORY_STYLES, type FilterCategory } from "@/components/ActivityFilterBar";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 
 const PLACEHOLDER_IMG = "/placeholder.svg";
+const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+const DAYS_SHORT = ["L", "M", "M", "J", "V", "S", "D"];
 
 interface ActivitiesViewProps {
   courses: Course[];
@@ -37,9 +40,30 @@ function getCategoryStyle(category: string) {
   return CATEGORY_STYLES[category] || { block: "", dot: "", text: "text-primary-dark", bookBtn: "bg-primary hover:bg-primary/90 text-primary-foreground" };
 }
 
-function WorkshopCard({ ws, i, onDescription, instructorPhoto, onBook }: {
+/** Inline week dots for a specific course's scheduled days */
+function WeekDots({ activeDays, dotColor }: { activeDays: Set<string>; dotColor: string }) {
+  return (
+    <div className="flex items-center gap-1">
+      {DAYS.map((day, i) => (
+        <div
+          key={day}
+          className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-medium ${
+            activeDays.has(day)
+              ? `${dotColor} text-white`
+              : "bg-muted text-muted-foreground/50"
+          }`}
+          title={day}
+        >
+          {DAYS_SHORT[i]}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function WorkshopCard({ ws, i, onDescription, instructorPhoto, onBook, onFrequency }: {
   ws: Workshop; i: number; onDescription: (w: Workshop) => void; instructorPhoto?: string;
-  onBook: (ws: Workshop) => void;
+  onBook: (ws: Workshop) => void; onFrequency: () => void;
 }) {
   const style = getCategoryStyle(ws.category);
   return (
@@ -66,6 +90,9 @@ function WorkshopCard({ ws, i, onDescription, instructorPhoto, onBook }: {
               <Info className="h-3 w-3" /> Description
             </Button>
           )}
+          <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={onFrequency}>
+            <CalendarRange className="h-3 w-3" />
+          </Button>
           <Button size="sm" className={`flex-1 text-xs ${style.bookBtn}`} onClick={() => onBook(ws)}>Réserver</Button>
         </div>
       </div>
@@ -76,18 +103,25 @@ function WorkshopCard({ ws, i, onDescription, instructorPhoto, onBook }: {
 export default function ActivitiesView({ courses, workshops, schedules, filter, getInstructorPhoto, onSwitchToPlanning }: ActivitiesViewProps) {
   const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
+  const [frequencyOpen, setFrequencyOpen] = useState(false);
+  const [frequencyCategory, setFrequencyCategory] = useState<string>("yoga");
+
+  const schedulesMap = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    for (const s of schedules) {
+      if (!map[s.course_id]) map[s.course_id] = new Set();
+      map[s.course_id].add(s.day);
+    }
+    return map;
+  }, [schedules]);
 
   const coursesWithSchedules = useMemo(() => {
-    const schedulesMap: Record<string, { day: string; time: string; end_time: string; spots: number; spots_left: number }[]> = {};
-    for (const s of schedules) {
-      if (!schedulesMap[s.course_id]) schedulesMap[s.course_id] = [];
-      schedulesMap[s.course_id].push({ day: s.day, time: s.time, end_time: s.end_time, spots: s.spots, spots_left: s.spots_left });
-    }
     return courses.filter(c => c.category === "yoga").map(c => ({
       ...c,
-      schedules: schedulesMap[c.id] || [],
+      schedules: schedules.filter(s => s.course_id === c.id),
+      activeDays: schedulesMap[c.id] || new Set<string>(),
     }));
-  }, [courses, schedules]);
+  }, [courses, schedules, schedulesMap]);
 
   const potteryWorkshops = workshops.filter(w => w.category === "poterie");
   const wellbeingWorkshops = workshops.filter(w => w.category === "bien-etre");
@@ -106,6 +140,14 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const handleBookWorkshop = (ws: Workshop) => {
     onSwitchToPlanning({ filter: ws.category as FilterCategory, activity: ws.name, date: ws.date });
   };
+
+  const openFrequency = (category: string) => {
+    setFrequencyCategory(category);
+    setFrequencyOpen(true);
+  };
+
+  // Get active days for the description dialog course
+  const descriptionCourseDays = descriptionCourse ? (schedulesMap[descriptionCourse.id] || new Set<string>()) : new Set<string>();
 
   return (
     <>
@@ -132,6 +174,9 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                         <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => setDescriptionCourse(course)}>
                           <Info className="h-3 w-3" /> Description
                         </Button>
+                        <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => openFrequency("yoga")}>
+                          <CalendarRange className="h-3 w-3" />
+                        </Button>
                         <Button size="sm" className={`flex-1 text-xs ${yogaStyle.bookBtn}`} onClick={() => handleBookCourse(course)}>Réserver</Button>
                       </div>
                     </div>
@@ -150,7 +195,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${potteryStyle.text}`}>Poterie</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {potteryWorkshops.map((ws, i) => (
-                <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} onBook={handleBookWorkshop} />
+                <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} onBook={handleBookWorkshop} onFrequency={() => openFrequency("poterie")} />
               ))}
             </div>
           </div>
@@ -164,7 +209,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${getCategoryStyle("bien-etre").text}`}>Ateliers & Stages</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {wellbeingWorkshops.map((ws, i) => (
-                <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} onBook={handleBookWorkshop} />
+                <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} onBook={handleBookWorkshop} onFrequency={() => openFrequency("bien-etre")} />
               ))}
             </div>
           </div>
@@ -196,6 +241,11 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
               <div className="space-y-4 pt-2">
                 <img src={descriptionCourse.image || PLACEHOLDER_IMG} alt={descriptionCourse.name} className="w-full rounded-lg object-cover max-h-64" />
                 <div className="text-sm text-muted-foreground whitespace-pre-line">{descriptionCourse.long_description || descriptionCourse.description}</div>
+                {/* Weekly frequency dots */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Jours de la semaine</p>
+                  <WeekDots activeDays={descriptionCourseDays} dotColor={yogaStyle.dot} />
+                </div>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <InstructorBadge instructor={descriptionCourse.instructor} photo={getInstructorPhoto(descriptionCourse.instructor_id, descriptionCourse.instructor)} />
                   <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionCourse.spots} places max</div>
@@ -227,6 +277,16 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Frequency dialog */}
+      <FrequencyDialog
+        open={frequencyOpen}
+        onOpenChange={setFrequencyOpen}
+        courses={courses}
+        workshops={workshops}
+        schedules={schedules}
+        highlightCategory={frequencyCategory}
+      />
     </>
   );
 }
