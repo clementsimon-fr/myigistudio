@@ -249,9 +249,40 @@ export default function AdminContrat() {
     toast({ title: `Édition de "${phase.name}" — Fonctionnalité à venir` });
   };
 
+  const handlePrintScreens = () => {
+    const routes = [
+      "/", "/?view=planning-type", "/?view=planning",
+      "/login", "/register", "/mon-espace",
+      "/admin/activites", "/admin/planning-type", "/admin/contenu",
+      "/admin/tarifs", "/admin/bons-cadeaux", "/admin/conditions",
+      "/admin/intervenants", "/admin/clients", "/admin/contrat",
+      "/admin/fonctionnalites", "/admin/parametres",
+    ];
+    const w = window.open("", "_blank");
+    if (!w) { toast({ title: "Popup bloquée, autorisez les popups", variant: "destructive" }); return; }
+    w.document.write(`<!DOCTYPE html><html><head><title>Screens MyIgiStudio</title>
+      <style>body{font-family:sans-serif;margin:20px}iframe{border:1px solid #ccc;margin:10px 0;page-break-after:always}
+      h2{font-size:14px;margin:30px 0 5px;color:#333}.header{text-align:center;margin-bottom:30px}
+      @media print{.no-print{display:none}iframe{height:700px!important}}</style></head><body>
+      <div class="header"><h1>MyIgiStudio — Screens Application</h1>
+      <p style="color:#666">Généré le ${new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p>
+      <button class="no-print" onclick="window.print()" style="padding:10px 30px;font-size:16px;cursor:pointer;margin:10px">🖨️ Imprimer / PDF</button></div>`);
+    for (const route of routes) {
+      const url = window.location.origin + route;
+      w.document.write(`<h2>${route}</h2><iframe src="${url}" width="100%" height="600" loading="lazy"></iframe>`);
+    }
+    w.document.write("</body></html>");
+    w.document.close();
+  };
+
   return (
     <AdminLayout title="Contrat">
       <div className="max-w-3xl mx-auto space-y-8">
+
+        {/* PDF Export Button */}
+        <Button variant="outline" className="gap-2" onClick={handlePrintScreens}>
+          📄 Télécharger tous les screens (PDF)
+        </Button>
 
         {/* --- Section A: Timeline Déploiement --- */}
         <section className="space-y-4">
