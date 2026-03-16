@@ -1,13 +1,17 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { ViewMode } from "@/pages/Discover";
 
 export type FilterCategory = "all" | "yoga" | "poterie" | "bien-etre";
 
 export const CATEGORY_FILTERS: { value: FilterCategory; label: string; dot?: string; activeBg?: string }[] = [
-  { value: "all", label: "Toutes" },
-  { value: "yoga", label: "Yoga & Pilates", dot: "bg-[hsl(210,60%,55%)]", activeBg: "bg-[hsl(210,60%,55%)]" },
+  { value: "all", label: "Tout" },
+  { value: "yoga", label: "Yoga", dot: "bg-[hsl(210,60%,55%)]", activeBg: "bg-[hsl(210,60%,55%)]" },
   { value: "poterie", label: "Poterie", dot: "bg-[hsl(40,76%,60%)]", activeBg: "bg-[hsl(40,76%,60%)]" },
-  { value: "bien-etre", label: "Ateliers", dot: "bg-[hsl(0,55%,58%)]", activeBg: "bg-[hsl(0,55%,58%)]" },
+  { value: "bien-etre", label: "Atelier", dot: "bg-[hsl(0,55%,58%)]", activeBg: "bg-[hsl(0,55%,58%)]" },
 ];
 
 export const CATEGORY_STYLES: Record<string, { block: string; dot: string; text: string; bookBtn: string }> = {
@@ -31,9 +35,12 @@ export const CATEGORY_STYLES: Record<string, { block: string; dot: string; text:
   },
 };
 
-const VIEW_TABS: { label: string; value: ViewMode }[] = [
-  { label: "Les activités", value: "activites" },
-  { label: "Planning & réservation", value: "planning" },
+type NavTab = { label: string; value: ViewMode | "reserver" };
+
+const NAV_TABS: NavTab[] = [
+  { label: "Découvrir", value: "activites" },
+  { label: "Planning", value: "planning" },
+  { label: "Réserver", value: "reserver" },
 ];
 
 interface ActivityFilterBarProps {
@@ -47,22 +54,34 @@ interface ActivityFilterBarProps {
 }
 
 export default function ActivityFilterBar({ filter, onFilterChange, view, onViewChange, subFilterOptions, subFilter, onSubFilterChange }: ActivityFilterBarProps) {
+  const navigate = useNavigate();
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const catFilter = CATEGORY_FILTERS.find(f => f.value === filter);
   const activeBg = catFilter?.activeBg || "bg-primary-dark";
 
+  const handleNavClick = (tab: NavTab) => {
+    if (tab.value === "reserver") {
+      navigate("/reserver");
+    } else {
+      onViewChange(tab.value);
+    }
+  };
+
+  const currentNav = view === "planning" ? "planning" : "activites";
+
   return (
     <div className="sticky top-16 z-30">
-      {/* View tabs */}
+      {/* Navigation tabs */}
       <div className="bg-emerald-50/60 backdrop-blur border-b">
         <div className="container">
           <div className="flex items-center justify-center gap-1.5 pt-1.5 pb-1">
-            {VIEW_TABS.map(tab => (
+            {NAV_TABS.map(tab => (
               <Button
                 key={tab.value}
                 size="sm"
-                onClick={() => onViewChange(tab.value)}
+                onClick={() => handleNavClick(tab)}
                 className={`rounded-md px-3 text-xs h-8 font-semibold transition-colors ${
-                  view === tab.value
+                  currentNav === tab.value
                     ? "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90"
                     : "bg-primary/15 text-primary-dark hover:bg-primary/25"
                 }`}
@@ -101,31 +120,43 @@ export default function ActivityFilterBar({ filter, onFilterChange, view, onView
         </div>
       </div>
 
-      {/* Sub-filters (if provided) */}
-      {subFilterOptions && subFilterOptions.length > 1 && onSubFilterChange && (
+      {/* Collapsible "Afficher plus de filtres" */}
+      {subFilterOptions && subFilterOptions.length > 0 && onSubFilterChange && (
         <div className="bg-emerald-50/40 backdrop-blur border-b">
-          <div className="container py-1.5">
-            <div className="flex flex-wrap items-center gap-1.5 justify-center">
-              <Button
-                variant={subFilter === "all" ? null as any : "outline"}
-                size="sm"
-                className={`rounded-full h-6 text-[11px] px-3 italic ${subFilter === "all" ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
-                onClick={() => onSubFilterChange("all")}
-              >
-                Tout voir
-              </Button>
-              {subFilterOptions.map(name => (
-                <Button
-                  key={name}
-                  variant={subFilter === name ? null as any : "outline"}
-                  size="sm"
-                  className={`rounded-full h-6 text-[11px] px-3 italic ${subFilter === name ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
-                  onClick={() => onSubFilterChange(name)}
-                >
-                  {name}
-                </Button>
-              ))}
-            </div>
+          <div className="container">
+            <Collapsible open={moreFiltersOpen} onOpenChange={setMoreFiltersOpen}>
+              <CollapsibleTrigger asChild>
+                <button className="w-full flex items-center justify-center gap-1 py-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+                  <span>Afficher plus de filtres</span>
+                  <ChevronDown className={`h-3 w-3 transition-transform ${moreFiltersOpen ? "rotate-180" : ""}`} />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="pb-2 pt-0.5">
+                  <div className="flex flex-wrap items-center gap-1.5 justify-center">
+                    <Button
+                      variant={subFilter === "all" ? null as any : "outline"}
+                      size="sm"
+                      className={`rounded-full h-6 text-[11px] px-3 italic ${subFilter === "all" ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
+                      onClick={() => onSubFilterChange("all")}
+                    >
+                      Tout voir
+                    </Button>
+                    {subFilterOptions.map(name => (
+                      <Button
+                        key={name}
+                        variant={subFilter === name ? null as any : "outline"}
+                        size="sm"
+                        className={`rounded-full h-6 text-[11px] px-3 italic ${subFilter === name ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
+                        onClick={() => onSubFilterChange(name)}
+                      >
+                        {name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         </div>
       )}

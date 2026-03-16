@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -49,7 +48,7 @@ export default function Discover() {
 
   const handleFilterChange = useCallback((f: FilterCategory) => {
     setFilter(f);
-    setSubFilter("all"); // Reset sub-filter, auto-show "Tout" for new category
+    setSubFilter("all");
     setPlanningActivity(null);
     setPlanningDate(null);
     const params = new URLSearchParams();
@@ -89,30 +88,18 @@ export default function Discover() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1">
-        {/* ─── Hero ─── */}
-        <section className="relative overflow-hidden bg-secondary/30 py-12">
-          <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-primary/10 blur-3xl" />
-          <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-accent/10 blur-3xl" />
-          <div className="container relative">
-            <div className="max-w-2xl mx-auto text-center">
-              <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-sm font-medium uppercase tracking-widest text-primary-dark mb-3">Bienvenue chez</motion.p>
-              <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="text-4xl font-display font-bold text-primary-dark mb-3">
-                MyIgi<span className="text-primary italic">Studio</span>
-              </motion.h1>
-              <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="text-base text-muted-foreground leading-relaxed px-4">
-                Yoga, Pilates, Poterie & Bien-être.<br />Réservez vos cours et ateliers en quelques clics.
-              </motion.p>
-            </div>
-          </div>
-        </section>
+        {/* Minimal tagline */}
+        <div className="bg-secondary/30 py-3 text-center">
+          <p className="text-sm text-muted-foreground">Yoga, Pilates, Poterie & Bien-être</p>
+        </div>
 
-        {/* ─── Sticky filters with view toggle ─── */}
+        {/* Navigation + Filters */}
         <ActivityFilterBar
           filter={filter}
           onFilterChange={handleFilterChange}
           view={view}
           onViewChange={handleViewChange}
-          subFilterOptions={view === "planning" ? subFilterOptions : undefined}
+          subFilterOptions={subFilterOptions}
           subFilter={subFilter}
           onSubFilterChange={handleSubFilterChange}
         />
