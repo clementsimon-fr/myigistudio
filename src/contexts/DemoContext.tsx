@@ -212,7 +212,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   }, [addNotification]);
 
   const getDefaultProfile = useCallback((id: string) => {
-    return DEFAULT_PROFILES[id] ? { ...DEFAULT_PROFILES[id], cards: DEFAULT_PROFILES[id].cards.map(c => ({ ...c })), reservations: [] } : undefined;
+    const allProfiles = { ...DEFAULT_PROFILES, ...DEMO_CLIENT_PROFILES };
+    return allProfiles[id] ? { ...allProfiles[id], cards: (allProfiles[id].cards || []).map(c => ({ ...c })), reservations: [] } : undefined;
   }, []);
 
   const clearTempProfiles = useCallback(() => {
