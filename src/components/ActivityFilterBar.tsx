@@ -35,12 +35,11 @@ export const CATEGORY_STYLES: Record<string, { block: string; dot: string; text:
   },
 };
 
-type NavTab = { label: string; value: ViewMode | "reserver" };
+type NavTab = { label: string; value: ViewMode };
 
 const NAV_TABS: NavTab[] = [
   { label: "Découvrir", value: "activites" },
-  { label: "Planning", value: "planning" },
-  { label: "Réserver", value: "reserver" },
+  { label: "Réserver", value: "planning" },
 ];
 
 interface ActivityFilterBarProps {
