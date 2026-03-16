@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
@@ -15,33 +14,17 @@ function getDayFromDate(dateStr: string): string | null {
   } catch { return null; }
 }
 
-interface TimeSlot {
-  day: string;
-  time: string;
-  end_time: string;
-}
+interface TimeSlot { day: string; time: string; end_time: string; }
+interface ActivityRow { name: string; category: string; slots: TimeSlot[]; }
 
-interface FrequencyDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface PlanningTypeViewProps {
   courses: Course[];
   workshops: Workshop[];
   schedules: Schedule[];
-  /** If set, only show activities matching this category */
-  highlightCategory?: string;
-  /** If set, only show this specific activity name (personalized card view) */
-  specificActivity?: string;
-  /** Title override */
-  title?: string;
+  filter?: string;
 }
 
-interface ActivityRow {
-  name: string;
-  category: string;
-  slots: TimeSlot[];
-}
-
-export default function FrequencyDialog({ open, onOpenChange, courses, workshops, schedules, highlightCategory, specificActivity, title }: FrequencyDialogProps) {
+export default function PlanningTypeView({ courses, workshops, schedules, filter }: PlanningTypeViewProps) {
   const rows = useMemo(() => {
     const result: ActivityRow[] = [];
     const schedulesByCourse: Record<string, TimeSlot[]> = {};
@@ -63,30 +46,19 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
     return result;
   }, [courses, schedules, workshops]);
 
-  // Filter: if specificActivity, show only that one; else show by category
   const filtered = useMemo(() => {
-    if (specificActivity) return rows.filter(r => r.name === specificActivity);
-    if (highlightCategory) return rows.filter(r => r.category === highlightCategory);
-    return rows;
-  }, [rows, specificActivity, highlightCategory]);
+    if (!filter || filter === "all") return rows;
+    return rows.filter(r => r.category === filter);
+  }, [rows, filter]);
 
-  // Group by category
   const grouped = useMemo(() => {
     const map: Record<string, ActivityRow[]> = {};
     for (const r of filtered) {
       if (!map[r.category]) map[r.category] = [];
       map[r.category].push(r);
     }
-    const entries = Object.entries(map);
-    if (highlightCategory) {
-      entries.sort(([a], [b]) => {
-        if (a === highlightCategory) return -1;
-        if (b === highlightCategory) return 1;
-        return 0;
-      });
-    }
-    return entries;
-  }, [filtered, highlightCategory]);
+    return Object.entries(map);
+  }, [filtered]);
 
   const categoryLabels: Record<string, string> = {
     yoga: "Yoga & Pilates",
@@ -94,47 +66,52 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
     "bien-etre": "Ateliers & Stages",
   };
 
-  const dialogTitle = title || (specificActivity ? `Planning – ${specificActivity}` : "Semaine type");
+  if (filtered.length === 0) {
+    return <p className="text-center text-muted-foreground py-10">Aucune activité configurée.</p>;
+  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-display">{dialogTitle}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-5 pt-2">
+    <section className="py-8 md:py-12">
+      <div className="container">
+        <h2 className="text-xl md:text-2xl font-display font-bold text-primary-dark mb-6 text-center">
+          Semaine type
+        </h2>
+        <div className="space-y-6 max-w-4xl mx-auto">
           {grouped.map(([category, activities]) => {
             const style = CATEGORY_STYLES[category];
             const dotColor = style?.dot || "bg-primary";
             return (
               <div key={category}>
-                {!specificActivity && (
-                  <h3 className={`text-sm font-semibold mb-2 ${style?.text || "text-foreground"}`}>
-                    {categoryLabels[category] || category}
-                  </h3>
-                )}
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-xs">
+                <h3 className={`text-sm font-semibold mb-2 ${style?.text || "text-foreground"}`}>
+                  {categoryLabels[category] || category}
+                </h3>
+                <div className="overflow-x-auto rounded-lg border bg-card">
+                  <table className="w-full border-collapse text-sm">
                     <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-1.5 px-2 font-medium text-muted-foreground min-w-[100px]">Activité</th>
+                      <tr className="border-b bg-muted/30">
+                        <th className="text-left py-2 px-3 font-medium text-muted-foreground min-w-[120px]">Activité</th>
                         {DAYS_SHORT.map(d => (
-                          <th key={d} className="py-1.5 px-1 font-medium text-muted-foreground text-center w-9">{d}</th>
+                          <th key={d} className="py-2 px-1.5 font-medium text-muted-foreground text-center w-10">{d}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {activities.map(a => (
-                        <tr key={a.name} className="border-b border-muted/30">
-                          <td className="py-2 px-2 font-medium">{a.name}</td>
+                        <tr key={a.name} className="border-b border-muted/30 last:border-0">
+                          <td className="py-2.5 px-3">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
+                              <span className="font-medium text-sm">{a.name}</span>
+                            </div>
+                          </td>
                           {DAYS.map(day => {
                             const daySlots = a.slots.filter(s => s.day === day);
                             return (
-                              <td key={day} className="py-2 px-1 text-center">
+                              <td key={day} className="py-2.5 px-1.5 text-center">
                                 {daySlots.length > 0 ? (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <span className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold text-white cursor-default ${dotColor}`}>✕</span>
+                                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold text-white cursor-default ${dotColor}`}>✕</span>
                                     </TooltipTrigger>
                                     <TooltipContent side="top" className="text-xs">
                                       {daySlots.map((s, i) => (
@@ -157,7 +134,7 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
             );
           })}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </section>
   );
 }
