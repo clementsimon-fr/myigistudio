@@ -182,16 +182,20 @@ export default function AdminReservations() {
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <div className="flex gap-1.5 flex-wrap">
-            {CATEGORY_FILTERS.map(f => (
-              <Badge
-                key={f.value}
-                variant={categoryFilter === f.value ? "default" : "outline"}
-                className="cursor-pointer text-xs"
-                onClick={() => setCategoryFilter(f.value)}
-              >
-                {f.label}
-              </Badge>
-            ))}
+            {CATEGORY_FILTERS.map(f => {
+              const isActive = categoryFilter === f.value;
+              return (
+                <Badge
+                  key={f.value}
+                  variant={isActive ? "default" : "outline"}
+                  className={`cursor-pointer text-xs gap-1 ${isActive && f.activeBg ? `${f.activeBg} text-white border-transparent hover:opacity-90` : ""}`}
+                  onClick={() => setCategoryFilter(f.value)}
+                >
+                  {f.dot && <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : f.dot}`} />}
+                  {f.label}
+                </Badge>
+              );
+            })}
           </div>
           <div className="relative flex-1 w-full sm:w-auto sm:max-w-[220px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
