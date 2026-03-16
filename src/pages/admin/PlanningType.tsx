@@ -121,11 +121,11 @@ export default function PlanningType() {
           {/* Toolbar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <div className="flex gap-1.5">
-              <Button size="sm" variant={viewMode === "compiled" ? "default" : "outline"} className="text-xs h-8" onClick={() => setViewMode("compiled")}>
-                Vue compilée
-              </Button>
               <Button size="sm" variant={viewMode === "by-category" ? "default" : "outline"} className="text-xs h-8" onClick={() => setViewMode("by-category")}>
                 Par catégorie
+              </Button>
+              <Button size="sm" variant={viewMode === "compiled" ? "default" : "outline"} className="text-xs h-8" onClick={() => setViewMode("compiled")}>
+                Vue compilée
               </Button>
             </div>
             <div className="flex gap-1.5 flex-wrap">
