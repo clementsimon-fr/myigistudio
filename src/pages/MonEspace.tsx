@@ -43,7 +43,19 @@ export default function MonEspace() {
   const { currentProfile } = useDemoContext();
   const CLIENT_NAME = currentProfile?.name || "Sophie";
   const sectionParam = searchParams.get("section") as Section | null;
+  const isWelcome = searchParams.get("welcome") === "1";
   const [section, setSection] = useState<Section>(sectionParam || "reservations");
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    if (isWelcome) {
+      setShowWelcome(true);
+      // Clean URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete("welcome");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    }
+  }, [isWelcome]);
 
   useEffect(() => {
     if (sectionParam && sectionParam !== section) setSection(sectionParam);
