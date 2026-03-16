@@ -8,7 +8,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle, Gift, CreditCard, ShoppingCart, Sparkles, LogIn, UserPlus, User, Star } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle, Gift, CreditCard, ShoppingCart, Sparkles, LogIn, UserPlus, User, Star, Mail } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
 import { fr } from "date-fns/locale";
@@ -80,8 +81,7 @@ const DAY_NAMES_MAP: Record<number, string> = {
   4: "Jeudi", 5: "Vendredi", 6: "Samedi",
 };
 
-// Steps for the booking flow
-type BookingStep = "auth" | "register" | "login" | "offers" | "confirm";
+type BookingStep = "auth" | "register" | "registering" | "login" | "offers" | "confirm";
 
 export default function Reserver() {
   const [searchParams] = useSearchParams();
@@ -109,6 +109,7 @@ export default function Reserver() {
   const [bookingBlocked, setBookingBlocked] = useState<string | null>(null);
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherStatus, setVoucherStatus] = useState<"idle" | "valid" | "invalid" | "checking">("idle");
+  const [voucherData, setVoucherData] = useState<any>(null);
 
   // Flow state
   const [bookingStep, setBookingStep] = useState<BookingStep>("auth");
@@ -122,6 +123,10 @@ export default function Reserver() {
   const [stripeDescription, setStripeDescription] = useState("");
   const [paymentPurpose, setPaymentPurpose] = useState<"card" | "workshop">("card");
 
+  // Pre-payment confirmation dialog
+  const [prePaymentCard, setPrePaymentCard] = useState<PricingCard | null>(null);
+  const [prePaymentConditionsAccepted, setPrePaymentConditionsAccepted] = useState(false);
+
   // Pricing cards from DB
   const [pricingCards, setPricingCards] = useState<PricingCard[]>([]);
 
@@ -130,6 +135,13 @@ export default function Reserver() {
   const [offerVoucherCode, setOfferVoucherCode] = useState("");
   const [offerVoucherStatus, setOfferVoucherStatus] = useState<"idle" | "valid" | "invalid" | "checking">("idle");
   const [offerVoucherData, setOfferVoucherData] = useState<any>(null);
+  const [voucherUsedInOffers, setVoucherUsedInOffers] = useState(false);
+
+  // Second participant input
+  const [secondParticipantName, setSecondParticipantName] = useState("");
+
+  // Show voucher input in confirm step
+  const [showConfirmVoucher, setShowConfirmVoucher] = useState(false);
 
   // Load pricing cards from DB
   useEffect(() => {
@@ -272,24 +284,29 @@ export default function Reserver() {
   const needsCredits = activity?.type === "course";
   const isWorkshopDirect = activity?.type === "workshop";
 
+  // Credits needed for current participants
+  const creditsNeeded = needsCredits ? participants : 0;
+
   // --- Auth step handlers ---
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (!registerName.trim()) return;
-    createTempProfile(registerName.trim());
-    setIsNewUser(true);
-    // After creating, if course → go to offers, else → confirm
-    if (needsCredits) {
-      setBookingStep("offers");
-    } else {
-      setBookingStep("confirm");
-    }
+    // Show loading simulation
+    setBookingStep("registering");
+    setTimeout(() => {
+      createTempProfile(registerName.trim());
+      setIsNewUser(true);
+      if (needsCredits) {
+        setBookingStep("offers");
+      } else {
+        setBookingStep("confirm");
+      }
+    }, 2000);
   };
 
   const handleLoginSelect = (profile: any) => {
     setCurrentProfile(profile);
     setIsNewUser(false);
-    // Check credits for course
     if (needsCredits && profile.credits <= 0) {
       setBookingStep("offers");
     } else {
@@ -297,12 +314,19 @@ export default function Reserver() {
     }
   };
 
-  // --- Card purchase ---
-  const handleBuyCard = (card: PricingCard) => {
-    setSelectedCard(card);
-    setStripeAmount(card.price);
-    setStripeDescription(`${card.name} — MyIgiStudio`);
+  // --- Pre-payment card confirmation ---
+  const handleChooseCard = (card: PricingCard) => {
+    setPrePaymentCard(card);
+    setPrePaymentConditionsAccepted(false);
+  };
+
+  const handleConfirmPrePayment = () => {
+    if (!prePaymentCard) return;
+    setSelectedCard(prePaymentCard);
+    setStripeAmount(prePaymentCard.price);
+    setStripeDescription(`${prePaymentCard.name} — MyIgiStudio`);
     setPaymentPurpose("card");
+    setPrePaymentCard(null);
     setShowStripeModal(true);
   };
 
@@ -328,7 +352,6 @@ export default function Reserver() {
 
   const handleUseVoucher = () => {
     if (!offerVoucherData) return;
-    // Add credits from voucher
     const sessions = offerVoucherData.sessions || 1;
     addCredits(sessions, `Bon cadeau ${offerVoucherData.code}`);
     addNotification(
@@ -336,7 +359,37 @@ export default function Reserver() {
       "purchase"
     );
     toast({ title: `Bon cadeau activé ! ${sessions} crédit${sessions > 1 ? "s" : ""} ajouté${sessions > 1 ? "s" : ""} 🎉` });
+    setVoucherUsedInOffers(true);
     setBookingStep("confirm");
+  };
+
+  // --- Voucher validation in confirm step ---
+  const handleValidateConfirmVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    setVoucherStatus("checking");
+    const { data } = await supabase
+      .from("gift_vouchers")
+      .select("*")
+      .eq("code", voucherCode.trim().toUpperCase())
+      .single();
+    if (!data) { setVoucherStatus("invalid"); setVoucherData(null); return; }
+    const voucher = data as any;
+    if (voucher.used || new Date(voucher.expires_at) < new Date()) {
+      setVoucherStatus("invalid");
+      setVoucherData(null);
+      return;
+    }
+    setVoucherStatus("valid");
+    setVoucherData(voucher);
+    // Add credits from voucher
+    const sessions = voucher.sessions || 1;
+    addCredits(sessions, `Bon cadeau ${voucher.code}`);
+    addNotification(
+      `${currentProfile?.name || "Client"} a utilisé un bon cadeau (${voucher.code})`,
+      "purchase"
+    );
+    toast({ title: `Bon cadeau activé ! ${sessions} crédit${sessions > 1 ? "s" : ""} ajouté${sessions > 1 ? "s" : ""} 🎉` });
+    setShowConfirmVoucher(false);
   };
 
   const handleStripeSuccess = () => {
@@ -397,9 +450,11 @@ export default function Reserver() {
       await supabase.from("workshops").update({ spots_left: selectedSlotData.spotsLeft - participants }).eq("id", selectedSlotData.sourceId);
     }
 
-    // Decrement demo credit for courses
+    // Decrement demo credits for courses (1 per participant)
     if (needsCredits) {
-      useCredit();
+      for (let i = 0; i < participants; i++) {
+        useCredit();
+      }
       const { data: activeCards } = await supabase
         .from("client_cards")
         .select("*")
@@ -407,9 +462,15 @@ export default function Reserver() {
         .gte("expires_at", new Date().toISOString().split("T")[0])
         .order("expires_at", { ascending: true });
       if (activeCards && activeCards.length > 0) {
-        const card = (activeCards as any[]).find(c => c.used_sessions < c.total_sessions);
-        if (card) {
-          await supabase.from("client_cards").update({ used_sessions: card.used_sessions + 1 } as any).eq("id", card.id);
+        let remaining = participants;
+        for (const card of activeCards as any[]) {
+          if (remaining <= 0) break;
+          const available = card.total_sessions - card.used_sessions;
+          const toUse = Math.min(available, remaining);
+          if (toUse > 0) {
+            await supabase.from("client_cards").update({ used_sessions: card.used_sessions + toUse } as any).eq("id", card.id);
+            remaining -= toUse;
+          }
         }
       }
     }
@@ -421,7 +482,6 @@ export default function Reserver() {
     );
 
     setSubmitting(false);
-    // Always redirect to mon-espace with welcome flag
     navigate("/mon-espace?welcome=1");
   };
 
@@ -438,12 +498,39 @@ export default function Reserver() {
       setShowStripeModal(true);
       return;
     }
+    // Check enough credits for participants
+    if (needsCredits && currentProfile.credits < participants) {
+      toast({ title: `Crédits insuffisants. Il vous faut ${participants} crédit${participants > 1 ? "s" : ""} pour ${participants} participant${participants > 1 ? "s" : ""}.`, variant: "destructive" });
+      return;
+    }
     handleFinalConfirm();
   };
 
   // Unit price for savings calc
   const unitCard = pricingCards.find(c => c.sessions === 1);
   const unitPrice = unitCard ? unitCard.price : null;
+
+  // Selection summary block (reusable)
+  const renderSelectionSummary = () => {
+    if (!selectedSlotData || !selectedDate) return null;
+    return (
+      <div className="rounded-lg bg-muted/50 p-4 space-y-1 text-sm">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Votre sélection</p>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Activité</span>
+          <span className="font-medium">{selectedSlotData.name}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Date</span>
+          <span className="font-medium">{selectedDate.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Horaire</span>
+          <span className="font-medium">{selectedSlotData.time} - {selectedSlotData.end_time}</span>
+        </div>
+      </div>
+    );
+  };
 
   // --- Loading ---
   if (loading) {
@@ -479,7 +566,7 @@ export default function Reserver() {
     );
   }
 
-  // Client-only profiles for login selection (filter out admin and fournisseur)
+  // Client-only profiles for login selection
   const clientDefaultProfiles = [
     { id: "marion", name: "Marion", subtitle: "Nouvelle cliente" },
     { id: "sophie", name: "Sophie", subtitle: "Cliente existante (4 crédits)" },
@@ -502,7 +589,6 @@ export default function Reserver() {
             {activity.description && (
               <p className="text-muted-foreground mt-1 text-sm">{activity.description}</p>
             )}
-            {/* Show connected user name */}
             {currentProfile && (
               <p className="text-sm text-primary-dark font-medium mt-2">
                 Connecté en tant que <strong>{currentProfile.name}</strong>
@@ -515,6 +601,9 @@ export default function Reserver() {
           {/* ═══════════════════════════════════════════════ */}
           {bookingStep === "auth" && !currentProfile && (
             <div className="max-w-md mx-auto space-y-6">
+              {/* Selection summary ABOVE the auth card */}
+              {renderSelectionSummary()}
+
               <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-6 text-center space-y-4">
                 <div className="w-14 h-14 rounded-full bg-primary/15 flex items-center justify-center mx-auto">
                   <User className="h-7 w-7 text-primary-dark" />
@@ -543,25 +632,6 @@ export default function Reserver() {
                   </Button>
                 </div>
               </div>
-
-              {/* Slot summary */}
-              {selectedSlotData && selectedDate && (
-                <div className="rounded-lg bg-muted/50 p-4 space-y-1 text-sm">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Votre sélection</p>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Activité</span>
-                    <span className="font-medium">{selectedSlotData.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Date</span>
-                    <span className="font-medium">{selectedDate.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Horaire</span>
-                    <span className="font-medium">{selectedSlotData.time} - {selectedSlotData.end_time}</span>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -602,10 +672,33 @@ export default function Reserver() {
           )}
 
           {/* ═══════════════════════════════════════════════ */}
+          {/* STEP: REGISTERING — Loading simulation */}
+          {/* ═══════════════════════════════════════════════ */}
+          {bookingStep === "registering" && (
+            <div className="max-w-md mx-auto">
+              <div className="rounded-xl border bg-card p-8 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                  <Mail className="h-8 w-8 text-primary-dark animate-pulse" />
+                </div>
+                <h2 className="text-lg font-display font-semibold text-primary-dark">
+                  Création de votre compte...
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Envoi du mail de confirmation en cours
+                </p>
+                <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
+              </div>
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════ */}
           {/* STEP: LOGIN — Choose existing client account */}
           {/* ═══════════════════════════════════════════════ */}
           {bookingStep === "login" && !currentProfile && (
             <div className="max-w-md mx-auto space-y-4">
+              {/* Selection summary above login */}
+              {renderSelectionSummary()}
+
               <div className="text-center mb-2">
                 <h2 className="text-lg font-display font-semibold text-primary-dark">Se connecter</h2>
                 <p className="text-sm text-muted-foreground mt-1">Choisissez votre compte</p>
@@ -700,87 +793,14 @@ export default function Reserver() {
                 </div>
               )}
 
-              {/* Pricing cards grid — same style as PricingSection but without bullet points */}
+              {/* Gift voucher FIRST, before offers */}
               {!useVoucherMode && (
-                <>
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {pricingCards.map(card => {
-                      const perSession = card.sessions > 0 && card.sessions < 9999 ? card.price / card.sessions : null;
-                      const savingsPercent = unitPrice && perSession && card.sessions > 1
-                        ? Math.round((1 - perSession / unitPrice) * 100)
-                        : null;
-
-                      return (
-                        <div
-                          key={card.id}
-                          className={cn(
-                            "relative rounded-xl border p-5 bg-card flex flex-col cursor-pointer transition-all hover:shadow-md",
-                            card.popular
-                              ? "border-primary-dark shadow-lg ring-2 ring-primary-dark/20"
-                              : "hover:border-primary/40"
-                          )}
-                          onClick={() => handleBuyCard(card)}
-                        >
-                          {card.popular && (
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                              <Star className="h-3 w-3" /> Populaire
-                            </div>
-                          )}
-
-                          <h3 className="font-display font-semibold text-lg text-primary-dark">{card.name}</h3>
-                          <div className="mt-3 mb-1">
-                            <span className="text-3xl font-bold text-foreground">{card.price}€</span>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-1">
-                            {card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`} · {card.validity}
-                          </p>
-
-                          {perSession !== null && (
-                            <p className="text-xs text-muted-foreground mb-1">
-                              {perSession.toFixed(2)}€ / cours
-                              {savingsPercent && savingsPercent > 0 && (
-                                <span className="ml-1.5 text-primary font-semibold">-{savingsPercent}%</span>
-                              )}
-                            </p>
-                          )}
-                          {card.sessions >= 9999 && (
-                            <p className="text-xs text-muted-foreground mb-1">Accès illimité</p>
-                          )}
-
-                          {card.payment_info && (
-                            <p className="text-xs text-primary italic mb-3">{card.payment_info}</p>
-                          )}
-
-                          <div className="mt-auto pt-3">
-                            <Button
-                              className={cn(
-                                "w-full",
-                                card.popular ? "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90" : ""
-                              )}
-                              variant={card.popular ? "default" : "outline"}
-                            >
-                              <ShoppingCart className="h-4 w-4 mr-1.5" /> Choisir
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Separator + voucher option */}
-                  <div className="relative flex items-center gap-4">
-                    <div className="flex-1 border-t" />
-                    <span className="text-sm text-muted-foreground">ou</span>
-                    <div className="flex-1 border-t" />
-                  </div>
-
-                  <button
-                    onClick={() => setUseVoucherMode(true)}
-                    className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 p-4 text-primary-dark font-medium hover:bg-primary/10 transition-colors"
-                  >
-                    <Gift className="h-5 w-5" /> J'ai un bon cadeau
-                  </button>
-                </>
+                <button
+                  onClick={() => setUseVoucherMode(true)}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 p-4 text-primary-dark font-medium hover:bg-primary/10 transition-colors"
+                >
+                  <Gift className="h-5 w-5" /> J'ai un bon cadeau
+                </button>
               )}
 
               {/* Voucher input mode */}
@@ -836,6 +856,82 @@ export default function Reserver() {
                   </button>
                 </div>
               )}
+
+              {/* Separator */}
+              {!useVoucherMode && (
+                <>
+                  <div className="relative flex items-center gap-4">
+                    <div className="flex-1 border-t" />
+                    <span className="text-sm text-muted-foreground">ou choisissez une carte</span>
+                    <div className="flex-1 border-t" />
+                  </div>
+
+                  {/* Pricing cards grid */}
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {pricingCards.map(card => {
+                      const perSession = card.sessions > 0 && card.sessions < 9999 ? card.price / card.sessions : null;
+                      const savingsPercent = unitPrice && perSession && card.sessions > 1
+                        ? Math.round((1 - perSession / unitPrice) * 100)
+                        : null;
+
+                      return (
+                        <div
+                          key={card.id}
+                          className={cn(
+                            "relative rounded-xl border p-5 bg-card flex flex-col cursor-pointer transition-all hover:shadow-md",
+                            card.popular
+                              ? "border-primary-dark shadow-lg ring-2 ring-primary-dark/20"
+                              : "hover:border-primary/40"
+                          )}
+                          onClick={() => handleChooseCard(card)}
+                        >
+                          {card.popular && (
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                              <Star className="h-3 w-3" /> Populaire
+                            </div>
+                          )}
+
+                          <h3 className="font-display font-semibold text-lg text-primary-dark">{card.name}</h3>
+                          <div className="mt-3 mb-1">
+                            <span className="text-3xl font-bold text-foreground">{card.price}€</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-1">
+                            {card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`} · {card.validity}
+                          </p>
+
+                          {perSession !== null && (
+                            <p className="text-xs text-muted-foreground mb-1">
+                              {perSession.toFixed(2)}€ / cours
+                              {savingsPercent && savingsPercent > 0 && (
+                                <span className="ml-1.5 text-primary font-semibold">-{savingsPercent}%</span>
+                              )}
+                            </p>
+                          )}
+                          {card.sessions >= 9999 && (
+                            <p className="text-xs text-muted-foreground mb-1">Accès illimité</p>
+                          )}
+
+                          {card.payment_info && (
+                            <p className="text-xs text-primary italic mb-3">{card.payment_info}</p>
+                          )}
+
+                          <div className="mt-auto pt-3">
+                            <Button
+                              className={cn(
+                                "w-full",
+                                card.popular ? "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90" : ""
+                              )}
+                              variant={card.popular ? "default" : "outline"}
+                            >
+                              <ShoppingCart className="h-4 w-4 mr-1.5" /> Choisir
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -844,15 +940,10 @@ export default function Reserver() {
           {/* ═══════════════════════════════════════════════ */}
           {bookingStep === "confirm" && currentProfile && (
             <div className="max-w-2xl mx-auto space-y-6">
-              {/* Section 1: Activity header */}
-              <div>
-                <h2 className="text-xl font-display font-semibold text-primary-dark">
-                  Réserver : {activity.name}
-                </h2>
-                {activity.description && (
-                  <p className="text-muted-foreground mt-1 text-sm">{activity.description}</p>
-                )}
-              </div>
+              {/* Section 1: Confirmer l'inscription */}
+              <h2 className="text-xl font-display font-semibold text-primary-dark">
+                Confirmer l'inscription
+              </h2>
 
               {/* Section 2: Activity info */}
               {selectedSlotData && selectedDate && (
@@ -889,16 +980,57 @@ export default function Reserver() {
 
               {/* Section 3: Credits/voucher status */}
               {needsCredits && (
-                <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">
+                <div className="rounded-lg bg-primary/5 border border-primary/20 p-4 space-y-3">
                   <p className="text-sm font-medium text-primary-dark">
                     {currentProfile.name}, vous avez <strong>{currentProfile.credits} crédit{currentProfile.credits > 1 ? "s" : ""}</strong> disponible{currentProfile.credits > 1 ? "s" : ""}.
                   </p>
                   {voucherStatus === "valid" && (
-                    <p className="text-xs text-primary-dark mt-1">+ Bon cadeau validé ✓</p>
+                    <p className="text-xs text-primary-dark">+ Bon cadeau validé ✓</p>
                   )}
-                  <Badge variant="secondary" className="gap-1 text-xs mt-2">
-                    <CreditCard className="h-3 w-3" /> 1 crédit sera déduit
+                  <Badge variant="secondary" className="gap-1 text-xs">
+                    <CreditCard className="h-3 w-3" /> {creditsNeeded} crédit{creditsNeeded > 1 ? "s" : ""} sera{creditsNeeded > 1 ? "ont" : ""} déduit{creditsNeeded > 1 ? "s" : ""}
                   </Badge>
+
+                  {/* Voucher option in confirm step — only if not already used in offers */}
+                  {!voucherUsedInOffers && voucherStatus !== "valid" && !showConfirmVoucher && (
+                    <button
+                      onClick={() => setShowConfirmVoucher(true)}
+                      className="flex items-center gap-1.5 text-sm text-primary-dark font-medium hover:underline mt-1"
+                    >
+                      <Gift className="h-4 w-4" /> Vous avez un bon cadeau ?
+                    </button>
+                  )}
+
+                  {showConfirmVoucher && voucherStatus !== "valid" && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="IGI-XXXXXXXX"
+                          value={voucherCode}
+                          onChange={e => { setVoucherCode(e.target.value.toUpperCase()); setVoucherStatus("idle"); }}
+                          className="font-mono text-sm"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={!voucherCode.trim() || voucherStatus === "checking"}
+                          onClick={handleValidateConfirmVoucher}
+                        >
+                          {voucherStatus === "checking" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Vérifier"}
+                        </Button>
+                      </div>
+                      {voucherStatus === "invalid" && (
+                        <p className="text-xs text-destructive">Code invalide, expiré ou déjà utilisé</p>
+                      )}
+                      <button
+                        onClick={() => { setShowConfirmVoucher(false); setVoucherCode(""); setVoucherStatus("idle"); }}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
               {isWorkshopDirect && (
@@ -911,18 +1043,34 @@ export default function Reserver() {
 
               {/* Section 4: Participants */}
               {selectedSlotData && (
-                <div>
+                <div className="space-y-3">
                   <Label className="text-sm font-semibold text-primary-dark">Nombre de participants</Label>
                   <div className="flex items-center gap-3 mt-2">
-                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setParticipants(Math.max(1, participants - 1))}>-</Button>
+                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => { setParticipants(Math.max(1, participants - 1)); setSecondParticipantName(""); }}>-</Button>
                     <Input
                       type="number" min={1} max={selectedSlotData.spotsLeft}
                       value={participants}
-                      onChange={(e) => setParticipants(Math.min(Number(e.target.value), selectedSlotData.spotsLeft))}
+                      onChange={(e) => { setParticipants(Math.min(Number(e.target.value), selectedSlotData.spotsLeft)); if (Number(e.target.value) <= 1) setSecondParticipantName(""); }}
                       className="w-16 text-center h-8"
                     />
                     <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setParticipants(Math.min(selectedSlotData.spotsLeft, participants + 1))}>+</Button>
                   </div>
+                  {needsCredits && participants > 1 && (
+                    <p className="text-xs text-muted-foreground">
+                      {participants} crédits seront déduits de votre compte.
+                    </p>
+                  )}
+                  {/* Second participant name input */}
+                  {participants >= 2 && (
+                    <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                      <Label className="text-sm font-medium">Nom du 2ème participant</Label>
+                      <Input
+                        placeholder="Prénom du participant"
+                        value={secondParticipantName}
+                        onChange={e => setSecondParticipantName(e.target.value)}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -931,48 +1079,6 @@ export default function Reserver() {
                 <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
                   <p className="text-sm text-destructive">{bookingBlocked}</p>
-                </div>
-              )}
-
-              {/* Gift voucher code (optional, in confirm step) */}
-              {needsCredits && (
-                <div className="space-y-2">
-                  <Label className="text-sm flex items-center gap-1.5">
-                    <Gift className="h-3.5 w-3.5" /> Code bon cadeau (optionnel)
-                  </Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="IGI-XXXXXXXX"
-                      value={voucherCode}
-                      onChange={e => { setVoucherCode(e.target.value.toUpperCase()); setVoucherStatus("idle"); }}
-                      className="font-mono text-sm"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={!voucherCode.trim() || voucherStatus === "checking"}
-                      onClick={async () => {
-                        setVoucherStatus("checking");
-                        const { data } = await supabase
-                          .from("gift_vouchers")
-                          .select("id, used, expires_at")
-                          .eq("code", voucherCode.trim())
-                          .single();
-                        if (!data) { setVoucherStatus("invalid"); return; }
-                        if ((data as any).used || new Date((data as any).expires_at) < new Date()) { setVoucherStatus("invalid"); return; }
-                        setVoucherStatus("valid");
-                      }}
-                    >
-                      Vérifier
-                    </Button>
-                  </div>
-                  {voucherStatus === "valid" && (
-                    <p className="text-xs text-primary-dark font-medium">✓ Bon cadeau valide</p>
-                  )}
-                  {voucherStatus === "invalid" && (
-                    <p className="text-xs text-destructive">Code invalide, expiré ou déjà utilisé</p>
-                  )}
                 </div>
               )}
 
@@ -1006,7 +1112,7 @@ export default function Reserver() {
               {/* Confirm button */}
               <Button
                 onClick={handleConfirmClick}
-                disabled={submitting || !!bookingBlocked || (applicableConditions.length > 0 && !conditionsAccepted)}
+                disabled={submitting || !!bookingBlocked || (applicableConditions.length > 0 && !conditionsAccepted) || (needsCredits && currentProfile.credits < participants)}
                 className="w-full bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-1.5"
               >
                 {submitting ? (
@@ -1018,13 +1124,83 @@ export default function Reserver() {
                 )}
                 {isWorkshopDirect
                   ? `Payer ${selectedSlotData?.price || activity.price || ""} € et réserver`
-                  : "Confirmer la réservation"}
+                  : "Confirmer l'inscription"}
               </Button>
             </div>
           )}
         </div>
       </main>
       <Footer />
+
+      {/* Pre-payment confirmation dialog */}
+      <Dialog open={!!prePaymentCard} onOpenChange={(open) => { if (!open) { setPrePaymentCard(null); setPrePaymentConditionsAccepted(false); } }}>
+        <DialogContent className="sm:max-w-md">
+          {prePaymentCard && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-display text-lg text-primary-dark">
+                  {prePaymentCard.name}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Nombre de cours</span>
+                    <span className="font-medium">{prePaymentCard.sessions >= 9999 ? "Illimité" : prePaymentCard.sessions}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Validité</span>
+                    <span className="font-medium">{prePaymentCard.validity}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Prix</span>
+                    <span className="font-semibold text-primary-dark">{prePaymentCard.price} €</span>
+                  </div>
+                  {prePaymentCard.payment_info && (
+                    <p className="text-xs text-primary italic">{prePaymentCard.payment_info}</p>
+                  )}
+                </div>
+
+                {/* Conditions in pre-payment dialog */}
+                {applicableConditions.length > 0 && (
+                  <div className="space-y-3">
+                    <Accordion type="multiple" className="w-full">
+                      {applicableConditions.map(c => (
+                        <AccordionItem key={c.id} value={c.id} className="border rounded-lg bg-muted/30 px-3">
+                          <AccordionTrigger className="py-2 text-xs font-semibold text-primary-dark hover:no-underline">
+                            {c.title}
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{c.content}</p>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        id="prepay-conditions"
+                        checked={prePaymentConditionsAccepted}
+                        onCheckedChange={(v) => setPrePaymentConditionsAccepted(!!v)}
+                      />
+                      <label htmlFor="prepay-conditions" className="text-xs text-muted-foreground cursor-pointer leading-tight">
+                        J'ai lu et j'accepte les conditions
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  className="w-full"
+                  disabled={applicableConditions.length > 0 && !prePaymentConditionsAccepted}
+                  onClick={handleConfirmPrePayment}
+                >
+                  <ShoppingCart className="h-4 w-4 mr-1.5" /> Payer {prePaymentCard.price} €
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Mock Stripe Modal */}
       <MockStripeModal
