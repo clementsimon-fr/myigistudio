@@ -40,7 +40,7 @@ interface ActivityRow {
 export default function PlanningType() {
   const { courses, schedules, workshops, loading } = useActivitiesData();
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [viewMode, setViewMode] = useState<"compiled" | "by-category">("compiled");
+  const [viewMode, setViewMode] = useState<"compiled" | "by-category">("by-category");
 
   const rows = useMemo(() => {
     const result: ActivityRow[] = [];
