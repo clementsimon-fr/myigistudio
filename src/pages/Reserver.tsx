@@ -8,7 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle, Gift, CreditCard, ShoppingCart, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle, Gift, CreditCard, ShoppingCart, Sparkles, LogIn, UserPlus, User } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
 import { fr } from "date-fns/locale";
@@ -75,13 +75,14 @@ const CARD_OPTIONS = [
   { sessions: 10, price: 130, label: "Carte 10 cours" },
 ];
 
-type BookingStep = "select" | "credits" | "confirm";
+// Steps for the booking flow
+type BookingStep = "auth" | "register" | "login" | "offers" | "confirm";
 
 export default function Reserver() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { currentProfile, addCredits, useCredit, addReservation, addNotification } = useDemoContext();
+  const { currentProfile, setCurrentProfile, getDefaultProfile, tempProfiles, createTempProfile, addCredits, useCredit, addReservation, addNotification } = useDemoContext();
 
   const activityType = searchParams.get("type") as "course" | "workshop" | null;
   const activityId = searchParams.get("id");
@@ -104,13 +105,31 @@ export default function Reserver() {
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherStatus, setVoucherStatus] = useState<"idle" | "valid" | "invalid" | "checking">("idle");
 
-  // Demo state
-  const [bookingStep, setBookingStep] = useState<BookingStep>("select");
+  // Flow state
+  const [bookingStep, setBookingStep] = useState<BookingStep>("auth");
+  const [isNewUser, setIsNewUser] = useState(false);
+  const [registerName, setRegisterName] = useState("");
+
+  // Stripe state
   const [selectedCard, setSelectedCard] = useState<typeof CARD_OPTIONS[0] | null>(null);
   const [showStripeModal, setShowStripeModal] = useState(false);
   const [stripeAmount, setStripeAmount] = useState(0);
   const [stripeDescription, setStripeDescription] = useState("");
   const [paymentPurpose, setPaymentPurpose] = useState<"card" | "workshop">("card");
+
+  // Determine initial step based on profile
+  useEffect(() => {
+    if (currentProfile) {
+      const needsCredits = activity?.type === "course";
+      if (needsCredits && currentProfile.credits <= 0) {
+        setBookingStep("offers");
+      } else {
+        setBookingStep("confirm");
+      }
+    } else {
+      setBookingStep("auth");
+    }
+  }, [currentProfile, activity]);
 
   useEffect(() => {
     if (!activityType || !activityId) { setLoading(false); return; }
@@ -154,14 +173,6 @@ export default function Reserver() {
     };
     load();
   }, [activityType, activityId, preselectedDate, preselectedScheduleId]);
-
-  // Redirect unauthenticated visitors immediately when direct booking
-  useEffect(() => {
-    if (!loading && directBooking && !currentProfile) {
-      const returnTo = window.location.pathname + window.location.search;
-      navigate("/login?returnTo=" + encodeURIComponent(returnTo), { replace: true });
-    }
-  }, [loading, directBooking, currentProfile, navigate]);
 
   const availableDays = useMemo(() => {
     if (!activity || activity.type !== "course") return new Set<string>();
@@ -237,41 +248,35 @@ export default function Reserver() {
     return conditions.filter(c => c.applies_to.includes(cat));
   }, [conditions, activity]);
 
-  // Determine if user needs credits for this activity
   const needsCredits = activity?.type === "course";
   const isWorkshopDirect = activity?.type === "workshop";
 
-  // Determine user state for credit pedagogy
-  const isFirstTimeUser = needsCredits && currentProfile && currentProfile.credits === 0 && currentProfile.cards.length === 0;
-  const isReturningNoCredits = needsCredits && currentProfile && currentProfile.credits === 0 && currentProfile.cards.length > 0;
-  const hasCredits = needsCredits && currentProfile && currentProfile.credits > 0;
-
-  const handleProceedToConfirm = () => {
-    // Step 1: Check if logged in — redirect to login page
-    if (!currentProfile) {
-      const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
-      navigate(`/login?returnTo=${returnTo}`);
-      return;
+  // --- Auth step handlers ---
+  const handleRegister = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!registerName.trim()) return;
+    createTempProfile(registerName.trim());
+    setIsNewUser(true);
+    // After creating, if course → go to offers, else → confirm
+    if (needsCredits) {
+      setBookingStep("offers");
+    } else {
+      setBookingStep("confirm");
     }
-    // Step 2: For courses, credits are handled inline — should not reach here without credits
-    if (needsCredits && currentProfile.credits <= 0) {
-      // This shouldn't happen with the new flow, but safety net
-      setBookingStep("credits");
-      return;
-    }
-    // Step 3: For workshops, trigger payment
-    if (isWorkshopDirect) {
-      const price = activity.price || 35;
-      setStripeAmount(price);
-      setStripeDescription(`${activity.name} — Paiement direct`);
-      setPaymentPurpose("workshop");
-      setShowStripeModal(true);
-      return;
-    }
-    // Otherwise go straight to confirm
-    handleFinalConfirm();
   };
 
+  const handleLoginSelect = (profile: any) => {
+    setCurrentProfile(profile);
+    setIsNewUser(false);
+    // Check credits for course
+    if (needsCredits && profile.credits <= 0) {
+      setBookingStep("offers");
+    } else {
+      setBookingStep("confirm");
+    }
+  };
+
+  // --- Card purchase ---
   const handleBuyCard = (card: typeof CARD_OPTIONS[0]) => {
     setSelectedCard(card);
     setStripeAmount(card.price);
@@ -289,9 +294,7 @@ export default function Reserver() {
         "purchase"
       );
       toast({ title: `${selectedCard.label} achetée avec succès ! 🎉` });
-      setBookingStep("select");
-      // Now they have credits, proceed to confirm
-      setTimeout(() => handleFinalConfirm(), 300);
+      setBookingStep("confirm");
     } else if (paymentPurpose === "workshop") {
       addNotification(
         `${currentProfile?.name || "Client"} a payé pour ${activity?.name}`,
@@ -302,6 +305,7 @@ export default function Reserver() {
     }
   };
 
+  // --- Final confirm ---
   const handleFinalConfirm = async () => {
     if (!selectedSlotData || !selectedDate || bookingBlocked) return;
     if (applicableConditions.length > 0 && !conditionsAccepted) {
@@ -342,7 +346,6 @@ export default function Reserver() {
     // Decrement demo credit for courses
     if (needsCredits) {
       useCredit();
-      // Also update DB card
       const { data: activeCards } = await supabase
         .from("client_cards")
         .select("*")
@@ -357,7 +360,6 @@ export default function Reserver() {
       }
     }
 
-    // Add demo reservation & notification
     addReservation(selectedSlotData.name, dateStr, selectedSlotData.time);
     addNotification(
       `${clientName} a réservé ${selectedSlotData.name} du ${selectedDate.toLocaleDateString("fr-FR")}`,
@@ -365,15 +367,31 @@ export default function Reserver() {
     );
 
     setSubmitting(false);
-    setConfirmed(true);
-    setBookingStep("select");
+    // Redirect to mon-espace (with welcome flag for new users)
+    if (isNewUser) {
+      navigate("/mon-espace?welcome=1");
+    } else {
+      navigate("/mon-espace");
+    }
   };
 
   const handleConfirmClick = () => {
-    if (bookingStep === "credits") return;
-    handleProceedToConfirm();
+    if (!currentProfile) {
+      setBookingStep("auth");
+      return;
+    }
+    if (isWorkshopDirect) {
+      const price = activity.price || 35;
+      setStripeAmount(price);
+      setStripeDescription(`${activity.name} — Paiement direct`);
+      setPaymentPurpose("workshop");
+      setShowStripeModal(true);
+      return;
+    }
+    handleFinalConfirm();
   };
 
+  // --- Loading ---
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -384,6 +402,7 @@ export default function Reserver() {
     );
   }
 
+  // --- No activity ---
   if (!activityType || !activityId || !activity) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -406,136 +425,13 @@ export default function Reserver() {
     );
   }
 
-  if (confirmed) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-1 flex items-center justify-center py-16">
-          <div className="text-center max-w-md">
-            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6">
-              <Check className="h-8 w-8 text-primary-dark" />
-            </div>
-            <h1 className="text-2xl font-display font-bold text-primary-dark mb-3">Réservation confirmée !</h1>
-            <p className="text-muted-foreground mb-2">
-              <strong>{selectedSlotData?.name}</strong> pour <strong>{currentProfile?.name || "Visiteur"}</strong>
-            </p>
-            <p className="text-sm text-muted-foreground mb-6">
-              {selectedDate?.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} à {selectedSlotData?.time}
-            </p>
-            <div className="flex gap-3 justify-center">
-              <Link to="/mon-espace"><Button>Mes réservations</Button></Link>
-              <Link to="/calendrier"><Button variant="outline">Retour au planning</Button></Link>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
+  // Client-only profiles for login selection
+  const clientDefaultProfiles = [
+    { id: "marion", name: "Marion", subtitle: "Nouvelle cliente" },
+    { id: "sophie", name: "Sophie", subtitle: "Cliente existante (4 crédits)" },
+  ];
 
-  // Render credit pedagogy / purchase block inline
-  const renderCreditBlock = () => {
-    if (!needsCredits || !currentProfile || !selectedSlotData) return null;
-
-    // User has credits → simple info
-    if (hasCredits) {
-      return (
-        <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-primary-dark" />
-          <span className="text-sm">
-            <strong>{currentProfile.credits}</strong> crédit{currentProfile.credits > 1 ? "s" : ""} disponible{currentProfile.credits > 1 ? "s" : ""}
-          </span>
-        </div>
-      );
-    }
-
-    // First-time user (never had a card) → full pedagogy
-    if (isFirstTimeUser) {
-      return (
-        <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary-dark" />
-            <h3 className="font-display font-semibold text-primary-dark">Comment ça marche ?</h3>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Les cours de Yoga & Pilates fonctionnent avec un <strong>système de crédits</strong> :
-          </p>
-          <div className="grid gap-2">
-            <div className="flex items-start gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground flex items-center justify-center text-xs font-bold">1</span>
-              <p className="text-sm">Achetez une <strong>carte de cours</strong></p>
-            </div>
-            <div className="flex items-start gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground flex items-center justify-center text-xs font-bold">2</span>
-              <p className="text-sm">Chaque réservation utilise <strong>1 crédit</strong></p>
-            </div>
-            <div className="flex items-start gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground flex items-center justify-center text-xs font-bold">3</span>
-              <p className="text-sm">Réservez autant de cours que vous voulez !</p>
-            </div>
-          </div>
-          <div className="border-t pt-4 space-y-2">
-            <p className="text-xs font-semibold text-primary-dark uppercase tracking-wide">Choisissez votre carte</p>
-            {CARD_OPTIONS.map(card => (
-              <button
-                key={card.sessions}
-                onClick={() => handleBuyCard(card)}
-                className="w-full flex items-center justify-between rounded-lg border bg-background p-3 hover:border-primary-dark/40 transition-colors text-left"
-              >
-                <div>
-                  <p className="font-medium text-sm">{card.label}</p>
-                  <p className="text-xs text-muted-foreground">{(card.price / card.sessions).toFixed(0)}€ / cours</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-primary-dark">{card.price}€</span>
-                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    // Returning user with 0 credits → simplified recharge
-    if (isReturningNoCredits) {
-      return (
-        <div className="rounded-xl border border-amber-300/50 bg-amber-50/50 p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-amber-600" />
-            <h3 className="font-semibold text-sm text-amber-800">Plus de crédits disponibles</h3>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Rechargez vos crédits pour réserver ce cours.
-          </p>
-          <div className="space-y-2">
-            {CARD_OPTIONS.map(card => (
-              <button
-                key={card.sessions}
-                onClick={() => handleBuyCard(card)}
-                className="w-full flex items-center justify-between rounded-lg border bg-background p-3 hover:border-primary-dark/40 transition-colors text-left"
-              >
-                <div>
-                  <p className="font-medium text-sm">{card.label}</p>
-                  <p className="text-xs text-muted-foreground">{(card.price / card.sessions).toFixed(0)}€ / cours</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-primary-dark">{card.price}€</span>
-                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    return null;
-  };
-
-  // Whether the confirm button should be shown (user has credits or it's a workshop)
-  const canConfirm = !needsCredits || (currentProfile && currentProfile.credits > 0);
-
+  // ─── RENDER ───
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -554,244 +450,426 @@ export default function Reserver() {
             )}
           </div>
 
-          {/* Legacy credits step (kept as fallback, but shouldn't trigger with new flow) */}
-          {bookingStep === "credits" && (
-            <div className="rounded-xl border bg-card p-6 mb-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-primary-dark" />
-                <h2 className="font-display font-semibold text-primary-dark">Crédits insuffisants</h2>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Vous avez <strong>{currentProfile?.credits || 0}</strong> crédit(s). Achetez une carte pour réserver ce cours.
-              </p>
-              <div className="grid gap-2">
-                {CARD_OPTIONS.map(card => (
-                  <button
-                    key={card.sessions}
-                    onClick={() => handleBuyCard(card)}
-                    className="flex items-center justify-between rounded-lg border bg-background p-3 hover:border-primary-dark/40 transition-colors text-left"
+          {/* ═══════════════════════════════════════════════ */}
+          {/* STEP: AUTH — Not logged in */}
+          {/* ═══════════════════════════════════════════════ */}
+          {bookingStep === "auth" && !currentProfile && (
+            <div className="max-w-md mx-auto space-y-6">
+              <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-6 text-center space-y-4">
+                <div className="w-14 h-14 rounded-full bg-primary/15 flex items-center justify-center mx-auto">
+                  <User className="h-7 w-7 text-primary-dark" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-display font-semibold text-primary-dark">
+                    Pour vous inscrire, connectez-vous ou créez un compte
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    C'est rapide et vous permettra de gérer vos réservations.
+                  </p>
+                </div>
+                <div className="grid gap-3 pt-2">
+                  <Button
+                    className="w-full gap-2"
+                    onClick={() => setBookingStep("login")}
                   >
-                    <div>
-                      <p className="font-medium text-sm">{card.label}</p>
-                      <p className="text-xs text-muted-foreground">{(card.price / card.sessions).toFixed(0)}€ / cours</p>
+                    <LogIn className="h-4 w-4" /> Se connecter
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => setBookingStep("register")}
+                  >
+                    <UserPlus className="h-4 w-4" /> Créer un compte
+                  </Button>
+                </div>
+              </div>
+
+              {/* Slot summary */}
+              {selectedSlotData && selectedDate && (
+                <div className="rounded-lg bg-muted/50 p-4 space-y-1 text-sm">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Votre sélection</p>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Activité</span>
+                    <span className="font-medium">{selectedSlotData.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Date</span>
+                    <span className="font-medium">{selectedDate.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Horaire</span>
+                    <span className="font-medium">{selectedSlotData.time} - {selectedSlotData.end_time}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════ */}
+          {/* STEP: REGISTER — Create account */}
+          {/* ═══════════════════════════════════════════════ */}
+          {bookingStep === "register" && !currentProfile && (
+            <div className="max-w-md mx-auto space-y-6">
+              <div className="rounded-xl border bg-card p-6 space-y-4">
+                <div className="text-center">
+                  <h2 className="text-lg font-display font-semibold text-primary-dark">Créer un compte</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Saisissez votre prénom pour commencer</p>
+                </div>
+                <form onSubmit={handleRegister} className="space-y-4">
+                  <div>
+                    <Label htmlFor="register-name">Prénom</Label>
+                    <Input
+                      id="register-name"
+                      placeholder="Ex : Marc"
+                      value={registerName}
+                      onChange={(e) => setRegisterName(e.target.value)}
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Créer mon compte
+                  </Button>
+                </form>
+                <button
+                  onClick={() => setBookingStep("auth")}
+                  className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors text-center"
+                >
+                  ← Retour
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════ */}
+          {/* STEP: LOGIN — Choose existing client account */}
+          {/* ═══════════════════════════════════════════════ */}
+          {bookingStep === "login" && !currentProfile && (
+            <div className="max-w-md mx-auto space-y-4">
+              <div className="text-center mb-2">
+                <h2 className="text-lg font-display font-semibold text-primary-dark">Se connecter</h2>
+                <p className="text-sm text-muted-foreground mt-1">Choisissez votre compte</p>
+              </div>
+
+              <div className="space-y-2">
+                {clientDefaultProfiles.map(card => {
+                  const profile = getDefaultProfile(card.id);
+                  return (
+                    <button
+                      key={card.id}
+                      onClick={() => profile && handleLoginSelect(profile)}
+                      className="w-full flex items-center gap-3 rounded-lg border bg-card p-4 text-left hover:border-primary/40 hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{card.name}</p>
+                        <p className="text-sm text-muted-foreground">{card.subtitle}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+
+                {/* Temp profiles (previously created accounts) */}
+                {tempProfiles.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => handleLoginSelect(p)}
+                    className="w-full flex items-center gap-3 rounded-lg border bg-card p-4 text-left hover:border-primary/40 hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
+                      <User className="h-5 w-5 text-secondary-foreground" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-primary-dark">{card.price}€</span>
-                      <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-foreground">{p.name}</p>
+                      <p className="text-sm text-muted-foreground">Cliente</p>
                     </div>
                   </button>
                 ))}
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setBookingStep("select")}>
+
+              <button
+                onClick={() => setBookingStep("auth")}
+                className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors text-center py-2"
+              >
                 ← Retour
-              </Button>
+              </button>
             </div>
           )}
 
-          <div className={`grid ${directBooking ? "" : "md:grid-cols-2"} gap-6`}>
-            {/* Calendar */}
-            {!directBooking && (
-            <div>
-              <h2 className="text-sm font-semibold text-primary-dark mb-3">Choisissez une date</h2>
-              <div className="rounded-xl border bg-card p-4 flex justify-center">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(d) => { setSelectedDate(d); setSelectedSlot(""); }}
-                  locale={fr}
-                  disabled={isDateDisabled}
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </div>
-              {activity.type === "course" && availableDays.size > 0 && (
-                <p className="text-xs text-muted-foreground mt-2 text-center">
-                  Disponible : {Array.from(availableDays).join(", ")}
-                </p>
-              )}
-            </div>
-            )}
-
-            {/* Slot + participants + confirm */}
-            <div className="space-y-4">
-              {selectedDate ? (
-                <>
-                  <h2 className="text-sm font-semibold text-primary-dark">
-                    {selectedDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+          {/* ═══════════════════════════════════════════════ */}
+          {/* STEP: OFFERS — Buy a card (for courses only) */}
+          {/* ═══════════════════════════════════════════════ */}
+          {bookingStep === "offers" && currentProfile && needsCredits && (
+            <div className="max-w-md mx-auto space-y-6">
+              <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary-dark" />
+                  <h2 className="font-display font-semibold text-primary-dark">
+                    {currentProfile.cards.length > 0 ? "Rechargez vos crédits" : "Comment ça marche ?"}
                   </h2>
+                </div>
 
-                  {slots.length > 0 ? (
-                    <div className="space-y-2">
-                      {slots.map(slot => (
-                        <div
-                          key={slot.id}
-                          onClick={() => slot.spotsLeft > 0 && setSelectedSlot(slot.id)}
-                          className={cn(
-                            "rounded-lg border p-3 cursor-pointer transition-all",
-                            selectedSlot === slot.id ? "border-primary-dark ring-2 ring-primary-dark/20 bg-primary/5" : "hover:border-primary-dark/50",
-                            slot.spotsLeft === 0 && "opacity-50 cursor-not-allowed"
-                          )}
-                        >
-                          <div className="flex items-center gap-3 text-sm">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{slot.time}{slot.end_time ? ` - ${slot.end_time}` : ""}</span>
-                            <span className="text-muted-foreground">· {slot.duration}</span>
-                          </div>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                            <Users className="h-3 w-3" />
-                            {slot.spotsLeft === 0 ? (
-                              <span className="text-destructive font-medium">Complet</span>
-                            ) : (
-                              <span>{slot.spotsLeft}/{slot.spots} places</span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground py-4">Aucun créneau disponible.</p>
-                  )}
-
-                  {selectedSlotData && (
-                    <div className="space-y-4 pt-2">
-                      {/* Participants */}
-                      <div>
-                        <Label className="text-sm">Participants</Label>
-                        <div className="flex items-center gap-3 mt-1">
-                          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setParticipants(Math.max(1, participants - 1))}>-</Button>
-                          <Input
-                            type="number" min={1} max={selectedSlotData.spotsLeft}
-                            value={participants}
-                            onChange={(e) => setParticipants(Math.min(Number(e.target.value), selectedSlotData.spotsLeft))}
-                            className="w-16 text-center h-8"
-                          />
-                          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setParticipants(Math.min(selectedSlotData.spotsLeft, participants + 1))}>+</Button>
-                        </div>
+                {currentProfile.cards.length === 0 && (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Les cours de Yoga & Pilates fonctionnent avec un <strong>système de crédits</strong> :
+                    </p>
+                    <div className="grid gap-2">
+                      <div className="flex items-start gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground flex items-center justify-center text-xs font-bold">1</span>
+                        <p className="text-sm">Achetez une <strong>carte de cours</strong></p>
                       </div>
+                      <div className="flex items-start gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground flex items-center justify-center text-xs font-bold">2</span>
+                        <p className="text-sm">Chaque réservation utilise <strong>1 crédit</strong></p>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground flex items-center justify-center text-xs font-bold">3</span>
+                        <p className="text-sm">Réservez autant de cours que vous voulez !</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-                      {/* Credit info / pedagogy block — shown inline */}
-                      {renderCreditBlock()}
+                {currentProfile.cards.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Vous n'avez plus de crédits. Choisissez une carte pour continuer.
+                  </p>
+                )}
 
-                      {/* Summary */}
-                      <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Activité</span>
-                          <span className="font-medium">{selectedSlotData.name}</span>
+                <div className="border-t pt-4 space-y-2">
+                  <p className="text-xs font-semibold text-primary-dark uppercase tracking-wide">Choisissez votre carte</p>
+                  {CARD_OPTIONS.map(card => (
+                    <button
+                      key={card.sessions}
+                      onClick={() => handleBuyCard(card)}
+                      className="w-full flex items-center justify-between rounded-lg border bg-background p-3 hover:border-primary-dark/40 transition-colors text-left"
+                    >
+                      <div>
+                        <p className="font-medium text-sm">{card.label}</p>
+                        <p className="text-xs text-muted-foreground">{(card.price / card.sessions).toFixed(0)}€ / cours</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-primary-dark">{card.price}€</span>
+                        <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════ */}
+          {/* STEP: CONFIRM — Reservation form */}
+          {/* ═══════════════════════════════════════════════ */}
+          {bookingStep === "confirm" && currentProfile && (
+            <div className={`grid ${directBooking ? "" : "md:grid-cols-2"} gap-6`}>
+              {/* Calendar (only if not direct booking) */}
+              {!directBooking && (
+                <div>
+                  <h2 className="text-sm font-semibold text-primary-dark mb-3">Choisissez une date</h2>
+                  <div className="rounded-xl border bg-card p-4 flex justify-center">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(d) => { setSelectedDate(d); setSelectedSlot(""); }}
+                      locale={fr}
+                      disabled={isDateDisabled}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </div>
+                  {activity.type === "course" && availableDays.size > 0 && (
+                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                      Disponible : {Array.from(availableDays).join(", ")}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Slot + participants + confirm */}
+              <div className="space-y-4">
+                {selectedDate ? (
+                  <>
+                    <h2 className="text-sm font-semibold text-primary-dark">
+                      {selectedDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                    </h2>
+
+                    {slots.length > 0 ? (
+                      <div className="space-y-2">
+                        {slots.map(slot => (
+                          <div
+                            key={slot.id}
+                            onClick={() => slot.spotsLeft > 0 && setSelectedSlot(slot.id)}
+                            className={cn(
+                              "rounded-lg border p-3 cursor-pointer transition-all",
+                              selectedSlot === slot.id ? "border-primary-dark ring-2 ring-primary-dark/20 bg-primary/5" : "hover:border-primary-dark/50",
+                              slot.spotsLeft === 0 && "opacity-50 cursor-not-allowed"
+                            )}
+                          >
+                            <div className="flex items-center gap-3 text-sm">
+                              <Clock className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{slot.time}{slot.end_time ? ` - ${slot.end_time}` : ""}</span>
+                              <span className="text-muted-foreground">· {slot.duration}</span>
+                            </div>
+                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                              <Users className="h-3 w-3" />
+                              {slot.spotsLeft === 0 ? (
+                                <span className="text-destructive font-medium">Complet</span>
+                              ) : (
+                                <span>{slot.spotsLeft}/{slot.spots} places</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-4">Aucun créneau disponible.</p>
+                    )}
+
+                    {selectedSlotData && (
+                      <div className="space-y-4 pt-2">
+                        {/* Participants */}
+                        <div>
+                          <Label className="text-sm">Participants</Label>
+                          <div className="flex items-center gap-3 mt-1">
+                            <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setParticipants(Math.max(1, participants - 1))}>-</Button>
+                            <Input
+                              type="number" min={1} max={selectedSlotData.spotsLeft}
+                              value={participants}
+                              onChange={(e) => setParticipants(Math.min(Number(e.target.value), selectedSlotData.spotsLeft))}
+                              className="w-16 text-center h-8"
+                            />
+                            <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setParticipants(Math.min(selectedSlotData.spotsLeft, participants + 1))}>+</Button>
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Date</span>
-                          <span className="font-medium">{selectedDate.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Horaire</span>
-                          <span className="font-medium">{selectedSlotData.time} - {selectedSlotData.end_time}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Participants</span>
-                          <span className="font-medium">{participants}</span>
-                        </div>
-                        {isWorkshopDirect && selectedSlotData.price != null && (
-                          <div className="flex justify-between border-t pt-2 mt-1">
-                            <span className="text-muted-foreground">Prix</span>
-                            <span className="font-semibold text-primary-dark">{selectedSlotData.price} €</span>
+
+                        {/* Credits info */}
+                        {needsCredits && currentProfile.credits > 0 && (
+                          <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 flex items-center gap-2">
+                            <CreditCard className="h-4 w-4 text-primary-dark" />
+                            <span className="text-sm">
+                              <strong>{currentProfile.credits}</strong> crédit{currentProfile.credits > 1 ? "s" : ""} disponible{currentProfile.credits > 1 ? "s" : ""}
+                            </span>
                           </div>
                         )}
-                        <div className="pt-1">
-                          {needsCredits ? (
-                            hasCredits ? (
+
+                        {/* Summary */}
+                        <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Activité</span>
+                            <span className="font-medium">{selectedSlotData.name}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Date</span>
+                            <span className="font-medium">{selectedDate.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Horaire</span>
+                            <span className="font-medium">{selectedSlotData.time} - {selectedSlotData.end_time}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Participants</span>
+                            <span className="font-medium">{participants}</span>
+                          </div>
+                          {isWorkshopDirect && selectedSlotData.price != null && (
+                            <div className="flex justify-between border-t pt-2 mt-1">
+                              <span className="text-muted-foreground">Prix</span>
+                              <span className="font-semibold text-primary-dark">{selectedSlotData.price} €</span>
+                            </div>
+                          )}
+                          <div className="pt-1">
+                            {needsCredits ? (
                               <Badge variant="secondary" className="gap-1 text-xs">
                                 <CreditCard className="h-3 w-3" /> 1 crédit sera déduit
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="gap-1 text-xs text-amber-700 border-amber-300">
-                                <CreditCard className="h-3 w-3" /> Carte de cours requise
+                              <Badge variant="outline" className="gap-1 text-xs">
+                                <ShoppingCart className="h-3 w-3" /> Paiement par carte
                               </Badge>
-                            )
-                          ) : (
-                            <Badge variant="outline" className="gap-1 text-xs">
-                              <ShoppingCart className="h-3 w-3" /> Paiement par carte
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Booking blocked warning */}
-                      {bookingBlocked && (
-                        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
-                          <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                          <p className="text-sm text-destructive">{bookingBlocked}</p>
-                        </div>
-                      )}
-
-                      {/* Gift voucher code */}
-                      <div className="space-y-2">
-                        <Label className="text-sm flex items-center gap-1.5">
-                          <Gift className="h-3.5 w-3.5" /> Code bon cadeau (optionnel)
-                        </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="IGI-XXXXXXXX"
-                            value={voucherCode}
-                            onChange={e => { setVoucherCode(e.target.value.toUpperCase()); setVoucherStatus("idle"); }}
-                            className="font-mono text-sm"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={!voucherCode.trim() || voucherStatus === "checking"}
-                            onClick={async () => {
-                              setVoucherStatus("checking");
-                              const { data } = await supabase
-                                .from("gift_vouchers")
-                                .select("id, used, expires_at")
-                                .eq("code", voucherCode.trim())
-                                .single();
-                              if (!data) { setVoucherStatus("invalid"); return; }
-                              if ((data as any).used || new Date((data as any).expires_at) < new Date()) { setVoucherStatus("invalid"); return; }
-                              setVoucherStatus("valid");
-                            }}
-                          >
-                            Vérifier
-                          </Button>
-                        </div>
-                        {voucherStatus === "valid" && (
-                          <p className="text-xs text-primary-dark font-medium">✓ Bon cadeau valide</p>
-                        )}
-                        {voucherStatus === "invalid" && (
-                          <p className="text-xs text-destructive">Code invalide, expiré ou déjà utilisé</p>
-                        )}
-                      </div>
-
-                      {/* Conditions */}
-                      {applicableConditions.length > 0 && !bookingBlocked && (
-                        <div className="space-y-3">
-                          <Accordion type="multiple" className="w-full">
-                            {applicableConditions.map(c => (
-                              <AccordionItem key={c.id} value={c.id} className="border rounded-lg bg-muted/30 px-3">
-                                <AccordionTrigger className="py-2 text-xs font-semibold text-primary-dark hover:no-underline">
-                                  {c.title}
-                                </AccordionTrigger>
-                                <AccordionContent>
-                                  <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{c.content}</p>
-                                </AccordionContent>
-                              </AccordionItem>
-                            ))}
-                          </Accordion>
-                          <div className="flex items-start gap-2">
-                            <Checkbox
-                              id="accept-conditions"
-                              checked={conditionsAccepted}
-                              onCheckedChange={(v) => setConditionsAccepted(!!v)}
-                            />
-                            <label htmlFor="accept-conditions" className="text-xs text-muted-foreground cursor-pointer leading-tight">
-                              J'ai lu et j'accepte les conditions ci-dessus
-                            </label>
+                            )}
                           </div>
                         </div>
-                      )}
 
-                      {/* Show confirm button only if user can confirm (has credits or workshop) */}
-                      {canConfirm ? (
+                        {/* Booking blocked warning */}
+                        {bookingBlocked && (
+                          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                            <p className="text-sm text-destructive">{bookingBlocked}</p>
+                          </div>
+                        )}
+
+                        {/* Gift voucher code */}
+                        <div className="space-y-2">
+                          <Label className="text-sm flex items-center gap-1.5">
+                            <Gift className="h-3.5 w-3.5" /> Code bon cadeau (optionnel)
+                          </Label>
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="IGI-XXXXXXXX"
+                              value={voucherCode}
+                              onChange={e => { setVoucherCode(e.target.value.toUpperCase()); setVoucherStatus("idle"); }}
+                              className="font-mono text-sm"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={!voucherCode.trim() || voucherStatus === "checking"}
+                              onClick={async () => {
+                                setVoucherStatus("checking");
+                                const { data } = await supabase
+                                  .from("gift_vouchers")
+                                  .select("id, used, expires_at")
+                                  .eq("code", voucherCode.trim())
+                                  .single();
+                                if (!data) { setVoucherStatus("invalid"); return; }
+                                if ((data as any).used || new Date((data as any).expires_at) < new Date()) { setVoucherStatus("invalid"); return; }
+                                setVoucherStatus("valid");
+                              }}
+                            >
+                              Vérifier
+                            </Button>
+                          </div>
+                          {voucherStatus === "valid" && (
+                            <p className="text-xs text-primary-dark font-medium">✓ Bon cadeau valide</p>
+                          )}
+                          {voucherStatus === "invalid" && (
+                            <p className="text-xs text-destructive">Code invalide, expiré ou déjà utilisé</p>
+                          )}
+                        </div>
+
+                        {/* Conditions */}
+                        {applicableConditions.length > 0 && !bookingBlocked && (
+                          <div className="space-y-3">
+                            <Accordion type="multiple" className="w-full">
+                              {applicableConditions.map(c => (
+                                <AccordionItem key={c.id} value={c.id} className="border rounded-lg bg-muted/30 px-3">
+                                  <AccordionTrigger className="py-2 text-xs font-semibold text-primary-dark hover:no-underline">
+                                    {c.title}
+                                  </AccordionTrigger>
+                                  <AccordionContent>
+                                    <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{c.content}</p>
+                                  </AccordionContent>
+                                </AccordionItem>
+                              ))}
+                            </Accordion>
+                            <div className="flex items-start gap-2">
+                              <Checkbox
+                                id="accept-conditions"
+                                checked={conditionsAccepted}
+                                onCheckedChange={(v) => setConditionsAccepted(!!v)}
+                              />
+                              <label htmlFor="accept-conditions" className="text-xs text-muted-foreground cursor-pointer leading-tight">
+                                J'ai lu et j'accepte les conditions ci-dessus
+                              </label>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Confirm button */}
                         <Button
                           onClick={handleConfirmClick}
                           disabled={submitting || !!bookingBlocked || (applicableConditions.length > 0 && !conditionsAccepted)}
@@ -808,30 +886,17 @@ export default function Reserver() {
                             ? `Payer ${selectedSlotData?.price || activity.price || ""} € et réserver`
                             : "Confirmer la réservation"}
                         </Button>
-                      ) : (
-                        /* No credits: the purchase options are already shown above in renderCreditBlock */
-                        !currentProfile ? (
-                          <Button
-                            onClick={() => {
-                              const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
-                              navigate(`/login?returnTo=${returnTo}`);
-                            }}
-                            className="w-full gap-1.5"
-                          >
-                            Se connecter pour réserver
-                          </Button>
-                        ) : null
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="py-8 text-center">
-                  <p className="text-sm text-muted-foreground">Sélectionnez une date pour voir les créneaux disponibles.</p>
-                </div>
-              )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="py-8 text-center">
+                    <p className="text-sm text-muted-foreground">Sélectionnez une date pour voir les créneaux disponibles.</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </main>
       <Footer />
