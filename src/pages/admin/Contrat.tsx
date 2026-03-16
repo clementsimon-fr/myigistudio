@@ -292,6 +292,7 @@ export default function AdminContrat() {
   const { toast } = useToast();
   const isFournisseur = currentProfile?.role === "fournisseur";
   const [tickets, setTickets] = useState<FeatureRequest[]>([]);
+  const [phases, setPhases] = useState(timelinePhases);
   
   // Editing state for fournisseur
   const [editingSection, setEditingSection] = useState<string | null>(null);
@@ -312,8 +313,9 @@ export default function AdminContrat() {
   const includedTickets = tickets.filter(t => t.impact !== "fonctionnalite");
   const monthlyCost = paidTickets.length * 50;
 
-  const handleEditPhase = (phase: typeof timelinePhases[0]) => {
-    toast({ title: `Édition de "${phase.name}" — Fonctionnalité à venir` });
+  const handleSavePhase = (phaseName: string, updates: Partial<typeof timelinePhases[0]>) => {
+    setPhases(prev => prev.map(p => p.name === phaseName ? { ...p, ...updates } : p));
+    toast({ title: `Phase "${phaseName}" mise à jour ✓` });
   };
 
   const handlePrintScreens = () => {
