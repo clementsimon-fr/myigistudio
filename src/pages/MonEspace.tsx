@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { CalendarDays, CreditCard, Clock, LogOut, Plus, Loader2, User, Send, Pencil, XCircle, Star, ArrowRight, Bell, MapPin } from "lucide-react";
+import { CalendarDays, CreditCard, Clock, Loader2, User, Send, Pencil, XCircle, Star, ArrowRight, Bell, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoContext } from "@/contexts/DemoContext";
@@ -24,15 +24,12 @@ const statusColors: Record<string, string> = {
   "annulé": "bg-destructive/10 text-destructive border-destructive/30",
   "liste d'attente": "bg-accent/20 text-accent-foreground border-accent/30",
 };
-// CLIENT_NAME now comes from DemoContext
 
-type Section = "reservations" | "cartes" | "cadeaux" | "profil" | "feedback";
+type Section = "reservations" | "cartes" | "profil";
 
 const NAV_ITEMS: { value: Section; label: string; icon: typeof CalendarDays }[] = [
   { value: "reservations", label: "Réservations", icon: CalendarDays },
   { value: "cartes", label: "Cartes Yoga", icon: CreditCard },
-  { value: "cadeaux", label: "Bons Cadeaux", icon: Star },
-  { value: "feedback", label: "Feedback", icon: Star },
   { value: "profil", label: "Profil", icon: User },
 ];
 
@@ -50,7 +47,6 @@ export default function MonEspace() {
   useEffect(() => {
     if (isWelcome) {
       setShowWelcome(true);
-      // Clean URL
       const url = new URL(window.location.href);
       url.searchParams.delete("welcome");
       window.history.replaceState({}, "", url.pathname + url.search);
@@ -64,9 +60,6 @@ export default function MonEspace() {
   const [cards, setCards] = useState<ClientCard[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editingBio, setEditingBio] = useState(false);
-  const [bioValue, setBioValue] = useState("");
-  const [showInCommunity, setShowInCommunity] = useState(false);
   const [reminderSms, setReminderSms] = useState(false);
   const [reminderEmail, setReminderEmail] = useState(true);
   const [resFilter, setResFilter] = useState("all");
@@ -84,13 +77,12 @@ export default function MonEspace() {
       ]);
       if (resR.data) setReservations(resR.data as unknown as Reservation[]);
       if (resC.data) setCards(resC.data as unknown as ClientCard[]);
-      if (resP.data) { setProfile(resP.data as unknown as Profile); setBioValue((resP.data as any).bio || ""); setShowInCommunity((resP.data as any).show_in_community || false); setReminderSms((resP.data as any).reminder_sms || false); setReminderEmail((resP.data as any).reminder_email ?? true); }
+      if (resP.data) { setProfile(resP.data as unknown as Profile); setReminderSms((resP.data as any).reminder_sms || false); setReminderEmail((resP.data as any).reminder_email ?? true); }
       setLoading(false);
     };
     load();
   }, []);
 
-  // Fetch modalities when viewing a reservation
   useEffect(() => {
     if (!viewingReservation) { setActivityModalities(""); return; }
     const fetchModalities = async () => {
@@ -129,7 +121,6 @@ export default function MonEspace() {
     if (data) setReservations(data as unknown as Reservation[]);
   };
 
-  // Compute cancellation info for the cancelConfirm reservation
   const getCancelInfo = (r: Reservation) => {
     const [h, m] = r.time.split(":").map(Number);
     const courseStart = new Date(r.date + "T00:00:00");
@@ -145,20 +136,14 @@ export default function MonEspace() {
       <Navbar />
       <main className="flex-1 pb-8">
         <div className="container max-w-4xl py-4 md:py-8 px-4">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4 md:mb-8">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/15 flex items-center justify-center">
-                <User className="h-5 w-5 md:h-6 md:w-6 text-primary-dark" />
-              </div>
-              <div>
-                <h1 className="text-xl md:text-3xl font-display font-bold text-primary-dark">Mon Espace</h1>
-                <p className="text-muted-foreground text-xs md:text-sm">Bonjour {CLIENT_NAME} 👋</p>
-              </div>
+          {/* Header — no reserve button, no logout button */}
+          <div className="flex items-center gap-3 mb-4 md:mb-8">
+            <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-primary/15 flex items-center justify-center">
+              <User className="h-5 w-5 md:h-6 md:w-6 text-primary-dark" />
             </div>
-            <div className="flex gap-1.5">
-              <Link to="/calendrier"><Button size="sm" className="gap-1 text-xs md:text-sm"><Plus className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Réserver</span></Button></Link>
-              <Button size="sm" variant="ghost" onClick={() => navigate("/login")} className="gap-1 text-xs text-muted-foreground"><LogOut className="h-3.5 w-3.5" /></Button>
+            <div>
+              <h1 className="text-xl md:text-3xl font-display font-bold text-primary-dark">Mon Espace</h1>
+              <p className="text-muted-foreground text-xs md:text-sm">Bonjour {CLIENT_NAME} 👋</p>
             </div>
           </div>
 
@@ -253,11 +238,6 @@ export default function MonEspace() {
                 </div>
               )}
 
-              {/* ─── BONS CADEAUX ─── */}
-              {section === "cadeaux" && (
-                <GiftVoucherSection clientName={CLIENT_NAME} />
-              )}
-
               {/* ─── PROFIL ─── */}
               {section === "profil" && (
                 <div className="space-y-4">
@@ -274,7 +254,6 @@ export default function MonEspace() {
                       </div>
                     </div>
 
-                    {/* Reminder preferences */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-1.5 mb-1">
                         <Bell className="h-4 w-4 text-primary-dark" />
@@ -303,11 +282,6 @@ export default function MonEspace() {
                 </div>
               )}
             </>
-          )}
-
-          {/* ── FEEDBACK ── */}
-          {section === "feedback" && (
-            <FeedbackSection clientName={CLIENT_NAME} />
           )}
         </div>
       </main>
@@ -355,7 +329,6 @@ export default function MonEspace() {
                     <span>Type : {r.activity_type === "course" ? "Cours" : "Atelier"}</span>
                   </div>
 
-                  {/* Modalités */}
                   {activityModalities && (
                     <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
                       <div className="flex items-center gap-1.5 mb-1">
@@ -445,109 +418,6 @@ export default function MonEspace() {
       </Dialog>
 
       <Footer />
-    </div>
-  );
-}
-
-function GiftVoucherSection({ clientName }: { clientName: string }) {
-  const [vouchers, setVouchers] = useState<{ id: string; code: string; type: string; amount: number; sessions: number; card_name: string; message: string; used: boolean; expires_at: string }[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    supabase.from("gift_vouchers").select("*").eq("beneficiary_name", clientName).order("created_at", { ascending: false }).then(({ data }) => {
-      if (data) setVouchers(data as any);
-      setLoading(false);
-    });
-  }, [clientName]);
-
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
-
-  return (
-    <div className="space-y-3">
-      <h2 className="text-lg font-display font-bold text-primary-dark">Mes bons cadeaux</h2>
-      {vouchers.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-8">Aucun bon cadeau pour le moment.</p>
-      ) : vouchers.map(v => (
-        <div key={v.id} className="rounded-xl border bg-card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold text-sm text-primary-dark">{v.card_name || (v.type === "amount" ? `Bon de ${v.amount}€` : `${v.sessions} séances`)}</h3>
-            <Badge variant={v.used ? "secondary" : "default"} className="text-xs">{v.used ? "Utilisé" : "Actif"}</Badge>
-          </div>
-          <p className="text-xs text-muted-foreground">Code : <span className="font-mono font-medium">{v.code}</span></p>
-          <p className="text-xs text-muted-foreground">Expire le {new Date(v.expires_at).toLocaleDateString("fr-FR")}</p>
-          {v.message && <p className="text-xs text-muted-foreground mt-1 italic">"{v.message}"</p>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function FeedbackSection({ clientName }: { clientName: string }) {
-  const { toast } = useToast();
-  const [feedbackMsg, setFeedbackMsg] = useState("");
-  const [rating, setRating] = useState(5);
-  const [submitting, setSubmitting] = useState(false);
-  const [feedbacks, setFeedbacks] = useState<{ id: string; message: string; rating: number; created_at: string }[]>([]);
-
-  useEffect(() => {
-    supabase.from("feedbacks").select("*").eq("author_name", clientName).order("created_at", { ascending: false }).then(({ data }) => {
-      if (data) setFeedbacks(data as any);
-    });
-  }, [clientName]);
-
-  const submit = async () => {
-    if (!feedbackMsg.trim()) return;
-    setSubmitting(true);
-    await supabase.from("feedbacks").insert({ author_name: clientName, message: feedbackMsg, rating } as any);
-    toast({ title: "Merci pour votre retour ! 🙏" });
-    setFeedbackMsg("");
-    setRating(5);
-    setSubmitting(false);
-    const { data } = await supabase.from("feedbacks").select("*").eq("author_name", clientName).order("created_at", { ascending: false });
-    if (data) setFeedbacks(data as any);
-  };
-
-  return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-display font-bold text-primary-dark">Votre avis compte !</h2>
-      <p className="text-sm text-muted-foreground">Aidez-nous à améliorer votre expérience en partageant vos idées et suggestions.</p>
-
-      <div className="rounded-xl border bg-card p-4 space-y-3">
-        <div>
-          <Label className="text-sm">Note</Label>
-          <div className="flex gap-1 mt-1">
-            {[1, 2, 3, 4, 5].map(n => (
-              <button key={n} onClick={() => setRating(n)} className="focus:outline-none">
-                <Star className={`h-6 w-6 transition-colors ${n <= rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`} />
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <Label className="text-sm">Votre message</Label>
-          <Textarea value={feedbackMsg} onChange={e => setFeedbackMsg(e.target.value)} rows={3} placeholder="Ce que vous aimez, ce qu'on pourrait améliorer..." className="mt-1" />
-        </div>
-        <Button size="sm" className="gap-1.5" onClick={submit} disabled={!feedbackMsg.trim() || submitting}>
-          <Send className="h-3.5 w-3.5" /> Envoyer
-        </Button>
-      </div>
-
-      {feedbacks.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-muted-foreground">Vos retours précédents</h3>
-          {feedbacks.map(fb => (
-            <div key={fb.id} className="rounded-lg border bg-muted/30 p-3">
-              <div className="flex items-center gap-1 mb-1">
-                {Array.from({ length: fb.rating }).map((_, i) => (
-                  <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />
-                ))}
-              </div>
-              <p className="text-sm">{fb.message}</p>
-              <p className="text-[10px] text-muted-foreground mt-1">{new Date(fb.created_at).toLocaleDateString("fr-FR")}</p>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
