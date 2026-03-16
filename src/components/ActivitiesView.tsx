@@ -6,6 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import PricingSection from "@/components/home/PricingSection";
 import TeamSection from "@/components/home/TeamSection";
+import ContactElodieButton from "@/components/ContactElodieButton";
 import { CATEGORY_STYLES, type FilterCategory } from "@/components/ActivityFilterBar";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 
@@ -179,6 +180,9 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
           <div className="space-y-3 text-muted-foreground text-sm">
             <p>Arrivez 10 minutes avant le cours · Tapis fournis · Tenue confortable</p>
             <p>Annulation gratuite jusqu'à 24h avant le cours. Au-delà, le crédit est débité.</p>
+          </div>
+          <div className="mt-4">
+            <ContactElodieButton variant="outline" />
           </div>
         </div>
       </section>

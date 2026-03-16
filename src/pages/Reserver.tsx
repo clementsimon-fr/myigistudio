@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle, Gift, CreditCard, ShoppingCart, Sparkles, LogIn, UserPlus, User, Star, Mail } from "lucide-react";
+import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle, Gift, CreditCard, ShoppingCart, Sparkles, LogIn, UserPlus, User, Star, Mail, MessageCircle } from "lucide-react";
+import ContactElodieButton from "@/components/ContactElodieButton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
 import { fr } from "date-fns/locale";
@@ -392,7 +393,7 @@ export default function Reserver() {
     setShowConfirmVoucher(false);
   };
 
-  const handleStripeSuccess = () => {
+  const handleStripeSuccess = async () => {
     setShowStripeModal(false);
     if (paymentPurpose === "card" && selectedCard) {
       addCredits(selectedCard.sessions, selectedCard.name);
@@ -400,6 +401,15 @@ export default function Reserver() {
         `${currentProfile?.name || "Client"} vient d'acheter une ${selectedCard.name}`,
         "purchase"
       );
+      // Persist card in DB
+      const clientName = currentProfile?.name || "Client";
+      await supabase.from("client_cards").insert({
+        client_name: clientName,
+        card_name: selectedCard.name,
+        total_sessions: selectedCard.sessions,
+        used_sessions: 0,
+        expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      } as any);
       toast({ title: `${selectedCard.name} achetée avec succès ! 🎉` });
       setBookingStep("confirm");
     } else if (paymentPurpose === "workshop") {
@@ -857,13 +867,19 @@ export default function Reserver() {
                 </div>
               )}
 
-              {/* Separator */}
+              {/* Separator + Contact Élodie */}
               {!useVoucherMode && (
                 <>
-                  <div className="relative flex items-center gap-4">
-                    <div className="flex-1 border-t" />
-                    <span className="text-sm text-muted-foreground">ou choisissez une carte</span>
-                    <div className="flex-1 border-t" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="flex-1 border-t" />
+                      <span className="text-sm text-muted-foreground">ou choisissez une carte</span>
+                      <div className="flex-1 border-t" />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-center">
+                    <ContactElodieButton variant="outline" />
                   </div>
 
                   {/* Pricing cards grid */}

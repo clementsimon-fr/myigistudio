@@ -50,6 +50,10 @@ const DEFAULT_PROFILES: Record<string, DemoProfile> = {
     cards: [],
     reservations: [],
   },
+};
+
+// Demo client profiles (resettable)
+const DEMO_CLIENT_PROFILES: Record<string, DemoProfile> = {
   marion: {
     id: "marion",
     name: "Marion",
@@ -208,7 +212,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   }, [addNotification]);
 
   const getDefaultProfile = useCallback((id: string) => {
-    return DEFAULT_PROFILES[id] ? { ...DEFAULT_PROFILES[id], cards: DEFAULT_PROFILES[id].cards.map(c => ({ ...c })), reservations: [] } : undefined;
+    const allProfiles = { ...DEFAULT_PROFILES, ...DEMO_CLIENT_PROFILES };
+    return allProfiles[id] ? { ...allProfiles[id], cards: (allProfiles[id].cards || []).map(c => ({ ...c })), reservations: [] } : undefined;
   }, []);
 
   const clearTempProfiles = useCallback(() => {
@@ -216,6 +221,12 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(LS_TEMP_PROFILES_KEY);
     setDemoNotifications([]);
     localStorage.removeItem(LS_NOTIFS_KEY);
+    // Also disconnect current profile if it's a demo client (Marion/Sophie or temp)
+    setCurrentProfileState(prev => {
+      if (!prev) return prev;
+      if (prev.role === "client") return null;
+      return prev;
+    });
   }, []);
 
   return (
