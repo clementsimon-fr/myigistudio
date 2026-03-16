@@ -142,8 +142,9 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
     onSwitchToPlanning({ filter: ws.category as FilterCategory, activity: ws.name, date: ws.date });
   };
 
-  const openFrequency = (category: string) => {
+  const openFrequency = (category: string, activityName?: string) => {
     setFrequencyCategory(category);
+    setFrequencyActivity(activityName);
     setFrequencyOpen(true);
   };
 
