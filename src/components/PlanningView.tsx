@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Clock, Users, User, ArrowRight } from "lucide-react";
 import { CATEGORY_STYLES, CATEGORY_FILTERS, type FilterCategory } from "@/components/ActivityFilterBar";
+import ContactElodieButton from "@/components/ContactElodieButton";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 
 interface ActivityBlock {
