@@ -8,7 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle, Gift, CreditCard, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Check, Clock, Users, Loader2, AlertTriangle, Gift, CreditCard, ShoppingCart, Sparkles } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
 import { fr } from "date-fns/locale";
@@ -154,6 +154,7 @@ export default function Reserver() {
     };
     load();
   }, [activityType, activityId, preselectedDate, preselectedScheduleId]);
+
   // Redirect unauthenticated visitors immediately when direct booking
   useEffect(() => {
     if (!loading && directBooking && !currentProfile) {
@@ -240,6 +241,11 @@ export default function Reserver() {
   const needsCredits = activity?.type === "course";
   const isWorkshopDirect = activity?.type === "workshop";
 
+  // Determine user state for credit pedagogy
+  const isFirstTimeUser = needsCredits && currentProfile && currentProfile.credits === 0 && currentProfile.cards.length === 0;
+  const isReturningNoCredits = needsCredits && currentProfile && currentProfile.credits === 0 && currentProfile.cards.length > 0;
+  const hasCredits = needsCredits && currentProfile && currentProfile.credits > 0;
+
   const handleProceedToConfirm = () => {
     // Step 1: Check if logged in — redirect to login page
     if (!currentProfile) {
@@ -247,8 +253,9 @@ export default function Reserver() {
       navigate(`/login?returnTo=${returnTo}`);
       return;
     }
-    // Step 2: Check credits for courses
+    // Step 2: For courses, credits are handled inline — should not reach here without credits
     if (needsCredits && currentProfile.credits <= 0) {
+      // This shouldn't happen with the new flow, but safety net
       setBookingStep("credits");
       return;
     }
@@ -264,9 +271,6 @@ export default function Reserver() {
     // Otherwise go straight to confirm
     handleFinalConfirm();
   };
-
-  // handleLoginSubmit removed — login is now handled via redirect to /login page
-
 
   const handleBuyCard = (card: typeof CARD_OPTIONS[0]) => {
     setSelectedCard(card);
@@ -429,6 +433,109 @@ export default function Reserver() {
     );
   }
 
+  // Render credit pedagogy / purchase block inline
+  const renderCreditBlock = () => {
+    if (!needsCredits || !currentProfile || !selectedSlotData) return null;
+
+    // User has credits → simple info
+    if (hasCredits) {
+      return (
+        <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 flex items-center gap-2">
+          <CreditCard className="h-4 w-4 text-primary-dark" />
+          <span className="text-sm">
+            <strong>{currentProfile.credits}</strong> crédit{currentProfile.credits > 1 ? "s" : ""} disponible{currentProfile.credits > 1 ? "s" : ""}
+          </span>
+        </div>
+      );
+    }
+
+    // First-time user (never had a card) → full pedagogy
+    if (isFirstTimeUser) {
+      return (
+        <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary-dark" />
+            <h3 className="font-display font-semibold text-primary-dark">Comment ça marche ?</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Les cours de Yoga & Pilates fonctionnent avec un <strong>système de crédits</strong> :
+          </p>
+          <div className="grid gap-2">
+            <div className="flex items-start gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground flex items-center justify-center text-xs font-bold">1</span>
+              <p className="text-sm">Achetez une <strong>carte de cours</strong></p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground flex items-center justify-center text-xs font-bold">2</span>
+              <p className="text-sm">Chaque réservation utilise <strong>1 crédit</strong></p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground flex items-center justify-center text-xs font-bold">3</span>
+              <p className="text-sm">Réservez autant de cours que vous voulez !</p>
+            </div>
+          </div>
+          <div className="border-t pt-4 space-y-2">
+            <p className="text-xs font-semibold text-primary-dark uppercase tracking-wide">Choisissez votre carte</p>
+            {CARD_OPTIONS.map(card => (
+              <button
+                key={card.sessions}
+                onClick={() => handleBuyCard(card)}
+                className="w-full flex items-center justify-between rounded-lg border bg-background p-3 hover:border-primary-dark/40 transition-colors text-left"
+              >
+                <div>
+                  <p className="font-medium text-sm">{card.label}</p>
+                  <p className="text-xs text-muted-foreground">{(card.price / card.sessions).toFixed(0)}€ / cours</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-primary-dark">{card.price}€</span>
+                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // Returning user with 0 credits → simplified recharge
+    if (isReturningNoCredits) {
+      return (
+        <div className="rounded-xl border border-amber-300/50 bg-amber-50/50 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-amber-600" />
+            <h3 className="font-semibold text-sm text-amber-800">Plus de crédits disponibles</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Rechargez vos crédits pour réserver ce cours.
+          </p>
+          <div className="space-y-2">
+            {CARD_OPTIONS.map(card => (
+              <button
+                key={card.sessions}
+                onClick={() => handleBuyCard(card)}
+                className="w-full flex items-center justify-between rounded-lg border bg-background p-3 hover:border-primary-dark/40 transition-colors text-left"
+              >
+                <div>
+                  <p className="font-medium text-sm">{card.label}</p>
+                  <p className="text-xs text-muted-foreground">{(card.price / card.sessions).toFixed(0)}€ / cours</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-primary-dark">{card.price}€</span>
+                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  // Whether the confirm button should be shown (user has credits or it's a workshop)
+  const canConfirm = !needsCredits || (currentProfile && currentProfile.credits > 0);
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -447,10 +554,7 @@ export default function Reserver() {
             )}
           </div>
 
-
-
-
-          {/* Demo: Credits step */}
+          {/* Legacy credits step (kept as fallback, but shouldn't trigger with new flow) */}
           {bookingStep === "credits" && (
             <div className="rounded-xl border bg-card p-6 mb-6 space-y-4">
               <div className="flex items-center gap-2">
@@ -564,15 +668,8 @@ export default function Reserver() {
                         </div>
                       </div>
 
-                      {/* Demo credit info */}
-                      {currentProfile && needsCredits && (
-                        <div className="rounded-lg bg-muted/50 p-3 flex items-center gap-2">
-                          <CreditCard className="h-4 w-4 text-primary-dark" />
-                          <span className="text-sm">
-                            <strong>{currentProfile.credits}</strong> crédit{currentProfile.credits > 1 ? "s" : ""} disponible{currentProfile.credits > 1 ? "s" : ""}
-                          </span>
-                        </div>
-                      )}
+                      {/* Credit info / pedagogy block — shown inline */}
+                      {renderCreditBlock()}
 
                       {/* Summary */}
                       <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-sm">
@@ -600,9 +697,15 @@ export default function Reserver() {
                         )}
                         <div className="pt-1">
                           {needsCredits ? (
-                            <Badge variant="secondary" className="gap-1 text-xs">
-                              <CreditCard className="h-3 w-3" /> 1 crédit sera déduit
-                            </Badge>
+                            hasCredits ? (
+                              <Badge variant="secondary" className="gap-1 text-xs">
+                                <CreditCard className="h-3 w-3" /> 1 crédit sera déduit
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="gap-1 text-xs text-amber-700 border-amber-300">
+                                <CreditCard className="h-3 w-3" /> Carte de cours requise
+                              </Badge>
+                            )
                           ) : (
                             <Badge variant="outline" className="gap-1 text-xs">
                               <ShoppingCart className="h-3 w-3" /> Paiement par carte
@@ -687,22 +790,38 @@ export default function Reserver() {
                         </div>
                       )}
 
-                      <Button
-                        onClick={handleConfirmClick}
-                        disabled={submitting || !!bookingBlocked || (applicableConditions.length > 0 && !conditionsAccepted)}
-                        className="w-full bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-1.5"
-                      >
-                        {submitting ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : isWorkshopDirect ? (
-                          <ShoppingCart className="h-4 w-4" />
-                        ) : (
-                          <Check className="h-4 w-4" />
-                        )}
-                        {isWorkshopDirect
-                          ? `Payer ${selectedSlotData?.price || activity.price || ""} € et réserver`
-                          : "Confirmer la réservation"}
-                      </Button>
+                      {/* Show confirm button only if user can confirm (has credits or workshop) */}
+                      {canConfirm ? (
+                        <Button
+                          onClick={handleConfirmClick}
+                          disabled={submitting || !!bookingBlocked || (applicableConditions.length > 0 && !conditionsAccepted)}
+                          className="w-full bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-1.5"
+                        >
+                          {submitting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : isWorkshopDirect ? (
+                            <ShoppingCart className="h-4 w-4" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                          {isWorkshopDirect
+                            ? `Payer ${selectedSlotData?.price || activity.price || ""} € et réserver`
+                            : "Confirmer la réservation"}
+                        </Button>
+                      ) : (
+                        /* No credits: the purchase options are already shown above in renderCreditBlock */
+                        !currentProfile ? (
+                          <Button
+                            onClick={() => {
+                              const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+                              navigate(`/login?returnTo=${returnTo}`);
+                            }}
+                            className="w-full gap-1.5"
+                          >
+                            Se connecter pour réserver
+                          </Button>
+                        ) : null
+                      )}
                     </div>
                   )}
                 </>
