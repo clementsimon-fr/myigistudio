@@ -73,9 +73,9 @@ export default function ActivityFilterBar({ filter, onFilterChange, view, onView
             {NAV_TABS.map(tab => (
               <Button
                 key={tab.value}
-                size="sm"
+                size="default"
                 onClick={() => handleNavClick(tab)}
-                className={`rounded-md px-3 text-xs h-8 font-semibold transition-colors ${
+                className={`rounded-md px-5 text-sm h-10 font-semibold transition-colors ${
                   currentNav === tab.value
                     ? "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90"
                     : "bg-primary/15 text-primary-dark hover:bg-primary/25"

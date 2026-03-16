@@ -21,6 +21,7 @@ const sidebarGroups = [
       { title: "Réservations", url: "/admin/reservations", icon: CalendarDays },
       { title: "Notifications", url: "/admin", icon: Bell },
       { title: "Activités", url: "/admin/activites", icon: BookOpen },
+      { title: "Planning type", url: "/admin/planning-type", icon: CalendarRange },
       { title: "Conditions", url: "/admin/conditions", icon: ScrollText },
     ],
   },
