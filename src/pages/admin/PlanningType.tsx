@@ -146,42 +146,8 @@ export default function PlanningType() {
             </div>
           </div>
 
-          {viewMode === "compiled" ? (
-            /* Compiled view: all activities in one table */
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 px-3 font-medium text-muted-foreground min-w-[160px]">Activité</th>
-                    {DAYS_SHORT.map(d => (
-                      <th key={d} className="py-2 px-2 font-medium text-muted-foreground text-center w-14">{d}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(a => {
-                    const style = CATEGORY_STYLES[a.category];
-                    return (
-                      <tr key={a.name} className="border-b border-muted/30 hover:bg-muted/20">
-                        <td className="py-2.5 px-3">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full shrink-0 ${style?.dot || "bg-primary"}`} />
-                            <span className={`font-medium ${style?.text || ""}`}>{a.name}</span>
-                          </div>
-                        </td>
-                        {DAYS.map(day => (
-                          <td key={day} className="py-2.5 px-2 text-center">
-                            {renderTimeCell(a, day)}
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            /* By-category view */
+          {viewMode === "by-category" ? (
+            /* By-category view — shown first */
             Object.entries(grouped).map(([category, activities]) => {
               const style = CATEGORY_STYLES[category];
               return (
@@ -216,6 +182,40 @@ export default function PlanningType() {
                 </div>
               );
             })
+          ) : (
+            /* Compiled view: all activities grouped by category in one table */
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-3 font-medium text-muted-foreground min-w-[160px]">Activité</th>
+                    {DAYS_SHORT.map(d => (
+                      <th key={d} className="py-2 px-2 font-medium text-muted-foreground text-center w-14">{d}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(grouped).map(([category, activities]) => {
+                    const style = CATEGORY_STYLES[category];
+                    return activities.map((a, idx) => (
+                      <tr key={a.name} className={`border-b border-muted/30 hover:bg-muted/20 ${idx === 0 ? "border-t-2" : ""}`}>
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${style?.dot || "bg-primary"}`} />
+                            <span className={`font-medium ${style?.text || ""}`}>{a.name}</span>
+                          </div>
+                        </td>
+                        {DAYS.map(day => (
+                          <td key={day} className="py-2.5 px-2 text-center">
+                            {renderTimeCell(a, day)}
+                          </td>
+                        ))}
+                      </tr>
+                    ));
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
 
           {filtered.length === 0 && (
