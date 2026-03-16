@@ -124,9 +124,9 @@ interface UnifiedActivity {
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const CATEGORIES = [
-  { value: "yoga", label: "Yoga & Pilates" },
-  { value: "poterie", label: "Poterie" },
-  { value: "bien-etre", label: "Bien-être" },
+  { value: "yoga", label: "Yoga & Pilates", dot: "bg-[hsl(210,60%,55%)]", activeBg: "bg-[hsl(210,60%,55%)]" },
+  { value: "poterie", label: "Poterie", dot: "bg-[hsl(40,76%,60%)]", activeBg: "bg-[hsl(40,76%,60%)]" },
+  { value: "bien-etre", label: "Bien-être", dot: "bg-[hsl(0,55%,58%)]", activeBg: "bg-[hsl(0,55%,58%)]" },
 ];
 
 function calcDuration(start: string, end: string): string {
@@ -392,9 +392,20 @@ export default function AdminActivites() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <div className="flex gap-1.5 flex-wrap">
             <Badge variant={categoryFilter === "all" ? "default" : "outline"} className="cursor-pointer text-xs" onClick={() => setCategoryFilter("all")}>Toutes</Badge>
-            {CATEGORIES.map(c => (
-              <Badge key={c.value} variant={categoryFilter === c.value ? "default" : "outline"} className="cursor-pointer text-xs" onClick={() => setCategoryFilter(c.value)}>{c.label}</Badge>
-            ))}
+            {CATEGORIES.map(c => {
+              const isActive = categoryFilter === c.value;
+              return (
+                <Badge
+                  key={c.value}
+                  variant={isActive ? "default" : "outline"}
+                  className={`cursor-pointer text-xs gap-1 ${isActive && c.activeBg ? `${c.activeBg} text-white border-transparent hover:opacity-90` : ""}`}
+                  onClick={() => setCategoryFilter(c.value)}
+                >
+                  {c.dot && <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : c.dot}`} />}
+                  {c.label}
+                </Badge>
+              );
+            })}
           </div>
           <div className="relative flex-1 w-full sm:w-auto sm:max-w-[220px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -436,7 +447,9 @@ export default function AdminActivites() {
                 {filtered.length === 0 ? (
                   <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Aucune activité trouvée.</td></tr>
                 ) : filtered.map(a => {
-                  const catLabel = CATEGORIES.find(c => c.value === a.category)?.label || a.category;
+                  const cat = CATEGORIES.find(c => c.value === a.category);
+                  const catLabel = cat?.label || a.category;
+                  const catDot = cat?.dot || "";
                   const intensityLabel = getIntensityLabel(a.intensity);
                   return (
                     <tr key={`${a.source}-${a.id}`} className="border-b last:border-0 hover:bg-muted/10">
@@ -444,7 +457,12 @@ export default function AdminActivites() {
                         <div className="font-medium">{a.name}</div>
                         {a.description && <div className="text-xs text-muted-foreground line-clamp-1">{a.description}</div>}
                       </td>
-                      <td className="p-3"><Badge variant="outline" className="text-[10px]">{catLabel}</Badge></td>
+                      <td className="p-3">
+                        <Badge variant="outline" className="text-[10px] gap-1">
+                          {catDot && <div className={`w-1.5 h-1.5 rounded-full ${catDot}`} />}
+                          {catLabel}
+                        </Badge>
+                      </td>
                       <td className="p-3 text-xs">{intensityLabel || "—"}</td>
                       <td className="p-3 text-xs">{a.instructor}</td>
                       <td className="p-3">
@@ -743,8 +761,16 @@ export default function AdminActivites() {
 
 // ── Activity Card (used for both desktop and mobile in cards view) ──
 function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActivity; onEdit: () => void; onDelete: () => void }) {
-  const catLabel = CATEGORIES.find(c => c.value === a.category)?.label || a.category;
+  const cat = CATEGORIES.find(c => c.value === a.category);
+  const catLabel = cat?.label || a.category;
+  const catDot = cat?.dot || "";
   const intensityLabel = getIntensityLabel(a.intensity);
+  const CATEGORY_TEXT: Record<string, string> = {
+    yoga: "text-[hsl(210,60%,40%)]",
+    poterie: "text-[hsl(40,76%,35%)]",
+    "bien-etre": "text-[hsl(0,55%,38%)]",
+  };
+  const titleColor = CATEGORY_TEXT[a.category] || "text-primary-dark";
   return (
     <div className="rounded-xl border bg-card overflow-hidden hover:shadow-md transition-shadow group">
       {a.image && (
@@ -755,7 +781,7 @@ function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActi
       <div className="p-4">
         <div className="flex items-start justify-between mb-2">
           <div>
-            <h3 className="font-display font-semibold text-sm text-primary-dark">{a.name}</h3>
+            <h3 className={`font-display font-semibold text-sm ${titleColor}`}>{a.name}</h3>
             {a.description && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{a.description}</p>}
           </div>
           <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -764,7 +790,10 @@ function ActivityCard({ activity: a, onEdit, onDelete }: { activity: UnifiedActi
           </div>
         </div>
         <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <Badge variant="outline" className="text-[10px]">{catLabel}</Badge>
+          <Badge variant="outline" className="text-[10px] gap-1">
+            {catDot && <div className={`w-1.5 h-1.5 rounded-full ${catDot}`} />}
+            {catLabel}
+          </Badge>
           {intensityLabel && <Badge variant="secondary" className="text-[10px]">{intensityLabel}</Badge>}
           <span className="text-xs text-muted-foreground">{a.instructor}</span>
         </div>

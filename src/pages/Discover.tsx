@@ -6,14 +6,15 @@ import Footer from "@/components/layout/Footer";
 import ActivityFilterBar, { type FilterCategory, CATEGORY_FILTERS } from "@/components/ActivityFilterBar";
 import ActivitiesView from "@/components/ActivitiesView";
 import PlanningView from "@/components/PlanningView";
+import PlanningTypeView from "@/components/PlanningTypeView";
 import { useActivitiesData } from "@/hooks/useActivitiesData";
 
-export type ViewMode = "activites" | "planning";
+export type ViewMode = "activites" | "planning" | "planning-type";
 
 export default function Discover() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const initialView = searchParams.get("view") === "planning" ? "planning" : "activites";
+  const initialView = searchParams.get("view") === "planning" ? "planning" : searchParams.get("view") === "planning-type" ? "planning-type" : "activites";
   const initialFilter = searchParams.get("filter") as FilterCategory | null;
   const initialActivity = searchParams.get("activity");
   const initialDate = searchParams.get("date");
@@ -114,6 +115,13 @@ export default function Discover() {
             filter={filter}
             getInstructorPhoto={getInstructorPhoto}
             onSwitchToPlanning={handleSwitchToPlanning}
+          />
+        ) : view === "planning-type" ? (
+          <PlanningTypeView
+            courses={courses}
+            workshops={workshops}
+            schedules={schedules}
+            filter={filter}
           />
         ) : (
           <PlanningView

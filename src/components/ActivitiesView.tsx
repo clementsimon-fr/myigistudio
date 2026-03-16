@@ -105,6 +105,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
   const [frequencyOpen, setFrequencyOpen] = useState(false);
   const [frequencyCategory, setFrequencyCategory] = useState<string>("yoga");
+  const [frequencyActivity, setFrequencyActivity] = useState<string | undefined>(undefined);
 
   const schedulesMap = useMemo(() => {
     const map: Record<string, Set<string>> = {};
@@ -141,8 +142,9 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
     onSwitchToPlanning({ filter: ws.category as FilterCategory, activity: ws.name, date: ws.date });
   };
 
-  const openFrequency = (category: string) => {
+  const openFrequency = (category: string, activityName?: string) => {
     setFrequencyCategory(category);
+    setFrequencyActivity(activityName);
     setFrequencyOpen(true);
   };
 
@@ -174,7 +176,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                         <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => setDescriptionCourse(course)}>
                           <Info className="h-3 w-3" /> Description
                         </Button>
-                        <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => openFrequency("yoga")}>
+                        <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => openFrequency("yoga", course.name)}>
                           <CalendarRange className="h-3 w-3" />
                         </Button>
                         <Button size="sm" className={`flex-1 text-xs ${yogaStyle.bookBtn}`} onClick={() => handleBookCourse(course)}>Réserver</Button>
@@ -195,7 +197,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${potteryStyle.text}`}>Poterie</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {potteryWorkshops.map((ws, i) => (
-                <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} onBook={handleBookWorkshop} onFrequency={() => openFrequency("poterie")} />
+                <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} onBook={handleBookWorkshop} onFrequency={() => openFrequency("poterie", ws.name)} />
               ))}
             </div>
           </div>
@@ -209,7 +211,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${getCategoryStyle("bien-etre").text}`}>Ateliers & Stages</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {wellbeingWorkshops.map((ws, i) => (
-                <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} onBook={handleBookWorkshop} onFrequency={() => openFrequency("bien-etre")} />
+                <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} onBook={handleBookWorkshop} onFrequency={() => openFrequency("bien-etre", ws.name)} />
               ))}
             </div>
           </div>
@@ -286,6 +288,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         workshops={workshops}
         schedules={schedules}
         highlightCategory={frequencyCategory}
+        specificActivity={frequencyActivity}
       />
     </>
   );

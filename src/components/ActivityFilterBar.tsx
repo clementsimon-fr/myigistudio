@@ -39,6 +39,7 @@ type NavTab = { label: string; value: ViewMode };
 
 const NAV_TABS: NavTab[] = [
   { label: "Découvrir", value: "activites" },
+  { label: "Planning", value: "planning-type" },
   { label: "Réserver", value: "planning" },
 ];
 
@@ -62,7 +63,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, view, onView
     onViewChange(tab.value);
   };
 
-  const currentNav = view === "planning" ? "planning" : "activites";
+  const currentNav = view;
 
   return (
     <div className="sticky top-16 z-30">
