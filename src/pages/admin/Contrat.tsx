@@ -11,8 +11,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Rocket, Server, Lightbulb, CheckCircle2, Clock, Gift, AlertTriangle, Zap,
   BarChart3, Info, Palette, Database, Upload, HeartHandshake, ShieldCheck, Calendar,
-  ChevronDown, Pencil, Save, X
+  ChevronDown, Pencil, Save, X, FileDown
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useDemoContext } from "@/contexts/DemoContext";
 import { useToast } from "@/hooks/use-toast";
@@ -150,13 +152,31 @@ function getGridCellColor(cost: string): string {
 }
 
 // ── Timeline Step Component with Collapsible ──
-function TimelineStep({ phase, isLast, isFournisseur, onEdit }: {
+function TimelineStep({ phase, isLast, isFournisseur, onEdit, onSave }: {
   phase: typeof timelinePhases[0]; isLast: boolean; isFournisseur: boolean;
   onEdit?: (phase: typeof timelinePhases[0]) => void;
+  onSave?: (phaseName: string, updates: Partial<typeof timelinePhases[0]>) => void;
 }) {
   const config = STATUS_CONFIG[phase.status];
   const Icon = phase.icon;
   const [isOpen, setIsOpen] = useState(phase.status === "in_progress");
+  const [editing, setEditing] = useState(false);
+  const [editExplanation, setEditExplanation] = useState(phase.explanation);
+  const [editDetail, setEditDetail] = useState(phase.detail);
+  const [editCost, setEditCost] = useState(phase.cost || "");
+  const [editOffert, setEditOffert] = useState(phase.costNote === "Offert");
+  const [editStatus, setEditStatus] = useState<"done" | "in_progress" | "upcoming">(phase.status);
+
+  const handleSave = () => {
+    onSave?.(phase.name, {
+      explanation: editExplanation,
+      detail: editDetail,
+      cost: editCost || null,
+      costNote: editOffert ? "Offert" : (editCost ? editCost : phase.costNote),
+      status: editStatus,
+    });
+    setEditing(false);
+  };
 
   return (
     <div className="relative flex gap-4">
@@ -183,8 +203,14 @@ function TimelineStep({ phase, isLast, isFournisseur, onEdit }: {
                     {phase.cost && (
                       <Badge variant="outline" className="gap-1 bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-[11px]">
                         <Gift className="h-3 w-3" />
-                        <span className="line-through opacity-60 mr-1">{phase.cost}</span>
-                        Offert
+                        {phase.costNote === "Offert" ? (
+                          <>
+                            <span className="line-through opacity-60 mr-1">{phase.cost}</span>
+                            Offert
+                          </>
+                        ) : (
+                          <span>{phase.cost}</span>
+                        )}
                       </Badge>
                     )}
                     <Badge variant="outline" className={`text-[11px] ${config.badge}`}>
@@ -198,18 +224,59 @@ function TimelineStep({ phase, isLast, isFournisseur, onEdit }: {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="px-4 pb-4 pt-1 space-y-3 border-t">
-                <p className="text-sm text-foreground/80 whitespace-pre-line leading-relaxed">{phase.explanation}</p>
-                <div className="rounded-lg bg-muted/50 p-3">
-                  <p className="text-[11px] text-muted-foreground font-medium mb-1">🔧 Détail technique</p>
-                  <p className="text-xs text-muted-foreground">{phase.detail}</p>
-                </div>
-                {!phase.cost && (
-                  <p className="text-xs text-muted-foreground italic">{phase.costNote}</p>
-                )}
-                {isFournisseur && onEdit && (
-                  <Button size="sm" variant="ghost" className="gap-1 text-xs text-muted-foreground" onClick={(e) => { e.stopPropagation(); onEdit(phase); }}>
-                    <Pencil className="h-3 w-3" /> Modifier
-                  </Button>
+                {editing && isFournisseur ? (
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-xs font-medium">Explication</Label>
+                      <Textarea value={editExplanation} onChange={e => setEditExplanation(e.target.value)} rows={4} className="mt-1 text-sm" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium">Détail technique</Label>
+                      <Textarea value={editDetail} onChange={e => setEditDetail(e.target.value)} rows={2} className="mt-1 text-sm" />
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <Label className="text-xs font-medium">Prix (€)</Label>
+                        <Input value={editCost} onChange={e => setEditCost(e.target.value)} className="mt-1 w-28 h-8 text-sm" placeholder="250 €" />
+                      </div>
+                      <div className="flex items-center gap-2 pt-4">
+                        <Switch checked={editOffert} onCheckedChange={setEditOffert} id={`offert-${phase.name}`} />
+                        <Label htmlFor={`offert-${phase.name}`} className="text-xs cursor-pointer">Offert</Label>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Statut</Label>
+                        <select value={editStatus} onChange={e => setEditStatus(e.target.value as any)} className="mt-1 block h-8 text-xs rounded-md border border-input bg-background px-2">
+                          <option value="done">Terminé</option>
+                          <option value="in_progress">En cours</option>
+                          <option value="upcoming">À venir</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" className="gap-1 text-xs" onClick={handleSave}>
+                        <Save className="h-3 w-3" /> Sauvegarder
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-xs" onClick={() => setEditing(false)}>
+                        <X className="h-3 w-3" /> Annuler
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-foreground/80 whitespace-pre-line leading-relaxed">{phase.explanation}</p>
+                    <div className="rounded-lg bg-muted/50 p-3">
+                      <p className="text-[11px] text-muted-foreground font-medium mb-1">🔧 Détail technique</p>
+                      <p className="text-xs text-muted-foreground">{phase.detail}</p>
+                    </div>
+                    {!phase.cost && (
+                      <p className="text-xs text-muted-foreground italic">{phase.costNote}</p>
+                    )}
+                    {isFournisseur && (
+                      <Button size="sm" variant="ghost" className="gap-1 text-xs text-muted-foreground" onClick={(e) => { e.stopPropagation(); setEditing(true); }}>
+                        <Pencil className="h-3 w-3" /> Modifier
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
             </CollapsibleContent>
@@ -225,6 +292,7 @@ export default function AdminContrat() {
   const { toast } = useToast();
   const isFournisseur = currentProfile?.role === "fournisseur";
   const [tickets, setTickets] = useState<FeatureRequest[]>([]);
+  const [phases, setPhases] = useState(timelinePhases);
   
   // Editing state for fournisseur
   const [editingSection, setEditingSection] = useState<string | null>(null);
@@ -245,8 +313,9 @@ export default function AdminContrat() {
   const includedTickets = tickets.filter(t => t.impact !== "fonctionnalite");
   const monthlyCost = paidTickets.length * 50;
 
-  const handleEditPhase = (phase: typeof timelinePhases[0]) => {
-    toast({ title: `Édition de "${phase.name}" — Fonctionnalité à venir` });
+  const handleSavePhase = (phaseName: string, updates: Partial<typeof timelinePhases[0]>) => {
+    setPhases(prev => prev.map(p => p.name === phaseName ? { ...p, ...updates } : p));
+    toast({ title: `Phase "${phaseName}" mise à jour ✓` });
   };
 
   const handlePrintScreens = () => {
@@ -295,13 +364,13 @@ export default function AdminContrat() {
           </p>
 
           <div className="mt-2">
-            {timelinePhases.map((phase, i) => (
+            {phases.map((phase, i) => (
               <TimelineStep
                 key={phase.name}
                 phase={phase}
-                isLast={i === timelinePhases.length - 1}
+                isLast={i === phases.length - 1}
                 isFournisseur={isFournisseur}
-                onEdit={handleEditPhase}
+                onSave={handleSavePhase}
               />
             ))}
           </div>

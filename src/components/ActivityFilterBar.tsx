@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, CalendarRange } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { ViewMode } from "@/pages/Discover";
@@ -76,13 +76,15 @@ export default function ActivityFilterBar({ filter, onFilterChange, view, onView
                 key={tab.value}
                 size="default"
                 onClick={() => handleNavClick(tab)}
-                className={`rounded-md px-5 text-sm h-10 font-semibold transition-colors ${
+                className={`rounded-md text-sm h-10 font-semibold transition-colors ${
+                  tab.value === "planning-type" ? "px-3" : "px-5"
+                } ${
                   currentNav === tab.value
                     ? "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90"
                     : "bg-primary/15 text-primary-dark hover:bg-primary/25"
                 }`}
               >
-                {tab.label}
+                {tab.value === "planning-type" ? <CalendarRange className="h-5 w-5" /> : tab.label}
               </Button>
             ))}
           </div>
