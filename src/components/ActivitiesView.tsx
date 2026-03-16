@@ -105,6 +105,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
   const [frequencyOpen, setFrequencyOpen] = useState(false);
   const [frequencyCategory, setFrequencyCategory] = useState<string>("yoga");
+  const [frequencyActivity, setFrequencyActivity] = useState<string | undefined>(undefined);
 
   const schedulesMap = useMemo(() => {
     const map: Record<string, Set<string>> = {};
