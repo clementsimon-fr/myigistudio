@@ -63,7 +63,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, view, onView
     onViewChange(tab.value);
   };
 
-  const currentNav = view === "planning" ? "planning" : "activites";
+  const currentNav = view;
 
   return (
     <div className="sticky top-16 z-30">
