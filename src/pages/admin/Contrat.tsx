@@ -11,8 +11,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Rocket, Server, Lightbulb, CheckCircle2, Clock, Gift, AlertTriangle, Zap,
   BarChart3, Info, Palette, Database, Upload, HeartHandshake, ShieldCheck, Calendar,
-  ChevronDown, Pencil, Save, X
+  ChevronDown, Pencil, Save, X, FileDown
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useDemoContext } from "@/contexts/DemoContext";
 import { useToast } from "@/hooks/use-toast";
