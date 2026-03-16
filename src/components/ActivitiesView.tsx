@@ -176,7 +176,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                         <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => setDescriptionCourse(course)}>
                           <Info className="h-3 w-3" /> Description
                         </Button>
-                        <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => openFrequency("yoga")}>
+                        <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => openFrequency("yoga", course.name)}>
                           <CalendarRange className="h-3 w-3" />
                         </Button>
                         <Button size="sm" className={`flex-1 text-xs ${yogaStyle.bookBtn}`} onClick={() => handleBookCourse(course)}>Réserver</Button>
