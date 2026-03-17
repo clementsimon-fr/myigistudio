@@ -164,9 +164,6 @@ export default function AdminConditions() {
                 <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEdit(c)}>
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
-                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive" onClick={() => handleDelete(c.id)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
               </div>
             </div>
             <p className="text-sm text-muted-foreground whitespace-pre-line line-clamp-4">

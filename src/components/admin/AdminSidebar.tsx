@@ -21,7 +21,6 @@ const sidebarGroups = [
       { title: "Activités et réservations", url: "/admin/activites", icon: BookOpen },
       { title: "Planning type", url: "/admin/planning-type", icon: CalendarRange },
       { title: "Notifications", url: "/admin", icon: Bell },
-      { title: "Conditions", url: "/admin/conditions", icon: ScrollText },
     ],
   },
   {
@@ -34,8 +33,9 @@ const sidebarGroups = [
   {
     label: "Offres",
     items: [
-      { title: "Tarifs", url: "/admin/tarifs", icon: CreditCard },
+      { title: "Tarifs Yoga", url: "/admin/tarifs", icon: CreditCard },
       { title: "Bons Cadeaux", url: "/admin/bons-cadeaux", icon: Gift },
+      { title: "Conditions", url: "/admin/conditions", icon: ScrollText },
     ],
   },
   {

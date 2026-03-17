@@ -85,7 +85,7 @@ export default function AdminDashboard() {
         <div className="rounded-xl border bg-card">
           <div className="p-5 border-b flex items-center gap-2">
             <Bell className="h-4 w-4 text-primary" />
-            <h2 className="font-display font-semibold text-primary-dark">Activité récente</h2>
+            <h2 className="font-display font-semibold text-primary-dark">Inscriptions</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
