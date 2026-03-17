@@ -307,6 +307,9 @@ export default function AdminClients() {
       supabase.from("forum_posts").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
     ]);
     clearTempProfiles();
+    // Also clear current profile and localStorage to remove persistent demo profiles
+    localStorage.removeItem("demo_profile");
+    localStorage.removeItem("demo_guest_name");
     toast({ title: "Données clients réinitialisées ✓" });
     setResetDialogOpen(false);
     loadClients();
