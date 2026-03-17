@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Loader2, Filter } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { useActivitiesData } from "@/hooks/useActivitiesData";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-const DAYS_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+const DAYS_SHORT = ["L", "M", "M", "J", "V", "S", "D"];
 
 const CATEGORY_FILTERS = [
   { value: "all", label: "Toutes", dot: "", activeBg: "" },
@@ -147,7 +147,6 @@ export default function PlanningType() {
           </div>
 
           {viewMode === "by-category" ? (
-            /* By-category view — shown first */
             Object.entries(grouped).map(([category, activities]) => {
               const style = CATEGORY_STYLES[category];
               return (
@@ -155,22 +154,22 @@ export default function PlanningType() {
                   <h2 className={`text-lg font-semibold ${style?.text || "text-foreground"}`}>
                     {categoryLabels[category] || category}
                   </h2>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-sm">
+                  <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                    <table className="w-full border-collapse text-sm min-w-[500px]">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left py-2 px-3 font-medium text-muted-foreground min-w-[140px]">Activité</th>
-                          {DAYS_SHORT.map(d => (
-                            <th key={d} className="py-2 px-2 font-medium text-muted-foreground text-center w-12">{d}</th>
+                          <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground min-w-[120px]">Activité</th>
+                          {DAYS_SHORT.map((d, i) => (
+                            <th key={i} className="py-2 px-1 sm:px-2 font-medium text-muted-foreground text-center w-10 sm:w-12">{d}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {activities.map(a => (
                           <tr key={a.name} className="border-b border-muted/30 hover:bg-muted/20">
-                            <td className="py-2.5 px-3 font-medium">{a.name}</td>
+                            <td className="py-2.5 px-2 sm:px-3 font-medium text-xs sm:text-sm">{a.name}</td>
                             {DAYS.map(day => (
-                              <td key={day} className="py-2.5 px-2 text-center">
+                              <td key={day} className="py-2.5 px-1 sm:px-2 text-center">
                                 {renderTimeCell(a, day)}
                               </td>
                             ))}
@@ -183,14 +182,13 @@ export default function PlanningType() {
               );
             })
           ) : (
-            /* Compiled view: all activities grouped by category in one table */
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-sm">
+            <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+              <table className="w-full border-collapse text-sm min-w-[500px]">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-2 px-3 font-medium text-muted-foreground min-w-[160px]">Activité</th>
-                    {DAYS_SHORT.map(d => (
-                      <th key={d} className="py-2 px-2 font-medium text-muted-foreground text-center w-14">{d}</th>
+                    <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground min-w-[140px]">Activité</th>
+                    {DAYS_SHORT.map((d, i) => (
+                      <th key={i} className="py-2 px-1 sm:px-2 font-medium text-muted-foreground text-center w-10 sm:w-14">{d}</th>
                     ))}
                   </tr>
                 </thead>
@@ -199,14 +197,14 @@ export default function PlanningType() {
                     const style = CATEGORY_STYLES[category];
                     return activities.map((a, idx) => (
                       <tr key={a.name} className={`border-b border-muted/30 hover:bg-muted/20 ${idx === 0 ? "border-t-2" : ""}`}>
-                        <td className="py-2.5 px-3">
+                        <td className="py-2.5 px-2 sm:px-3">
                           <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full shrink-0 ${style?.dot || "bg-primary"}`} />
-                            <span className={`font-medium ${style?.text || ""}`}>{a.name}</span>
+                            <span className={`font-medium text-xs sm:text-sm ${style?.text || ""}`}>{a.name}</span>
                           </div>
                         </td>
                         {DAYS.map(day => (
-                          <td key={day} className="py-2.5 px-2 text-center">
+                          <td key={day} className="py-2.5 px-1 sm:px-2 text-center">
                             {renderTimeCell(a, day)}
                           </td>
                         ))}

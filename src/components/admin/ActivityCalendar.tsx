@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Clock, CalendarDays, List } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Clock, CalendarDays, Pencil, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -22,6 +23,7 @@ interface CourseInfo {
   id: string;
   name: string;
   category: string;
+  instructor: string;
 }
 
 interface WorkshopInfo {
@@ -31,6 +33,7 @@ interface WorkshopInfo {
   date: string;
   time: string;
   end_time: string;
+  instructor_id: string | null;
 }
 
 interface PlannedSession {
@@ -44,6 +47,16 @@ interface PlannedSession {
   notes: string;
 }
 
+interface ReservationInfo {
+  client_name: string;
+  date: string;
+  time: string;
+  activity_name: string;
+  course_id: string | null;
+  workshop_id: string | null;
+  status: string;
+}
+
 interface SessionEntry {
   id: string;
   title: string;
@@ -51,6 +64,9 @@ interface SessionEntry {
   end_time: string;
   type: "recurring" | "planned" | "workshop";
   category?: string;
+  instructor?: string;
+  courseId?: string;
+  workshopId?: string;
 }
 
 interface CalendarDay {
@@ -62,15 +78,23 @@ interface CalendarDay {
 
 const DAY_NAMES = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const MONTH_NAMES = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
-const DAY_MAP: Record<number, string> = {
-  0: "Dimanche", 1: "Lundi", 2: "Mardi", 3: "Mercredi",
-  4: "Jeudi", 5: "Vendredi", 6: "Samedi",
-};
 
 const CATEGORY_COLORS: Record<string, string> = {
   yoga: "bg-primary/10 text-primary-dark border-primary/20",
   poterie: "bg-secondary/20 text-secondary-foreground border-secondary/30",
   "bien-etre": "bg-accent/15 text-accent-foreground border-accent/25",
+};
+
+const CATEGORY_BADGE_COLORS: Record<string, string> = {
+  yoga: "bg-[hsl(210,60%,55%)] text-white",
+  poterie: "bg-[hsl(40,76%,60%)] text-white",
+  "bien-etre": "bg-[hsl(0,55%,58%)] text-white",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  yoga: "Yoga",
+  poterie: "Poterie",
+  "bien-etre": "Bien-être",
 };
 
 function getDayName(date: Date): string {
@@ -117,7 +141,11 @@ function getWeekDays(baseDate: Date): Date[] {
 
 type ViewMode = "today" | "week" | "month";
 
-export default function ActivityCalendar() {
+interface ActivityCalendarProps {
+  onEditActivity?: (activityId: string, source: "course" | "workshop") => void;
+}
+
+export default function ActivityCalendar({ onEditActivity }: ActivityCalendarProps) {
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<ViewMode>("today");
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -125,9 +153,12 @@ export default function ActivityCalendar() {
   const [courses, setCourses] = useState<CourseInfo[]>([]);
   const [workshops, setWorkshops] = useState<WorkshopInfo[]>([]);
   const [plannedSessions, setPlannedSessions] = useState<PlannedSession[]>([]);
+  const [reservations, setReservations] = useState<ReservationInfo[]>([]);
+  const [instructorsMap, setInstructorsMap] = useState<Record<string, string>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [deletingSession, setDeletingSession] = useState<string | null>(null);
+  const [detailSession, setDetailSession] = useState<{ session: SessionEntry; date: Date } | null>(null);
 
   const [sessionForm, setSessionForm] = useState({
     source: "manual" as "course" | "workshop" | "manual",
@@ -142,33 +173,53 @@ export default function ActivityCalendar() {
   const month = currentDate.getMonth();
 
   const fetchData = async () => {
-    const [schedulesRes, coursesRes, workshopsRes, sessionsRes] = await Promise.all([
+    const [schedulesRes, coursesRes, workshopsRes, sessionsRes, reservationsRes, instrRes] = await Promise.all([
       supabase.from("course_schedules").select("*"),
-      supabase.from("courses").select("id, name, category"),
-      supabase.from("workshops").select("id, name, category, date, time, end_time"),
+      supabase.from("courses").select("id, name, category, instructor"),
+      supabase.from("workshops").select("id, name, category, date, time, end_time, instructor_id"),
       supabase.from("planned_sessions").select("*"),
+      supabase.from("reservations").select("client_name, date, time, activity_name, course_id, workshop_id, status"),
+      supabase.from("instructors").select("id, name").eq("active", true),
     ]);
     if (schedulesRes.data) setSchedules(schedulesRes.data as Schedule[]);
-    if (coursesRes.data) setCourses(coursesRes.data as CourseInfo[]);
+    if (coursesRes.data) setCourses(coursesRes.data as unknown as CourseInfo[]);
     if (workshopsRes.data) setWorkshops(workshopsRes.data as unknown as WorkshopInfo[]);
     if (sessionsRes.data) setPlannedSessions(sessionsRes.data as PlannedSession[]);
+    if (reservationsRes.data) setReservations(reservationsRes.data as unknown as ReservationInfo[]);
+    if (instrRes.data) {
+      const map: Record<string, string> = {};
+      for (const i of instrRes.data as any[]) map[i.id] = i.name;
+      setInstructorsMap(map);
+    }
   };
 
   useEffect(() => { fetchData(); }, []);
 
   const courseMap = useMemo(() => {
-    const m: Record<string, { name: string; category: string }> = {};
-    courses.forEach(c => { m[c.id] = { name: c.name, category: c.category }; });
+    const m: Record<string, CourseInfo> = {};
+    courses.forEach(c => { m[c.id] = c; });
     return m;
   }, [courses]);
 
-  // Build sessions for a given date
+  // Get reservations for a session on a date
+  const getSessionReservations = (session: SessionEntry, dateStr: string): string[] => {
+    return reservations
+      .filter(r => {
+        if (r.status === "annulé") return false;
+        if (r.date !== dateStr) return false;
+        if (session.courseId && r.course_id === session.courseId) return true;
+        if (session.workshopId && r.workshop_id === session.workshopId) return true;
+        if (r.activity_name === session.title && r.time === session.time) return true;
+        return false;
+      })
+      .map(r => r.client_name);
+  };
+
   const getSessionsForDate = (date: Date): SessionEntry[] => {
     const sessions: SessionEntry[] = [];
     const dayName = getDayName(date);
     const dateStr = formatDateStr(date);
 
-    // Recurring schedules
     const matchingSchedules = schedules.filter(s => s.day === dayName);
     for (const s of matchingSchedules) {
       const info = courseMap[s.course_id];
@@ -179,10 +230,11 @@ export default function ActivityCalendar() {
         end_time: s.end_time,
         type: "recurring",
         category: info?.category,
+        instructor: info?.instructor,
+        courseId: s.course_id,
       });
     }
 
-    // Workshops
     for (const ws of workshops) {
       if (ws.date === dateStr) {
         sessions.push({
@@ -192,11 +244,12 @@ export default function ActivityCalendar() {
           end_time: ws.end_time,
           type: "workshop",
           category: ws.category,
+          instructor: ws.instructor_id ? instructorsMap[ws.instructor_id] : undefined,
+          workshopId: ws.id,
         });
       }
     }
 
-    // Planned sessions
     const dayPlanned = plannedSessions.filter(ps => ps.date === dateStr);
     for (const ps of dayPlanned) {
       const info = ps.course_id ? courseMap[ps.course_id] : null;
@@ -207,6 +260,9 @@ export default function ActivityCalendar() {
         end_time: ps.end_time,
         type: "planned",
         category: info?.category,
+        instructor: info?.instructor,
+        courseId: ps.course_id || undefined,
+        workshopId: ps.workshop_id || undefined,
       });
     }
 
@@ -214,24 +270,20 @@ export default function ActivityCalendar() {
     return sessions;
   };
 
-  // Today view
-  const todaySessions = useMemo(() => getSessionsForDate(new Date()), [schedules, plannedSessions, courseMap, workshops]);
-
-  // Week view
+  const todaySessions = useMemo(() => getSessionsForDate(new Date()), [schedules, plannedSessions, courseMap, workshops, instructorsMap]);
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate]);
   const weekData = useMemo(() => weekDays.map(d => ({
     date: d,
     sessions: getSessionsForDate(d),
-  })), [weekDays, schedules, plannedSessions, courseMap, workshops]);
+  })), [weekDays, schedules, plannedSessions, courseMap, workshops, instructorsMap]);
 
-  // Month view
   const calendarDays = useMemo(() => {
     const days = getMonthDays(year, month);
     for (const day of days) {
       day.sessions = getSessionsForDate(day.date);
     }
     return days;
-  }, [year, month, schedules, plannedSessions, courseMap, workshops]);
+  }, [year, month, schedules, plannedSessions, courseMap, workshops, instructorsMap]);
 
   const prevNav = () => {
     if (viewMode === "today") {
@@ -304,9 +356,17 @@ export default function ActivityCalendar() {
   const isToday = formatDateStr(currentDate) === formatDateStr(new Date());
   const todayStr = formatDateStr(new Date());
 
-  const renderSessionBlock = (s: SessionEntry, clickDate?: Date) => {
+  const openSessionDetail = (s: SessionEntry, date: Date) => {
+    setDetailSession({ session: s, date });
+  };
+
+  const renderSessionBlock = (s: SessionEntry, clickDate: Date) => {
     const colorClass = s.category ? (CATEGORY_COLORS[s.category] || "bg-muted text-foreground border-border") :
       s.type === "planned" ? "bg-accent/15 text-accent-foreground border-accent/25" : "bg-primary/10 text-primary-dark border-primary/20";
+
+    const dateStr = formatDateStr(clickDate);
+    const inscrits = getSessionReservations(s, dateStr);
+    const participantCount = inscrits.length;
 
     return (
       <div
@@ -314,24 +374,97 @@ export default function ActivityCalendar() {
         className={`rounded-lg border-2 p-3 cursor-pointer transition-all hover:shadow-sm ${colorClass}`}
         onClick={(e) => {
           e.stopPropagation();
-          if (s.type === "planned") setDeletingSession(s.id);
-          else if (clickDate) openAddSession(clickDate);
+          openSessionDetail(s, clickDate);
         }}
       >
-        <div className="flex items-center justify-between">
-          <span className="font-semibold text-sm">{s.title}</span>
-          {s.type === "planned" && <Trash2 className="h-3.5 w-3.5 opacity-50 hover:opacity-100" />}
-        </div>
+        <span className="font-semibold text-sm">{s.title}</span>
         <div className="flex items-center gap-2 text-xs mt-1 opacity-80">
           <Clock className="h-3 w-3" />
           {s.time} - {s.end_time}
+          {s.instructor && <span className="ml-1">· {s.instructor}</span>}
         </div>
-        <div className="mt-1">
-          <Badge variant="outline" className="text-[10px]">
-            {s.type === "recurring" ? "Récurrent" : s.type === "workshop" ? "Atelier" : "Planifié"}
+        <Separator className="my-2" />
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="bg-white text-foreground text-[10px] gap-1">
+            <Users className="h-3 w-3" /> {participantCount}
           </Badge>
         </div>
+        {inscrits.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {inscrits.slice(0, 4).map((name, i) => (
+              <span key={i} className="text-[10px] text-muted-foreground">{name}{i < Math.min(inscrits.length, 4) - 1 ? "," : ""}</span>
+            ))}
+            {inscrits.length > 4 && <span className="text-[10px] text-muted-foreground">+{inscrits.length - 4}</span>}
+          </div>
+        )}
       </div>
+    );
+  };
+
+  // Detail popup content
+  const renderDetailPopup = () => {
+    if (!detailSession) return null;
+    const { session: s, date } = detailSession;
+    const dateStr = formatDateStr(date);
+    const inscrits = getSessionReservations(s, dateStr);
+    const catBadgeColor = s.category ? CATEGORY_BADGE_COLORS[s.category] : "";
+    const catLabel = s.category ? CATEGORY_LABELS[s.category] : "";
+
+    return (
+      <Dialog open={!!detailSession} onOpenChange={(open) => !open && setDetailSession(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {s.title}
+              {catLabel && <Badge className={`text-[10px] ${catBadgeColor}`}>{catLabel}</Badge>}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} · {s.time} - {s.end_time}
+            </div>
+            {s.instructor && (
+              <p className="text-sm">Intervenant : <span className="font-medium">{s.instructor}</span></p>
+            )}
+            <Separator />
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="h-4 w-4" />
+                <span className="text-sm font-medium">{inscrits.length} participant{inscrits.length > 1 ? "s" : ""}</span>
+              </div>
+              {inscrits.length > 0 ? (
+                <div className="space-y-1">
+                  {inscrits.map((name, i) => (
+                    <div key={i} className="text-sm text-muted-foreground">{name}</div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Aucun inscrit</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              {onEditActivity && (s.courseId || s.workshopId) && (
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => {
+                  setDetailSession(null);
+                  if (s.courseId) onEditActivity(s.courseId, "course");
+                  else if (s.workshopId) onEditActivity(s.workshopId, "workshop");
+                }}>
+                  <Pencil className="h-3.5 w-3.5" /> Éditer
+                </Button>
+              )}
+              {s.type === "planned" && (
+                <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30" onClick={() => {
+                  setDetailSession(null);
+                  setDeletingSession(s.id);
+                }}>
+                  <Trash2 className="h-3.5 w-3.5" /> Supprimer
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     );
   };
 
@@ -395,7 +528,6 @@ export default function ActivityCalendar() {
                   <span className={`text-sm font-semibold capitalize ${isT ? "bg-primary-dark text-primary-dark-foreground px-3 py-1 rounded-full" : ""}`}>
                     {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "short" })}
                   </span>
-                  {isT && <Badge variant="outline" className="text-xs">Aujourd'hui</Badge>}
                   <Button variant="ghost" size="sm" className="h-6 text-xs ml-auto gap-1" onClick={() => openAddSession(date)}>
                     <Plus className="h-3 w-3" /> Ajouter
                   </Button>
@@ -446,7 +578,7 @@ export default function ActivityCalendar() {
                           className={`text-[10px] leading-tight rounded px-1 py-0.5 truncate border ${colorClass}`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (s.type === "planned") setDeletingSession(s.id);
+                            openSessionDetail(s, day.date);
                           }}
                         >
                           <span className="font-medium">{s.time}</span> {s.title}
@@ -474,6 +606,9 @@ export default function ActivityCalendar() {
           </div>
         </>
       )}
+
+      {/* Detail popup */}
+      {renderDetailPopup()}
 
       {/* Add session dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

@@ -346,7 +346,7 @@ export default function AdminContrat() {
 
   return (
     <AdminLayout title="Contrat">
-      <div className="max-w-3xl mx-auto space-y-8">
+      <div className="max-w-3xl mx-auto space-y-8 overflow-x-hidden">
 
         {/* PDF Export Button */}
         <Button variant="outline" className="gap-2" onClick={handlePrintScreens}>
@@ -456,7 +456,7 @@ export default function AdminContrat() {
 
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto -mx-2 sm:mx-0">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
@@ -513,7 +513,7 @@ export default function AdminContrat() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="grid grid-cols-2 gap-4 text-center">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 text-center">
                 <div>
                   <p className="text-2xl font-bold text-emerald-700">{includedTickets.length}</p>
                   <p className="text-[11px] text-muted-foreground">Incluses</p>

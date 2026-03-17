@@ -283,16 +283,16 @@ export default function AdminBonsCadeaux() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border bg-card overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="rounded-xl border bg-card overflow-x-auto -mx-4 px-0 sm:mx-0">
+        <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="border-b bg-muted/30">
               <th className="text-left p-3 font-medium text-muted-foreground"><Hash className="h-3.5 w-3.5 inline mr-1" />Code</th>
-              <th className="text-left p-3 font-medium text-muted-foreground">Type</th>
+              <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Type</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Valeur</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Bénéficiaire</th>
-              <th className="text-left p-3 font-medium text-muted-foreground">Acheteur</th>
-              <th className="text-left p-3 font-medium text-muted-foreground">Expire</th>
+              <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Acheteur</th>
+              <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Expire</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Statut</th>
               <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
             </tr>
@@ -310,15 +310,15 @@ export default function AdminBonsCadeaux() {
                       </Button>
                     </div>
                   </td>
-                  <td className="p-3">
+                  <td className="p-3 hidden sm:table-cell">
                     <Badge variant="outline" className="text-xs">{v.type === "amount" ? "Montant" : "Activité"}</Badge>
                   </td>
                   <td className="p-3 font-medium">
                     {v.type === "amount" ? `${v.amount}€` : `${v.card_name}${v.sessions ? ` (${v.sessions} séances)` : ""}`}
                   </td>
                   <td className="p-3">{v.beneficiary_name || "—"}</td>
-                  <td className="p-3">{v.buyer_name || "—"}</td>
-                  <td className="p-3 text-muted-foreground">{new Date(v.expires_at).toLocaleDateString("fr-FR")}</td>
+                  <td className="p-3 hidden sm:table-cell">{v.buyer_name || "—"}</td>
+                  <td className="p-3 text-muted-foreground hidden sm:table-cell">{new Date(v.expires_at).toLocaleDateString("fr-FR")}</td>
                   <td className="p-3">
                     <Badge
                       variant={v.used ? "secondary" : isExpired ? "destructive" : "default"}

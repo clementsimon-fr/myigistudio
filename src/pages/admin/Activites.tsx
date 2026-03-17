@@ -419,7 +419,10 @@ export default function AdminActivites() {
       {viewMode === "planning" ? (
         <DailyView categoryFilter={categoryFilter} />
       ) : viewMode === "calendar" ? (
-        <ActivityCalendar />
+        <ActivityCalendar onEditActivity={(id, source) => {
+          const act = activities.find(a => a.id === id && a.source === source);
+          if (act) openEdit(act);
+        }} />
       ) : viewMode === "cards" ? (
         <>
           <p className="text-sm text-muted-foreground mb-4">{filtered.length} activité{filtered.length > 1 ? "s" : ""}</p>

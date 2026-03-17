@@ -72,6 +72,7 @@ export default function AdminTarifs() {
     await supabase.from("pricing_cards").delete().eq("id", deletingId);
     toast({ title: "Tarif supprimé" });
     setDeletingId(null);
+    setDialogOpen(false);
     fetchCards();
   };
 
@@ -119,10 +120,7 @@ export default function AdminTarifs() {
                   <p className="text-xs text-primary mt-1 italic">{c.payment_info}</p>
                 )}
               </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(c)}><Pencil className="h-3.5 w-3.5" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingId(c.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(c)}><Pencil className="h-3.5 w-3.5" /></Button>
             </div>
           </div>
         ))}
@@ -187,6 +185,11 @@ export default function AdminTarifs() {
             <Button onClick={handleSave} className="w-full" disabled={!form.name}>
               {editingId ? "Enregistrer" : "Ajouter"}
             </Button>
+            {editingId && (
+              <Button variant="outline" className="w-full gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setDeletingId(editingId)}>
+                <Trash2 className="h-3.5 w-3.5" /> Supprimer ce tarif
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
