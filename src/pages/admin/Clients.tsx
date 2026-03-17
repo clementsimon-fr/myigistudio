@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Search, Loader2, Clock, Plus, Trash2, Pencil, UserPlus, RotateCcw } from "lucide-react";
+import { Search, Loader2, Clock, Plus, Trash2, UserPlus, RotateCcw, Users } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +31,7 @@ interface AggregatedClient {
   email?: string;
   address?: string;
   prestations: string[];
+  yogaCredits: number;
 }
 
 interface ReservationRow {
@@ -69,6 +70,8 @@ interface GiftVoucher {
   expires_at: string;
 }
 
+type AccountFilter = "all" | "with" | "without";
+
 export default function AdminClients() {
   const { toast } = useToast();
   const { clearTempProfiles } = useDemoContext();
@@ -76,6 +79,8 @@ export default function AdminClients() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<AggregatedClient[]>([]);
+  const [accountFilter, setAccountFilter] = useState<AccountFilter>("all");
+  const [activityFilter, setActivityFilter] = useState<string>("all");
 
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clientReservations, setClientReservations] = useState<ReservationRow[]>([]);
@@ -88,13 +93,17 @@ export default function AdminClients() {
   const [selectedPricing, setSelectedPricing] = useState("");
   const [addingCard, setAddingCard] = useState(false);
 
-  const [editClientOpen, setEditClientOpen] = useState(false);
   const [editForm, setEditForm] = useState({ first_name: "", last_name: "", phone: "", email: "", address: "" });
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [newClientOpen, setNewClientOpen] = useState(false);
   const [newClientType, setNewClientType] = useState<"actuel" | "futur">("actuel");
 
   const [deletingClient, setDeletingClient] = useState<AggregatedClient | null>(null);
+
+  // Detail dialog inline editing
+  const [detailEditMode, setDetailEditMode] = useState(false);
+  const [detailEditForm, setDetailEditForm] = useState({ first_name: "", last_name: "", phone: "", email: "", address: "" });
+  const [selectedClientObj, setSelectedClientObj] = useState<AggregatedClient | null>(null);
 
   const loadClients = async () => {
     setLoading(true);
@@ -102,9 +111,18 @@ export default function AdminClients() {
       supabase.from("reservations").select("client_name, date, activity_name"),
       supabase.from("gift_vouchers").select("beneficiary_name, buyer_name, created_at"),
       supabase.from("profiles").select("*"),
-      supabase.from("client_cards").select("client_name, card_name"),
+      supabase.from("client_cards").select("client_name, card_name, total_sessions, used_sessions"),
     ]);
-    const map = new Map<string, { count: number; first: string; profileId?: string; first_name?: string; last_name?: string; phone?: string; email?: string; address?: string; prestas: Set<string> }>();
+    const map = new Map<string, { count: number; first: string; profileId?: string; first_name?: string; last_name?: string; phone?: string; email?: string; address?: string; prestas: Set<string>; yogaCredits: number }>();
+
+    // Build yoga credits map
+    const creditsMap = new Map<string, number>();
+    if (cardsData.data) {
+      for (const c of cardsData.data as any[]) {
+        const remaining = (c.total_sessions || 0) - (c.used_sessions || 0);
+        creditsMap.set(c.client_name, (creditsMap.get(c.client_name) || 0) + Math.max(0, remaining));
+      }
+    }
 
     if (profilesData.data) {
       for (const p of profilesData.data as any[]) {
@@ -113,7 +131,7 @@ export default function AdminClients() {
           count: 0, first: p.created_at?.split("T")[0] || "",
           profileId: p.id, first_name: p.first_name || "", last_name: p.last_name || "",
           phone: p.phone || "", email: p.email || "", address: p.address || "",
-          prestas: new Set<string>(),
+          prestas: new Set<string>(), yogaCredits: creditsMap.get(displayName) || 0,
         });
       }
     }
@@ -128,7 +146,7 @@ export default function AdminClients() {
         } else {
           const prestas = new Set<string>();
           if (r.activity_name) prestas.add(r.activity_name);
-          map.set(r.client_name, { count: 1, first: r.date, prestas });
+          map.set(r.client_name, { count: 1, first: r.date, prestas, yogaCredits: creditsMap.get(r.client_name) || 0 });
         }
       });
     }
@@ -140,7 +158,7 @@ export default function AdminClients() {
             existing.prestas.add("Bon cadeau");
           } else {
             const prestas = new Set<string>(["Bon cadeau"]);
-            map.set(name, { count: 0, first: v.created_at?.split("T")[0] || "", prestas });
+            map.set(name, { count: 0, first: v.created_at?.split("T")[0] || "", prestas, yogaCredits: creditsMap.get(name) || 0 });
           }
         });
       });
@@ -155,7 +173,7 @@ export default function AdminClients() {
       name, totalReservations: v.count, firstReservation: v.first,
       profileId: v.profileId, first_name: v.first_name, last_name: v.last_name,
       phone: v.phone, email: v.email, address: v.address,
-      prestations: Array.from(v.prestas),
+      prestations: Array.from(v.prestas), yogaCredits: v.yogaCredits,
     }));
     setClients(list);
     setLoading(false);
@@ -163,13 +181,29 @@ export default function AdminClients() {
 
   useEffect(() => { loadClients(); }, []);
 
-  const openClientDetail = async (clientName: string) => {
-    setSelectedClient(clientName);
+  const allActivities = useMemo(() => {
+    const set = new Set<string>();
+    clients.forEach(c => c.prestations.forEach(p => set.add(p)));
+    return ["all", ...Array.from(set).sort()];
+  }, [clients]);
+
+  const openClientDetail = async (client: AggregatedClient) => {
+    setSelectedClient(client.name);
+    setSelectedClientObj(client);
+    setDetailEditMode(false);
+    setDetailEditForm({
+      first_name: client.first_name || "",
+      last_name: client.last_name || "",
+      phone: client.phone || "",
+      email: client.email || "",
+      address: client.address || "",
+    });
+    setEditingProfileId(client.profileId || null);
     setLoadingDetail(true);
     const [resReservations, resCards, resVouchers] = await Promise.all([
-      supabase.from("reservations").select("id, activity_name, date, time, status").eq("client_name", clientName).order("date", { ascending: false }),
-      supabase.from("client_cards").select("*").eq("client_name", clientName).order("created_at", { ascending: false }),
-      supabase.from("gift_vouchers").select("*").or(`beneficiary_name.eq.${clientName},buyer_name.eq.${clientName}`).order("created_at", { ascending: false }),
+      supabase.from("reservations").select("id, activity_name, date, time, status").eq("client_name", client.name).order("date", { ascending: false }),
+      supabase.from("client_cards").select("*").eq("client_name", client.name).order("created_at", { ascending: false }),
+      supabase.from("gift_vouchers").select("*").or(`beneficiary_name.eq.${client.name},buyer_name.eq.${client.name}`).order("created_at", { ascending: false }),
     ]);
     if (resReservations.data) setClientReservations(resReservations.data as unknown as ReservationRow[]);
     if (resCards.data) setClientCards(resCards.data as unknown as ClientCard[]);
@@ -216,50 +250,40 @@ export default function AdminClients() {
   };
 
   const openNewClient = () => {
-    setIsEditMode(false);
-    setEditingProfileId(null);
     setNewClientType("actuel");
     setEditForm({ first_name: "", last_name: "", phone: "", email: "", address: "" });
-    setEditClientOpen(true);
+    setNewClientOpen(true);
   };
 
-  const openEditClient = (client: AggregatedClient) => {
-    setIsEditMode(true);
-    setEditingProfileId(client.profileId || null);
-    setEditForm({
-      first_name: client.first_name || "",
-      last_name: client.last_name || "",
-      phone: client.phone || "",
-      email: client.email || "",
-      address: client.address || "",
-    });
-    setEditClientOpen(true);
-  };
-
-  const saveClient = async () => {
+  const saveNewClient = async () => {
     if (!editForm.first_name.trim()) return;
     const displayName = makeDisplayName(editForm.first_name, editForm.last_name);
-    if (editingProfileId) {
-      await supabase.from("profiles").update({
-        user_name: displayName,
-        first_name: editForm.first_name,
-        last_name: editForm.last_name,
-        phone: editForm.phone,
-        email: editForm.email,
-        address: editForm.address,
-      } as any).eq("id", editingProfileId);
-    } else {
-      await supabase.from("profiles").insert({
-        user_name: displayName,
-        first_name: editForm.first_name,
-        last_name: editForm.last_name,
-        phone: editForm.phone,
-        email: editForm.email,
-        address: editForm.address,
-      } as any);
-    }
-    toast({ title: isEditMode ? "Client modifié ✓" : "Client ajouté ✓" });
-    setEditClientOpen(false);
+    await supabase.from("profiles").insert({
+      user_name: displayName,
+      first_name: editForm.first_name,
+      last_name: editForm.last_name,
+      phone: editForm.phone,
+      email: editForm.email,
+      address: editForm.address,
+    } as any);
+    toast({ title: "Client ajouté ✓" });
+    setNewClientOpen(false);
+    loadClients();
+  };
+
+  const saveDetailEdit = async () => {
+    if (!editingProfileId) return;
+    const displayName = makeDisplayName(detailEditForm.first_name, detailEditForm.last_name);
+    await supabase.from("profiles").update({
+      user_name: displayName,
+      first_name: detailEditForm.first_name,
+      last_name: detailEditForm.last_name,
+      phone: detailEditForm.phone,
+      email: detailEditForm.email,
+      address: detailEditForm.address,
+    } as any).eq("id", editingProfileId);
+    toast({ title: "Client modifié ✓" });
+    setDetailEditMode(false);
     loadClients();
   };
 
@@ -288,27 +312,73 @@ export default function AdminClients() {
     loadClients();
   };
 
-  const filtered = clients.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    (c.first_name || "").toLowerCase().includes(search.toLowerCase()) ||
-    (c.last_name || "").toLowerCase().includes(search.toLowerCase()) ||
-    (c.email || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    let list = clients;
+    if (accountFilter === "with") list = list.filter(c => !!c.profileId);
+    if (accountFilter === "without") list = list.filter(c => !c.profileId);
+    if (activityFilter !== "all") list = list.filter(c => c.prestations.includes(activityFilter));
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        (c.first_name || "").toLowerCase().includes(q) ||
+        (c.last_name || "").toLowerCase().includes(q) ||
+        (c.email || "").toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [clients, search, accountFilter, activityFilter]);
+
+  const withAccount = clients.filter(c => !!c.profileId).length;
+  const withoutAccount = clients.filter(c => !c.profileId).length;
 
   return (
     <AdminLayout title="Clients">
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Rechercher un client…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="rounded-xl border bg-card p-4 text-center">
+          <p className="text-2xl font-bold text-primary-dark">{clients.length}</p>
+          <p className="text-[11px] text-muted-foreground">Total</p>
         </div>
-        <Button size="sm" className="gap-1.5" onClick={openNewClient}>
-          <UserPlus className="h-4 w-4" /> Ajouter un client
-        </Button>
-        <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setResetDialogOpen(true)}>
-          <RotateCcw className="h-4 w-4" /> Réinitialiser
-        </Button>
-        <p className="text-sm text-muted-foreground self-center">{filtered.length} client{filtered.length > 1 ? "s" : ""}</p>
+        <div className="rounded-xl border bg-card p-4 text-center">
+          <p className="text-2xl font-bold text-primary-dark">{withAccount}</p>
+          <p className="text-[11px] text-muted-foreground">Avec compte</p>
+        </div>
+        <div className="rounded-xl border bg-card p-4 text-center">
+          <p className="text-2xl font-bold text-primary-dark">{withoutAccount}</p>
+          <p className="text-[11px] text-muted-foreground">Sans compte</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Rechercher un client…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          </div>
+          <Button size="sm" className="gap-1.5" onClick={openNewClient}>
+            <UserPlus className="h-4 w-4" /> Ajouter
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setResetDialogOpen(true)}>
+            <RotateCcw className="h-4 w-4" /> Réinitialiser
+          </Button>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-1.5">
+          {([["all", "Tous"], ["with", "Avec compte"], ["without", "Sans compte"]] as [AccountFilter, string][]).map(([val, label]) => (
+            <Badge key={val} variant={accountFilter === val ? "default" : "outline"} className="cursor-pointer text-xs" onClick={() => setAccountFilter(val)}>
+              {label}
+            </Badge>
+          ))}
+          <div className="w-px bg-border mx-1" />
+          {allActivities.map(a => (
+            <Badge key={a} variant={activityFilter === a ? "default" : "outline"} className="cursor-pointer text-[10px]" onClick={() => setActivityFilter(a)}>
+              {a === "all" ? "Toutes activités" : a}
+            </Badge>
+          ))}
+        </div>
+        <p className="text-sm text-muted-foreground">{filtered.length} client{filtered.length > 1 ? "s" : ""}</p>
       </div>
 
       {/* Reset confirmation dialog */}
@@ -333,15 +403,15 @@ export default function AdminClients() {
         <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
       ) : (
         <div className="rounded-xl border bg-card overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[500px]">
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="text-left p-3 font-medium text-muted-foreground">Client</th>
-                <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Téléphone</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Profil</th>
                 <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Email</th>
                 <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Prestations</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Réservations</th>
-                <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Yoga</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Résa</th>
               </tr>
             </thead>
             <tbody>
@@ -351,7 +421,7 @@ export default function AdminClients() {
                 <tr
                   key={c.name}
                   className="border-b last:border-0 hover:bg-muted/10 cursor-pointer"
-                  onClick={() => openClientDetail(c.name)}
+                  onClick={() => openClientDetail(c)}
                 >
                   <td className="p-3">
                     <div className="font-medium">{c.name}</div>
@@ -359,7 +429,11 @@ export default function AdminClients() {
                       <div className="text-xs text-muted-foreground">{c.first_name} {c.last_name}</div>
                     )}
                   </td>
-                  <td className="p-3 hidden md:table-cell text-muted-foreground">{c.phone || "—"}</td>
+                  <td className="p-3">
+                    <Badge variant="outline" className={`text-[10px] ${c.profileId ? "bg-primary/10 text-primary-dark border-primary/20" : "bg-muted text-muted-foreground"}`}>
+                      {c.profileId ? "Compte" : "Sans compte"}
+                    </Badge>
+                  </td>
                   <td className="p-3 hidden md:table-cell text-muted-foreground">{c.email || "—"}</td>
                   <td className="p-3 hidden lg:table-cell">
                     {c.prestations.length > 0 ? (
@@ -376,19 +450,18 @@ export default function AdminClients() {
                     )}
                   </td>
                   <td className="p-3">
+                    {c.yogaCredits > 0 ? (
+                      <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary-dark border-primary/20">
+                        {c.yogaCredits} cours
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="p-3">
                     {c.totalReservations === 0
                       ? <Badge variant="outline" className="text-xs">Futur client</Badge>
                       : c.totalReservations}
-                  </td>
-                  <td className="p-3 text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openEditClient(c); }}>
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); setDeletingClient(c); }}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
                   </td>
                 </tr>
               ))}
@@ -397,8 +470,8 @@ export default function AdminClients() {
         </div>
       )}
 
-      {/* Client Detail Dialog */}
-      <Dialog open={!!selectedClient} onOpenChange={(open) => !open && setSelectedClient(null)}>
+      {/* Client Detail Dialog - inline editable */}
+      <Dialog open={!!selectedClient} onOpenChange={(open) => { if (!open) { setSelectedClient(null); setSelectedClientObj(null); } }}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-primary-dark">{selectedClient}</DialogTitle>
@@ -408,6 +481,40 @@ export default function AdminClients() {
             <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
           ) : (
             <div className="space-y-6">
+              {/* Editable profile fields */}
+              {selectedClientObj?.profileId && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-primary-dark">Informations</h3>
+                    {!detailEditMode ? (
+                      <Button size="sm" variant="ghost" className="text-xs" onClick={() => setDetailEditMode(true)}>Modifier</Button>
+                    ) : (
+                      <div className="flex gap-1">
+                        <Button size="sm" className="text-xs" onClick={saveDetailEdit}>Enregistrer</Button>
+                        <Button size="sm" variant="ghost" className="text-xs" onClick={() => setDetailEditMode(false)}>Annuler</Button>
+                      </div>
+                    )}
+                  </div>
+                  {detailEditMode ? (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><Label className="text-xs">Prénom</Label><Input value={detailEditForm.first_name} onChange={e => setDetailEditForm({ ...detailEditForm, first_name: e.target.value })} className="h-8 text-sm" /></div>
+                        <div><Label className="text-xs">Nom</Label><Input value={detailEditForm.last_name} onChange={e => setDetailEditForm({ ...detailEditForm, last_name: e.target.value })} className="h-8 text-sm" /></div>
+                      </div>
+                      <div><Label className="text-xs">Téléphone</Label><Input value={detailEditForm.phone} onChange={e => setDetailEditForm({ ...detailEditForm, phone: e.target.value })} className="h-8 text-sm" /></div>
+                      <div><Label className="text-xs">Email</Label><Input value={detailEditForm.email} onChange={e => setDetailEditForm({ ...detailEditForm, email: e.target.value })} className="h-8 text-sm" /></div>
+                      <div><Label className="text-xs">Adresse</Label><Input value={detailEditForm.address} onChange={e => setDetailEditForm({ ...detailEditForm, address: e.target.value })} className="h-8 text-sm" /></div>
+                    </div>
+                  ) : (
+                    <div className="text-sm space-y-1">
+                      {selectedClientObj?.phone && <p className="text-muted-foreground">📞 {selectedClientObj.phone}</p>}
+                      {selectedClientObj?.email && <p className="text-muted-foreground">✉️ {selectedClientObj.email}</p>}
+                      {selectedClientObj?.address && <p className="text-muted-foreground">📍 {selectedClientObj.address}</p>}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Cards section */}
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -494,6 +601,18 @@ export default function AdminClients() {
                   </div>
                 )}
               </div>
+
+              {/* Delete button inside detail */}
+              {selectedClientObj && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={() => setDeletingClient(selectedClientObj)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Supprimer ce client
+                </Button>
+              )}
             </div>
           )}
         </DialogContent>
@@ -524,26 +643,24 @@ export default function AdminClients() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit/Add Client Dialog */}
-      <Dialog open={editClientOpen} onOpenChange={setEditClientOpen}>
+      {/* New Client Dialog */}
+      <Dialog open={newClientOpen} onOpenChange={setNewClientOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{isEditMode ? "Modifier le client" : "Nouveau client"}</DialogTitle>
+            <DialogTitle>Nouveau client</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-2">
-            {!isEditMode && (
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1.5 block">Type de client</Label>
-                <div className="flex gap-2">
-                  <Button variant={newClientType === "actuel" ? "default" : "outline"} size="sm" className="flex-1" onClick={() => setNewClientType("actuel")}>
-                    Client actuel
-                  </Button>
-                  <Button variant={newClientType === "futur" ? "default" : "outline"} size="sm" className="flex-1" onClick={() => setNewClientType("futur")}>
-                    Futur client
-                  </Button>
-                </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1.5 block">Type de client</Label>
+              <div className="flex gap-2">
+                <Button variant={newClientType === "actuel" ? "default" : "outline"} size="sm" className="flex-1" onClick={() => setNewClientType("actuel")}>
+                  Client actuel
+                </Button>
+                <Button variant={newClientType === "futur" ? "default" : "outline"} size="sm" className="flex-1" onClick={() => setNewClientType("futur")}>
+                  Futur client
+                </Button>
               </div>
-            )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Prénom</Label><Input value={editForm.first_name} onChange={e => setEditForm({ ...editForm, first_name: e.target.value })} /></div>
               <div><Label>Nom</Label><Input value={editForm.last_name} onChange={e => setEditForm({ ...editForm, last_name: e.target.value })} /></div>
@@ -554,8 +671,8 @@ export default function AdminClients() {
             <div><Label>Téléphone</Label><Input type="tel" value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} placeholder="06 12 34 56 78" /></div>
             <div><Label>Email</Label><Input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} placeholder="sophie@email.com" /></div>
             <div><Label>Adresse</Label><Input value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} placeholder="12 rue de la Paix, 75002 Paris" /></div>
-            <Button className="w-full" onClick={saveClient} disabled={!editForm.first_name.trim()}>
-              {isEditMode ? "Enregistrer" : "Ajouter le client"}
+            <Button className="w-full" onClick={saveNewClient} disabled={!editForm.first_name.trim()}>
+              Ajouter le client
             </Button>
           </div>
         </DialogContent>
