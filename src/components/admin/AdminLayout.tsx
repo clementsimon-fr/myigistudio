@@ -16,7 +16,7 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
             <SidebarTrigger />
             <h1 className="text-lg font-display font-bold text-primary-dark">{title}</h1>
           </header>
-          <main className="flex-1 p-6 bg-muted/20">{children}</main>
+          <main className="flex-1 p-4 sm:p-6 bg-muted/20 overflow-x-hidden">{children}</main>
         </div>
       </div>
     </SidebarProvider>
