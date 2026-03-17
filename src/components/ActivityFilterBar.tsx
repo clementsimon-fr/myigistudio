@@ -39,7 +39,6 @@ type NavTab = { label: string; value: ViewMode };
 
 const NAV_TABS: NavTab[] = [
   { label: "Découvrir", value: "activites" },
-  { label: "Planning", value: "planning-type" },
   { label: "Réserver", value: "planning" },
 ];
 
