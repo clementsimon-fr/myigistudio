@@ -106,9 +106,17 @@ export default function AdminConditions() {
     fetchConditions();
   };
 
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const handleDelete = async (id: string) => {
-    await supabase.from("conditions").delete().eq("id", id);
+    setDeletingId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingId) return;
+    await supabase.from("conditions").delete().eq("id", deletingId);
     toast({ title: "Condition supprimée", variant: "destructive" });
+    setDeletingId(null);
     fetchConditions();
   };
 
