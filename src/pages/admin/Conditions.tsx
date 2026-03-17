@@ -239,12 +239,19 @@ export default function AdminConditions() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-              {editing ? "Mettre à jour" : "Créer"}
-            </Button>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            {editing && (
+              <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => { setDialogOpen(false); handleDelete(editing.id); }}>
+                <Trash2 className="h-3.5 w-3.5" /> Supprimer
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
+              <Button onClick={handleSave} disabled={saving}>
+                {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                {editing ? "Mettre à jour" : "Créer"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
