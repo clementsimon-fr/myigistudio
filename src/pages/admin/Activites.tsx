@@ -387,7 +387,11 @@ export default function AdminActivites() {
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <div className="flex gap-1.5 flex-wrap">
-            <Badge variant={categoryFilter === "all" ? "default" : "outline"} className="cursor-pointer text-xs" onClick={() => setCategoryFilter("all")}>Toutes</Badge>
+            <Badge
+              variant={categoryFilter === "all" ? "default" : "outline"}
+              className={`cursor-pointer text-xs ${categoryFilter === "all" ? "" : ""}`}
+              onClick={() => setCategoryFilter("all")}
+            >Toutes</Badge>
             {CATEGORIES.map(c => {
               const isActive = categoryFilter === c.value;
               return (
@@ -618,9 +622,11 @@ export default function AdminActivites() {
                         ) : (
                           <Input type="date" className="w-[150px] h-8 text-xs" value={evt.date} onChange={e => updateEvent(idx, { date: e.target.value })} />
                         )}
-                        <Input type="time" className="w-[100px] h-8 text-xs" value={evt.time} onChange={e => updateEvent(idx, { time: e.target.value })} />
-                        <span className="text-muted-foreground text-xs">→</span>
-                        <Input type="time" className="w-[100px] h-8 text-xs" value={evt.end_time} onChange={e => updateEvent(idx, { end_time: e.target.value })} />
+                        <div className="flex items-center gap-1">
+                          <Input type="time" className="w-[90px] h-8 text-xs" value={evt.time} onChange={e => updateEvent(idx, { time: e.target.value })} />
+                          <span className="text-muted-foreground text-xs">→</span>
+                          <Input type="time" className="w-[90px] h-8 text-xs" value={evt.end_time} onChange={e => updateEvent(idx, { end_time: e.target.value })} />
+                        </div>
                         {evt.time && evt.end_time && <span className="text-xs text-muted-foreground">{calcDuration(evt.time, evt.end_time)}</span>}
                         <div className="flex items-center gap-1">
                           <Users className="h-3.5 w-3.5 text-muted-foreground" />

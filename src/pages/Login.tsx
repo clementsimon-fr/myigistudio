@@ -5,8 +5,6 @@ import { useDemoContext } from "@/contexts/DemoContext";
 const PROFILE_CARDS = [
   { id: "fournisseur", name: "Fournisseur", subtitle: "Accès complet", icon: Wrench, defaultNavigateTo: "/admin/reservations", supportsReturn: false },
   { id: "elodie", name: "Élodie", subtitle: "Administratrice", icon: Shield, defaultNavigateTo: "/admin/reservations", supportsReturn: false },
-  { id: "marion", name: "Marion", subtitle: "Nouvelle cliente", icon: UserPlus, defaultNavigateTo: "/mon-espace", supportsReturn: true },
-  { id: "sophie", name: "Sophie", subtitle: "Cliente existante", icon: User, defaultNavigateTo: "/mon-espace", supportsReturn: true },
 ];
 
 export default function Login() {
@@ -79,14 +77,6 @@ export default function Login() {
         </div>
 
         <div className="mt-4 space-y-3">
-          <Link
-            to={`/register${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
-            className="block w-full rounded-lg border-2 border-dashed border-primary/30 p-4 text-center text-sm font-medium text-primary hover:border-primary hover:bg-primary/5 transition-colors"
-          >
-            <UserPlus className="inline h-4 w-4 mr-1.5 -mt-0.5" />
-            Créer un compte
-          </Link>
-
           <button
             onClick={handleVisitor}
             className="flex items-center justify-center gap-1.5 w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2"

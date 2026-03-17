@@ -105,7 +105,7 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout title="Notifications">
-      <div className="space-y-6">
+      <div className="space-y-6 overflow-x-hidden">
         {/* Filters */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <div className="flex gap-1.5">

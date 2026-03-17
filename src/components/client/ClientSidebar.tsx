@@ -1,4 +1,4 @@
-import { CalendarDays, CreditCard, User, Compass, Calendar, LogOut, RefreshCw } from "lucide-react";
+import { CalendarDays, CreditCard, User, Compass, Calendar, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { useDemoContext } from "@/contexts/DemoContext";
@@ -14,6 +14,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const clientGroups = [
   {
@@ -28,20 +29,25 @@ const clientGroups = [
     label: "IgiStudio",
     items: [
       { title: "Activités", url: "/", icon: Compass },
-      { title: "Planning", url: "/?view=planning", icon: Calendar },
+      { title: "Planning", url: "/?view=planning-type", icon: Calendar },
     ],
   },
 ];
 
 export default function ClientSidebar() {
-  const { state } = useSidebar();
+  const { state, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { setCurrentProfile } = useDemoContext();
 
   const handleLogout = () => {
     setCurrentProfile(null);
     navigate("/");
+  };
+
+  const handleNavClick = () => {
+    if (isMobile) setOpenMobile(false);
   };
 
   return (
@@ -67,6 +73,7 @@ export default function ClientSidebar() {
                           to={item.url}
                           className="hover:bg-muted/50"
                           activeClassName="bg-muted text-primary-dark font-medium"
+                          onClick={handleNavClick}
                         >
                           <item.icon className="mr-2 h-4 w-4" />
                           {!collapsed && <span>{item.title}</span>}
@@ -86,15 +93,7 @@ export default function ClientSidebar() {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <NavLink to="/login" className="hover:bg-muted/50 text-muted-foreground">
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    {!collapsed && <span>Changer de profil</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <button onClick={handleLogout} className="flex items-center w-full hover:bg-muted/50 text-destructive">
+                  <button onClick={() => { handleNavClick(); handleLogout(); }} className="flex items-center w-full hover:bg-muted/50 text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
                     {!collapsed && <span>Déconnexion</span>}
                   </button>

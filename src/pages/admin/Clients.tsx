@@ -307,6 +307,9 @@ export default function AdminClients() {
       supabase.from("forum_posts").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
     ]);
     clearTempProfiles();
+    // Also clear current profile and localStorage to remove persistent demo profiles
+    localStorage.removeItem("demo_profile");
+    localStorage.removeItem("demo_guest_name");
     toast({ title: "Données clients réinitialisées ✓" });
     setResetDialogOpen(false);
     loadClients();
@@ -335,7 +338,7 @@ export default function AdminClients() {
   return (
     <AdminLayout title="Clients">
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6 overflow-x-hidden">
         <div className="rounded-xl border bg-card p-4 text-center">
           <p className="text-2xl font-bold text-primary-dark">{clients.length}</p>
           <p className="text-[11px] text-muted-foreground">Total</p>

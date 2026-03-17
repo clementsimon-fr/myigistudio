@@ -283,7 +283,7 @@ export default function AdminBonsCadeaux() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border bg-card overflow-x-auto -mx-4 px-0 sm:mx-0">
+      <div className="rounded-xl border bg-card overflow-x-auto -mx-2 sm:mx-0">
         <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="border-b bg-muted/30">
