@@ -1,4 +1,4 @@
-import { CalendarDays, CreditCard, User, Compass, Calendar, LogOut, RefreshCw } from "lucide-react";
+import { CalendarDays, CreditCard, User, Compass, Calendar, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { useDemoContext } from "@/contexts/DemoContext";
@@ -14,6 +14,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const clientGroups = [
   {
@@ -28,7 +29,7 @@ const clientGroups = [
     label: "IgiStudio",
     items: [
       { title: "Activités", url: "/", icon: Compass },
-      { title: "Planning", url: "/?view=planning", icon: Calendar },
+      { title: "Planning", url: "/?view=planning-type", icon: Calendar },
     ],
   },
 ];
