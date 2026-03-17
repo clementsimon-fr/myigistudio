@@ -346,7 +346,7 @@ export default function AdminContrat() {
 
   return (
     <AdminLayout title="Contrat">
-      <div className="max-w-3xl mx-auto space-y-8">
+      <div className="max-w-3xl mx-auto space-y-8 overflow-x-hidden">
 
         {/* PDF Export Button */}
         <Button variant="outline" className="gap-2" onClick={handlePrintScreens}>
