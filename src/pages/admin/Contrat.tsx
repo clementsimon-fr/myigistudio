@@ -513,7 +513,7 @@ export default function AdminContrat() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="grid grid-cols-2 gap-4 text-center">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 text-center">
                 <div>
                   <p className="text-2xl font-bold text-emerald-700">{includedTickets.length}</p>
                   <p className="text-[11px] text-muted-foreground">Incluses</p>

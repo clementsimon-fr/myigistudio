@@ -317,8 +317,8 @@ export default function AdminBonsCadeaux() {
                     {v.type === "amount" ? `${v.amount}€` : `${v.card_name}${v.sessions ? ` (${v.sessions} séances)` : ""}`}
                   </td>
                   <td className="p-3">{v.beneficiary_name || "—"}</td>
-                  <td className="p-3">{v.buyer_name || "—"}</td>
-                  <td className="p-3 text-muted-foreground">{new Date(v.expires_at).toLocaleDateString("fr-FR")}</td>
+                  <td className="p-3 hidden sm:table-cell">{v.buyer_name || "—"}</td>
+                  <td className="p-3 text-muted-foreground hidden sm:table-cell">{new Date(v.expires_at).toLocaleDateString("fr-FR")}</td>
                   <td className="p-3">
                     <Badge
                       variant={v.used ? "secondary" : isExpired ? "destructive" : "default"}
