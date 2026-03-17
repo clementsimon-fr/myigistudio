@@ -459,6 +459,8 @@ export default function Reserver() {
                   duration={selectedSlotData.duration}
                   price={selectedSlotData.price || unitPrice || undefined}
                   category={category}
+                  isYoga={isYoga}
+                  pricingCards={pricingCards}
                 />
               )}
 
