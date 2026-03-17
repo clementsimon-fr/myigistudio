@@ -310,7 +310,7 @@ export default function AdminBonsCadeaux() {
                       </Button>
                     </div>
                   </td>
-                  <td className="p-3">
+                  <td className="p-3 hidden sm:table-cell">
                     <Badge variant="outline" className="text-xs">{v.type === "amount" ? "Montant" : "Activité"}</Badge>
                   </td>
                   <td className="p-3 font-medium">
