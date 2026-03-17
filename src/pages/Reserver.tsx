@@ -500,6 +500,9 @@ export default function Reserver() {
               onConditionsChange={setConditionsAccepted}
               onPay={handlePay}
               submitting={submitting}
+              cardName={pendingCard?.name}
+              cardSessions={pendingCard?.sessions}
+              existingCredits={currentProfile?.credits || 0}
             />
           )}
         </div>
