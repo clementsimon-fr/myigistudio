@@ -338,7 +338,7 @@ export default function AdminClients() {
   return (
     <AdminLayout title="Clients">
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6 overflow-x-hidden">
         <div className="rounded-xl border bg-card p-4 text-center">
           <p className="text-2xl font-bold text-primary-dark">{clients.length}</p>
           <p className="text-[11px] text-muted-foreground">Total</p>
