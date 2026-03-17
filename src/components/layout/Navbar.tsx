@@ -98,11 +98,10 @@ export default function Navbar() {
             </button>
           </>
         ) : (
-          /* Visitor: just the Connexion button, visible on all screen sizes */
+          /* Visitor: icon-only login button */
           <Link to="/login">
-            <Button variant="default" size="default" className="gap-2">
-              <User className="h-4 w-4" />
-              Connexion
+            <Button variant="ghost" size="icon">
+              <User className="h-5 w-5" />
             </Button>
           </Link>
         )}

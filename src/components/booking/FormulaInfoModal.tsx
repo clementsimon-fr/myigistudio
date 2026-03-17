@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Star, Info } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface PricingCard {
   id: string;
@@ -31,6 +32,12 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
+          {/* Intro paragraph */}
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Les cartes yoga vous permettent de réserver vos cours à un tarif avantageux.
+            Achetez une carte, et utilisez vos cours quand vous le souhaitez pendant la durée de validité.
+          </p>
+
           <div className="grid gap-3">
             {pricingCards.map(card => (
               <div key={card.id} className="rounded-lg border p-4 relative">
@@ -42,9 +49,14 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="font-semibold text-primary-dark">{card.name}</p>
-                    <p className="text-xs text-muted-foreground">{card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`} · {card.validity}</p>
+                    <p className="text-xs text-muted-foreground">{card.validity}</p>
                   </div>
-                  <p className="text-lg font-bold">{card.price} €</p>
+                  <div className="text-right">
+                    <p className="text-lg font-bold">{card.price} €</p>
+                    <Badge variant="secondary" className="text-xs font-bold">
+                      {card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`}
+                    </Badge>
+                  </div>
                 </div>
               </div>
             ))}

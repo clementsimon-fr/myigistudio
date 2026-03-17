@@ -420,6 +420,8 @@ export default function Reserver() {
                   duration={selectedSlotData.duration}
                   price={selectedSlotData.price || unitPrice || undefined}
                   category={category}
+                  isYoga={isYoga}
+                  pricingCards={pricingCards}
                 />
               )}
               <AccountChoice
@@ -457,6 +459,8 @@ export default function Reserver() {
                   duration={selectedSlotData.duration}
                   price={selectedSlotData.price || unitPrice || undefined}
                   category={category}
+                  isYoga={isYoga}
+                  pricingCards={pricingCards}
                 />
               )}
 
@@ -496,6 +500,9 @@ export default function Reserver() {
               onConditionsChange={setConditionsAccepted}
               onPay={handlePay}
               submitting={submitting}
+              cardName={pendingCard?.name}
+              cardSessions={pendingCard?.sessions}
+              existingCredits={currentProfile?.credits || 0}
             />
           )}
         </div>

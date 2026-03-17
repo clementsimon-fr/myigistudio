@@ -260,7 +260,7 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
                   <div className={`text-sm font-semibold capitalize ${isToday ? "bg-primary-dark text-primary-dark-foreground px-3 py-1 rounded-full" : ""}`}>
                     {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
                   </div>
-                  {isToday && <Badge variant="outline" className="text-xs">Aujourd'hui</Badge>}
+                  {/* Removed "Aujourd'hui" badge to avoid confusion */}
                 </div>
                 {blocks.length === 0 ? (
                   <div className="rounded-lg border border-dashed bg-muted/10 p-4 text-center text-sm text-muted-foreground">Aucune activité</div>
