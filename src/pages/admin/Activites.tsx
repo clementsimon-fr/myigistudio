@@ -387,7 +387,11 @@ export default function AdminActivites() {
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <div className="flex gap-1.5 flex-wrap">
-            <Badge variant={categoryFilter === "all" ? "default" : "outline"} className="cursor-pointer text-xs" onClick={() => setCategoryFilter("all")}>Toutes</Badge>
+            <Badge
+              variant={categoryFilter === "all" ? "default" : "outline"}
+              className={`cursor-pointer text-xs ${categoryFilter === "all" ? "" : ""}`}
+              onClick={() => setCategoryFilter("all")}
+            >Toutes</Badge>
             {CATEGORIES.map(c => {
               const isActive = categoryFilter === c.value;
               return (
