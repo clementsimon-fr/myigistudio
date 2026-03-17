@@ -10,7 +10,7 @@ import PlanningTypeView from "@/components/PlanningTypeView";
 import { useActivitiesData } from "@/hooks/useActivitiesData";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
-export type ViewMode = "activites" | "planning" | "planning-type";
+export type ViewMode = "activites" | "planning";
 
 export default function Discover() {
   const [searchParams, setSearchParams] = useSearchParams();
