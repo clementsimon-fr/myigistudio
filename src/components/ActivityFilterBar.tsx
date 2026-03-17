@@ -83,7 +83,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, view, onView
                     : "bg-primary/15 text-primary-dark hover:bg-primary/25"
                 }`}
               >
-                {tab.value === "planning-type" ? <CalendarRange className="h-5 w-5" /> : tab.label}
+                {tab.label}
               </Button>
             ))}
           </div>
