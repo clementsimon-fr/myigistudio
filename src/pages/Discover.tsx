@@ -16,7 +16,7 @@ export default function Discover() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { get: getSetting, ready: settingsReady } = useSiteSettings();
 
-  const initialView = searchParams.get("view") === "planning" ? "planning" : searchParams.get("view") === "planning-type" ? "planning-type" : "activites";
+  const initialView = searchParams.get("view") === "planning" ? "planning" : "activites";
   const initialFilter = searchParams.get("filter") as FilterCategory | null;
   const initialActivity = searchParams.get("activity");
   const initialDate = searchParams.get("date");
