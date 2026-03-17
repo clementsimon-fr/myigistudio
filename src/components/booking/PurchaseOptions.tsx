@@ -21,7 +21,7 @@ type UserState = "guest" | "logged_user_no_cards" | "logged_user_with_cards";
 
 interface PurchaseOptionsProps {
   userState: UserState;
-  category: string; // "yoga" | "poterie" | "atelier" etc.
+  category: string;
   credits: number;
   userName: string;
   pricingCards: PricingCard[];
@@ -116,6 +116,7 @@ export default function PurchaseOptions({
           onCreateAccount={onCreateAccount}
           onContinueWithout={() => setShowFormulas(false)}
           pricingCards={pricingCards}
+          unitPrice={unitPrice || undefined}
         />
       </div>
     );

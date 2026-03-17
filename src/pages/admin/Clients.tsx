@@ -411,7 +411,7 @@ export default function AdminClients() {
               {/* Cards section */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-primary-dark">Cartes & Crédits</h3>
+                  <h3 className="text-sm font-semibold text-primary-dark">Cartes Yoga</h3>
                   <Button size="sm" variant="outline" className="gap-1.5" onClick={openAddCard}>
                     <Plus className="h-3.5 w-3.5" /> Ajouter
                   </Button>

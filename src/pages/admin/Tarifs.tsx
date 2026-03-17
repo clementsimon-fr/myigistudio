@@ -85,11 +85,11 @@ export default function AdminTarifs() {
   const unitPrice = (c: PricingCard) => c.sessions > 0 && c.sessions < 9999 ? (c.price / c.sessions).toFixed(2) : "—";
 
   if (loading) {
-    return <AdminLayout title="Tarifs"><div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div></AdminLayout>;
+    return <AdminLayout title="Tarifs Yoga"><div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div></AdminLayout>;
   }
 
   return (
-    <AdminLayout title="Tarifs">
+    <AdminLayout title="Tarifs Yoga">
       <div className="flex items-center justify-between mb-6">
         <p className="text-muted-foreground text-sm">Gérez les cartes de cours affichées sur la page Yoga.</p>
         <Button onClick={openNew} className="gap-1.5"><Plus className="h-4 w-4" /> Ajouter un tarif</Button>

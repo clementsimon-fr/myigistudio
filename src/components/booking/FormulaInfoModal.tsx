@@ -19,9 +19,10 @@ interface FormulaInfoModalProps {
   onCreateAccount: () => void;
   onContinueWithout: () => void;
   pricingCards: PricingCard[];
+  unitPrice?: number;
 }
 
-export default function FormulaInfoModal({ open, onClose, onCreateAccount, onContinueWithout, pricingCards }: FormulaInfoModalProps) {
+export default function FormulaInfoModal({ open, onClose, onCreateAccount, onContinueWithout, pricingCards, unitPrice }: FormulaInfoModalProps) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
@@ -35,31 +36,45 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
           {/* Intro paragraph */}
           <p className="text-sm text-muted-foreground leading-relaxed">
             Les cartes yoga vous permettent de réserver vos cours à un tarif avantageux.
-            Achetez une carte, et utilisez vos cours quand vous le souhaitez pendant la durée de validité.
+            Achetez une carte, ou plusieurs, et utilisez vos cours quand vous le souhaitez pendant la durée de validité.
           </p>
 
           <div className="grid gap-3">
-            {pricingCards.map(card => (
-              <div key={card.id} className="rounded-lg border p-4 relative">
-                {card.popular && (
-                  <div className="absolute -top-2.5 right-3 bg-accent text-accent-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                    <Star className="h-2.5 w-2.5" /> Populaire
-                  </div>
-                )}
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-semibold text-primary-dark">{card.name}</p>
-                    <p className="text-xs text-muted-foreground">{card.validity}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold">{card.price} €</p>
-                    <Badge variant="secondary" className="text-xs font-bold">
-                      {card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`}
-                    </Badge>
+            {pricingCards.map(card => {
+              const perSession = card.sessions < 9999 && card.sessions > 0 ? card.price / card.sessions : null;
+              const reductionPercent = perSession && unitPrice && unitPrice > 0
+                ? Math.round((1 - perSession / unitPrice) * 100)
+                : null;
+
+              return (
+                <div key={card.id} className="rounded-lg border p-4 relative">
+                  {card.popular && (
+                    <div className="absolute -top-2.5 right-3 bg-accent text-accent-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                      <Star className="h-2.5 w-2.5" /> Populaire
+                    </div>
+                  )}
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold text-primary-dark">{card.name}</p>
+                      <p className="text-xs text-muted-foreground">{card.validity}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold">{card.price} €</p>
+                      <div className="flex items-center gap-1.5 justify-end">
+                        <Badge variant="secondary" className="text-sm font-bold px-2.5 py-0.5">
+                          {card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`}
+                        </Badge>
+                        {reductionPercent != null && reductionPercent > 0 && (
+                          <Badge className="bg-primary text-primary-foreground text-xs font-bold">
+                            -{reductionPercent}%
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-start gap-2">

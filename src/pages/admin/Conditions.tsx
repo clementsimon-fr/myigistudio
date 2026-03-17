@@ -6,8 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Plus, Pencil, Trash2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -106,9 +107,17 @@ export default function AdminConditions() {
     fetchConditions();
   };
 
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const handleDelete = async (id: string) => {
-    await supabase.from("conditions").delete().eq("id", id);
+    setDeletingId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingId) return;
+    await supabase.from("conditions").delete().eq("id", deletingId);
     toast({ title: "Condition supprimée", variant: "destructive" });
+    setDeletingId(null);
     fetchConditions();
   };
 
@@ -163,9 +172,6 @@ export default function AdminConditions() {
               <div className="flex gap-1">
                 <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEdit(c)}>
                   <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive" onClick={() => handleDelete(c.id)}>
-                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
@@ -242,12 +248,19 @@ export default function AdminConditions() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-              {editing ? "Mettre à jour" : "Créer"}
-            </Button>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            {editing && (
+              <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => { setDialogOpen(false); handleDelete(editing.id); }}>
+                <Trash2 className="h-3.5 w-3.5" /> Supprimer
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
+              <Button onClick={handleSave} disabled={saving}>
+                {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                {editing ? "Mettre à jour" : "Créer"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

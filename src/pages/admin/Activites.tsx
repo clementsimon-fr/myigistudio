@@ -384,9 +384,6 @@ export default function AdminActivites() {
           <Button variant={viewMode === "calendar" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("calendar")}>
             <CalendarDays className="h-4 w-4" /> Calendrier
           </Button>
-          <Button variant={viewMode === "planning" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("planning")}>
-            <CalendarDays className="h-4 w-4" /> Planning
-          </Button>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <div className="flex gap-1.5 flex-wrap">
