@@ -151,13 +151,6 @@ export default function Discover() {
             getInstructorPhoto={getInstructorPhoto}
             onSwitchToPlanning={handleSwitchToPlanning}
           />
-        ) : view === "planning-type" ? (
-          <PlanningTypeView
-            courses={courses}
-            workshops={workshops}
-            schedules={schedules}
-            filter={filter}
-          />
         ) : (
           <PlanningView
             courses={courses}
