@@ -52,7 +52,6 @@ const DEFAULT_PROFILES: Record<string, DemoProfile> = {
   },
 };
 
-// Demo client profiles (resettable)
 const DEMO_CLIENT_PROFILES: Record<string, DemoProfile> = {
   marion: {
     id: "marion",
@@ -92,6 +91,8 @@ interface DemoContextValue {
   getDefaultProfile: (id: string) => DemoProfile | undefined;
   tempProfiles: DemoProfile[];
   clearTempProfiles: () => void;
+  guestName: string | null;
+  setGuestName: (name: string | null) => void;
 }
 
 const DemoContext = createContext<DemoContextValue | null>(null);
@@ -99,6 +100,7 @@ const DemoContext = createContext<DemoContextValue | null>(null);
 const LS_PROFILE_KEY = "demo_profile";
 const LS_NOTIFS_KEY = "demo_notifications";
 const LS_TEMP_PROFILES_KEY = "demo_temp_profiles";
+const LS_GUEST_NAME_KEY = "demo_guest_name";
 
 export function DemoProvider({ children }: { children: ReactNode }) {
   const [currentProfile, setCurrentProfileState] = useState<DemoProfile | null>(() => {
@@ -122,6 +124,12 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     } catch { return []; }
   });
 
+  const [guestName, setGuestNameState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(LS_GUEST_NAME_KEY);
+    } catch { return null; }
+  });
+
   useEffect(() => {
     if (currentProfile) localStorage.setItem(LS_PROFILE_KEY, JSON.stringify(currentProfile));
     else localStorage.removeItem(LS_PROFILE_KEY);
@@ -135,8 +143,17 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(LS_TEMP_PROFILES_KEY, JSON.stringify(tempProfiles));
   }, [tempProfiles]);
 
+  useEffect(() => {
+    if (guestName) localStorage.setItem(LS_GUEST_NAME_KEY, guestName);
+    else localStorage.removeItem(LS_GUEST_NAME_KEY);
+  }, [guestName]);
+
   const setCurrentProfile = useCallback((profile: DemoProfile | null) => {
     setCurrentProfileState(profile);
+  }, []);
+
+  const setGuestName = useCallback((name: string | null) => {
+    setGuestNameState(name);
   }, []);
 
   const addNotification = useCallback((message: string, type: DemoNotification["type"]) => {
@@ -204,7 +221,6 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     };
     setCurrentProfileState(profile);
     setTempProfiles(prev => {
-      // Avoid duplicates by name
       if (prev.some(p => p.name.toLowerCase() === name.toLowerCase())) return prev;
       return [...prev, profile];
     });
@@ -221,7 +237,6 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(LS_TEMP_PROFILES_KEY);
     setDemoNotifications([]);
     localStorage.removeItem(LS_NOTIFS_KEY);
-    // Also disconnect current profile if it's a demo client (Marion/Sophie or temp)
     setCurrentProfileState(prev => {
       if (!prev) return prev;
       if (prev.role === "client") return null;
@@ -232,7 +247,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   return (
     <DemoContext.Provider value={{
       currentProfile, setCurrentProfile, demoNotifications, addNotification,
-      addCredits, useCredit, addReservation, createTempProfile, getDefaultProfile, tempProfiles, clearTempProfiles,
+      addCredits, useCredit, addReservation, createTempProfile, getDefaultProfile,
+      tempProfiles, clearTempProfiles, guestName, setGuestName,
     }}>
       {children}
     </DemoContext.Provider>
