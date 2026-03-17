@@ -1,6 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 
@@ -111,7 +110,13 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
                             return (
                               <td key={day} className="py-2 px-0.5 text-center">
                                 {daySlots.length > 0 ? (
-                                  <TimePopover slots={daySlots} dotColor={dotColor} />
+                                  <div className="flex flex-col items-center gap-0.5">
+                                    {daySlots.map((s, i) => (
+                                      <span key={i} className={`inline-flex items-center justify-center px-1 py-0.5 rounded text-[8px] font-semibold text-white ${dotColor}`}>
+                                        {s.time}
+                                      </span>
+                                    ))}
+                                  </div>
                                 ) : (
                                   <span className="text-muted-foreground/20">·</span>
                                 )}
@@ -129,26 +134,5 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function TimePopover({ slots, dotColor }: { slots: TimeSlot[]; dotColor: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          className={`inline-flex items-center justify-center w-5 h-5 rounded text-[9px] font-bold text-white cursor-pointer hover:opacity-80 ${dotColor}`}
-          onClick={() => setOpen(true)}
-        >
-          ✕
-        </button>
-      </PopoverTrigger>
-      <PopoverContent side="top" className="w-auto p-2 text-xs">
-        {slots.map((s, i) => (
-          <div key={i} className="whitespace-nowrap">{s.time} – {s.end_time}</div>
-        ))}
-      </PopoverContent>
-    </Popover>
   );
 }

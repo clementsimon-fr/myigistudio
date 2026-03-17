@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ShoppingCart, Loader2, Info } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ShoppingCart, Loader2, Info, CreditCard, Gift } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ConditionRow {
@@ -27,6 +28,12 @@ interface PaymentSummaryProps {
   cardName?: string;
   cardSessions?: number;
   existingCredits?: number;
+}
+
+function getModeIcon(mode: string) {
+  if (mode.includes("carte")) return <CreditCard className="h-3.5 w-3.5" />;
+  if (mode.includes("cadeau") || mode.includes("Bon")) return <Gift className="h-3.5 w-3.5" />;
+  return <ShoppingCart className="h-3.5 w-3.5" />;
 }
 
 export default function PaymentSummary({
@@ -117,9 +124,24 @@ export default function PaymentSummary({
         {amount > 0 && (
           <div className="flex justify-between border-t pt-2 mt-1">
             <span className="text-muted-foreground">Montant</span>
-            <span className="font-bold text-lg">{amount.toFixed(2)} €</span>
+            <span className="font-bold text-lg">{amount.toFixed(0)} €</span>
           </div>
         )}
+      </div>
+
+      {/* Option de réservation choisie - visual reminder */}
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-center gap-2.5">
+        {getModeIcon(mode)}
+        <div>
+          <p className="text-xs font-semibold text-primary-dark">
+            {isFormulaMode ? `Achat : Formule ${cardName}` : mode}
+          </p>
+          {isFormulaMode && (
+            <p className="text-[11px] text-muted-foreground">
+              {cardSessions} cours inclus · Réservation {activityName} incluse
+            </p>
+          )}
+        </div>
       </div>
 
       {conditions.length > 0 && (
@@ -146,7 +168,7 @@ export default function PaymentSummary({
             <label
               htmlFor="pay-conditions"
               className={`text-xs cursor-pointer leading-tight ${
-                showConditionError && !conditionsAccepted ? "text-destructive" : "text-muted-foreground"
+                showConditionError && !conditionsAccepted ? "text-destructive font-medium" : "text-muted-foreground"
               }`}
             >
               J'ai lu et j'accepte les conditions ci-dessus
@@ -161,7 +183,7 @@ export default function PaymentSummary({
         className="w-full h-11 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-2 text-base font-semibold"
       >
         {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
-        {amount > 0 ? `Payer ${amount.toFixed(2)} €` : "Confirmer"}
+        {amount > 0 ? `Payer ${amount.toFixed(0)} €` : "Confirmer"}
       </Button>
     </div>
   );

@@ -6,7 +6,6 @@ import Footer from "@/components/layout/Footer";
 import ActivityFilterBar, { type FilterCategory, CATEGORY_FILTERS } from "@/components/ActivityFilterBar";
 import ActivitiesView from "@/components/ActivitiesView";
 import PlanningView from "@/components/PlanningView";
-// PlanningTypeView removed from nav tabs
 import { useActivitiesData } from "@/hooks/useActivitiesData";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
@@ -31,14 +30,9 @@ export default function Discover() {
 
   const { courses, schedules, workshops, loading, getInstructorPhoto } = useActivitiesData();
 
-  // Site settings for hero and featured event
-  const heroWelcome = settingsReady ? getSetting("hero_welcome", "") : "";
-  const heroTitle = settingsReady ? getSetting("hero_title", "") : "";
-  const heroSubtitle = settingsReady ? getSetting("hero_subtitle", "") : "";
+  // Site settings for featured event
   const featuredEventTitle = settingsReady ? getSetting("featured_event_title", "") : "";
   const featuredEventLink = settingsReady ? getSetting("featured_event_link", "") : "";
-
-  const hasCustomHero = !!(heroWelcome || heroTitle || heroSubtitle);
   const hasFeaturedEvent = !!featuredEventTitle;
 
   const subFilterOptions = useMemo(() => {
@@ -48,15 +42,6 @@ export default function Discover() {
     workshops.filter(w => w.category === filter).forEach(w => names.add(w.name));
     return Array.from(names).sort();
   }, [filter, courses, workshops]);
-
-  const handleViewChange = useCallback((v: ViewMode) => {
-    setView(v);
-    const params = new URLSearchParams();
-    if (v === "planning") params.set("view", "planning");
-    if (filter !== "all") params.set("filter", filter);
-    setSearchParams(params, { replace: true });
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [filter, setSearchParams]);
 
   const handleFilterChange = useCallback((f: FilterCategory) => {
     setFilter(f);
@@ -96,6 +81,16 @@ export default function Discover() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [setSearchParams]);
 
+  const handleBackFromPlanning = useCallback(() => {
+    setView("activites");
+    setPlanningActivity(null);
+    setPlanningDate(null);
+    setSubFilter("all");
+    const params = new URLSearchParams();
+    if (filter !== "all") params.set("filter", filter);
+    setSearchParams(params, { replace: true });
+  }, [filter, setSearchParams]);
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -114,30 +109,20 @@ export default function Discover() {
           </Link>
         )}
 
-        {/* Hero section or minimal tagline */}
-        {hasCustomHero ? (
-          <div className="bg-secondary/30 py-8 text-center">
-            <div className="container max-w-2xl space-y-2">
-              {heroWelcome && <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">{heroWelcome}</p>}
-              {heroTitle && <h1 className="text-2xl md:text-4xl font-display font-bold text-primary-dark">{heroTitle}</h1>}
-              {heroSubtitle && <p className="text-sm text-muted-foreground whitespace-pre-line">{heroSubtitle}</p>}
-            </div>
-          </div>
-        ) : (
-          <div className="bg-secondary/30 py-3 text-center">
-            <p className="text-sm text-muted-foreground">Yoga, Pilates, Poterie & Bien-être</p>
-          </div>
-        )}
+        {/* Tagline - always visible */}
+        <div className="bg-secondary/30 py-3 text-center">
+          <p className="text-sm md:text-base font-display font-bold text-primary-dark">Yoga, Pilates, Poterie & Bien-être</p>
+        </div>
 
-        {/* Navigation + Filters */}
+        {/* Filters - no more Découvrir/Réserver tabs */}
         <ActivityFilterBar
           filter={filter}
           onFilterChange={handleFilterChange}
-          view={view}
-          onViewChange={handleViewChange}
           subFilterOptions={subFilterOptions}
           subFilter={subFilter}
           onSubFilterChange={handleSubFilterChange}
+          showBackButton={view === "planning"}
+          onBack={handleBackFromPlanning}
         />
 
         {loading ? (
