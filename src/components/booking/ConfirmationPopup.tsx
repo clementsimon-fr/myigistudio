@@ -1,6 +1,7 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface ConfirmationPopupProps {
   open: boolean;
@@ -12,6 +13,8 @@ interface ConfirmationPopupProps {
 }
 
 export default function ConfirmationPopup({ open, activityName, date, time, isGuest, onViewReservation }: ConfirmationPopupProps) {
+  const navigate = useNavigate();
+
   return (
     <Dialog open={open}>
       <DialogContent className="sm:max-w-md text-center" onInteractOutside={(e) => e.preventDefault()}>
@@ -30,9 +33,14 @@ export default function ConfirmationPopup({ open, activityName, date, time, isGu
             </Button>
           )}
           {isGuest && (
-            <p className="text-xs text-muted-foreground">
-              Vous recevrez un email de confirmation avec les détails.
-            </p>
+            <div className="w-full space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Vous recevrez un email de confirmation avec les détails.
+              </p>
+              <Button variant="outline" onClick={() => navigate("/")} className="w-full">
+                Retour à l'accueil
+              </Button>
+            </div>
           )}
         </div>
       </DialogContent>
