@@ -91,6 +91,18 @@ export default function PlanningType() {
     const style = CATEGORY_STYLES[activity.category];
     const dotColor = style?.dot || "bg-primary";
 
+    if (showTimes) {
+      return (
+        <div className="space-y-0.5">
+          {daySlots.map((s, i) => (
+            <div key={i} className={`text-[9px] sm:text-[10px] font-medium rounded px-0.5 py-0.5 text-white leading-tight ${dotColor}`}>
+              {s.time}–{s.end_time}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
     return (
       <Tooltip>
         <TooltipTrigger asChild>
