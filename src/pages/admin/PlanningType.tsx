@@ -203,12 +203,12 @@ export default function PlanningType() {
             })
           ) : (
             <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-              <table className="w-full border-collapse text-sm min-w-[500px]">
+              <table className="w-full border-collapse text-sm min-w-[420px]">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground min-w-[140px]">Activité</th>
+                    <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground min-w-[100px]">Activité</th>
                     {DAYS_SHORT.map((d, i) => (
-                      <th key={i} className="py-2 px-1 sm:px-2 font-medium text-muted-foreground text-center w-10 sm:w-14">{d}</th>
+                      <th key={i} className={`py-2 px-1 sm:px-2 font-medium text-muted-foreground text-center ${showTimes ? "w-16 sm:w-20" : "w-10 sm:w-14"}`}>{d}</th>
                     ))}
                   </tr>
                 </thead>

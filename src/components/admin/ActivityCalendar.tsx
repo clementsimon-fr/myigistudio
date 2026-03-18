@@ -450,7 +450,7 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
                   if (s.courseId) onEditActivity(s.courseId, "course");
                   else if (s.workshopId) onEditActivity(s.workshopId, "workshop");
                 }}>
-                  <Pencil className="h-3.5 w-3.5" /> Éditer
+                  <Pencil className="h-3.5 w-3.5" /> Éditer activité
                 </Button>
               )}
               {s.type === "planned" && (

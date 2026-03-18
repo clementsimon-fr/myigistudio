@@ -581,14 +581,12 @@ export default function AdminActivites() {
         )}
       </div>
 
-      {viewMode === "planning" ? (
-        <DailyView categoryFilter={categoryFilter} />
-      ) : viewMode === "calendar" ? (
+      {viewMode === "calendar" ? (
         <ActivityCalendar onEditActivity={(id, source) => {
           const act = activities.find(a => a.id === id && a.source === source);
           if (act) openEdit(act);
         }} />
-      ) : viewMode === "cards" ? (
+      ) : (
         <>
           <p className="text-sm text-muted-foreground mb-4">{filtered.length} activité{filtered.length > 1 ? "s" : ""}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -599,63 +597,6 @@ export default function AdminActivites() {
           {filtered.length === 0 && (
             <div className="text-center py-12 text-muted-foreground text-sm">Aucune activité trouvée.</div>
           )}
-        </>
-      ) : (
-        <>
-          <p className="text-sm text-muted-foreground mb-4">{filtered.length} activité{filtered.length > 1 ? "s" : ""}</p>
-          <div className="rounded-xl border bg-card overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left p-3 font-medium text-muted-foreground">Nom</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Catégorie</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Intensité</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Intervenant</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Créneaux</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Aucune activité trouvée.</td></tr>
-                ) : filtered.map(a => {
-                  const cat = CATEGORIES.find(c => c.value === a.category);
-                  const catLabel = cat?.label || a.category;
-                  const catDot = cat?.dot || "";
-                  const intensityLabel = getIntensityLabel(a.intensity);
-                  return (
-                    <tr key={`${a.source}-${a.id}`} className="border-b last:border-0 hover:bg-muted/10">
-                      <td className="p-3">
-                        <div className="font-medium">{a.name}</div>
-                        {a.description && <div className="text-xs text-muted-foreground line-clamp-1">{a.description}</div>}
-                      </td>
-                      <td className="p-3">
-                        <Badge variant="outline" className="text-[10px] gap-1">
-                          {catDot && <div className={`w-1.5 h-1.5 rounded-full ${catDot}`} />}
-                          {catLabel}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-xs">{intensityLabel || "—"}</td>
-                      <td className="p-3 text-xs">{a.instructor}</td>
-                      <td className="p-3">
-                        {a.source === "course" && a.schedules?.map((s, i) => (
-                          <div key={i} className="text-xs text-muted-foreground">{s.day.slice(0, 3)} {s.time}-{s.end_time} · {s.spots - s.spots_left}/{s.spots}</div>
-                        ))}
-                        {a.source === "workshop" && (
-                          <div className="text-xs text-muted-foreground">
-                            {a.date ? new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "—"} {a.time}-{a.end_time}
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-3 text-right">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)}><Pencil className="h-3 w-3" /></Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
         </>
       )}
 
