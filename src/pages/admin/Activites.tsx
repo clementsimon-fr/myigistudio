@@ -540,14 +540,11 @@ export default function AdminActivites() {
       {/* Toolbar */}
       <div className="flex flex-col gap-3 mb-6">
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant={viewMode === "list" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("list")}>
-            <List className="h-4 w-4" /> Liste
-          </Button>
           <Button variant={viewMode === "cards" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("cards")}>
-            <LayoutGrid className="h-4 w-4" /> Cards
+            <LayoutGrid className="h-4 w-4" /> Activités
           </Button>
           <Button variant={viewMode === "calendar" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("calendar")}>
-            <CalendarDays className="h-4 w-4" /> Calendrier
+            <CalendarDays className="h-4 w-4" /> Planning et réservations
           </Button>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
