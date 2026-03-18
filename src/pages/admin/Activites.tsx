@@ -574,7 +574,7 @@ export default function AdminActivites() {
             <Input placeholder="Rechercher..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9 text-sm" />
           </div>
         </div>
-        {(viewMode === "list" || viewMode === "cards") && (
+        {viewMode === "cards" && (
           <Button size="sm" className="gap-1.5 bg-foreground text-background hover:bg-foreground/90 self-start" onClick={openNew}>
             <Plus className="h-4 w-4" /> Nouvelle activité
           </Button>
