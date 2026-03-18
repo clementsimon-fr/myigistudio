@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Check, Star, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 
 interface PricingCard {
@@ -17,8 +18,10 @@ interface PricingCard {
 }
 
 export default function PricingSection() {
+  const navigate = useNavigate();
   const [cards, setCards] = useState<PricingCard[]>([]);
   const [pricingNotes, setPricingNotes] = useState("");
+  const [discoverCard, setDiscoverCard] = useState<PricingCard | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -114,14 +117,13 @@ export default function PricingSection() {
                   )}
                 </ul>
 
-                <Link to="/yoga">
-                  <Button
-                    className={`w-full ${card.popular ? "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90" : ""}`}
-                    variant={card.popular ? "default" : "outline"}
-                  >
-                    Choisir
-                  </Button>
-                </Link>
+                <Button
+                  className={`w-full ${card.popular ? "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90" : ""}`}
+                  variant={card.popular ? "default" : "outline"}
+                  onClick={() => setDiscoverCard(card)}
+                >
+                  Découvrir
+                </Button>
               </motion.div>
             );
           })}
@@ -140,6 +142,28 @@ export default function PricingSection() {
           </div>
         )}
       </div>
+
+      {/* Discover dialog */}
+      <Dialog open={!!discoverCard} onOpenChange={(open) => !open && setDiscoverCard(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display text-center">{discoverCard?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2 text-center">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Pour prendre une formule, vous devez avoir un compte ; ou choisir la formule au moment de la réservation.
+            </p>
+            <div className="flex flex-col gap-2">
+              <Button className="w-full" onClick={() => { setDiscoverCard(null); navigate("/login"); }}>
+                Connexion
+              </Button>
+              <Button variant="outline" className="w-full" onClick={() => { setDiscoverCard(null); navigate("/?view=planning&filter=yoga"); }}>
+                Réserver une séance
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

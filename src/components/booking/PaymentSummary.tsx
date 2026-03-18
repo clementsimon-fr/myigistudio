@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Loader2, Info, CreditCard, Gift } from "lucide-react";
+import { ShoppingCart, Loader2, Info, CreditCard, Gift, Users } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import type { ExtraParticipant } from "@/components/booking/AddParticipant";
 
 interface ConditionRow {
   id: string;
@@ -24,10 +24,12 @@ interface PaymentSummaryProps {
   onConditionsChange: (v: boolean) => void;
   onPay: () => void;
   submitting: boolean;
-  // Formula detail props
   cardName?: string;
   cardSessions?: number;
   existingCredits?: number;
+  // Participant recap
+  mainParticipantName?: string;
+  extraParticipants?: ExtraParticipant[];
 }
 
 function getModeIcon(mode: string) {
@@ -40,6 +42,7 @@ export default function PaymentSummary({
   activityName, date, time, endTime, mode, amount,
   conditions, conditionsAccepted, onConditionsChange, onPay, submitting,
   cardName, cardSessions, existingCredits,
+  mainParticipantName, extraParticipants,
 }: PaymentSummaryProps) {
   const [showConditionError, setShowConditionError] = useState(false);
 
@@ -47,6 +50,9 @@ export default function PaymentSummary({
   const totalAfter = isFormulaMode
     ? (existingCredits || 0) + cardSessions - 1
     : undefined;
+
+  const validExtras = (extraParticipants || []).filter(p => p.firstName.trim());
+  const totalParticipants = 1 + validExtras.length;
 
   const handlePayClick = () => {
     if (conditions.length > 0 && !conditionsAccepted) {
@@ -79,7 +85,6 @@ export default function PaymentSummary({
           <span className="font-medium">{time} - {endTime}</span>
         </div>
 
-        {/* Mode chosen */}
         <div className="flex justify-between border-t pt-2 mt-1">
           <span className="text-muted-foreground">
             {isFormulaMode ? "Achat" : "Mode"}
@@ -89,7 +94,6 @@ export default function PaymentSummary({
           </span>
         </div>
 
-        {/* Formula detail */}
         {isFormulaMode && (
           <>
             <div className="flex justify-between">
@@ -129,7 +133,7 @@ export default function PaymentSummary({
         )}
       </div>
 
-      {/* Option de réservation choisie - visual reminder */}
+      {/* Option de réservation choisie */}
       <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-center gap-2.5">
         {getModeIcon(mode)}
         <div>
@@ -143,6 +147,22 @@ export default function PaymentSummary({
           )}
         </div>
       </div>
+
+      {/* 5: Participant recap before conditions */}
+      {(mainParticipantName || validExtras.length > 0) && (
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-primary-dark">
+            <Users className="h-4 w-4" />
+            {totalParticipants} participant{totalParticipants > 1 ? "s" : ""}
+          </div>
+          <div className="space-y-0.5 text-xs text-muted-foreground">
+            {mainParticipantName && <p>• {mainParticipantName}</p>}
+            {validExtras.map((p, i) => (
+              <p key={i}>• {p.firstName} {p.lastName} <span className="text-[10px] italic">(invité)</span></p>
+            ))}
+          </div>
+        </div>
+      )}
 
       {conditions.length > 0 && (
         <div className="space-y-3">

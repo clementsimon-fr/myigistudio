@@ -540,6 +540,8 @@ export default function Reserver() {
               cardName={pendingCard?.name}
               cardSessions={pendingCard?.sessions}
               existingCredits={currentProfile?.credits || 0}
+              mainParticipantName={currentProfile?.name || guestName || undefined}
+              extraParticipants={extraParticipants}
             />
           )}
         </div>

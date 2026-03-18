@@ -103,12 +103,8 @@ const LS_TEMP_PROFILES_KEY = "demo_temp_profiles";
 const LS_GUEST_NAME_KEY = "demo_guest_name";
 
 export function DemoProvider({ children }: { children: ReactNode }) {
-  const [currentProfile, setCurrentProfileState] = useState<DemoProfile | null>(() => {
-    try {
-      const saved = localStorage.getItem(LS_PROFILE_KEY);
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
-  });
+  // 2d: Do NOT restore profile from localStorage on initial load → always start disconnected
+  const [currentProfile, setCurrentProfileState] = useState<DemoProfile | null>(null);
 
   const [demoNotifications, setDemoNotifications] = useState<DemoNotification[]>(() => {
     try {
@@ -124,11 +120,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     } catch { return []; }
   });
 
-  const [guestName, setGuestNameState] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem(LS_GUEST_NAME_KEY);
-    } catch { return null; }
-  });
+  const [guestName, setGuestNameState] = useState<string | null>(null);
 
   useEffect(() => {
     if (currentProfile) localStorage.setItem(LS_PROFILE_KEY, JSON.stringify(currentProfile));

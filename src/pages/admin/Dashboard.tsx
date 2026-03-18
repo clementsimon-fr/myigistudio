@@ -140,7 +140,6 @@ export default function AdminDashboard() {
             <div className="p-4 sm:p-5 border-b flex items-center gap-2">
               <Zap className="h-4 w-4 text-accent" />
               <h2 className="font-display font-semibold text-primary-dark">Flux</h2>
-              <Badge className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0">LIVE</Badge>
             </div>
             <div className="divide-y">
               {demoNotifications.map((notif) => (

@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Clock, Users, User, ArrowRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Users, User, ArrowRight, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { CATEGORY_STYLES, CATEGORY_FILTERS, type FilterCategory } from "@/components/ActivityFilterBar";
 import ContactElodieButton from "@/components/ContactElodieButton";
+import { supabase } from "@/integrations/supabase/client";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 
 interface ActivityBlock {
@@ -13,6 +15,8 @@ interface ActivityBlock {
   time: string; end_time: string; type: "course" | "workshop";
   instructor: string; spots: number; spotsLeft: number;
   sourceId: string; scheduleId?: string; price?: number;
+  long_description?: string; inclusions?: string; frequency?: string;
+  instructor_id?: string | null;
 }
 
 const DAY_MAP: Record<number, string> = { 0: "Dimanche", 1: "Lundi", 2: "Mardi", 3: "Mercredi", 4: "Jeudi", 5: "Vendredi", 6: "Samedi" };
@@ -59,6 +63,8 @@ interface PlanningViewProps {
 export default function PlanningView({ courses, schedules, workshops, filter, initialActivity, initialDate, subFilter, onSubFilterChange }: PlanningViewProps) {
   const navigate = useNavigate();
   const [selectedEvent, setSelectedEvent] = useState<ActivityBlock | null>(null);
+  const [showMore, setShowMore] = useState(false);
+  const [instructorDetail, setInstructorDetail] = useState<{ name: string; photo_url: string; bio: string } | null>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const base = initialDate ? new Date(initialDate + "T00:00:00") : new Date();
     const day = base.getDay();
@@ -68,6 +74,15 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
     monday.setHours(0, 0, 0, 0);
     return monday;
   });
+
+  // Load instructor details when showing more info
+  useEffect(() => {
+    if (!showMore || !selectedEvent) { setInstructorDetail(null); return; }
+    const instrId = selectedEvent.instructor_id;
+    if (!instrId) { setInstructorDetail(null); return; }
+    supabase.from("instructors").select("name, photo_url, bio").eq("id", instrId).single()
+      .then(({ data }) => { if (data) setInstructorDetail(data as any); });
+  }, [showMore, selectedEvent]);
 
   const scrollToFirstMatch = (params: { category?: string; activityName?: string }) => {
     const today = new Date();
@@ -111,7 +126,6 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
     }
   };
 
-  // Auto-scroll to first available date
   useEffect(() => {
     if (!initialActivity && filter === "all") return;
     scrollToFirstMatch({ activityName: initialActivity || undefined, category: filter !== "all" ? filter : undefined });
@@ -140,6 +154,8 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
           category: course.category, time: sched.time, end_time: sched.end_time,
           type: "course", instructor: course.instructor || "Élodie",
           spots: sched.spots, spotsLeft: sched.spots_left, sourceId: course.id, scheduleId: sched.id,
+          long_description: course.long_description || "", inclusions: (sched as any).inclusions || "",
+          frequency: course.frequency || "hebdomadaire", instructor_id: course.instructor_id,
         });
       }
 
@@ -152,6 +168,8 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
           category: ws.category, time: ws.time, end_time: ws.end_time,
           type: "workshop", instructor: "Élodie",
           spots: ws.spots, spotsLeft: ws.spots_left, sourceId: ws.id, price: ws.price,
+          long_description: ws.long_description || "", inclusions: ws.inclusions || "",
+          frequency: ws.frequency || "ponctuel", instructor_id: ws.instructor_id,
         });
       }
 
@@ -195,7 +213,6 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
     return count;
   }, [filter, subFilter, courses, schedules, workshops]);
 
-  // Handle sub-filter change with auto-scroll
   const handleSubFilterChange = (name: string) => {
     onSubFilterChange(name);
     if (name !== "all") {
@@ -219,7 +236,6 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
 
   return (
     <>
-      {/* Desktop title */}
       <div className="container max-w-5xl pt-6 pb-2 hidden md:block">
         <div className="text-center mb-4">
           <h2 className="text-2xl md:text-4xl font-display font-bold text-primary-dark mb-1">Planning des activités</h2>
@@ -237,7 +253,6 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
       )}
 
       <div className="container max-w-5xl py-6">
-        {/* Week navigation */}
         <div className="flex items-center justify-between mb-6">
           <Button variant="outline" size="icon" onClick={prevWeek} disabled={isThisWeek}><ChevronLeft className="h-4 w-4" /></Button>
           <div className="text-center">
@@ -250,7 +265,6 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
           <Button variant="outline" size="icon" onClick={nextWeek}><ChevronRight className="h-4 w-4" /></Button>
         </div>
 
-        {/* Week view */}
         <div className="space-y-4">
           {dayBlocks.filter(({ date }) => date >= new Date(new Date().setHours(0, 0, 0, 0))).map(({ date, blocks }) => {
             const isToday = formatDateStr(date) === todayStr;
@@ -260,7 +274,6 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
                   <div className={`text-sm font-semibold capitalize ${isToday ? "bg-primary-dark text-primary-dark-foreground px-3 py-1 rounded-full" : ""}`}>
                     {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
                   </div>
-                  {/* Removed "Aujourd'hui" badge to avoid confusion */}
                 </div>
                 {blocks.length === 0 ? (
                   <div className="rounded-lg border border-dashed bg-muted/10 p-4 text-center text-sm text-muted-foreground">Aucune activité</div>
@@ -269,7 +282,7 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
                     {blocks.map(block => {
                       const style = CATEGORY_STYLES[block.category] || { block: "bg-muted border-border text-foreground", dot: "bg-muted-foreground" };
                       return (
-                        <div key={block.id} className={`rounded-xl border-2 p-4 cursor-pointer transition-all hover:shadow-md ${style.block} ${block.spotsLeft === 0 ? "opacity-60" : ""}`} onClick={() => setSelectedEvent(block)}>
+                        <div key={block.id} className={`rounded-xl border-2 p-4 cursor-pointer transition-all hover:shadow-md ${style.block} ${block.spotsLeft === 0 ? "opacity-60" : ""}`} onClick={() => { setSelectedEvent(block); setShowMore(false); }}>
                           <div className="flex items-start justify-between mb-2">
                             <h4 className="font-semibold text-sm">{block.title}</h4>
                             {block.spotsLeft === 0 && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Complet</Badge>}
@@ -290,7 +303,6 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
           })}
         </div>
 
-        {/* Legend + Contact */}
         <div className="flex flex-wrap items-center gap-4 mt-8 text-xs text-muted-foreground justify-center">
           {Object.entries(CATEGORY_STYLES).map(([key, val]) => (
             <div key={key} className="flex items-center gap-1.5">
@@ -302,20 +314,61 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
         </div>
       </div>
 
-      {/* Detail dialog */}
-      <Dialog open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEvent(null)}>
-        <DialogContent className="sm:max-w-md">
+      {/* Detail dialog — badge "Cours"/"Atelier" REMOVED + "Afficher plus d'informations" added */}
+      <Dialog open={!!selectedEvent} onOpenChange={(open) => { if (!open) { setSelectedEvent(null); setShowMore(false); } }}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           {selectedEvent && (
             <>
               <DialogHeader>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs capitalize">{selectedEvent.category}</Badge>
-                  <Badge variant="secondary" className="text-xs">{selectedEvent.type === "course" ? "Cours" : "Atelier"}</Badge>
-                </div>
-                <DialogTitle className="font-display text-xl mt-2">{selectedEvent.title}</DialogTitle>
+                <DialogTitle className="font-display text-xl">{selectedEvent.title}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-2">
                 {selectedEvent.description && <p className="text-sm text-muted-foreground leading-relaxed">{selectedEvent.description}</p>}
+
+                {/* "Afficher plus d'informations" toggle */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-1.5 text-xs font-semibold border-primary/30 text-primary-dark"
+                  onClick={() => setShowMore(!showMore)}
+                >
+                  <Info className="h-3.5 w-3.5" />
+                  {showMore ? "Masquer les informations" : "Afficher plus d'informations"}
+                  {showMore ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </Button>
+
+                {showMore && (
+                  <div className="space-y-3 rounded-lg bg-muted/30 p-3 border">
+                    {selectedEvent.long_description && (
+                      <div>
+                        <p className="text-xs font-semibold text-primary-dark mb-1">Description détaillée</p>
+                        <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{selectedEvent.long_description}</p>
+                      </div>
+                    )}
+                    {selectedEvent.inclusions && (
+                      <div>
+                        <p className="text-xs font-semibold text-primary-dark mb-1">Inclus dans le prix</p>
+                        <p className="text-xs text-muted-foreground">{selectedEvent.inclusions}</p>
+                      </div>
+                    )}
+                    {instructorDetail && (
+                      <div>
+                        <p className="text-xs font-semibold text-primary-dark mb-1">Intervenant</p>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-8 w-8">
+                            {instructorDetail.photo_url && <AvatarImage src={instructorDetail.photo_url} />}
+                            <AvatarFallback className="text-xs bg-primary/10 text-primary">{instructorDetail.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-xs font-medium">{instructorDetail.name}</p>
+                            {instructorDetail.bio && <p className="text-[11px] text-muted-foreground line-clamp-2">{instructorDetail.bio}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" />{selectedEvent.time} – {selectedEvent.end_time} ({calcDuration(selectedEvent.time, selectedEvent.end_time)})</div>
                   <div className="flex items-center gap-2"><Users className="h-4 w-4 text-muted-foreground" />{selectedEvent.spotsLeft} place{selectedEvent.spotsLeft > 1 ? "s" : ""} restante{selectedEvent.spotsLeft > 1 ? "s" : ""}</div>
