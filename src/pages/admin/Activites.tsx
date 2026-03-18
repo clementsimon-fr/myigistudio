@@ -551,7 +551,7 @@ export default function AdminActivites() {
           <div className="flex gap-1.5 flex-wrap">
             <Badge
               variant={categoryFilter === "all" ? "default" : "outline"}
-              className={`cursor-pointer text-xs`}
+              className={`cursor-pointer text-sm h-8 px-3`}
               onClick={() => setCategoryFilter("all")}
             >Toutes</Badge>
             {CATEGORIES.map(c => {
@@ -560,10 +560,10 @@ export default function AdminActivites() {
                 <Badge
                   key={c.value}
                   variant={isActive ? "default" : "outline"}
-                  className={`cursor-pointer text-xs gap-1 ${isActive && c.activeBg ? `${c.activeBg} text-white border-transparent hover:opacity-90` : ""}`}
+                  className={`cursor-pointer text-sm h-8 px-3 gap-1 ${isActive && c.activeBg ? `${c.activeBg} text-white border-transparent hover:opacity-90` : ""}`}
                   onClick={() => setCategoryFilter(c.value)}
                 >
-                  {c.dot && <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : c.dot}`} />}
+                  {c.dot && <div className={`w-2 h-2 rounded-full ${isActive ? "bg-white/80" : c.dot}`} />}
                   {c.label}
                 </Badge>
               );
