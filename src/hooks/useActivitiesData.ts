@@ -15,6 +15,8 @@ export interface Schedule {
   end_time: string;
   spots: number;
   spots_left: number;
+  inclusions?: string;
+  card_yoga_count?: number;
 }
 
 export interface Course {
