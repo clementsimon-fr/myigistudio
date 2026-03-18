@@ -166,8 +166,9 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                 const photo = getInstructorPhoto(course.instructor_id, course.instructor);
                 return (
                   <motion.div key={course.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow">
-                    <div className="aspect-[4/3] overflow-hidden bg-muted">
+                    <div className="aspect-[4/3] overflow-hidden bg-muted relative">
                       <img src={course.image || PLACEHOLDER_IMG} alt={course.name} className="w-full h-full object-cover" loading="lazy" />
+                      <Badge variant="secondary" className="absolute top-2 right-2 text-[10px]">Récurrent</Badge>
                     </div>
                     <div className="p-4 md:p-5">
                       <h3 className={`font-display font-semibold text-base md:text-lg leading-tight mb-2 ${yogaStyle.text}`}>{course.name}</h3>
