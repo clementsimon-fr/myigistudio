@@ -8,12 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText, MapPin, Settings, LayoutGrid } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText, MapPin, Settings, LayoutGrid, Copy, Info, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ActivityCalendar from "@/components/admin/ActivityCalendar";
 import DailyView from "@/components/admin/DailyView";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 // ── Template Variables ──
 const TEMPLATE_VARIABLES = [
@@ -112,6 +117,7 @@ function TemplateEditor({ value, onChange, variables, readOnly, showInsertModali
 // ── Types ──
 interface Schedule {
   id?: string; day: string; time: string; end_time: string; spots: number; spots_left: number;
+  price?: number; inclusions?: string; card_yoga_count?: number;
 }
 
 interface UnifiedActivity {
@@ -121,6 +127,7 @@ interface UnifiedActivity {
   frequency?: string; spots?: number; spots_left?: number; schedules?: Schedule[];
   date?: string; time?: string; end_time?: string; duration?: string; price?: number;
   intensity?: string; reminder_timing?: string;
+  inclusions?: string; card_yoga_count?: number;
 }
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
@@ -143,12 +150,25 @@ function calcDuration(start: string, end: string): string {
   return `${h}h${m.toString().padStart(2, "0")}`;
 }
 
+const FREQUENCY_OPTIONS = [
+  { value: "hebdomadaire", label: "Toutes les semaines" },
+  { value: "mensuel", label: "Tous les mois" },
+  { value: "personnalise", label: "Personnalisé (calendrier)" },
+];
+
 interface EventSlot {
   type: "recurring" | "ponctuel";
+  frequency: string; // hebdomadaire | mensuel | personnalise
   day: string; time: string; end_time: string; spots: number;
   date: string; price: number;
   reminder_template: string;
   modalities: string;
+  customDates: string[]; // for personnalise frequency
+  inclusions: string;
+  card_yoga_count: number;
+  // Track original IDs for update
+  _scheduleId?: string;
+  _workshopId?: string;
 }
 
 interface ActivityForm {
@@ -162,8 +182,9 @@ interface ActivityForm {
 }
 
 const emptyEvent = (): EventSlot => ({
-  type: "recurring", day: "Lundi", time: "09:00", end_time: "10:00", spots: 12,
-  date: "", price: 0, reminder_template: "", modalities: "",
+  type: "recurring", frequency: "hebdomadaire", day: "Lundi", time: "09:00", end_time: "10:00", spots: 12,
+  date: "", price: 0, reminder_template: "", modalities: "", customDates: [],
+  inclusions: "", card_yoga_count: 0,
 });
 
 const emptyForm = (): ActivityForm => ({
@@ -172,6 +193,64 @@ const emptyForm = (): ActivityForm => ({
   default_reminder: "", default_modalities: "",
   intensity: "none", reminder_timing: "1j",
 });
+
+// ── Custom Date Picker for "personnalisé" ──
+function CustomDatesPicker({ dates, onChange, time, endTime, spots, onTimeChange, onEndTimeChange, onSpotsChange }: {
+  dates: string[]; onChange: (dates: string[]) => void;
+  time: string; endTime: string; spots: number;
+  onTimeChange: (v: string) => void; onEndTimeChange: (v: string) => void; onSpotsChange: (v: number) => void;
+}) {
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  
+  const selectedDates = dates.map(d => new Date(d + "T12:00:00"));
+  
+  const toggleDate = (date: Date | undefined) => {
+    if (!date) return;
+    const dateStr = format(date, "yyyy-MM-dd");
+    if (dates.includes(dateStr)) {
+      onChange(dates.filter(d => d !== dateStr));
+    } else {
+      onChange([...dates, dateStr].sort());
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1">
+          <Input type="time" className="w-[90px] h-8 text-xs" value={time} onChange={e => onTimeChange(e.target.value)} />
+          <span className="text-muted-foreground text-xs">→</span>
+          <Input type="time" className="w-[90px] h-8 text-xs" value={endTime} onChange={e => onEndTimeChange(e.target.value)} />
+        </div>
+        <div className="flex items-center gap-1">
+          <Users className="h-3.5 w-3.5 text-muted-foreground" />
+          <Input type="number" className="w-[70px] h-8 text-xs" value={spots} onChange={e => onSpotsChange(Number(e.target.value))} />
+        </div>
+      </div>
+      <Calendar
+        mode="multiple"
+        selected={selectedDates}
+        onSelect={(_, selectedDay) => toggleDate(selectedDay)}
+        month={currentMonth}
+        onMonthChange={setCurrentMonth}
+        className={cn("p-3 pointer-events-auto border rounded-lg")}
+        locale={fr}
+      />
+      {dates.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {dates.map(d => (
+            <Badge key={d} variant="secondary" className="text-[10px] gap-1">
+              {new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+              <button onClick={() => onChange(dates.filter(dd => dd !== d))} className="ml-0.5 hover:text-destructive">
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminActivites() {
   const { toast } = useToast();
@@ -202,9 +281,12 @@ export default function AdminActivites() {
 
     const schedulesMap: Record<string, Schedule[]> = {};
     if (schedulesRes.data) {
-      for (const s of schedulesRes.data) {
+      for (const s of schedulesRes.data as any[]) {
         if (!schedulesMap[s.course_id]) schedulesMap[s.course_id] = [];
-        schedulesMap[s.course_id].push({ id: s.id, day: s.day, time: s.time, end_time: s.end_time, spots: s.spots, spots_left: s.spots_left });
+        schedulesMap[s.course_id].push({
+          id: s.id, day: s.day, time: s.time, end_time: s.end_time, spots: s.spots, spots_left: s.spots_left,
+          price: s.price, inclusions: s.inclusions || "", card_yoga_count: s.card_yoga_count || 0,
+        });
       }
     }
 
@@ -232,6 +314,7 @@ export default function AdminActivites() {
           date: w.date, time: w.time, end_time: w.end_time, duration: w.duration,
           price: w.price, spots: w.spots, spots_left: w.spots_left,
           intensity: w.intensity || "none", reminder_timing: w.reminder_timing || "1j",
+          inclusions: w.inclusions || "", card_yoga_count: w.card_yoga_count || 0,
         });
       }
     }
@@ -265,10 +348,26 @@ export default function AdminActivites() {
     const events: EventSlot[] = [];
     if (a.source === "course" && a.schedules) {
       for (const s of a.schedules) {
-        events.push({ type: "recurring", day: s.day, time: s.time, end_time: s.end_time, spots: s.spots, date: "", price: 0, reminder_template: a.reminder_template, modalities: a.modalities });
+        events.push({
+          type: "recurring", frequency: a.frequency || "hebdomadaire",
+          day: s.day, time: s.time, end_time: s.end_time, spots: s.spots,
+          date: "", price: s.price || 0,
+          reminder_template: a.reminder_template, modalities: a.modalities,
+          customDates: [],
+          inclusions: s.inclusions || "", card_yoga_count: s.card_yoga_count || 0,
+          _scheduleId: s.id,
+        });
       }
     } else if (a.source === "workshop") {
-      events.push({ type: "ponctuel", day: "Lundi", time: a.time || "09:00", end_time: a.end_time || "10:00", spots: a.spots || 8, date: a.date || "", price: a.price || 0, reminder_template: a.reminder_template, modalities: a.modalities });
+      events.push({
+        type: "ponctuel", frequency: "hebdomadaire",
+        day: "Lundi", time: a.time || "09:00", end_time: a.end_time || "10:00",
+        spots: a.spots || 8, date: a.date || "", price: a.price || 0,
+        reminder_template: a.reminder_template, modalities: a.modalities,
+        customDates: [],
+        inclusions: a.inclusions || "", card_yoga_count: a.card_yoga_count || 0,
+        _workshopId: a.id,
+      });
     }
     if (events.length === 0) events.push(emptyEvent());
     setForm({
@@ -282,54 +381,111 @@ export default function AdminActivites() {
     setDialogOpen(true);
   };
 
+  // ── FIX 1.3: Update instead of delete+recreate ──
   const save = async () => {
-    const recurringEvents = form.events.filter(e => e.type === "recurring");
-    const ponctuelEvents = form.events.filter(e => e.type === "ponctuel");
     const instrId = instructorsList.find(i => i.name === form.instructor)?.id || null;
+    
+    // Separate events by type
+    const recurringEvents = form.events.filter(e => e.type === "recurring" && e.frequency !== "personnalise");
+    const customDateEvents = form.events.filter(e => e.type === "recurring" && e.frequency === "personnalise");
+    const ponctuelEvents = form.events.filter(e => e.type === "ponctuel");
 
-    if (editingActivity) {
-      if (editingActivity.source === "course") {
-        await supabase.from("course_schedules").delete().eq("course_id", editingActivity.id);
-        await supabase.from("courses").delete().eq("id", editingActivity.id);
-      } else {
-        await supabase.from("workshops").delete().eq("id", editingActivity.id);
+    // All ponctuel-like events (ponctuel + custom dates expanded)
+    const allPonctuelEvents: EventSlot[] = [...ponctuelEvents];
+    for (const evt of customDateEvents) {
+      for (const dateStr of evt.customDates) {
+        allPonctuelEvents.push({ ...evt, type: "ponctuel", date: dateStr });
       }
     }
 
+    const courseData = {
+      name: form.name, description: form.description, long_description: form.long_description,
+      category: form.category, instructor: form.instructor, instructor_id: instrId,
+      image: form.image, reminder_template: form.default_reminder,
+      modalities: form.default_modalities,
+      intensity: form.intensity === "none" ? "" : form.intensity, reminder_timing: form.reminder_timing,
+    };
+
+    // ── Handle recurring events → courses table ──
     if (recurringEvents.length > 0) {
       const firstSlot = recurringEvents[0];
       const duration = calcDuration(firstSlot.time, firstSlot.end_time);
       const days = [...new Set(recurringEvents.map(e => e.day))];
-      const { data } = await supabase.from("courses").insert({
-        name: form.name, description: form.description, long_description: form.long_description,
-        category: form.category, instructor: form.instructor, instructor_id: instrId,
-        image: form.image, reminder_template: form.default_reminder,
-        modalities: form.default_modalities,
-        spots: firstSlot.spots, spots_left: firstSlot.spots,
-        day: firstSlot.day, time: firstSlot.time, end_time: firstSlot.end_time,
-        duration, days, frequency: "hebdomadaire",
-        intensity: form.intensity === "none" ? "" : form.intensity, reminder_timing: form.reminder_timing,
-      } as any).select("id").single();
-      if (data) {
+
+      if (editingActivity?.source === "course") {
+        // UPDATE existing course
+        await supabase.from("courses").update({
+          ...courseData,
+          spots: firstSlot.spots, spots_left: firstSlot.spots,
+          day: firstSlot.day, time: firstSlot.time, end_time: firstSlot.end_time,
+          duration, days, frequency: firstSlot.frequency,
+        } as any).eq("id", editingActivity.id);
+
+        // Sync schedules: delete old, insert new
+        await supabase.from("course_schedules").delete().eq("course_id", editingActivity.id);
         const scheduleRows = recurringEvents.map(e => ({
-          course_id: data.id, day: e.day, time: e.time, end_time: e.end_time, spots: e.spots, spots_left: e.spots,
+          course_id: editingActivity.id, day: e.day, time: e.time, end_time: e.end_time,
+          spots: e.spots, spots_left: e.spots, price: e.price,
+          inclusions: e.inclusions, card_yoga_count: e.card_yoga_count,
         }));
         await supabase.from("course_schedules").insert(scheduleRows);
+      } else {
+        // CREATE new course (either new activity or converting from workshop)
+        if (editingActivity?.source === "workshop") {
+          await supabase.from("workshops").delete().eq("id", editingActivity.id);
+        }
+        const { data } = await supabase.from("courses").insert({
+          ...courseData,
+          spots: firstSlot.spots, spots_left: firstSlot.spots,
+          day: firstSlot.day, time: firstSlot.time, end_time: firstSlot.end_time,
+          duration, days, frequency: firstSlot.frequency,
+        } as any).select("id").single();
+        if (data) {
+          const scheduleRows = recurringEvents.map(e => ({
+            course_id: data.id, day: e.day, time: e.time, end_time: e.end_time,
+            spots: e.spots, spots_left: e.spots, price: e.price,
+            inclusions: e.inclusions, card_yoga_count: e.card_yoga_count,
+          }));
+          await supabase.from("course_schedules").insert(scheduleRows);
+        }
       }
+    } else if (editingActivity?.source === "course") {
+      // Was a course but no more recurring events → delete it
+      await supabase.from("course_schedules").delete().eq("course_id", editingActivity.id);
+      await supabase.from("courses").delete().eq("id", editingActivity.id);
     }
 
-    for (const evt of ponctuelEvents) {
-      if (!evt.date) continue;
-      const duration = calcDuration(evt.time, evt.end_time);
-      await supabase.from("workshops").insert({
-        name: form.name, description: form.description, long_description: form.long_description,
-        category: form.category, instructor_id: instrId,
-        image: form.image, reminder_template: form.default_reminder,
-        modalities: form.default_modalities,
-        date: evt.date, time: evt.time, end_time: evt.end_time,
-        duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
-        intensity: form.intensity === "none" ? "" : form.intensity, reminder_timing: form.reminder_timing,
-      } as any);
+    // ── Handle ponctuel events → workshops table ──
+    if (allPonctuelEvents.length > 0) {
+      if (editingActivity?.source === "workshop" && allPonctuelEvents.length === 1) {
+        // UPDATE existing workshop
+        const evt = allPonctuelEvents[0];
+        if (!evt.date) { toast({ title: "Date requise pour événement ponctuel", variant: "destructive" }); return; }
+        const duration = calcDuration(evt.time, evt.end_time);
+        await supabase.from("workshops").update({
+          ...courseData,
+          date: evt.date, time: evt.time, end_time: evt.end_time,
+          duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
+          inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
+        } as any).eq("id", editingActivity.id);
+      } else {
+        // If editing a workshop but now have multiple ponctuel events, delete old and create new
+        if (editingActivity?.source === "workshop") {
+          await supabase.from("workshops").delete().eq("id", editingActivity.id);
+        }
+        for (const evt of allPonctuelEvents) {
+          if (!evt.date) continue;
+          const duration = calcDuration(evt.time, evt.end_time);
+          await supabase.from("workshops").insert({
+            ...courseData,
+            date: evt.date, time: evt.time, end_time: evt.end_time,
+            duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
+            inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
+          } as any);
+        }
+      }
+    } else if (editingActivity?.source === "workshop" && recurringEvents.length > 0) {
+      // Was a workshop but converted to course → already deleted above
     }
 
     toast({ title: editingActivity ? "Activité modifiée" : "Activité créée ✓" });
@@ -358,6 +514,15 @@ export default function AdminActivites() {
   };
   const updateEvent = (idx: number, patch: Partial<EventSlot>) => {
     setForm(prev => ({ ...prev, events: prev.events.map((e, i) => i === idx ? { ...e, ...patch } : e) }));
+  };
+  // 1.4: Duplicate event
+  const duplicateEvent = (idx: number) => {
+    setForm(prev => {
+      const cloned = { ...prev.events[idx], _scheduleId: undefined, _workshopId: undefined };
+      const newEvents = [...prev.events];
+      newEvents.splice(idx + 1, 0, cloned);
+      return { ...prev, events: newEvents };
+    });
   };
 
   const [expandedEvent, setExpandedEvent] = useState<number | null>(null);
@@ -389,7 +554,7 @@ export default function AdminActivites() {
           <div className="flex gap-1.5 flex-wrap">
             <Badge
               variant={categoryFilter === "all" ? "default" : "outline"}
-              className={`cursor-pointer text-xs ${categoryFilter === "all" ? "" : ""}`}
+              className={`cursor-pointer text-xs`}
               onClick={() => setCategoryFilter("all")}
             >Toutes</Badge>
             {CATEGORIES.map(c => {
@@ -412,7 +577,6 @@ export default function AdminActivites() {
             <Input placeholder="Rechercher..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9 text-sm" />
           </div>
         </div>
-        {/* Add activity button — shown in list and cards views */}
         {(viewMode === "list" || viewMode === "cards") && (
           <Button size="sm" className="gap-1.5 bg-foreground text-background hover:bg-foreground/90 self-start" onClick={openNew}>
             <Plus className="h-4 w-4" /> Nouvelle activité
@@ -604,6 +768,11 @@ export default function AdminActivites() {
                             onClick={() => setExpandedEvent(isExpanded ? null : idx)}>
                             {isExpanded ? "Réduire" : "Détails"}
                           </Button>
+                          {/* 1.4: Duplicate button */}
+                          <Button type="button" size="icon" variant="ghost" className="h-6 w-6" title="Dupliquer"
+                            onClick={() => duplicateEvent(idx)}>
+                            <Copy className="h-3 w-3" />
+                          </Button>
                           {form.events.length > 1 && (
                             <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeEvent(idx)}>
                               <X className="h-3 w-3" />
@@ -612,30 +781,86 @@ export default function AdminActivites() {
                         </div>
                       </div>
 
-                      {/* ── Bloc Temporalité ── */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        {evt.type === "recurring" ? (
-                          <Select value={evt.day} onValueChange={v => updateEvent(idx, { day: v })}>
-                            <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>{DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                      {/* 1.1: Frequency selector for recurring events */}
+                      {evt.type === "recurring" && (
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs text-muted-foreground whitespace-nowrap">Fréquence :</Label>
+                          <Select value={evt.frequency} onValueChange={v => updateEvent(idx, { frequency: v })}>
+                            <SelectTrigger className="w-[200px] h-7 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {FREQUENCY_OPTIONS.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                            </SelectContent>
                           </Select>
-                        ) : (
-                          <Input type="date" className="w-[150px] h-8 text-xs" value={evt.date} onChange={e => updateEvent(idx, { date: e.target.value })} />
-                        )}
-                        <div className="flex items-center gap-1">
-                          <Input type="time" className="w-[90px] h-8 text-xs" value={evt.time} onChange={e => updateEvent(idx, { time: e.target.value })} />
-                          <span className="text-muted-foreground text-xs">→</span>
-                          <Input type="time" className="w-[90px] h-8 text-xs" value={evt.end_time} onChange={e => updateEvent(idx, { end_time: e.target.value })} />
                         </div>
-                        {evt.time && evt.end_time && <span className="text-xs text-muted-foreground">{calcDuration(evt.time, evt.end_time)}</span>}
-                        <div className="flex items-center gap-1">
-                          <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                          <Input type="number" className="w-[70px] h-8 text-xs" value={evt.spots} onChange={e => updateEvent(idx, { spots: Number(e.target.value) })} placeholder="Places" />
+                      )}
+
+                      {/* ── Bloc Temporalité ── */}
+                      {evt.type === "recurring" && evt.frequency === "personnalise" ? (
+                        <CustomDatesPicker
+                          dates={evt.customDates}
+                          onChange={dates => updateEvent(idx, { customDates: dates })}
+                          time={evt.time}
+                          endTime={evt.end_time}
+                          spots={evt.spots}
+                          onTimeChange={v => updateEvent(idx, { time: v })}
+                          onEndTimeChange={v => updateEvent(idx, { end_time: v })}
+                          onSpotsChange={v => updateEvent(idx, { spots: v })}
+                        />
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                          {evt.type === "recurring" ? (
+                            <Select value={evt.day} onValueChange={v => updateEvent(idx, { day: v })}>
+                              <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>{DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                            </Select>
+                          ) : (
+                            <Input type="date" className="w-[150px] h-8 text-xs" value={evt.date} onChange={e => updateEvent(idx, { date: e.target.value })} />
+                          )}
+                          <div className="flex items-center gap-1">
+                            <Input type="time" className="w-[90px] h-8 text-xs" value={evt.time} onChange={e => updateEvent(idx, { time: e.target.value })} />
+                            <span className="text-muted-foreground text-xs">→</span>
+                            <Input type="time" className="w-[90px] h-8 text-xs" value={evt.end_time} onChange={e => updateEvent(idx, { end_time: e.target.value })} />
+                          </div>
+                          {evt.time && evt.end_time && <span className="text-xs text-muted-foreground">{calcDuration(evt.time, evt.end_time)}</span>}
+                          <div className="flex items-center gap-1">
+                            <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                            <Input type="number" className="w-[70px] h-8 text-xs" value={evt.spots} onChange={e => updateEvent(idx, { spots: Number(e.target.value) })} placeholder="Places" />
+                          </div>
                         </div>
+                      )}
+
+                      {/* 1.2: Price + Carte Yoga */}
+                      <div className="flex flex-wrap items-center gap-2">
                         <div className="flex items-center gap-1">
                           <Input type="number" className="w-[70px] h-8 text-xs" value={evt.price} onChange={e => updateEvent(idx, { price: Number(e.target.value) })} placeholder="Prix" />
                           <span className="text-xs text-muted-foreground">€</span>
                         </div>
+                        <span className="text-xs text-muted-foreground">ou</span>
+                        <div className="flex items-center gap-1">
+                          <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+                          <Input type="number" className="w-[50px] h-8 text-xs" value={evt.card_yoga_count} onChange={e => updateEvent(idx, { card_yoga_count: Number(e.target.value) })} min={0} />
+                          <span className="text-xs text-muted-foreground">carte{evt.card_yoga_count > 1 ? "s" : ""} yoga</span>
+                        </div>
+                        {/* 2.1: Inclusions button */}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button type="button" size="sm" variant="outline" className={cn("h-8 text-xs gap-1", evt.inclusions && "border-primary text-primary")}>
+                              <Info className="h-3 w-3" /> {evt.inclusions ? "Inclus ✓" : "Inclus"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-72">
+                            <div className="space-y-2">
+                              <Label className="text-xs">Ce qui est inclus dans le prix</Label>
+                              <Textarea
+                                value={evt.inclusions}
+                                onChange={e => updateEvent(idx, { inclusions: e.target.value })}
+                                rows={3}
+                                placeholder="Ex : le goûter est compris, matériel fourni..."
+                                className="text-xs"
+                              />
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       </div>
 
                       {/* ── Expanded: Rappel + Modalités per event ── */}
