@@ -30,6 +30,7 @@ export interface Course {
   spots: number;
   spots_left: number;
   image: string;
+  frequency?: string;
 }
 
 export interface Workshop {
