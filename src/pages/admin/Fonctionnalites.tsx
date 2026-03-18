@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Loader2, Trash2, Lightbulb, CheckCircle2, Info, Sparkles, Settings2 } from "lucide-react";
+import { Plus, Loader2, Trash2, Lightbulb, CheckCircle2, Info, Sparkles, Settings2, Compass } from "lucide-react";
+import PrendreRecul from "@/components/admin/PrendreRecul";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoContext } from "@/contexts/DemoContext";
@@ -96,6 +98,7 @@ export default function AdminFonctionnalites() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [exampleDialogOpen, setExampleDialogOpen] = useState(false);
+  const [reculeOpen, setReculeOpen] = useState(false);
   const [exampleForm, setExampleForm] = useState({ title: "", description: "", impact: "retouche", target: "autre" });
   const [form, setForm] = useState({ title: "", description: "", urgency: 3, target: "autre", impact: "retouche" });
 
@@ -320,6 +323,23 @@ export default function AdminFonctionnalites() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Discreet "Prendre du recul" button */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setReculeOpen(true)}
+              className="fixed bottom-6 right-6 z-40 h-10 w-10 rounded-full bg-muted/60 border border-border/50 flex items-center justify-center text-muted-foreground/50 hover:text-primary-dark hover:bg-muted transition-colors"
+            >
+              <Compass className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="left"><p className="text-xs">Prendre du recul</p></TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      {reculeOpen && <PrendreRecul onClose={() => setReculeOpen(false)} />}
     </AdminLayout>
   );
 }
