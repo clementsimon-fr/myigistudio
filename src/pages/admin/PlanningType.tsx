@@ -41,6 +41,7 @@ export default function PlanningType() {
   const { courses, schedules, workshops, loading } = useActivitiesData();
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"compiled" | "by-category">("by-category");
+  const [showTimes, setShowTimes] = useState(true);
 
   const rows = useMemo(() => {
     const result: ActivityRow[] = [];
@@ -89,6 +90,18 @@ export default function PlanningType() {
 
     const style = CATEGORY_STYLES[activity.category];
     const dotColor = style?.dot || "bg-primary";
+
+    if (showTimes) {
+      return (
+        <div className="space-y-0.5">
+          {daySlots.map((s, i) => (
+            <div key={i} className={`text-[9px] sm:text-[10px] font-medium rounded px-0.5 py-0.5 text-white leading-tight ${dotColor}`}>
+              {s.time}–{s.end_time}
+            </div>
+          ))}
+        </div>
+      );
+    }
 
     return (
       <Tooltip>
@@ -155,12 +168,12 @@ export default function PlanningType() {
                     {categoryLabels[category] || category}
                   </h2>
                   <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-                    <table className="w-full border-collapse text-sm min-w-[500px]">
+                    <table className="w-full border-collapse text-sm min-w-[420px]">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground min-w-[120px]">Activité</th>
+                          <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground min-w-[100px]">Activité</th>
                           {DAYS_SHORT.map((d, i) => (
-                            <th key={i} className="py-2 px-1 sm:px-2 font-medium text-muted-foreground text-center w-10 sm:w-12">{d}</th>
+                            <th key={i} className={`py-2 px-1 sm:px-2 font-medium text-muted-foreground text-center ${showTimes ? "w-16 sm:w-20" : "w-10 sm:w-12"}`}>{d}</th>
                           ))}
                         </tr>
                       </thead>
@@ -183,12 +196,12 @@ export default function PlanningType() {
             })
           ) : (
             <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-              <table className="w-full border-collapse text-sm min-w-[500px]">
+              <table className="w-full border-collapse text-sm min-w-[420px]">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground min-w-[140px]">Activité</th>
+                    <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground min-w-[100px]">Activité</th>
                     {DAYS_SHORT.map((d, i) => (
-                      <th key={i} className="py-2 px-1 sm:px-2 font-medium text-muted-foreground text-center w-10 sm:w-14">{d}</th>
+                      <th key={i} className={`py-2 px-1 sm:px-2 font-medium text-muted-foreground text-center ${showTimes ? "w-16 sm:w-20" : "w-10 sm:w-14"}`}>{d}</th>
                     ))}
                   </tr>
                 </thead>

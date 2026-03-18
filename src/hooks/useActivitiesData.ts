@@ -15,6 +15,8 @@ export interface Schedule {
   end_time: string;
   spots: number;
   spots_left: number;
+  inclusions?: string;
+  card_yoga_count?: number;
 }
 
 export interface Course {
@@ -28,6 +30,7 @@ export interface Course {
   spots: number;
   spots_left: number;
   image: string;
+  frequency?: string;
 }
 
 export interface Workshop {
@@ -46,6 +49,8 @@ export interface Workshop {
   spots_left: number;
   image: string;
   instructor_id: string | null;
+  inclusions?: string;
+  card_yoga_count?: number;
 }
 
 export function useActivitiesData() {

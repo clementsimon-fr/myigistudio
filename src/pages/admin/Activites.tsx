@@ -258,7 +258,7 @@ export default function AdminActivites() {
   const [activities, setActivities] = useState<UnifiedActivity[]>([]);
   const [instructorsList, setInstructorsList] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"list" | "cards" | "calendar" | "planning">("cards");
+  const [viewMode, setViewMode] = useState<"cards" | "calendar">("cards");
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
@@ -540,21 +540,18 @@ export default function AdminActivites() {
       {/* Toolbar */}
       <div className="flex flex-col gap-3 mb-6">
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant={viewMode === "list" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("list")}>
-            <List className="h-4 w-4" /> Liste
-          </Button>
           <Button variant={viewMode === "cards" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("cards")}>
-            <LayoutGrid className="h-4 w-4" /> Cards
+            <LayoutGrid className="h-4 w-4" /> Activités
           </Button>
           <Button variant={viewMode === "calendar" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("calendar")}>
-            <CalendarDays className="h-4 w-4" /> Calendrier
+            <CalendarDays className="h-4 w-4" /> Planning et réservations
           </Button>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <div className="flex gap-1.5 flex-wrap">
             <Badge
               variant={categoryFilter === "all" ? "default" : "outline"}
-              className={`cursor-pointer text-xs`}
+              className={`cursor-pointer text-sm h-8 px-3`}
               onClick={() => setCategoryFilter("all")}
             >Toutes</Badge>
             {CATEGORIES.map(c => {
@@ -563,10 +560,10 @@ export default function AdminActivites() {
                 <Badge
                   key={c.value}
                   variant={isActive ? "default" : "outline"}
-                  className={`cursor-pointer text-xs gap-1 ${isActive && c.activeBg ? `${c.activeBg} text-white border-transparent hover:opacity-90` : ""}`}
+                  className={`cursor-pointer text-sm h-8 px-3 gap-1 ${isActive && c.activeBg ? `${c.activeBg} text-white border-transparent hover:opacity-90` : ""}`}
                   onClick={() => setCategoryFilter(c.value)}
                 >
-                  {c.dot && <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : c.dot}`} />}
+                  {c.dot && <div className={`w-2 h-2 rounded-full ${isActive ? "bg-white/80" : c.dot}`} />}
                   {c.label}
                 </Badge>
               );
@@ -577,21 +574,19 @@ export default function AdminActivites() {
             <Input placeholder="Rechercher..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9 text-sm" />
           </div>
         </div>
-        {(viewMode === "list" || viewMode === "cards") && (
+        {viewMode === "cards" && (
           <Button size="sm" className="gap-1.5 bg-foreground text-background hover:bg-foreground/90 self-start" onClick={openNew}>
             <Plus className="h-4 w-4" /> Nouvelle activité
           </Button>
         )}
       </div>
 
-      {viewMode === "planning" ? (
-        <DailyView categoryFilter={categoryFilter} />
-      ) : viewMode === "calendar" ? (
+      {viewMode === "calendar" ? (
         <ActivityCalendar onEditActivity={(id, source) => {
           const act = activities.find(a => a.id === id && a.source === source);
           if (act) openEdit(act);
         }} />
-      ) : viewMode === "cards" ? (
+      ) : (
         <>
           <p className="text-sm text-muted-foreground mb-4">{filtered.length} activité{filtered.length > 1 ? "s" : ""}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -602,63 +597,6 @@ export default function AdminActivites() {
           {filtered.length === 0 && (
             <div className="text-center py-12 text-muted-foreground text-sm">Aucune activité trouvée.</div>
           )}
-        </>
-      ) : (
-        <>
-          <p className="text-sm text-muted-foreground mb-4">{filtered.length} activité{filtered.length > 1 ? "s" : ""}</p>
-          <div className="rounded-xl border bg-card overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="text-left p-3 font-medium text-muted-foreground">Nom</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Catégorie</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Intensité</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Intervenant</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Créneaux</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Aucune activité trouvée.</td></tr>
-                ) : filtered.map(a => {
-                  const cat = CATEGORIES.find(c => c.value === a.category);
-                  const catLabel = cat?.label || a.category;
-                  const catDot = cat?.dot || "";
-                  const intensityLabel = getIntensityLabel(a.intensity);
-                  return (
-                    <tr key={`${a.source}-${a.id}`} className="border-b last:border-0 hover:bg-muted/10">
-                      <td className="p-3">
-                        <div className="font-medium">{a.name}</div>
-                        {a.description && <div className="text-xs text-muted-foreground line-clamp-1">{a.description}</div>}
-                      </td>
-                      <td className="p-3">
-                        <Badge variant="outline" className="text-[10px] gap-1">
-                          {catDot && <div className={`w-1.5 h-1.5 rounded-full ${catDot}`} />}
-                          {catLabel}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-xs">{intensityLabel || "—"}</td>
-                      <td className="p-3 text-xs">{a.instructor}</td>
-                      <td className="p-3">
-                        {a.source === "course" && a.schedules?.map((s, i) => (
-                          <div key={i} className="text-xs text-muted-foreground">{s.day.slice(0, 3)} {s.time}-{s.end_time} · {s.spots - s.spots_left}/{s.spots}</div>
-                        ))}
-                        {a.source === "workshop" && (
-                          <div className="text-xs text-muted-foreground">
-                            {a.date ? new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "—"} {a.time}-{a.end_time}
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-3 text-right">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)}><Pencil className="h-3 w-3" /></Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
         </>
       )}
 
