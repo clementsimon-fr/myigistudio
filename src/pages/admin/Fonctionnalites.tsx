@@ -323,6 +323,23 @@ export default function AdminFonctionnalites() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Discreet "Prendre du recul" button */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setReculeOpen(true)}
+              className="fixed bottom-6 right-6 z-40 h-10 w-10 rounded-full bg-muted/60 border border-border/50 flex items-center justify-center text-muted-foreground/50 hover:text-primary-dark hover:bg-muted transition-colors"
+            >
+              <Compass className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="left"><p className="text-xs">Prendre du recul</p></TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      {reculeOpen && <PrendreRecul onClose={() => setReculeOpen(false)} />}
     </AdminLayout>
   );
 }
