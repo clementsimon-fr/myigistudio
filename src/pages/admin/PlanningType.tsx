@@ -141,14 +141,7 @@ export default function PlanningType() {
                 Vue compilée
               </Button>
             </div>
-            <div className="flex gap-1.5">
-              <Button size="sm" variant={showTimes ? "default" : "outline"} className="text-xs h-8" onClick={() => setShowTimes(true)}>
-                Horaires
-              </Button>
-              <Button size="sm" variant={!showTimes ? "default" : "outline"} className="text-xs h-8" onClick={() => setShowTimes(false)}>
-                Points
-              </Button>
-            </div>
+            <div className="flex gap-1.5 flex-wrap">
               {CATEGORY_FILTERS.map(f => {
                 const isActive = categoryFilter === f.value;
                 return (
