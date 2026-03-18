@@ -98,6 +98,7 @@ export default function AdminFonctionnalites() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [exampleDialogOpen, setExampleDialogOpen] = useState(false);
+  const [reculeOpen, setReculeOpen] = useState(false);
   const [exampleForm, setExampleForm] = useState({ title: "", description: "", impact: "retouche", target: "autre" });
   const [form, setForm] = useState({ title: "", description: "", urgency: 3, target: "autre", impact: "retouche" });
 
