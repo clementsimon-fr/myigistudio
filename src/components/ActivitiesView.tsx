@@ -72,8 +72,6 @@ function WorkshopCard({ ws, i, onDescription, instructorPhoto, onBook, onFrequen
         <img src={ws.image || PLACEHOLDER_IMG} alt={ws.name} className="w-full h-full object-cover" loading="lazy" />
         <Badge variant="secondary" className="absolute top-2 right-2 text-[10px]">Ponctuel</Badge>
       </div>
-        <img src={ws.image || PLACEHOLDER_IMG} alt={ws.name} className="w-full h-full object-cover" loading="lazy" />
-      </div>
       <div className="p-4 md:p-5">
         <h3 className={`font-display font-semibold text-base md:text-lg leading-tight mb-2 ${style.text}`}>{ws.name}</h3>
         <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{ws.description}</p>
