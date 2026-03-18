@@ -79,33 +79,39 @@ export type Database = {
       }
       course_schedules: {
         Row: {
+          card_yoga_count: number
           course_id: string
           created_at: string
           day: string
           end_time: string
           id: string
+          inclusions: string
           price: number
           spots: number
           spots_left: number
           time: string
         }
         Insert: {
+          card_yoga_count?: number
           course_id: string
           created_at?: string
           day: string
           end_time?: string
           id?: string
+          inclusions?: string
           price?: number
           spots?: number
           spots_left?: number
           time: string
         }
         Update: {
+          card_yoga_count?: number
           course_id?: string
           created_at?: string
           day?: string
           end_time?: string
           id?: string
+          inclusions?: string
           price?: number
           spots?: number
           spots_left?: number
@@ -633,6 +639,7 @@ export type Database = {
       }
       workshops: {
         Row: {
+          card_yoga_count: number
           category: string
           created_at: string
           date: string
@@ -642,6 +649,7 @@ export type Database = {
           frequency: string
           id: string
           image: string
+          inclusions: string
           instructor_id: string | null
           intensity: string
           long_description: string
@@ -655,6 +663,7 @@ export type Database = {
           time: string
         }
         Insert: {
+          card_yoga_count?: number
           category?: string
           created_at?: string
           date: string
@@ -664,6 +673,7 @@ export type Database = {
           frequency?: string
           id?: string
           image?: string
+          inclusions?: string
           instructor_id?: string | null
           intensity?: string
           long_description?: string
@@ -677,6 +687,7 @@ export type Database = {
           time?: string
         }
         Update: {
+          card_yoga_count?: number
           category?: string
           created_at?: string
           date?: string
@@ -686,6 +697,7 @@ export type Database = {
           frequency?: string
           id?: string
           image?: string
+          inclusions?: string
           instructor_id?: string | null
           intensity?: string
           long_description?: string

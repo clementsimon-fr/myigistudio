@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, User, CalendarDays, CreditCard, LogOut, RefreshCw, Compass, Calendar } from "lucide-react";
+import { Menu, X, User, CalendarDays, CreditCard, LogOut, Compass, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -77,10 +77,6 @@ export default function Navbar() {
                       <DropdownMenuSeparator />
                     </>
                   )}
-                  <DropdownMenuItem onClick={() => navigate("/login")} className="flex items-center gap-2 cursor-pointer">
-                    <RefreshCw className="h-4 w-4" />
-                    Changer de profil
-                  </DropdownMenuItem>
                   <DropdownMenuItem
                     className="flex items-center gap-2 text-destructive cursor-pointer"
                     onClick={handleLogout}
@@ -134,12 +130,6 @@ export default function Navbar() {
             </>
           )}
           <div className="pt-2 border-t space-y-1">
-            <Link to="/login" onClick={() => setOpen(false)}>
-              <Button variant="ghost" className="w-full justify-start gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Changer de profil
-              </Button>
-            </Link>
             <Button variant="ghost" className="w-full justify-start gap-2 text-destructive" onClick={() => { handleLogout(); setOpen(false); }}>
               <LogOut className="h-4 w-4" />
               Déconnexion

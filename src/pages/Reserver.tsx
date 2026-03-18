@@ -16,15 +16,18 @@ import GuestForm from "@/components/booking/GuestForm";
 import PurchaseOptions from "@/components/booking/PurchaseOptions";
 import PaymentSummary from "@/components/booking/PaymentSummary";
 import ConfirmationPopup from "@/components/booking/ConfirmationPopup";
+import AddParticipant, { type ExtraParticipant } from "@/components/booking/AddParticipant";
 import type { DemoProfile } from "@/contexts/DemoContext";
 
 interface CourseScheduleRow {
   id: string; course_id: string; day: string; time: string; end_time: string; spots: number; spots_left: number;
+  inclusions?: string; card_yoga_count?: number;
 }
 
 interface AvailableSlot {
   id: string; name: string; time: string; end_time: string; duration: string;
   spots: number; spotsLeft: number; type: "course" | "workshop"; sourceId: string; scheduleId?: string; price?: number;
+  inclusions?: string; cardYogaCount?: number;
 }
 
 interface PricingCard {
@@ -77,6 +80,10 @@ export default function Reserver() {
   const [conditions, setConditions] = useState<ConditionRow[]>([]);
   const [pricingCards, setPricingCards] = useState<PricingCard[]>([]);
   const [isNewUser, setIsNewUser] = useState(false);
+  const [instructorData, setInstructorData] = useState<{ name: string; photo_url: string } | null>(null);
+
+  // Extra participants (2.2)
+  const [extraParticipants, setExtraParticipants] = useState<ExtraParticipant[]>([]);
 
   // Step
   const [bookingStep, setBookingStep] = useState<BookingStep>("summary");
@@ -86,7 +93,7 @@ export default function Reserver() {
   const [showStripeModal, setShowStripeModal] = useState(false);
   const [stripeAmount, setStripeAmount] = useState(0);
   const [stripeDescription, setStripeDescription] = useState("");
-  const [paymentMode, setPaymentMode] = useState(""); // description of chosen mode
+  const [paymentMode, setPaymentMode] = useState("");
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [conditionsAccepted, setConditionsAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -113,7 +120,14 @@ export default function Reserver() {
           supabase.from("courses").select("*").eq("id", activityId).single(),
           supabase.from("course_schedules").select("*").eq("course_id", activityId),
         ]);
-        if (courseRes.data) setActivity({ ...courseRes.data, type: "course" });
+        if (courseRes.data) {
+          setActivity({ ...courseRes.data, type: "course" });
+          // Load instructor data
+          if (courseRes.data.instructor_id) {
+            const { data: instrData } = await supabase.from("instructors").select("name, photo_url").eq("id", courseRes.data.instructor_id).single();
+            if (instrData) setInstructorData(instrData as any);
+          }
+        }
         if (schedRes.data) {
           const scheds = schedRes.data as unknown as CourseScheduleRow[];
           setSchedules(scheds);
@@ -126,6 +140,10 @@ export default function Reserver() {
         const res = await supabase.from("workshops").select("*").eq("id", activityId).single();
         if (res.data) {
           setActivity({ ...res.data, type: "workshop" });
+          if (res.data.instructor_id) {
+            const { data: instrData } = await supabase.from("instructors").select("name, photo_url").eq("id", res.data.instructor_id).single();
+            if (instrData) setInstructorData(instrData as any);
+          }
           if (preselectedDate) {
             setSelectedDate(new Date(preselectedDate + "T00:00:00"));
             setSelectedSlot(res.data.id);
@@ -148,6 +166,7 @@ export default function Reserver() {
         id: s.id, name: activity.name, time: s.time, end_time: s.end_time,
         duration: calcDuration(s.time, s.end_time), spots: s.spots, spotsLeft: s.spots_left,
         type: "course" as const, sourceId: activity.id, scheduleId: s.id,
+        inclusions: (s as any).inclusions || "", cardYogaCount: (s as any).card_yoga_count || 0,
       }));
     }
     if (activity.type === "workshop") {
@@ -158,6 +177,7 @@ export default function Reserver() {
           end_time: activity.end_time || "", duration: calcDuration(activity.time, activity.end_time || "") || activity.duration,
           spots: activity.spots, spotsLeft: activity.spots_left,
           type: "workshop" as const, sourceId: activity.id, price: activity.price,
+          inclusions: activity.inclusions || "", cardYogaCount: activity.card_yoga_count || 0,
         }];
       }
     }
@@ -183,7 +203,7 @@ export default function Reserver() {
     : (isYoga && currentProfile.credits > 0) ? "logged_user_with_cards"
     : "logged_user_no_cards";
 
-  // Auto-advance: if connected user arrives on summary step, skip to purchase_options
+  // Auto-advance
   useEffect(() => {
     if (bookingStep === "summary" && currentProfile) {
       setBookingStep("purchase_options");
@@ -240,9 +260,7 @@ export default function Reserver() {
     setBookingStep("purchase_options");
   };
 
-  // ── Purchase option handlers ──
   const handleReserveWithCard = () => {
-    // Fast path: use 1 card → go to payment with amount=0
     setPaymentMode("1 carte yoga utilisée");
     setPaymentAmount(0);
     setBookingStep("payment");
@@ -290,14 +308,12 @@ export default function Reserver() {
     if (paymentAmount > 0) {
       setShowStripeModal(true);
     } else {
-      // Free (card usage or voucher) → confirm directly
       handleFinalConfirm();
     }
   };
 
   const handleStripeSuccess = async () => {
     setShowStripeModal(false);
-    // If buying a card, add credits
     if (pendingCard) {
       addCredits(pendingCard.sessions, pendingCard.name);
       addNotification(`${currentProfile?.name || guestName || "Client"} a acheté une ${pendingCard.name}`, "purchase");
@@ -319,6 +335,7 @@ export default function Reserver() {
     setSubmitting(true);
     const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
     const clientName = currentProfile?.name || guestName || "Visiteur";
+    const totalParticipants = 1 + extraParticipants.filter(p => p.firstName.trim()).length;
 
     await supabase.from("reservations").insert({
       client_name: clientName,
@@ -330,15 +347,17 @@ export default function Reserver() {
       date: dateStr,
       time: selectedSlotData.time,
       end_time: selectedSlotData.end_time,
-      participants: 1,
+      participants: totalParticipants,
       status: "confirmé",
+      notes: extraParticipants.filter(p => p.firstName.trim()).map(p => `Invité: ${p.firstName} ${p.lastName}`).join(", "),
     } as any);
 
     // Update spots
+    const spotsToDecrement = totalParticipants;
     if (selectedSlotData.scheduleId) {
-      await supabase.from("course_schedules").update({ spots_left: selectedSlotData.spotsLeft - 1 }).eq("id", selectedSlotData.scheduleId);
+      await supabase.from("course_schedules").update({ spots_left: selectedSlotData.spotsLeft - spotsToDecrement }).eq("id", selectedSlotData.scheduleId);
     } else if (selectedSlotData.type === "workshop") {
-      await supabase.from("workshops").update({ spots_left: selectedSlotData.spotsLeft - 1 }).eq("id", selectedSlotData.sourceId);
+      await supabase.from("workshops").update({ spots_left: selectedSlotData.spotsLeft - spotsToDecrement }).eq("id", selectedSlotData.sourceId);
     }
 
     // Decrement card if using card
@@ -358,7 +377,7 @@ export default function Reserver() {
     }
 
     addReservation(selectedSlotData.name, dateStr, selectedSlotData.time);
-    addNotification(`${clientName} a réservé ${selectedSlotData.name} du ${selectedDate.toLocaleDateString("fr-FR")}`, "reservation");
+    addNotification(`${clientName} a réservé ${selectedSlotData.name} du ${selectedDate.toLocaleDateString("fr-FR")}${totalParticipants > 1 ? ` (${totalParticipants} pers.)` : ""}`, "reservation");
     setSubmitting(false);
     setBookingStep("confirmed");
   };
@@ -422,6 +441,12 @@ export default function Reserver() {
                   category={category}
                   isYoga={isYoga}
                   pricingCards={pricingCards}
+                  inclusions={selectedSlotData.inclusions}
+                  longDescription={activity?.long_description}
+                  shortDescription={activity?.description}
+                  instructorName={instructorData?.name || activity?.instructor}
+                  instructorPhoto={instructorData?.photo_url}
+                  cardYogaCount={selectedSlotData.cardYogaCount}
                 />
               )}
               <AccountChoice
@@ -461,8 +486,20 @@ export default function Reserver() {
                   category={category}
                   isYoga={isYoga}
                   pricingCards={pricingCards}
+                  inclusions={selectedSlotData.inclusions}
+                  longDescription={activity?.long_description}
+                  shortDescription={activity?.description}
+                  instructorName={instructorData?.name || activity?.instructor}
+                  instructorPhoto={instructorData?.photo_url}
+                  cardYogaCount={selectedSlotData.cardYogaCount}
                 />
               )}
+
+              {/* 2.2: Add extra participants */}
+              <AddParticipant
+                participants={extraParticipants}
+                onChange={setExtraParticipants}
+              />
 
               <h2 className="text-lg font-display font-semibold text-primary-dark">
                 {isYoga ? "Options de réservation" : "Paiement"}

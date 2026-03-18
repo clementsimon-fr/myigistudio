@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Info, Sparkles, Star } from "lucide-react";
+import { Info, Sparkles, Star, ChevronDown, ChevronUp, Users, Clock, Euro, CalendarRange, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import FormulaInfoModal from "./FormulaInfoModal";
 
 interface PricingCard {
@@ -25,10 +26,21 @@ interface BookingSummaryProps {
   isYoga?: boolean;
   pricingCards?: PricingCard[];
   onCreateAccount?: () => void;
+  // 2.1 & 2.3 props
+  inclusions?: string;
+  longDescription?: string;
+  shortDescription?: string;
+  instructorName?: string;
+  instructorPhoto?: string;
+  cardYogaCount?: number;
 }
 
-export default function BookingSummary({ activityName, date, time, endTime, duration, price, category, isYoga, pricingCards, onCreateAccount }: BookingSummaryProps) {
+export default function BookingSummary({
+  activityName, date, time, endTime, duration, price, category, isYoga, pricingCards, onCreateAccount,
+  inclusions, longDescription, shortDescription, instructorName, instructorPhoto, cardYogaCount,
+}: BookingSummaryProps) {
   const [showFormulas, setShowFormulas] = useState(false);
+  const [showMoreInfo, setShowMoreInfo] = useState(false);
 
   return (
     <>
@@ -38,6 +50,9 @@ export default function BookingSummary({ activityName, date, time, endTime, dura
           <span className="text-muted-foreground">Activité</span>
           <span className="font-medium">{activityName}</span>
         </div>
+        {shortDescription && (
+          <p className="text-xs text-muted-foreground">{shortDescription}</p>
+        )}
         <div className="flex justify-between">
           <span className="text-muted-foreground">Date</span>
           <span className="font-medium">{date.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}</span>
@@ -61,6 +76,16 @@ export default function BookingSummary({ activityName, date, time, endTime, dura
             <span className="text-muted-foreground">Prix unitaire</span>
             <span className="font-semibold text-primary-dark flex items-center gap-1.5">
               {price} €
+              {cardYogaCount && cardYogaCount > 0 && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  ou {cardYogaCount} carte{cardYogaCount > 1 ? "s" : ""} yoga
+                </span>
+              )}
+              {inclusions && (
+                <span className="inline-flex items-center gap-0.5 text-xs font-normal text-primary cursor-help" title={inclusions}>
+                  <Info className="h-3 w-3" />
+                </span>
+              )}
               {isYoga && pricingCards && pricingCards.length > 0 && (
                 <button
                   className="inline-flex items-center gap-1 text-xs font-normal text-primary hover:underline"
@@ -70,6 +95,51 @@ export default function BookingSummary({ activityName, date, time, endTime, dura
                 </button>
               )}
             </span>
+          </div>
+        )}
+        {/* Inclusions detail */}
+        {inclusions && (
+          <div className="bg-emerald-50 rounded-md px-3 py-2 text-xs text-emerald-700 flex items-start gap-1.5">
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>{inclusions}</span>
+          </div>
+        )}
+
+        {/* 2.3: More info button */}
+        {(longDescription || instructorName) && (
+          <div className="pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5 text-xs font-medium"
+              onClick={() => setShowMoreInfo(!showMoreInfo)}
+            >
+              {showMoreInfo ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              {showMoreInfo ? "Masquer les détails" : "Afficher plus d'informations"}
+            </Button>
+          </div>
+        )}
+
+        {showMoreInfo && (
+          <div className="space-y-3 pt-2 border-t mt-2">
+            {longDescription && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-1">Description détaillée</p>
+                <p className="text-xs text-muted-foreground whitespace-pre-line">{longDescription}</p>
+              </div>
+            )}
+            {instructorName && (
+              <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                  {instructorPhoto ? <AvatarImage src={instructorPhoto} alt={instructorName} /> : null}
+                  <AvatarFallback className="text-xs bg-primary/10 text-primary">{instructorName.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-xs font-medium">{instructorName}</p>
+                  <p className="text-[10px] text-muted-foreground">Intervenant(e)</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
