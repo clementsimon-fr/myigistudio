@@ -49,6 +49,8 @@ export interface Workshop {
   spots_left: number;
   image: string;
   instructor_id: string | null;
+  inclusions?: string;
+  card_yoga_count?: number;
 }
 
 export function useActivitiesData() {
