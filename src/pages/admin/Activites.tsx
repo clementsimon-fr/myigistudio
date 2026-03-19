@@ -1114,7 +1114,15 @@ export default function AdminActivites() {
       await supabase.from("course_schedules").delete().eq("course_id", deletingItem.id);
       await supabase.from("courses").delete().eq("id", deletingItem.id);
     } else {
-      await supabase.from("workshops").delete().eq("id", deletingItem.id);
+      // Delete all workshop rows in this group
+      const act = activities.find(a => a.id === deletingItem.id && a.source === "workshop");
+      if (act?.workshopEvents) {
+        for (const we of act.workshopEvents) {
+          await supabase.from("workshops").delete().eq("id", we.id);
+        }
+      } else {
+        await supabase.from("workshops").delete().eq("id", deletingItem.id);
+      }
     }
     toast({ title: "Activité supprimée", variant: "destructive" });
     setDeletingItem(null);
