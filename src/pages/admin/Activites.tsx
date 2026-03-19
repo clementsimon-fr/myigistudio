@@ -283,6 +283,25 @@ function ActivityEditor({
   const [eventsView, setEventsView] = useState<"list" | "calendar">("list");
   const [eventsCalMonth, setEventsCalMonth] = useState<Date>(new Date());
   const [detailDialogIdx, setDetailDialogIdx] = useState<number | null>(null);
+  const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null);
+
+  // ── Auto-save with debounce ──
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (!editingActivity) return; // only auto-save for existing activities
+    setAutoSaveStatus("idle");
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      setAutoSaveStatus("saving");
+      onSave();
+      setTimeout(() => setAutoSaveStatus("saved"), 500);
+    }, 2000);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [form]);
 
   const addEvent = (type: "recurring" | "ponctuel") => {
     setForm(prev => ({ ...prev, events: [...prev.events, { ...emptyEvent(), type }] }));
