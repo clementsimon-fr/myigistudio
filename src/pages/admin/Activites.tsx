@@ -478,41 +478,75 @@ function ActivityEditor({
 
           {/* Calendar view */}
           {eventsView === "calendar" && (
-            <div className="border rounded-lg p-4 bg-muted/10">
-              <Calendar
-                mode="multiple"
-                selected={calendarSelectedDates}
-                onSelect={(_, selectedDay) => {
-                  if (!selectedDay) return;
-                  const dateStr = format(selectedDay, "yyyy-MM-dd");
-                  // Check if there's already an event on this date
-                  const existing = allEventDates.find(d => d.date === dateStr);
-                  if (existing) {
-                    // Scroll to it in list view
-                    setEventsView("list");
-                  } else {
-                    // Create a new ponctuel event for this date
-                    setForm(prev => ({
-                      ...prev,
-                      events: [...prev.events, { ...emptyEvent(), type: "ponctuel", date: dateStr }],
-                    }));
-                    setEventsView("list");
-                  }
-                }}
-                month={eventsCalMonth}
-                onMonthChange={setEventsCalMonth}
-                className="p-3 pointer-events-auto"
-                locale={fr}
-              />
-              {allEventDates.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {allEventDates.map((d, i) => (
-                    <Badge key={i} variant="secondary" className="text-[10px] gap-1">
-                      {new Date(d.date + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} · {d.label}
-                    </Badge>
-                  ))}
-                </div>
-              )}
+            <div className="space-y-3">
+              <div className="border rounded-lg p-4 bg-muted/10">
+                <Calendar
+                  mode="multiple"
+                  selected={calendarSelectedDates}
+                  onSelect={(_, selectedDay) => {
+                    if (!selectedDay) return;
+                    const dateStr = format(selectedDay, "yyyy-MM-dd");
+                    setSelectedCalDate(dateStr);
+                  }}
+                  month={eventsCalMonth}
+                  onMonthChange={setEventsCalMonth}
+                  className="p-3 pointer-events-auto"
+                  locale={fr}
+                />
+              </div>
+
+              {/* Date detail block below calendar */}
+              {selectedCalDate && (() => {
+                const eventsOnDate = form.events
+                  .map((evt, idx) => ({ evt, idx }))
+                  .filter(({ evt }) => {
+                    if (evt.type === "ponctuel" && evt.date === selectedCalDate) return true;
+                    if (evt.type === "recurring" && evt.frequency === "personnalise" && evt.customDates.includes(selectedCalDate)) return true;
+                    return false;
+                  });
+                const dateLabel = new Date(selectedCalDate + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+
+                return (
+                  <div className="border rounded-lg p-4 bg-card space-y-3">
+                    <h4 className="text-sm font-semibold text-emerald-700 capitalize">{dateLabel}</h4>
+
+                    {eventsOnDate.length > 0 ? (
+                      <div className="space-y-2">
+                        {eventsOnDate.map(({ evt, idx }) => (
+                          <div key={idx} className="flex items-center gap-3 p-2.5 rounded-md border bg-muted/30">
+                            <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-sm font-medium">{evt.time} → {evt.end_time}</span>
+                            <span className="text-xs text-muted-foreground">{calcDuration(evt.time, evt.end_time)}</span>
+                            <span className="text-xs text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" />{evt.spots}</span>
+                            {evt.price > 0 && <span className="text-xs font-medium">{evt.price}€</span>}
+                            <div className="ml-auto flex gap-1">
+                              <Button type="button" size="sm" variant="outline" className="h-7 text-xs gap-1"
+                                onClick={() => { setDetailDialogIdx(idx); }}>
+                                <Info className="h-3 w-3" /> Détailler
+                              </Button>
+                              <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeEvent(idx)}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Aucun événement sur cette date.</p>
+                    )}
+
+                    <Button type="button" size="sm" variant="outline" className="gap-1.5 text-xs"
+                      onClick={() => {
+                        setForm(prev => ({
+                          ...prev,
+                          events: [...prev.events, { ...emptyEvent(), type: "ponctuel", date: selectedCalDate }],
+                        }));
+                      }}>
+                      <Plus className="h-3.5 w-3.5" /> Ajouter un événement le {new Date(selectedCalDate + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                    </Button>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
