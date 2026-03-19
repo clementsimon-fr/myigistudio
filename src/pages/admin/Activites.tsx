@@ -412,7 +412,7 @@ function ActivityEditor({
             </div>
             <div className="space-y-4">
               <div>
-                <Label>Intervenant</Label>
+                <Label className="text-emerald-700">Intervenant</Label>
                 {instructorsList.length > 0 ? (
                   <Select value={form.instructor} onValueChange={v => setForm({ ...form, instructor: v })}>
                     <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
