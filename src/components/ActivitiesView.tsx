@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Info, Users, Euro, Clock, CalendarRange, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import PricingSection from "@/components/home/PricingSection";
-import PlanningTypeView from "@/components/PlanningTypeView";
+import PlanningTypeView, { type PlanningTypeViewHandle } from "@/components/PlanningTypeView";
 import TeamSection from "@/components/home/TeamSection";
 import ContactElodieButton from "@/components/ContactElodieButton";
 import FrequencyDialog from "@/components/FrequencyDialog";
@@ -263,6 +263,30 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const [frequencyOpen, setFrequencyOpen] = useState(false);
   const [frequencyCategory, setFrequencyCategory] = useState<string>("yoga");
   const [frequencyActivity, setFrequencyActivity] = useState<string | undefined>(undefined);
+  const planningRef = useRef<PlanningTypeViewHandle>(null);
+
+  const openProgramme = useCallback(() => {
+    planningRef.current?.openAndScroll();
+  }, []);
+
+  const handleProgrammeEventClick = useCallback((params: { type: "course" | "workshop"; name: string; id?: string; date?: string }) => {
+    if (params.type === "course" && params.id) {
+      onSwitchToPlanning({ type: "course", id: params.id });
+    } else if (params.type === "workshop") {
+      if (params.id) {
+        // For workshops with a specific date, go directly
+        const urlParams = new URLSearchParams();
+        urlParams.set("type", "workshop");
+        if (params.date) {
+          urlParams.set("id", params.id);
+          urlParams.set("date", params.date);
+        } else {
+          urlParams.set("name", params.name);
+        }
+        window.location.href = `/reserver?${urlParams.toString()}`;
+      }
+    }
+  }, [onSwitchToPlanning]);
 
   const schedulesMap = useMemo(() => {
     const map: Record<string, Set<string>> = {};
@@ -316,7 +340,6 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
 
   const handleFrequencyTimeClick = (params: { activity: string; category: string; date?: string }) => {
     setFrequencyOpen(false);
-    // Find matching course or workshop to get the right type/id
     const course = courses.find(c => c.name === params.activity);
     if (course) {
       onSwitchToPlanning({ type: "course", id: course.id, date: params.date });
@@ -330,9 +353,9 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
 
   return (
     <>
-      {/* ─── Rythme de la semaine (toutes catégories) ─── */}
+      {/* ─── Programme (semaine / mois) ─── */}
       {(courses.length > 0 || workshops.length > 0) && (
-        <PlanningTypeView courses={courses} schedules={schedules} workshops={workshops} filter={filter === "all" ? undefined : filter} compact />
+        <PlanningTypeView ref={planningRef} courses={courses} schedules={schedules} workshops={workshops} filter={filter === "all" ? undefined : filter} compact onEventClick={handleProgrammeEventClick} />
       )}
 
       {/* ─── Yoga & Pilates ─── */}
@@ -358,7 +381,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                         <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => setDescriptionCourse(course)}>
                           <Info className="h-3 w-3" /> Description
                         </Button>
-                        <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => openFrequency("yoga", course.name)}>
+                        <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={openProgramme}>
                           <CalendarRange className="h-3 w-3" />
                         </Button>
                         <Button size="sm" className={`flex-1 text-xs ${yogaStyle.bookBtn}`} onClick={() => handleBookCourse(course)}>Réserver</Button>
@@ -379,7 +402,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${potteryStyle.text}`}>Poterie</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {potteryGroups.map((group, i) => (
-                <WorkshopCard key={group.key} group={group} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(group.workshops[0].instructor_id)} onBook={handleBookGroup} onFrequency={() => openFrequency("poterie", group.workshops[0].name)} />
+                <WorkshopCard key={group.key} group={group} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(group.workshops[0].instructor_id)} onBook={handleBookGroup} onFrequency={openProgramme} />
               ))}
             </div>
           </div>
@@ -393,7 +416,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${getCategoryStyle("bien-etre").text}`}>Ateliers & Stages</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {wellbeingGroups.map((group, i) => (
-                <WorkshopCard key={group.key} group={group} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(group.workshops[0].instructor_id)} onBook={handleBookGroup} onFrequency={() => openFrequency("bien-etre", group.workshops[0].name)} />
+                <WorkshopCard key={group.key} group={group} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(group.workshops[0].instructor_id)} onBook={handleBookGroup} onFrequency={openProgramme} />
               ))}
             </div>
           </div>
