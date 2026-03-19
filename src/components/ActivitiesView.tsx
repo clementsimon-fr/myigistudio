@@ -340,13 +340,13 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
       )}
 
       {/* ─── Poterie ─── */}
-      {showPoterie && potteryWorkshops.length > 0 && (
+      {showPoterie && potteryGroups.length > 0 && (
         <section className={`py-12 md:py-16 ${showYoga && coursesWithSchedules.length > 0 ? "bg-secondary/10" : ""}`}>
           <div className="container">
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${potteryStyle.text}`}>Poterie</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {potteryWorkshops.map((ws, i) => (
-                <WorkshopCard key={ws.id} ws={ws} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(ws.instructor_id)} onBook={handleBookWorkshop} onFrequency={() => openFrequency("poterie", ws.name)} />
+              {potteryGroups.map((group, i) => (
+                <WorkshopCard key={group.key} group={group} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(group.workshops[0].instructor_id)} onBook={handleBookGroup} onFrequency={() => openFrequency("poterie", group.workshops[0].name)} />
               ))}
             </div>
           </div>
@@ -354,7 +354,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
       )}
 
       {/* ─── Ateliers & Stages ─── */}
-      {showAteliers && wellbeingWorkshops.length > 0 && (
+      {showAteliers && wellbeingGroups.length > 0 && (
         <section className="py-12 md:py-16">
           <div className="container">
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${getCategoryStyle("bien-etre").text}`}>Ateliers & Stages</h2>
