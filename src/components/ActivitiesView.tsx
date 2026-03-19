@@ -422,7 +422,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                   <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionWs.spots} places max</div>
                 </div>
                 {isFutureDate(descriptionWs.date) ? (
-                  <Button className={`w-full ${getCategoryStyle(descriptionWs.category).bookBtn}`} onClick={() => { const ws = descriptionWs; setDescriptionWs(null); handleBookWorkshop(ws); }}>Réserver</Button>
+                  <Button className={`w-full ${getCategoryStyle(descriptionWs.category).bookBtn}`} onClick={() => { const ws = descriptionWs; setDescriptionWs(null); handleBookGroup({ key: ws.id, workshops: [ws], linkedDates: [ws.date], isLinked: false }); }}>Réserver</Button>
                 ) : (
                   <InterestForm activityName={descriptionWs.name} />
                 )}
