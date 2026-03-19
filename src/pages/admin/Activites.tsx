@@ -614,17 +614,18 @@ function ActivityEditor({
                       {/* ── DÉTAILLER button ── */}
                       <Button type="button" size="sm" variant="outline" className="h-8 text-xs gap-1.5"
                         onClick={() => setDetailDialogIdx(idx)}>
-                        <Info className="h-3.5 w-3.5" /> Détailler
-                      </Button>
-                      <Button type="button" size="icon" variant="ghost" className="h-8 w-8" title="Dupliquer"
-                        onClick={() => duplicateEvent(idx)}>
-                        <Copy className="h-3.5 w-3.5" />
+                        <Info className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Détailler</span>
                       </Button>
                       {form.events.length > 1 && (
                         <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeEvent(idx)}>
-                          <X className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3.5 w-3.5 sm:hidden" />
+                          <X className="h-3.5 w-3.5 hidden sm:block" />
                         </Button>
                       )}
+                      <Button type="button" size="icon" variant="ghost" className="h-8 w-8 hidden sm:flex" title="Dupliquer"
+                        onClick={() => duplicateEvent(idx)}>
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
 
