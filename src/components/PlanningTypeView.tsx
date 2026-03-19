@@ -118,12 +118,9 @@ function WeekProgram({ courses, schedules, workshops }: { courses: Course[]; sch
     return result;
   }, [courses, schedules, workshops]);
 
-  if (events.length === 0) {
-    return <p className="text-xs text-muted-foreground text-center py-4">Aucun événement cette semaine.</p>;
-  }
-
   // Group by date
   const grouped = useMemo(() => {
+    if (events.length === 0) return [];
     const map = new Map<string, WeekEvent[]>();
     for (const e of events) {
       const key = e.dateStr;
