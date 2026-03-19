@@ -185,13 +185,15 @@ export default function Reserver() {
     }
     if (activity.type === "workshop") {
       const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
-      if (activity.date === dateStr) {
+      if (activity.date === dateStr || (activity.linkedDates && activity.linkedDates.includes(dateStr))) {
         return [{
           id: activity.id, name: activity.name, time: activity.time,
           end_time: activity.end_time || "", duration: calcDuration(activity.time, activity.end_time || "") || activity.duration,
           spots: activity.spots, spotsLeft: activity.spots_left,
           type: "workshop" as const, sourceId: activity.id, price: activity.price,
           inclusions: activity.inclusions || "", cardYogaCount: activity.card_yoga_count || 0,
+          linkedDates: activity.linkedDates || undefined,
+          linkedWorkshopIds: activity.linkedWorkshopIds || undefined,
         }];
       }
     }
