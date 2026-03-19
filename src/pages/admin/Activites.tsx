@@ -742,19 +742,21 @@ function ActivityEditor({
         </div>
       )}
 
-      {/* Delete + Save footer */}
+      {/* Footer */}
       <div className="flex items-center justify-between border-t pt-4">
         {editingActivity ? (
           <Button variant="destructive" size="sm" className="gap-1.5" onClick={onDelete}>
-            <Trash2 className="h-3.5 w-3.5" /> Supprimer cette activité
+            <Trash2 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Supprimer cette activité</span>
           </Button>
         ) : <div />}
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onCancel}>Annuler</Button>
-          <Button onClick={() => onSave(true)} disabled={!form.name || form.events.length === 0}>
-            {editingActivity ? "Enregistrer les modifications" : "Créer l'activité"}
-          </Button>
-        </div>
+        {!editingActivity && (
+          <div className="flex gap-2 ml-auto">
+            <Button variant="outline" onClick={handleBack}>Annuler</Button>
+            <Button onClick={() => onSave(true)} disabled={!form.name || form.events.length === 0}>
+              Créer l'activité
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* ═══ DÉTAILLER DIALOG ═══ */}
