@@ -401,7 +401,7 @@ function ActivityEditor({
                 </Select>
               </div>
               <div>
-                <Label>Intensité</Label>
+                <Label className="text-emerald-700">Intensité</Label>
                 <Select value={form.intensity} onValueChange={v => setForm({ ...form, intensity: v })}>
                   <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
                   <SelectContent>
