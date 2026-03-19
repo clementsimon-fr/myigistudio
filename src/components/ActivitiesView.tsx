@@ -308,11 +308,14 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
 
   const handleFrequencyTimeClick = (params: { activity: string; category: string; date?: string }) => {
     setFrequencyOpen(false);
-    onSwitchToPlanning({
-      filter: params.category as FilterCategory,
-      activity: params.activity,
-      date: params.date,
-    });
+    // Find matching course or workshop to get the right type/id
+    const course = courses.find(c => c.name === params.activity);
+    if (course) {
+      onSwitchToPlanning({ type: "course", id: course.id, date: params.date });
+    } else {
+      const ws = workshops.find(w => w.name === params.activity);
+      if (ws) onSwitchToPlanning({ type: "workshop", id: ws.id, date: params.date });
+    }
   };
 
   const descriptionCourseDays = descriptionCourse ? (schedulesMap[descriptionCourse.id] || new Set<string>()) : new Set<string>();

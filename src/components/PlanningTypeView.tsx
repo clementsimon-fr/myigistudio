@@ -127,6 +127,7 @@ export default function PlanningTypeView({ courses, schedules, filter, compact }
             );
           })}
         </div>
+        </div>
       </div>
     </section>
   );
