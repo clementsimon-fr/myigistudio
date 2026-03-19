@@ -37,7 +37,7 @@ interface BookingSummaryProps {
 
 export default function BookingSummary({
   activityName, date, time, endTime, duration, price, category, isYoga, pricingCards, onCreateAccount,
-  inclusions, longDescription, shortDescription, instructorName, instructorPhoto, cardYogaCount,
+  inclusions, longDescription, shortDescription, instructorName, instructorPhoto, cardYogaCount, linkedDates,
 }: BookingSummaryProps) {
   const [showFormulas, setShowFormulas] = useState(false);
   const [showMoreInfo, setShowMoreInfo] = useState(false);
