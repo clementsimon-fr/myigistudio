@@ -297,6 +297,15 @@ function ActivityEditor({
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const isFirstRender = useRef(true);
 
+  // Flush pending auto-save (used when leaving the editor)
+  const flushSave = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+      onSave(false);
+    }
+  }, [onSave]);
+
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return; }
     if (!editingActivity) return; // only auto-save for existing activities
@@ -305,13 +314,15 @@ function ActivityEditor({
     saveTimerRef.current = setTimeout(() => {
       setAutoSaveStatus("saving");
       onSave(false);
+      saveTimerRef.current = null;
       setTimeout(() => setAutoSaveStatus("saved"), 500);
     }, 2000);
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [form]);
 
-  const addEvent = (type: "recurring" | "ponctuel") => {
-    setForm(prev => ({ ...prev, events: [...prev.events, { ...emptyEvent(), type }] }));
+  const handleBack = () => {
+    flushSave();
+    onCancel();
   };
   const removeEvent = (idx: number) => {
     setForm(prev => ({ ...prev, events: prev.events.filter((_, i) => i !== idx) }));
@@ -346,11 +357,18 @@ function ActivityEditor({
 
   const calendarSelectedDates = allEventDates.map(d => new Date(d.date + "T12:00:00"));
 
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+
+  const addEvent = (type: "recurring" | "ponctuel") => {
+    setForm(prev => ({ ...prev, events: [...prev.events, { ...emptyEvent(), type }] }));
+    setAddMenuOpen(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={onCancel}>
+        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={handleBack}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1 min-w-0">
@@ -363,9 +381,11 @@ function ActivityEditor({
             {editingActivity && autoSaveStatus === "saved" && <span className="text-emerald-500">✓ Enregistré</span>}
           </p>
         </div>
-        <Button onClick={() => onSave(true)} disabled={!form.name || form.events.length === 0} className="shrink-0">
-          {editingActivity ? "Enregistrer" : "Créer"}
-        </Button>
+        {!editingActivity && (
+          <Button onClick={() => onSave(true)} disabled={!form.name || form.events.length === 0} className="shrink-0">
+            Créer
+          </Button>
+        )}
       </div>
 
       {/* Section navigation */}
@@ -467,19 +487,27 @@ function ActivityEditor({
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex gap-1.5">
               <Button type="button" size="sm" variant={eventsView === "list" ? "default" : "outline"} className="gap-1 text-xs" onClick={() => setEventsView("list")}>
-                <FileText className="h-3.5 w-3.5" /> Liste
+                <FileText className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Liste</span>
               </Button>
               <Button type="button" size="sm" variant={eventsView === "calendar" ? "default" : "outline"} className="gap-1 text-xs" onClick={() => setEventsView("calendar")}>
-                <CalendarDays className="h-3.5 w-3.5" /> Calendrier
+                <CalendarDays className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Calendrier</span>
               </Button>
-            </div>
-            <div className="flex gap-1.5">
-              <Button type="button" size="sm" variant="outline" className="gap-1 h-8 text-xs" onClick={() => addEvent("recurring")}>
-                <Repeat className="h-3.5 w-3.5" /> + Récurrent
-              </Button>
-              <Button type="button" size="sm" variant="outline" className="gap-1 h-8 text-xs" onClick={() => addEvent("ponctuel")}>
-                <CalendarIcon className="h-3.5 w-3.5" /> + Ponctuel
-              </Button>
+              {/* Add button: "+" on mobile, "Ajouter" on desktop */}
+              <div className="relative">
+                <Button type="button" size="sm" variant="outline" className="gap-1 h-8 text-xs" onClick={() => setAddMenuOpen(!addMenuOpen)}>
+                  <Plus className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Ajouter</span>
+                </Button>
+                {addMenuOpen && (
+                  <div className="absolute top-full left-0 mt-1 bg-card border rounded-lg shadow-lg z-20 py-1 min-w-[160px]">
+                    <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted w-full text-left" onClick={() => addEvent("recurring")}>
+                      <Repeat className="h-3.5 w-3.5" /> Récurrent
+                    </button>
+                    <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted w-full text-left" onClick={() => addEvent("ponctuel")}>
+                      <CalendarIcon className="h-3.5 w-3.5" /> Ponctuel
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -586,17 +614,18 @@ function ActivityEditor({
                       {/* ── DÉTAILLER button ── */}
                       <Button type="button" size="sm" variant="outline" className="h-8 text-xs gap-1.5"
                         onClick={() => setDetailDialogIdx(idx)}>
-                        <Info className="h-3.5 w-3.5" /> Détailler
-                      </Button>
-                      <Button type="button" size="icon" variant="ghost" className="h-8 w-8" title="Dupliquer"
-                        onClick={() => duplicateEvent(idx)}>
-                        <Copy className="h-3.5 w-3.5" />
+                        <Info className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Détailler</span>
                       </Button>
                       {form.events.length > 1 && (
                         <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeEvent(idx)}>
-                          <X className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3.5 w-3.5 sm:hidden" />
+                          <X className="h-3.5 w-3.5 hidden sm:block" />
                         </Button>
                       )}
+                      <Button type="button" size="icon" variant="ghost" className="h-8 w-8 hidden sm:flex" title="Dupliquer"
+                        onClick={() => duplicateEvent(idx)}>
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
 
@@ -714,19 +743,21 @@ function ActivityEditor({
         </div>
       )}
 
-      {/* Delete + Save footer */}
+      {/* Footer */}
       <div className="flex items-center justify-between border-t pt-4">
         {editingActivity ? (
           <Button variant="destructive" size="sm" className="gap-1.5" onClick={onDelete}>
-            <Trash2 className="h-3.5 w-3.5" /> Supprimer cette activité
+            <Trash2 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Supprimer cette activité</span>
           </Button>
         ) : <div />}
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onCancel}>Annuler</Button>
-          <Button onClick={() => onSave(true)} disabled={!form.name || form.events.length === 0}>
-            {editingActivity ? "Enregistrer les modifications" : "Créer l'activité"}
-          </Button>
-        </div>
+        {!editingActivity && (
+          <div className="flex gap-2 ml-auto">
+            <Button variant="outline" onClick={handleBack}>Annuler</Button>
+            <Button onClick={() => onSave(true)} disabled={!form.name || form.events.length === 0}>
+              Créer l'activité
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* ═══ DÉTAILLER DIALOG ═══ */}
@@ -1148,7 +1179,7 @@ export default function AdminActivites() {
           editingActivity={editingActivity}
           instructorsList={instructorsList}
           onSave={save}
-          onCancel={() => setEditorOpen(false)}
+          onCancel={() => { setEditorOpen(false); fetchData(); }}
           onDelete={() => {
             if (editingActivity) {
               setEditorOpen(false);
