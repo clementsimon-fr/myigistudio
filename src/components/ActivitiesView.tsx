@@ -160,17 +160,22 @@ function groupWorkshops(workshops: Workshop[]): WorkshopGroup[] {
     });
   }
 
-  // Add standalone workshops (dedupe by date/time)
-  const standaloneSeen = new Set<string>();
+  // Group standalone workshops by name → single card per activity
+  const byName: Record<string, Workshop[]> = {};
   for (const ws of standalone) {
-    const key = `${ws.name}:${ws.date}:${ws.time}:${ws.end_time}`;
-    if (standaloneSeen.has(key)) continue;
-    standaloneSeen.add(key);
+    if (!byName[ws.name]) byName[ws.name] = [];
+    // Dedupe by date
+    if (!byName[ws.name].some(existing => existing.date === ws.date)) {
+      byName[ws.name].push(ws);
+    }
+  }
 
+  for (const [, nameWs] of Object.entries(byName)) {
+    const sorted = [...nameWs].sort((a, b) => a.date.localeCompare(b.date));
     groups.push({
-      key: ws.id,
-      workshops: [ws],
-      linkedDates: [ws.date],
+      key: sorted[0].id,
+      workshops: sorted,
+      linkedDates: sorted.map(w => w.date),
       isLinked: false,
     });
   }
@@ -184,8 +189,11 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook, onFreq
 }) {
   const ws = group.workshops[0]; // Use first workshop for metadata
   const style = getCategoryStyle(ws.category);
-  const hasFutureDate = group.workshops.some(w => isFutureDate(w.date));
-  const spotsLeft = Math.min(...group.workshops.map(w => w.spots_left));
+  const futureDates = group.workshops.filter(w => isFutureDate(w.date));
+  const hasFutureDate = futureDates.length > 0;
+
+  // For non-linked groups with multiple dates, show next date + count
+  const nextFuture = futureDates.sort((a, b) => a.date.localeCompare(b.date))[0];
 
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow">
@@ -200,6 +208,12 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook, onFreq
             📅 {formatLinkedDates(group.linkedDates)}
           </p>
         )}
+        {!group.isLinked && hasFutureDate && nextFuture && (
+          <p className="text-xs text-muted-foreground mb-2">
+            📅 Prochaine date : {new Date(nextFuture.date + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+            {futureDates.length > 1 && <span className="text-primary font-medium"> · {futureDates.length} dates disponibles</span>}
+          </p>
+        )}
         <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
           {instructorPhoto && (
             <div className="flex items-center gap-1.5">
@@ -208,9 +222,6 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook, onFreq
                 <AvatarFallback className="text-[9px] bg-primary/10 text-primary">I</AvatarFallback>
               </Avatar>
             </div>
-          )}
-          {spotsLeft <= 3 && spotsLeft > 0 && (
-            <span className="text-amber-600 font-medium">Plus que {spotsLeft} place{spotsLeft > 1 ? "s" : ""}</span>
           )}
         </div>
         {hasFutureDate ? (
