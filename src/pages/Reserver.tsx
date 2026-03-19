@@ -370,8 +370,14 @@ export default function Reserver() {
     const datesToBook: { dateStr: string; workshopId?: string }[] = [];
     
     if (selectedSlotData.linkedDates && selectedSlotData.linkedDates.length > 1 && activity?.linkedWorkshops) {
-      // Multi-session: book all linked dates
+      // Multi-session: book all linked dates (deduplicated by date)
+      const uniqueByDate = new Map<string, any>();
       for (const ws of activity.linkedWorkshops as any[]) {
+        if (ws.date && !uniqueByDate.has(ws.date)) {
+          uniqueByDate.set(ws.date, ws);
+        }
+      }
+      for (const ws of uniqueByDate.values()) {
         datesToBook.push({ dateStr: ws.date, workshopId: ws.id });
       }
     } else {
