@@ -988,10 +988,18 @@ export default function AdminActivites() {
         wsGrouped[w.name].push(w);
       }
       for (const [, group] of Object.entries(wsGrouped)) {
-        const first = group[0];
+        const uniqueWorkshops = new Map<string, any>();
+        for (const w of group) {
+          const key = `${w.linked_group || "single"}:${w.date || ""}:${w.time || ""}:${w.end_time || ""}:${w.price || 0}:${w.spots || 0}`;
+          if (!uniqueWorkshops.has(key)) {
+            uniqueWorkshops.set(key, w);
+          }
+        }
+        const dedupedGroup = [...uniqueWorkshops.values()].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+        const first = dedupedGroup[0];
         const instrName = first.instructor_id && instrRes.data
           ? (instrRes.data as any[]).find(i => i.id === first.instructor_id)?.name || "Élodie" : "Élodie";
-        const workshopEvents: WorkshopEvent[] = group.map(w => ({
+        const workshopEvents: WorkshopEvent[] = dedupedGroup.map(w => ({
           id: w.id, date: w.date, time: w.time, end_time: w.end_time, duration: w.duration,
           price: w.price, spots: w.spots, spots_left: w.spots_left,
           inclusions: w.inclusions || "", card_yoga_count: w.card_yoga_count || 0,
