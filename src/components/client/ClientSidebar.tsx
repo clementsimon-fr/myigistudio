@@ -29,7 +29,6 @@ const clientGroups = [
     label: "IgiStudio",
     items: [
       { title: "Activités", url: "/", icon: Compass },
-      { title: "Planning", url: "/?view=planning-type", icon: Calendar },
     ],
   },
 ];
