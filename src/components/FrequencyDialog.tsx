@@ -107,6 +107,7 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
     mensuel: "Récurrent – Tous les mois",
     ponctuel: "Ponctuel",
     personnalise: "Dates personnalisées",
+    "multi-sessions": "Multi-sessions (dates liées)",
   };
 
   const dialogTitle = title || (specificActivity ? `Planning – ${specificActivity}` : "Semaine type");
