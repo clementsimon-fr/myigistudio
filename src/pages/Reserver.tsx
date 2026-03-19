@@ -28,6 +28,7 @@ interface AvailableSlot {
   id: string; name: string; time: string; end_time: string; duration: string;
   spots: number; spotsLeft: number; type: "course" | "workshop"; sourceId: string; scheduleId?: string; price?: number;
   inclusions?: string; cardYogaCount?: number;
+  linkedDates?: string[]; linkedWorkshopIds?: string[];
 }
 
 interface PricingCard {
