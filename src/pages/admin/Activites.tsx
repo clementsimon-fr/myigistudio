@@ -993,7 +993,35 @@ export default function AdminActivites() {
         });
       }
     } else if (a.source === "workshop" && a.workshopEvents) {
+      // Check if there are linked groups
+      const linkedGroups: Record<string, WorkshopEvent[]> = {};
+      const standalone: WorkshopEvent[] = [];
       for (const we of a.workshopEvents) {
+        if (we.linked_group) {
+          if (!linkedGroups[we.linked_group]) linkedGroups[we.linked_group] = [];
+          linkedGroups[we.linked_group].push(we);
+        } else {
+          standalone.push(we);
+        }
+      }
+      // Create multi-sessions events for linked groups
+      for (const [groupId, groupEvents] of Object.entries(linkedGroups)) {
+        const first = groupEvents[0];
+        events.push({
+          type: "multi-sessions", frequency: "hebdomadaire",
+          day: "Lundi", time: first.time || "09:00", end_time: first.end_time || "10:00",
+          spots: first.spots || 8, date: "", price: first.price || 0,
+          reminder_template: a.reminder_template, modalities: a.modalities,
+          customDates: [],
+          inclusions: first.inclusions || "", card_yoga_count: first.card_yoga_count || 0,
+          complementary_info: "",
+          linkedDates: groupEvents.map(we => we.date).sort(),
+          _linkedGroup: groupId,
+          _workshopId: first.id,
+        });
+      }
+      // Create ponctuel events for standalone workshops
+      for (const we of standalone) {
         events.push({
           type: "ponctuel", frequency: "hebdomadaire",
           day: "Lundi", time: we.time || "09:00", end_time: we.end_time || "10:00",
@@ -1002,6 +1030,7 @@ export default function AdminActivites() {
           customDates: [],
           inclusions: we.inclusions || "", card_yoga_count: we.card_yoga_count || 0,
           complementary_info: "",
+          linkedDates: [],
           _workshopId: we.id,
         });
       }
