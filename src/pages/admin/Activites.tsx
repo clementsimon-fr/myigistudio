@@ -8,9 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, Pencil, Trash2, Loader2, X, List, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText, MapPin, Settings, LayoutGrid, Copy, Info, CreditCard } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, X, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText, MapPin, Settings, LayoutGrid, Copy, Info, CreditCard, ArrowLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ActivityCalendar from "@/components/admin/ActivityCalendar";
@@ -158,15 +157,15 @@ const FREQUENCY_OPTIONS = [
 
 interface EventSlot {
   type: "recurring" | "ponctuel";
-  frequency: string; // hebdomadaire | mensuel | personnalise
+  frequency: string;
   day: string; time: string; end_time: string; spots: number;
   date: string; price: number;
   reminder_template: string;
   modalities: string;
-  customDates: string[]; // for personnalise frequency
+  customDates: string[];
   inclusions: string;
   card_yoga_count: number;
-  // Track original IDs for update
+  complementary_info: string;
   _scheduleId?: string;
   _workshopId?: string;
 }
@@ -184,7 +183,7 @@ interface ActivityForm {
 const emptyEvent = (): EventSlot => ({
   type: "recurring", frequency: "hebdomadaire", day: "Lundi", time: "09:00", end_time: "10:00", spots: 12,
   date: "", price: 0, reminder_template: "", modalities: "", customDates: [],
-  inclusions: "", card_yoga_count: 0,
+  inclusions: "", card_yoga_count: 0, complementary_info: "",
 });
 
 const emptyForm = (): ActivityForm => ({
@@ -201,9 +200,9 @@ function CustomDatesPicker({ dates, onChange, time, endTime, spots, onTimeChange
   onTimeChange: (v: string) => void; onEndTimeChange: (v: string) => void; onSpotsChange: (v: number) => void;
 }) {
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
-  
+
   const selectedDates = dates.map(d => new Date(d + "T12:00:00"));
-  
+
   const toggleDate = (date: Date | undefined) => {
     if (!date) return;
     const dateStr = format(date, "yyyy-MM-dd");
@@ -252,6 +251,530 @@ function CustomDatesPicker({ dates, onChange, time, endTime, spots, onTimeChange
   );
 }
 
+// ══════════════════════════════════════════════════════════
+// ── EDITOR SECTION TABS ──
+// ══════════════════════════════════════════════════════════
+type EditorSection = "description" | "events" | "reminders";
+
+const EDITOR_SECTIONS: { key: EditorSection; label: string; icon: React.ReactNode }[] = [
+  { key: "description", label: "Description", icon: <FileText className="h-4 w-4" /> },
+  { key: "events", label: "Événements", icon: <CalendarDays className="h-4 w-4" /> },
+  { key: "reminders", label: "Rappels", icon: <Mail className="h-4 w-4" /> },
+];
+
+// ══════════════════════════════════════════════════════════
+// ── FULL-PAGE EDITOR COMPONENT ──
+// ══════════════════════════════════════════════════════════
+function ActivityEditor({
+  form, setForm, editingActivity, instructorsList, onSave, onCancel, onDelete,
+  currentDefaultReminder, currentDefaultModalities,
+}: {
+  form: ActivityForm;
+  setForm: React.Dispatch<React.SetStateAction<ActivityForm>>;
+  editingActivity: UnifiedActivity | null;
+  instructorsList: { id: string; name: string }[];
+  onSave: () => void;
+  onCancel: () => void;
+  onDelete: () => void;
+  currentDefaultReminder: string;
+  currentDefaultModalities: string;
+}) {
+  const [section, setSection] = useState<EditorSection>("description");
+  const [eventsView, setEventsView] = useState<"list" | "calendar">("list");
+  const [eventsCalMonth, setEventsCalMonth] = useState<Date>(new Date());
+  const [detailDialogIdx, setDetailDialogIdx] = useState<number | null>(null);
+
+  const addEvent = (type: "recurring" | "ponctuel") => {
+    setForm(prev => ({ ...prev, events: [...prev.events, { ...emptyEvent(), type }] }));
+  };
+  const removeEvent = (idx: number) => {
+    setForm(prev => ({ ...prev, events: prev.events.filter((_, i) => i !== idx) }));
+  };
+  const updateEvent = (idx: number, patch: Partial<EventSlot>) => {
+    setForm(prev => ({ ...prev, events: prev.events.map((e, i) => i === idx ? { ...e, ...patch } : e) }));
+  };
+  const duplicateEvent = (idx: number) => {
+    setForm(prev => {
+      const cloned = { ...prev.events[idx], _scheduleId: undefined, _workshopId: undefined };
+      const newEvents = [...prev.events];
+      newEvents.splice(idx + 1, 0, cloned);
+      return { ...prev, events: newEvents };
+    });
+  };
+
+  // Calendar view: get all dates from events
+  const allEventDates = useMemo(() => {
+    const dates: { date: string; idx: number; label: string }[] = [];
+    form.events.forEach((evt, idx) => {
+      if (evt.type === "ponctuel" && evt.date) {
+        dates.push({ date: evt.date, idx, label: `${evt.time}-${evt.end_time}` });
+      }
+      if (evt.type === "recurring" && evt.frequency === "personnalise") {
+        evt.customDates.forEach(d => {
+          dates.push({ date: d, idx, label: `${evt.time}-${evt.end_time}` });
+        });
+      }
+    });
+    return dates;
+  }, [form.events]);
+
+  const calendarSelectedDates = allEventDates.map(d => new Date(d.date + "T12:00:00"));
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={onCancel}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg font-display font-semibold truncate">
+            {editingActivity ? form.name || "Modifier l'activité" : "Nouvelle activité"}
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            {editingActivity ? "Modification en cours" : "Création d'une nouvelle activité"}
+          </p>
+        </div>
+        <Button onClick={onSave} disabled={!form.name || form.events.length === 0} className="shrink-0">
+          {editingActivity ? "Enregistrer" : "Créer"}
+        </Button>
+      </div>
+
+      {/* Section navigation */}
+      <div className="flex gap-1.5 border-b pb-0">
+        {EDITOR_SECTIONS.map(s => (
+          <button
+            key={s.key}
+            onClick={() => setSection(s.key)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors border-b-2 -mb-[2px]",
+              section === s.key
+                ? "border-primary text-primary bg-primary/5"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            )}
+          >
+            {s.icon}
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ═══ SECTION: DESCRIPTION ═══ */}
+      {section === "description" && (
+        <div className="space-y-5">
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <Label>Nom</Label>
+                <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Vinyasa Flow" />
+              </div>
+              <div>
+                <Label>Description courte</Label>
+                <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} placeholder="Résumé affiché sur la carte..." />
+              </div>
+              <div>
+                <Label>Catégorie</Label>
+                <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Intensité</Label>
+                <Select value={form.intensity} onValueChange={v => setForm({ ...form, intensity: v })}>
+                  <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                  <SelectContent>
+                    {getIntensityOptions(form.category).map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <Label>Intervenant</Label>
+                {instructorsList.length > 0 ? (
+                  <Select value={form.instructor} onValueChange={v => setForm({ ...form, instructor: v })}>
+                    <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                    <SelectContent>
+                      {instructorsList.map(i => <SelectItem key={i.id} value={i.name}>{i.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={form.instructor} onChange={e => setForm({ ...form, instructor: e.target.value })} />
+                )}
+              </div>
+              <div>
+                <Label>Image</Label>
+                <div className="flex items-center gap-3 mt-1.5">
+                  {form.image && <img src={form.image} alt="Preview" className="h-14 w-14 rounded-lg object-cover" />}
+                  <Input type="file" accept="image/*" onChange={async (e) => {
+                    const file = e.target.files?.[0]; if (!file) return;
+                    const ext = file.name.split(".").pop();
+                    const path = `activities/${Date.now()}.${ext}`;
+                    const { error } = await supabase.storage.from("activity-images").upload(path, file);
+                    if (!error) {
+                      const { data: urlData } = supabase.storage.from("activity-images").getPublicUrl(path);
+                      setForm(prev => ({ ...prev, image: urlData.publicUrl }));
+                    }
+                  }} className="text-xs" />
+                  {form.image && (
+                    <Button type="button" variant="link" size="sm" className="text-xs text-destructive p-0 h-auto" onClick={() => setForm(prev => ({ ...prev, image: "" }))}>×</Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <Label>Fiche produit (description longue)</Label>
+            <Textarea value={form.long_description} onChange={e => setForm({ ...form, long_description: e.target.value })} rows={5} placeholder="Description détaillée affichée dans les détails de l'activité..." />
+          </div>
+        </div>
+      )}
+
+      {/* ═══ SECTION: ÉVÉNEMENTS ═══ */}
+      {section === "events" && (
+        <div className="space-y-4">
+          {/* Toolbar */}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex gap-1.5">
+              <Button type="button" size="sm" variant={eventsView === "list" ? "default" : "outline"} className="gap-1 text-xs" onClick={() => setEventsView("list")}>
+                <FileText className="h-3.5 w-3.5" /> Liste
+              </Button>
+              <Button type="button" size="sm" variant={eventsView === "calendar" ? "default" : "outline"} className="gap-1 text-xs" onClick={() => setEventsView("calendar")}>
+                <CalendarDays className="h-3.5 w-3.5" /> Calendrier
+              </Button>
+            </div>
+            <div className="flex gap-1.5">
+              <Button type="button" size="sm" variant="outline" className="gap-1 h-8 text-xs" onClick={() => addEvent("recurring")}>
+                <Repeat className="h-3.5 w-3.5" /> + Récurrent
+              </Button>
+              <Button type="button" size="sm" variant="outline" className="gap-1 h-8 text-xs" onClick={() => addEvent("ponctuel")}>
+                <CalendarIcon className="h-3.5 w-3.5" /> + Ponctuel
+              </Button>
+            </div>
+          </div>
+
+          {/* Calendar view */}
+          {eventsView === "calendar" && (
+            <div className="border rounded-lg p-4 bg-muted/10">
+              <Calendar
+                mode="multiple"
+                selected={calendarSelectedDates}
+                onSelect={(_, selectedDay) => {
+                  if (!selectedDay) return;
+                  const dateStr = format(selectedDay, "yyyy-MM-dd");
+                  // Check if there's already an event on this date
+                  const existing = allEventDates.find(d => d.date === dateStr);
+                  if (existing) {
+                    // Scroll to it in list view
+                    setEventsView("list");
+                  } else {
+                    // Create a new ponctuel event for this date
+                    setForm(prev => ({
+                      ...prev,
+                      events: [...prev.events, { ...emptyEvent(), type: "ponctuel", date: dateStr }],
+                    }));
+                    setEventsView("list");
+                  }
+                }}
+                month={eventsCalMonth}
+                onMonthChange={setEventsCalMonth}
+                className="p-3 pointer-events-auto"
+                locale={fr}
+              />
+              {allEventDates.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {allEventDates.map((d, i) => (
+                    <Badge key={i} variant="secondary" className="text-[10px] gap-1">
+                      {new Date(d.date + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} · {d.label}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* List view */}
+          {eventsView === "list" && (
+            <div className="space-y-3">
+              {form.events.map((evt, idx) => (
+                <div key={idx} className="rounded-lg border bg-card p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Select value={evt.type} onValueChange={v => updateEvent(idx, { type: v as "recurring" | "ponctuel" })}>
+                        <SelectTrigger className="w-[140px] h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="recurring"><span className="flex items-center gap-1"><Repeat className="h-3 w-3" /> Récurrent</span></SelectItem>
+                          <SelectItem value="ponctuel"><span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> Ponctuel</span></SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {evt.type === "recurring" && (
+                        <Select value={evt.frequency} onValueChange={v => updateEvent(idx, { frequency: v })}>
+                          <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {FREQUENCY_OPTIONS.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {/* ── DÉTAILLER button ── */}
+                      <Button type="button" size="sm" variant="outline" className="h-8 text-xs gap-1.5"
+                        onClick={() => setDetailDialogIdx(idx)}>
+                        <Info className="h-3.5 w-3.5" /> Détailler
+                      </Button>
+                      <Button type="button" size="icon" variant="ghost" className="h-8 w-8" title="Dupliquer"
+                        onClick={() => duplicateEvent(idx)}>
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                      {form.events.length > 1 && (
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeEvent(idx)}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Temporality */}
+                  {evt.type === "recurring" && evt.frequency === "personnalise" ? (
+                    <CustomDatesPicker
+                      dates={evt.customDates}
+                      onChange={dates => updateEvent(idx, { customDates: dates })}
+                      time={evt.time} endTime={evt.end_time} spots={evt.spots}
+                      onTimeChange={v => updateEvent(idx, { time: v })}
+                      onEndTimeChange={v => updateEvent(idx, { end_time: v })}
+                      onSpotsChange={v => updateEvent(idx, { spots: v })}
+                    />
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {evt.type === "recurring" ? (
+                        <Select value={evt.day} onValueChange={v => updateEvent(idx, { day: v })}>
+                          <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>{DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                        </Select>
+                      ) : (
+                        <Input type="date" className="w-[150px] h-8 text-xs" value={evt.date} onChange={e => updateEvent(idx, { date: e.target.value })} />
+                      )}
+                      <div className="flex items-center gap-1">
+                        <Input type="time" className="w-[90px] h-8 text-xs" value={evt.time} onChange={e => updateEvent(idx, { time: e.target.value })} />
+                        <span className="text-muted-foreground text-xs">→</span>
+                        <Input type="time" className="w-[90px] h-8 text-xs" value={evt.end_time} onChange={e => updateEvent(idx, { end_time: e.target.value })} />
+                      </div>
+                      {evt.time && evt.end_time && <span className="text-xs text-muted-foreground">{calcDuration(evt.time, evt.end_time)}</span>}
+                      <div className="flex items-center gap-1">
+                        <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Input type="number" className="w-[70px] h-8 text-xs" value={evt.spots} onChange={e => updateEvent(idx, { spots: Number(e.target.value) })} placeholder="Places" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Price + Card */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <Input type="number" className="w-[70px] h-8 text-xs" value={evt.price} onChange={e => updateEvent(idx, { price: Number(e.target.value) })} placeholder="Prix" />
+                      <span className="text-xs text-muted-foreground">€</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">ou</span>
+                    <div className="flex items-center gap-1">
+                      <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+                      <Input type="number" className="w-[50px] h-8 text-xs" value={evt.card_yoga_count} onChange={e => updateEvent(idx, { card_yoga_count: Number(e.target.value) })} min={0} />
+                      <span className="text-xs text-muted-foreground">carte{evt.card_yoga_count > 1 ? "s" : ""} yoga</span>
+                    </div>
+                    {/* Indicators */}
+                    {(evt.inclusions || evt.complementary_info || evt.reminder_template || evt.modalities) && (
+                      <div className="flex gap-1 ml-auto">
+                        {evt.inclusions && <Badge variant="outline" className="text-[10px] gap-0.5"><Info className="h-2.5 w-2.5" /> Inclus</Badge>}
+                        {evt.complementary_info && <Badge variant="outline" className="text-[10px] gap-0.5"><FileText className="h-2.5 w-2.5" /> Infos</Badge>}
+                        {(evt.reminder_template || evt.modalities) && <Badge variant="outline" className="text-[10px] gap-0.5"><Mail className="h-2.5 w-2.5" /> Rappel</Badge>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {form.events.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  Aucun événement. Ajoutez un créneau récurrent ou ponctuel.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══ SECTION: RAPPELS ═══ */}
+      {section === "reminders" && (
+        <div className="space-y-6">
+          <div className="border rounded-lg p-5 space-y-5 bg-card">
+            <div className="flex items-center gap-2">
+              <Settings className="h-4 w-4 text-muted-foreground" />
+              <Label className="text-sm font-semibold mb-0">Modèles par défaut</Label>
+            </div>
+            <p className="text-xs text-muted-foreground -mt-2">
+              Ces textes seront utilisés pour tous les événements de cette activité, sauf si personnalisés via le bouton « Détailler » de chaque événement.
+            </p>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5 text-xs"><Mail className="h-3.5 w-3.5" /> Modèle de rappel par défaut</Label>
+              <TemplateEditor value={form.default_reminder} onChange={v => setForm(prev => ({ ...prev, default_reminder: v }))} variables={REMINDER_VARIABLES} showInsertModalities={true} />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5 text-xs"><MapPin className="h-3.5 w-3.5" /> Modalités par défaut</Label>
+              <TemplateEditor value={form.default_modalities} onChange={v => setForm(prev => ({ ...prev, default_modalities: v }))} variables={MODALITIES_VARIABLES} />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5 text-xs"><Clock className="h-3.5 w-3.5" /> Timing des rappels</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {REMINDER_TIMINGS.map(t => {
+                  const timings = form.reminder_timing.split(",").filter(Boolean);
+                  const isActive = timings.includes(t.value);
+                  return (
+                    <Button key={t.value} type="button" size="sm"
+                      variant={isActive ? "default" : "outline"}
+                      className="h-7 text-xs px-3"
+                      onClick={() => {
+                        const newTimings = isActive
+                          ? timings.filter(v => v !== t.value)
+                          : [...timings, t.value];
+                        setForm(prev => ({ ...prev, reminder_timing: newTimings.filter(Boolean).join(",") || "1j" }));
+                      }}>
+                      {t.label}
+                    </Button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground">Sélectionnez quand envoyer les rappels avant l'événement.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete + Save footer */}
+      <div className="flex items-center justify-between border-t pt-4">
+        {editingActivity ? (
+          <Button variant="destructive" size="sm" className="gap-1.5" onClick={onDelete}>
+            <Trash2 className="h-3.5 w-3.5" /> Supprimer cette activité
+          </Button>
+        ) : <div />}
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onCancel}>Annuler</Button>
+          <Button onClick={onSave} disabled={!form.name || form.events.length === 0}>
+            {editingActivity ? "Enregistrer les modifications" : "Créer l'activité"}
+          </Button>
+        </div>
+      </div>
+
+      {/* ═══ DÉTAILLER DIALOG ═══ */}
+      <Dialog open={detailDialogIdx !== null} onOpenChange={open => { if (!open) setDetailDialogIdx(null); }}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display">Détailler l'événement</DialogTitle>
+          </DialogHeader>
+          {detailDialogIdx !== null && (() => {
+            const evt = form.events[detailDialogIdx];
+            if (!evt) return null;
+            const isReminderCustom = !!evt.reminder_template;
+            const isModalitiesCustom = !!evt.modalities;
+            return (
+              <div className="space-y-5 pt-2">
+                {/* Inclusions */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5 text-sm font-medium">
+                    <Info className="h-4 w-4 text-primary" /> Inclus
+                  </Label>
+                  <p className="text-xs text-muted-foreground">Ce qui est inclus dans le prix (visible lors de la réservation)</p>
+                  <Textarea
+                    value={evt.inclusions}
+                    onChange={e => updateEvent(detailDialogIdx, { inclusions: e.target.value })}
+                    rows={3}
+                    placeholder="Ex : le goûter est compris, matériel fourni..."
+                    className="text-sm"
+                  />
+                </div>
+
+                {/* Infos complémentaires */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5 text-sm font-medium">
+                    <FileText className="h-4 w-4 text-primary" /> Infos complémentaires
+                  </Label>
+                  <p className="text-xs text-muted-foreground">Informations supplémentaires visibles lors de la réservation</p>
+                  <Textarea
+                    value={evt.complementary_info}
+                    onChange={e => updateEvent(detailDialogIdx, { complementary_info: e.target.value })}
+                    rows={3}
+                    placeholder="Ex : Prévoir des vêtements confortables, apporter un tapis..."
+                    className="text-sm"
+                  />
+                </div>
+
+                {/* Modalités de rappels */}
+                <div className="space-y-3 border-t pt-4">
+                  <Label className="flex items-center gap-1.5 text-sm font-medium">
+                    <Mail className="h-4 w-4 text-primary" /> Modalités de rappels
+                  </Label>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">Modèle de rappel</Label>
+                      <div className="flex gap-1.5">
+                        <Button type="button" size="sm" variant={!isReminderCustom ? "default" : "outline"} className="h-6 text-[10px] px-2 gap-1"
+                          onClick={() => updateEvent(detailDialogIdx, { reminder_template: "" })}>
+                          <FileText className="h-3 w-3" /> Par défaut
+                        </Button>
+                        <Button type="button" size="sm" variant={isReminderCustom ? "default" : "outline"} className="h-6 text-[10px] px-2"
+                          onClick={() => { if (!isReminderCustom) updateEvent(detailDialogIdx, { reminder_template: form.default_reminder }); }}>
+                          Personnalisé
+                        </Button>
+                      </div>
+                    </div>
+                    <TemplateEditor
+                      value={isReminderCustom ? evt.reminder_template : form.default_reminder}
+                      onChange={v => updateEvent(detailDialogIdx, { reminder_template: v })}
+                      variables={REMINDER_VARIABLES}
+                      readOnly={!isReminderCustom}
+                      showInsertModalities={true}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">Modalités (consignes, adresse)</Label>
+                      <div className="flex gap-1.5">
+                        <Button type="button" size="sm" variant={!isModalitiesCustom ? "default" : "outline"} className="h-6 text-[10px] px-2 gap-1"
+                          onClick={() => updateEvent(detailDialogIdx, { modalities: "" })}>
+                          <FileText className="h-3 w-3" /> Par défaut
+                        </Button>
+                        <Button type="button" size="sm" variant={isModalitiesCustom ? "default" : "outline"} className="h-6 text-[10px] px-2"
+                          onClick={() => { if (!isModalitiesCustom) updateEvent(detailDialogIdx, { modalities: form.default_modalities }); }}>
+                          Personnalisé
+                        </Button>
+                      </div>
+                    </div>
+                    <TemplateEditor
+                      value={isModalitiesCustom ? evt.modalities : form.default_modalities}
+                      onChange={v => updateEvent(detailDialogIdx, { modalities: v })}
+                      variables={MODALITIES_VARIABLES}
+                      readOnly={!isModalitiesCustom}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// ── MAIN PAGE ──
+// ══════════════════════════════════════════════════════════
 export default function AdminActivites() {
   const { toast } = useToast();
   const { get: getSetting, ready: settingsReady } = useSiteSettings();
@@ -262,7 +785,8 @@ export default function AdminActivites() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
-  const [dialogOpen, setDialogOpen] = useState(false);
+  // Editor state: when editorOpen, show full-page editor instead of list
+  const [editorOpen, setEditorOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<UnifiedActivity | null>(null);
   const [form, setForm] = useState<ActivityForm>(emptyForm());
   const [deletingItem, setDeletingItem] = useState<{ id: string; source: "course" | "workshop" } | null>(null);
@@ -340,7 +864,7 @@ export default function AdminActivites() {
   const openNew = () => {
     setEditingActivity(null);
     setForm({ ...emptyForm(), default_reminder: currentDefaultReminder, default_modalities: currentDefaultModalities });
-    setDialogOpen(true);
+    setEditorOpen(true);
   };
 
   const openEdit = (a: UnifiedActivity) => {
@@ -355,6 +879,7 @@ export default function AdminActivites() {
           reminder_template: a.reminder_template, modalities: a.modalities,
           customDates: [],
           inclusions: s.inclusions || "", card_yoga_count: s.card_yoga_count || 0,
+          complementary_info: "",
           _scheduleId: s.id,
         });
       }
@@ -366,6 +891,7 @@ export default function AdminActivites() {
         reminder_template: a.reminder_template, modalities: a.modalities,
         customDates: [],
         inclusions: a.inclusions || "", card_yoga_count: a.card_yoga_count || 0,
+        complementary_info: "",
         _workshopId: a.id,
       });
     }
@@ -378,19 +904,16 @@ export default function AdminActivites() {
       intensity: a.intensity || "none",
       reminder_timing: a.reminder_timing || "1j",
     });
-    setDialogOpen(true);
+    setEditorOpen(true);
   };
 
-  // ── FIX 1.3: Update instead of delete+recreate ──
   const save = async () => {
     const instrId = instructorsList.find(i => i.name === form.instructor)?.id || null;
-    
-    // Separate events by type
+
     const recurringEvents = form.events.filter(e => e.type === "recurring" && e.frequency !== "personnalise");
     const customDateEvents = form.events.filter(e => e.type === "recurring" && e.frequency === "personnalise");
     const ponctuelEvents = form.events.filter(e => e.type === "ponctuel");
 
-    // All ponctuel-like events (ponctuel + custom dates expanded)
     const allPonctuelEvents: EventSlot[] = [...ponctuelEvents];
     for (const evt of customDateEvents) {
       for (const dateStr of evt.customDates) {
@@ -413,7 +936,6 @@ export default function AdminActivites() {
       const days = [...new Set(recurringEvents.map(e => e.day))];
 
       if (editingActivity?.source === "course") {
-        // UPDATE existing course
         await supabase.from("courses").update({
           ...courseData,
           spots: firstSlot.spots, spots_left: firstSlot.spots,
@@ -421,7 +943,6 @@ export default function AdminActivites() {
           duration, days, frequency: firstSlot.frequency,
         } as any).eq("id", editingActivity.id);
 
-        // Sync schedules: delete old, insert new
         await supabase.from("course_schedules").delete().eq("course_id", editingActivity.id);
         const scheduleRows = recurringEvents.map(e => ({
           course_id: editingActivity.id, day: e.day, time: e.time, end_time: e.end_time,
@@ -430,7 +951,6 @@ export default function AdminActivites() {
         }));
         await supabase.from("course_schedules").insert(scheduleRows);
       } else {
-        // CREATE new course (either new activity or converting from workshop)
         if (editingActivity?.source === "workshop") {
           await supabase.from("workshops").delete().eq("id", editingActivity.id);
         }
@@ -450,17 +970,14 @@ export default function AdminActivites() {
         }
       }
     } else if (editingActivity?.source === "course") {
-      // Was a course but no more recurring events → delete it
       await supabase.from("course_schedules").delete().eq("course_id", editingActivity.id);
       await supabase.from("courses").delete().eq("id", editingActivity.id);
     }
 
     // ── Handle ponctuel events → workshops table ──
-    // Filter out events without dates
     const validPonctuelEvents = allPonctuelEvents.filter(e => !!e.date);
     if (validPonctuelEvents.length > 0) {
       if (editingActivity?.source === "workshop") {
-        // UPDATE the first event on the existing workshop row
         const firstEvt = validPonctuelEvents[0];
         const duration = calcDuration(firstEvt.time, firstEvt.end_time);
         const { error: updateErr } = await supabase.from("workshops").update({
@@ -475,7 +992,6 @@ export default function AdminActivites() {
           toast({ title: "Erreur lors de la mise à jour", description: updateErr.message, variant: "destructive" });
           return;
         }
-        // Insert remaining events as new workshops
         for (let i = 1; i < validPonctuelEvents.length; i++) {
           const evt = validPonctuelEvents[i];
           const dur = calcDuration(evt.time, evt.end_time);
@@ -492,7 +1008,6 @@ export default function AdminActivites() {
           }
         }
       } else {
-        // New activity — insert all as new workshops
         for (const evt of validPonctuelEvents) {
           const duration = calcDuration(evt.time, evt.end_time);
           const { error: insertErr } = await supabase.from("workshops").insert({
@@ -508,12 +1023,10 @@ export default function AdminActivites() {
           }
         }
       }
-    } else if (editingActivity?.source === "workshop" && recurringEvents.length > 0) {
-      // Was a workshop but converted to course → already deleted above
     }
 
     toast({ title: editingActivity ? "Activité modifiée" : "Activité créée ✓" });
-    setDialogOpen(false);
+    setEditorOpen(false);
     fetchData();
   };
 
@@ -530,31 +1043,48 @@ export default function AdminActivites() {
     fetchData();
   };
 
-  const addEvent = (type: "recurring" | "ponctuel") => {
-    setForm(prev => ({ ...prev, events: [...prev.events, { ...emptyEvent(), type }] }));
-  };
-  const removeEvent = (idx: number) => {
-    setForm(prev => ({ ...prev, events: prev.events.filter((_, i) => i !== idx) }));
-  };
-  const updateEvent = (idx: number, patch: Partial<EventSlot>) => {
-    setForm(prev => ({ ...prev, events: prev.events.map((e, i) => i === idx ? { ...e, ...patch } : e) }));
-  };
-  // 1.4: Duplicate event
-  const duplicateEvent = (idx: number) => {
-    setForm(prev => {
-      const cloned = { ...prev.events[idx], _scheduleId: undefined, _workshopId: undefined };
-      const newEvents = [...prev.events];
-      newEvents.splice(idx + 1, 0, cloned);
-      return { ...prev, events: newEvents };
-    });
-  };
-
-  const [expandedEvent, setExpandedEvent] = useState<number | null>(null);
-
   if (loading) {
     return (
       <AdminLayout title="Activités et réservations">
         <div className="flex items-center justify-center h-64"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      </AdminLayout>
+    );
+  }
+
+  // ── Full-page editor mode ──
+  if (editorOpen) {
+    return (
+      <AdminLayout title="Activités et réservations">
+        <ActivityEditor
+          form={form}
+          setForm={setForm}
+          editingActivity={editingActivity}
+          instructorsList={instructorsList}
+          onSave={save}
+          onCancel={() => setEditorOpen(false)}
+          onDelete={() => {
+            if (editingActivity) {
+              setEditorOpen(false);
+              setDeletingItem({ id: editingActivity.id, source: editingActivity.source });
+            }
+          }}
+          currentDefaultReminder={currentDefaultReminder}
+          currentDefaultModalities={currentDefaultModalities}
+        />
+
+        {/* Delete confirmation */}
+        <AlertDialog open={!!deletingItem} onOpenChange={(open) => !open && setDeletingItem(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Supprimer cette activité ?</AlertDialogTitle>
+              <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction onClick={executeDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </AdminLayout>
     );
   }
@@ -624,323 +1154,7 @@ export default function AdminActivites() {
         </>
       )}
 
-      {/* ── Create/Edit Dialog ── */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-display">
-              {editingActivity ? "Modifier" : "Nouvelle"} activité
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-5 pt-2">
-            {/* Basic info */}
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-4">
-                <div><Label>Nom</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Vinyasa Flow" /></div>
-                <div>
-                  <Label>Catégorie</Label>
-                  <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Intensité</Label>
-                  <Select value={form.intensity} onValueChange={v => setForm({ ...form, intensity: v })}>
-                    <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                    <SelectContent>
-                      {getIntensityOptions(form.category).map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Intervenant</Label>
-                  {instructorsList.length > 0 ? (
-                    <Select value={form.instructor} onValueChange={v => setForm({ ...form, instructor: v })}>
-                      <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                      <SelectContent>
-                        {instructorsList.map(i => <SelectItem key={i.id} value={i.name}>{i.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input value={form.instructor} onChange={e => setForm({ ...form, instructor: e.target.value })} />
-                  )}
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div><Label>Description courte</Label><Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} placeholder="Résumé affiché sur la carte..." /></div>
-                <div>
-                  <Label>Image</Label>
-                  <div className="flex items-center gap-3 mt-1.5">
-                    {form.image && <img src={form.image} alt="Preview" className="h-14 w-14 rounded-lg object-cover" />}
-                    <Input type="file" accept="image/*" onChange={async (e) => {
-                      const file = e.target.files?.[0]; if (!file) return;
-                      const ext = file.name.split(".").pop();
-                      const path = `activities/${Date.now()}.${ext}`;
-                      const { error } = await supabase.storage.from("activity-images").upload(path, file);
-                      if (!error) {
-                        const { data: urlData } = supabase.storage.from("activity-images").getPublicUrl(path);
-                        setForm(prev => ({ ...prev, image: urlData.publicUrl }));
-                      }
-                    }} className="text-xs" />
-                    {form.image && (
-                      <Button type="button" variant="link" size="sm" className="text-xs text-destructive p-0 h-auto" onClick={() => setForm(prev => ({ ...prev, image: "" }))}>×</Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div><Label>Fiche produit (description longue)</Label><Textarea value={form.long_description} onChange={e => setForm({ ...form, long_description: e.target.value })} rows={4} placeholder="Description détaillée..." /></div>
-
-            {/* ── Events / Créneaux ── */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <Label className="text-base font-semibold mb-0">Événements</Label>
-                <div className="flex gap-1.5">
-                  <Button type="button" size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => addEvent("recurring")}>
-                    <Repeat className="h-3 w-3" /> + Récurrent
-                  </Button>
-                  <Button type="button" size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => addEvent("ponctuel")}>
-                    <CalendarIcon className="h-3 w-3" /> + Ponctuel
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {form.events.map((evt, idx) => {
-                  const isExpanded = expandedEvent === idx;
-                  const isReminderCustom = !!evt.reminder_template;
-                  const isModalitiesCustom = !!evt.modalities;
-                  return (
-                    <div key={idx} className="rounded-lg border bg-muted/20 p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                      <Select value={evt.type} onValueChange={v => updateEvent(idx, { type: v as "recurring" | "ponctuel" })}>
-                        <SelectTrigger className="w-[140px] h-7 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="recurring"><span className="flex items-center gap-1"><Repeat className="h-3 w-3" /> Récurrent</span></SelectItem>
-                          <SelectItem value="ponctuel"><span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> Ponctuel</span></SelectItem>
-                        </SelectContent>
-                      </Select>
-                        <div className="flex items-center gap-1">
-                          <Button type="button" size="sm" variant="ghost" className="h-6 text-[10px] px-2"
-                            onClick={() => setExpandedEvent(isExpanded ? null : idx)}>
-                            {isExpanded ? "Réduire" : "Détails"}
-                          </Button>
-                          {/* 1.4: Duplicate button */}
-                          <Button type="button" size="icon" variant="ghost" className="h-6 w-6" title="Dupliquer"
-                            onClick={() => duplicateEvent(idx)}>
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                          {form.events.length > 1 && (
-                            <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeEvent(idx)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* 1.1: Frequency selector for recurring events */}
-                      {evt.type === "recurring" && (
-                        <div className="flex items-center gap-2">
-                          <Label className="text-xs text-muted-foreground whitespace-nowrap">Fréquence :</Label>
-                          <Select value={evt.frequency} onValueChange={v => updateEvent(idx, { frequency: v })}>
-                            <SelectTrigger className="w-[200px] h-7 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {FREQUENCY_OPTIONS.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {/* ── Bloc Temporalité ── */}
-                      {evt.type === "recurring" && evt.frequency === "personnalise" ? (
-                        <CustomDatesPicker
-                          dates={evt.customDates}
-                          onChange={dates => updateEvent(idx, { customDates: dates })}
-                          time={evt.time}
-                          endTime={evt.end_time}
-                          spots={evt.spots}
-                          onTimeChange={v => updateEvent(idx, { time: v })}
-                          onEndTimeChange={v => updateEvent(idx, { end_time: v })}
-                          onSpotsChange={v => updateEvent(idx, { spots: v })}
-                        />
-                      ) : (
-                        <div className="flex flex-wrap items-center gap-2">
-                          {evt.type === "recurring" ? (
-                            <Select value={evt.day} onValueChange={v => updateEvent(idx, { day: v })}>
-                              <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
-                              <SelectContent>{DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
-                            </Select>
-                          ) : (
-                            <Input type="date" className="w-[150px] h-8 text-xs" value={evt.date} onChange={e => updateEvent(idx, { date: e.target.value })} />
-                          )}
-                          <div className="flex items-center gap-1">
-                            <Input type="time" className="w-[90px] h-8 text-xs" value={evt.time} onChange={e => updateEvent(idx, { time: e.target.value })} />
-                            <span className="text-muted-foreground text-xs">→</span>
-                            <Input type="time" className="w-[90px] h-8 text-xs" value={evt.end_time} onChange={e => updateEvent(idx, { end_time: e.target.value })} />
-                          </div>
-                          {evt.time && evt.end_time && <span className="text-xs text-muted-foreground">{calcDuration(evt.time, evt.end_time)}</span>}
-                          <div className="flex items-center gap-1">
-                            <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                            <Input type="number" className="w-[70px] h-8 text-xs" value={evt.spots} onChange={e => updateEvent(idx, { spots: Number(e.target.value) })} placeholder="Places" />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 1.2: Price + Carte Yoga */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="flex items-center gap-1">
-                          <Input type="number" className="w-[70px] h-8 text-xs" value={evt.price} onChange={e => updateEvent(idx, { price: Number(e.target.value) })} placeholder="Prix" />
-                          <span className="text-xs text-muted-foreground">€</span>
-                        </div>
-                        <span className="text-xs text-muted-foreground">ou</span>
-                        <div className="flex items-center gap-1">
-                          <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
-                          <Input type="number" className="w-[50px] h-8 text-xs" value={evt.card_yoga_count} onChange={e => updateEvent(idx, { card_yoga_count: Number(e.target.value) })} min={0} />
-                          <span className="text-xs text-muted-foreground">carte{evt.card_yoga_count > 1 ? "s" : ""} yoga</span>
-                        </div>
-                        {/* 2.1: Inclusions button */}
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button type="button" size="sm" variant="outline" className={cn("h-8 text-xs gap-1", evt.inclusions && "border-primary text-primary")}>
-                              <Info className="h-3 w-3" /> {evt.inclusions ? "Inclus ✓" : "Inclus"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-72">
-                            <div className="space-y-2">
-                              <Label className="text-xs">Ce qui est inclus dans le prix</Label>
-                              <Textarea
-                                value={evt.inclusions}
-                                onChange={e => updateEvent(idx, { inclusions: e.target.value })}
-                                rows={3}
-                                placeholder="Ex : le goûter est compris, matériel fourni..."
-                                className="text-xs"
-                              />
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-
-                      {/* ── Expanded: Rappel + Modalités per event ── */}
-                      {isExpanded && (
-                        <div className="space-y-4 pt-2 border-t mt-2">
-                          {/* Reminder */}
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="flex items-center gap-1.5 text-xs"><Mail className="h-3.5 w-3.5" /> Modèle de rappel</Label>
-                              <div className="flex gap-1.5">
-                                <Button type="button" size="sm" variant={!isReminderCustom ? "default" : "outline"} className="h-6 text-[10px] px-2 gap-1"
-                                  onClick={() => updateEvent(idx, { reminder_template: "" })}>
-                                  <FileText className="h-3 w-3" /> Par défaut
-                                </Button>
-                                <Button type="button" size="sm" variant={isReminderCustom ? "default" : "outline"} className="h-6 text-[10px] px-2"
-                                  onClick={() => { if (!isReminderCustom) updateEvent(idx, { reminder_template: form.default_reminder }); }}>
-                                  Personnalisé
-                                </Button>
-                              </div>
-                            </div>
-                            <TemplateEditor
-                              value={isReminderCustom ? evt.reminder_template : form.default_reminder}
-                              onChange={v => updateEvent(idx, { reminder_template: v })}
-                              variables={REMINDER_VARIABLES}
-                              readOnly={!isReminderCustom}
-                              showInsertModalities={true}
-                            />
-                          </div>
-
-                          {/* Reminder timing */}
-                          <div className="space-y-2">
-                            <Label className="flex items-center gap-1.5 text-xs"><Clock className="h-3.5 w-3.5" /> Timing des rappels</Label>
-                            <div className="flex flex-wrap gap-1.5">
-                              {REMINDER_TIMINGS.map(t => {
-                                const timings = form.reminder_timing.split(",").filter(Boolean);
-                                const isActive = timings.includes(t.value);
-                                return (
-                                  <Button key={t.value} type="button" size="sm"
-                                    variant={isActive ? "default" : "outline"}
-                                    className="h-6 text-[10px] px-2"
-                                    onClick={() => {
-                                      const newTimings = isActive
-                                        ? timings.filter(v => v !== t.value)
-                                        : [...timings, t.value];
-                                      setForm(prev => ({ ...prev, reminder_timing: newTimings.filter(Boolean).join(",") || "1j" }));
-                                    }}>
-                                    {t.label}
-                                  </Button>
-                                );
-                              })}
-                            </div>
-                            <p className="text-[10px] text-muted-foreground">Sélectionnez quand envoyer les rappels avant l'événement.</p>
-                          </div>
-
-                          {/* Modalities */}
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="flex items-center gap-1.5 text-xs"><MapPin className="h-3.5 w-3.5" /> Modalités (consignes, adresse)</Label>
-                              <div className="flex gap-1.5">
-                                <Button type="button" size="sm" variant={!isModalitiesCustom ? "default" : "outline"} className="h-6 text-[10px] px-2 gap-1"
-                                  onClick={() => updateEvent(idx, { modalities: "" })}>
-                                  <FileText className="h-3 w-3" /> Par défaut
-                                </Button>
-                                <Button type="button" size="sm" variant={isModalitiesCustom ? "default" : "outline"} className="h-6 text-[10px] px-2"
-                                  onClick={() => { if (!isModalitiesCustom) updateEvent(idx, { modalities: form.default_modalities }); }}>
-                                  Personnalisé
-                                </Button>
-                              </div>
-                            </div>
-                            <TemplateEditor
-                              value={isModalitiesCustom ? evt.modalities : form.default_modalities}
-                              onChange={v => updateEvent(idx, { modalities: v })}
-                              variables={MODALITIES_VARIABLES}
-                              readOnly={!isModalitiesCustom}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* ── Modalités et rappels par défaut (per-activity) ── */}
-            <div className="border rounded-lg p-4 space-y-4 bg-muted/10">
-              <div className="flex items-center gap-2">
-                <Settings className="h-4 w-4 text-muted-foreground" />
-                <Label className="text-sm font-semibold mb-0">Modalités et rappels par défaut</Label>
-              </div>
-              <p className="text-[11px] text-muted-foreground -mt-2">Ces textes seront utilisés par défaut pour tous les événements de cette activité. Vous pouvez les personnaliser dans les « Détails » de chaque événement.</p>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1.5 text-xs"><Mail className="h-3.5 w-3.5" /> Modèle de rappel par défaut</Label>
-                <TemplateEditor value={form.default_reminder} onChange={v => setForm(prev => ({ ...prev, default_reminder: v }))} variables={REMINDER_VARIABLES} showInsertModalities={true} />
-              </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1.5 text-xs"><MapPin className="h-3.5 w-3.5" /> Modalités par défaut</Label>
-                <TemplateEditor value={form.default_modalities} onChange={v => setForm(prev => ({ ...prev, default_modalities: v }))} variables={MODALITIES_VARIABLES} />
-              </div>
-            </div>
-
-            {/* Delete button inside editor */}
-            {editingActivity && (
-              <div className="border-t pt-4">
-                <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => { setDialogOpen(false); setDeletingItem({ id: editingActivity.id, source: editingActivity.source }); }}>
-                  <Trash2 className="h-3.5 w-3.5" /> Supprimer cette activité
-                </Button>
-              </div>
-            )}
-
-            <Button className="w-full" onClick={save} disabled={!form.name || form.events.length === 0}>
-              {editingActivity ? "Enregistrer les modifications" : "Créer l'activité"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Delete confirmation ── */}
+      {/* Delete confirmation */}
       <AlertDialog open={!!deletingItem} onOpenChange={(open) => !open && setDeletingItem(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
