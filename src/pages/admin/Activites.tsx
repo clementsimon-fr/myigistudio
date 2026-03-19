@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, Pencil, Trash2, Loader2, X, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText, MapPin, Settings, LayoutGrid, Copy, Info, CreditCard, ArrowLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, X, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText, MapPin, Settings, LayoutGrid, Copy, Info, CreditCard, ArrowLeft, ChevronRight, CalendarRange } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ActivityCalendar from "@/components/admin/ActivityCalendar";
