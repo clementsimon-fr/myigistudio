@@ -1000,7 +1000,7 @@ export default function AdminActivites() {
           const evt = validPonctuelEvents[i];
           const dur = calcDuration(evt.time, evt.end_time);
           const { error: insertErr } = await supabase.from("workshops").insert({
-            ...courseData,
+            ...workshopData,
             date: evt.date, time: evt.time, end_time: evt.end_time,
             duration: dur, spots: evt.spots, spots_left: evt.spots, price: evt.price,
             frequency: "ponctuel",
