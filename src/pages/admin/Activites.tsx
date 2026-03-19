@@ -337,7 +337,13 @@ function ActivityEditor({
   };
   const duplicateEvent = (idx: number) => {
     setForm(prev => {
-      const cloned = { ...prev.events[idx], _scheduleId: undefined, _workshopId: undefined };
+      const cloned = {
+        ...prev.events[idx],
+        _scheduleId: undefined,
+        _workshopId: undefined,
+        _linkedGroup: undefined,
+        _linkedWorkshopIds: undefined,
+      };
       const newEvents = [...prev.events];
       newEvents.splice(idx + 1, 0, cloned);
       return { ...prev, events: newEvents };
