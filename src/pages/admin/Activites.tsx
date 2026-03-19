@@ -178,6 +178,7 @@ interface EventSlot {
   _workshopId?: string;
   linkedDates: string[];
   _linkedGroup?: string;
+  _linkedWorkshopIds?: string[];
 }
 
 interface ActivityForm {
