@@ -16,6 +16,9 @@ interface PlanningTypeViewProps {
 }
 
 export default function PlanningTypeView({ courses, schedules, filter, compact }: PlanningTypeViewProps) {
+  // Only show yoga courses in the weekly rhythm (recurring activities)
+  const yogaCourses = useMemo(() => courses.filter(c => c.category === "yoga"), [courses]);
+
   const rows = useMemo(() => {
     const result: ActivityRow[] = [];
     const schedulesByCourse: Record<string, TimeSlot[]> = {};
@@ -23,14 +26,14 @@ export default function PlanningTypeView({ courses, schedules, filter, compact }
       if (!schedulesByCourse[s.course_id]) schedulesByCourse[s.course_id] = [];
       schedulesByCourse[s.course_id].push({ day: s.day, time: s.time, end_time: s.end_time });
     }
-    for (const c of courses) {
+    for (const c of yogaCourses) {
       const slots = schedulesByCourse[c.id] || [];
       if (slots.length > 0) {
         result.push({ name: c.name, category: c.category, slots });
       }
     }
     return result;
-  }, [courses, schedules]);
+  }, [yogaCourses, schedules]);
 
   const filtered = useMemo(() => {
     if (!filter || filter === "all") return rows;
