@@ -58,13 +58,21 @@ export default function PlanningTypeView({ courses, schedules, filter, compact }
 
   if (filtered.length === 0) return null;
 
+  const [open, setOpen] = useState(false);
+
   return (
-    <section className={compact ? "py-4 md:py-6" : "py-8 md:py-12"}>
-      <div className="container">
-        <h2 className={`${compact ? "text-base md:text-lg" : "text-xl md:text-2xl"} font-display font-bold text-primary-dark mb-4 text-center`}>
-          Rythme de la semaine
-        </h2>
-        <div className="space-y-4 max-w-3xl mx-auto">
+    <section className={compact ? "py-3 md:py-4" : "py-8 md:py-12"}>
+      <div className="container max-w-3xl mx-auto">
+        <button
+          onClick={() => setOpen(!open)}
+          className="w-full flex items-center justify-center gap-2 py-2 text-sm font-display font-bold text-primary-dark hover:text-primary transition-colors"
+        >
+          <CalendarDays className="h-4 w-4" />
+          <span>Rythme de la semaine</span>
+          <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+        <div className={`overflow-hidden transition-all duration-300 ${open ? "max-h-[500px] opacity-100 mt-3" : "max-h-0 opacity-0"}`}>
+        <div className="space-y-4">
           {grouped.map(([category, activities]) => {
             const style = CATEGORY_STYLES[category];
             const dotColor = style?.dot || "bg-primary";
