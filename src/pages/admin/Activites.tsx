@@ -178,6 +178,7 @@ interface EventSlot {
   _workshopId?: string;
   linkedDates: string[];
   _linkedGroup?: string;
+  _linkedWorkshopIds?: string[];
 }
 
 interface ActivityForm {
@@ -336,7 +337,13 @@ function ActivityEditor({
   };
   const duplicateEvent = (idx: number) => {
     setForm(prev => {
-      const cloned = { ...prev.events[idx], _scheduleId: undefined, _workshopId: undefined };
+      const cloned = {
+        ...prev.events[idx],
+        _scheduleId: undefined,
+        _workshopId: undefined,
+        _linkedGroup: undefined,
+        _linkedWorkshopIds: undefined,
+      };
       const newEvents = [...prev.events];
       newEvents.splice(idx + 1, 0, cloned);
       return { ...prev, events: newEvents };
@@ -981,10 +988,20 @@ export default function AdminActivites() {
         wsGrouped[w.name].push(w);
       }
       for (const [, group] of Object.entries(wsGrouped)) {
-        const first = group[0];
+        const uniqueWorkshops = new Map<string, any>();
+        for (const w of group) {
+          const key = w.linked_group
+            ? `group:${w.linked_group}:${w.date || ""}`
+            : `single:${w.name || ""}:${w.date || ""}:${w.time || ""}:${w.end_time || ""}`;
+          if (!uniqueWorkshops.has(key)) {
+            uniqueWorkshops.set(key, w);
+          }
+        }
+        const dedupedGroup = [...uniqueWorkshops.values()].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+        const first = dedupedGroup[0];
         const instrName = first.instructor_id && instrRes.data
           ? (instrRes.data as any[]).find(i => i.id === first.instructor_id)?.name || "Élodie" : "Élodie";
-        const workshopEvents: WorkshopEvent[] = group.map(w => ({
+        const workshopEvents: WorkshopEvent[] = dedupedGroup.map(w => ({
           id: w.id, date: w.date, time: w.time, end_time: w.end_time, duration: w.duration,
           price: w.price, spots: w.spots, spots_left: w.spots_left,
           inclusions: w.inclusions || "", card_yoga_count: w.card_yoga_count || 0,
@@ -1058,7 +1075,17 @@ export default function AdminActivites() {
       }
       // Create multi-sessions events for linked groups
       for (const [groupId, groupEvents] of Object.entries(linkedGroups)) {
-        const first = groupEvents[0];
+        const sortedGroup = [...groupEvents].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+        const first = sortedGroup[0];
+        const dateToWorkshop = new Map<string, WorkshopEvent>();
+        for (const ge of sortedGroup) {
+          if (ge.date && !dateToWorkshop.has(ge.date)) {
+            dateToWorkshop.set(ge.date, ge);
+          }
+        }
+        const linkedDates = [...dateToWorkshop.keys()].sort();
+        const linkedWorkshopIds = linkedDates.map(date => dateToWorkshop.get(date)?.id).filter((id): id is string => !!id);
+
         events.push({
           type: "multi-sessions", frequency: "hebdomadaire",
           day: "Lundi", time: first.time || "09:00", end_time: first.end_time || "10:00",
@@ -1067,9 +1094,10 @@ export default function AdminActivites() {
           customDates: [],
           inclusions: first.inclusions || "", card_yoga_count: first.card_yoga_count || 0,
           complementary_info: "",
-          linkedDates: [...new Set(groupEvents.map(we => we.date))].sort(),
+          linkedDates,
           _linkedGroup: groupId,
           _workshopId: first.id,
+          _linkedWorkshopIds: linkedWorkshopIds,
         });
       }
       // Create ponctuel events for standalone workshops
@@ -1215,43 +1243,74 @@ export default function AdminActivites() {
 
     // Save multi-sessions events (with linked_group)
     for (const evt of multiSessionEvents) {
-      const validDates = evt.linkedDates.filter(Boolean);
+      const validDates = [...new Set(evt.linkedDates.map(d => d?.trim()).filter(Boolean) as string[])].sort();
       if (validDates.length === 0) continue;
-      
+
       const linkedGroupId = evt._linkedGroup || crypto.randomUUID();
       evt._linkedGroup = linkedGroupId;
+      evt.linkedDates = validDates;
       const duration = calcDuration(evt.time, evt.end_time);
 
-      // Delete old workshops in this linked group (if editing)
-      if (evt._linkedGroup && editingActivity?.workshopEvents) {
-        const oldGroupWs = editingActivity.workshopEvents.filter(we => we.linked_group === evt._linkedGroup);
-        for (const old of oldGroupWs) {
-          keptWsIds.add(old.id); // Mark as handled
-        }
-        // Delete all old linked workshops, we'll re-create them
-        for (const old of oldGroupWs) {
-          await supabase.from("workshops").delete().eq("id", old.id);
-          allExistingWsIds.delete(old.id);
+      const previousLinkedWorkshopIds = evt._linkedWorkshopIds || [];
+      const nextLinkedWorkshopIds: string[] = [];
+
+      for (let i = 0; i < validDates.length; i++) {
+        const dateStr = validDates[i];
+        const existingWorkshopId = previousLinkedWorkshopIds[i];
+        const wsPayload = {
+          ...workshopData,
+          date: dateStr,
+          time: evt.time,
+          end_time: evt.end_time,
+          duration,
+          spots: evt.spots,
+          spots_left: evt.spots,
+          price: evt.price,
+          frequency: "multi-sessions",
+          inclusions: evt.inclusions,
+          card_yoga_count: evt.card_yoga_count,
+          linked_group: linkedGroupId,
+        };
+
+        if (existingWorkshopId) {
+          const { error } = await supabase.from("workshops").update(wsPayload as any).eq("id", existingWorkshopId);
+          if (error) {
+            console.error("Multi-session workshop update error:", error);
+            toast({ title: "Erreur lors de la mise à jour", description: error.message, variant: "destructive" });
+          }
+          nextLinkedWorkshopIds.push(existingWorkshopId);
+          keptWsIds.add(existingWorkshopId);
+          allExistingWsIds.delete(existingWorkshopId);
+        } else {
+          const { data, error } = await supabase.from("workshops").insert(wsPayload as any).select("id").single();
+          if (error) {
+            console.error("Multi-session workshop insert error:", error);
+            toast({ title: "Erreur lors de la création", description: error.message, variant: "destructive" });
+          }
+          if (data?.id) {
+            nextLinkedWorkshopIds.push(data.id);
+            keptWsIds.add(data.id);
+          }
         }
       }
 
-      // Insert all dates with the same linked_group
-      for (const dateStr of validDates) {
-        const wsPayload = {
-          ...workshopData,
-          date: dateStr, time: evt.time, end_time: evt.end_time,
-          duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
-          frequency: "multi-sessions",
-          inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
-          linked_group: linkedGroupId,
-        };
-        const { data, error } = await supabase.from("workshops").insert(wsPayload as any).select("id").single();
-        if (error) {
-          console.error("Multi-session workshop insert error:", error);
-          toast({ title: "Erreur lors de la création", description: error.message, variant: "destructive" });
-        }
-        if (data) keptWsIds.add(data.id);
+      for (const staleId of previousLinkedWorkshopIds.slice(validDates.length)) {
+        await supabase.from("workshops").delete().eq("id", staleId);
+        allExistingWsIds.delete(staleId);
       }
+
+      const { data: groupRows } = await supabase.from("workshops").select("id").eq("linked_group", linkedGroupId);
+      if (groupRows) {
+        for (const row of groupRows as { id: string }[]) {
+          if (!nextLinkedWorkshopIds.includes(row.id)) {
+            await supabase.from("workshops").delete().eq("id", row.id);
+            allExistingWsIds.delete(row.id);
+          }
+        }
+      }
+
+      evt._linkedWorkshopIds = nextLinkedWorkshopIds;
+      evt._workshopId = nextLinkedWorkshopIds[0];
     }
 
     // Delete workshop rows that were removed from the editor

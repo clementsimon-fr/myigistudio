@@ -54,8 +54,13 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
       }
     }
     
-    // Add standalone workshops
+    // Add standalone workshops (dedupe by name/date/time)
+    const standaloneSeen = new Set<string>();
     for (const w of standaloneWs) {
+      const standaloneKey = `${w.name}:${w.date}:${w.time}:${w.end_time}`;
+      if (standaloneSeen.has(standaloneKey)) continue;
+      standaloneSeen.add(standaloneKey);
+
       const slots: TimeSlot[] = [];
       if (w.date) {
         const day = getDayFromDate(w.date);
@@ -63,10 +68,16 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
       }
       result.push({ name: w.name, category: w.category, frequency: w.frequency || "ponctuel", slots });
     }
-    
-    // Add linked groups as single rows with multiple slots
+
+    // Add linked groups as single rows with multiple slots (dedupe by date)
     for (const [, groupWs] of Object.entries(linkedGroups)) {
-      const sorted = [...groupWs].sort((a, b) => a.date.localeCompare(b.date));
+      const byDate = new Map<string, Workshop>();
+      for (const w of groupWs) {
+        if (w.date && !byDate.has(w.date)) {
+          byDate.set(w.date, w);
+        }
+      }
+      const sorted = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
       const first = sorted[0];
       const slots: TimeSlot[] = [];
       for (const w of sorted) {
