@@ -962,7 +962,7 @@ export default function AdminActivites() {
     setEditorOpen(true);
   };
 
-  const save = async () => {
+  const save = async (closeAfter = true) => {
     const instrId = instructorsList.find(i => i.name === form.instructor)?.id || null;
 
     const recurringEvents = form.events.filter(e => e.type === "recurring" && e.frequency !== "personnalise");
