@@ -131,7 +131,7 @@ interface WorkshopGroup {
 function groupWorkshops(workshops: Workshop[]): WorkshopGroup[] {
   const linkedGroups: Record<string, Workshop[]> = {};
   const standalone: Workshop[] = [];
-  
+
   for (const ws of workshops) {
     if (ws.linked_group) {
       if (!linkedGroups[ws.linked_group]) linkedGroups[ws.linked_group] = [];
@@ -142,10 +142,16 @@ function groupWorkshops(workshops: Workshop[]): WorkshopGroup[] {
   }
 
   const groups: WorkshopGroup[] = [];
-  
-  // Add linked groups
+
+  // Add linked groups (dedupe by date)
   for (const [groupId, gws] of Object.entries(linkedGroups)) {
-    const sortedWs = [...gws].sort((a, b) => a.date.localeCompare(b.date));
+    const byDate = new Map<string, Workshop>();
+    for (const ws of gws) {
+      if (ws.date && !byDate.has(ws.date)) {
+        byDate.set(ws.date, ws);
+      }
+    }
+    const sortedWs = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
     groups.push({
       key: groupId,
       workshops: sortedWs,
@@ -153,9 +159,14 @@ function groupWorkshops(workshops: Workshop[]): WorkshopGroup[] {
       isLinked: true,
     });
   }
-  
-  // Add standalone workshops
+
+  // Add standalone workshops (dedupe by date/time)
+  const standaloneSeen = new Set<string>();
   for (const ws of standalone) {
+    const key = `${ws.name}:${ws.date}:${ws.time}:${ws.end_time}:${ws.price}:${ws.spots}`;
+    if (standaloneSeen.has(key)) continue;
+    standaloneSeen.add(key);
+
     groups.push({
       key: ws.id,
       workshops: [ws],
