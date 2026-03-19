@@ -350,6 +350,11 @@ function ActivityEditor({
       if (evt.type === "ponctuel" && evt.date) {
         dates.push({ date: evt.date, idx, label: `${evt.time}-${evt.end_time}` });
       }
+      if (evt.type === "multi-sessions") {
+        evt.linkedDates.forEach(d => {
+          dates.push({ date: d, idx, label: `${evt.time}-${evt.end_time}` });
+        });
+      }
       if (evt.type === "recurring" && evt.frequency === "personnalise") {
         evt.customDates.forEach(d => {
           dates.push({ date: d, idx, label: `${evt.time}-${evt.end_time}` });
@@ -363,7 +368,7 @@ function ActivityEditor({
 
   const [addMenuOpen, setAddMenuOpen] = useState(false);
 
-  const addEvent = (type: "recurring" | "ponctuel") => {
+  const addEvent = (type: "recurring" | "ponctuel" | "multi-sessions") => {
     setForm(prev => ({ ...prev, events: [...prev.events, { ...emptyEvent(), type }] }));
     setAddMenuOpen(false);
   };
