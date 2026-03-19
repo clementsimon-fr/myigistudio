@@ -463,6 +463,7 @@ export default function Reserver() {
                   instructorName={instructorData?.name || activity?.instructor}
                   instructorPhoto={instructorData?.photo_url}
                   cardYogaCount={selectedSlotData.cardYogaCount}
+                  linkedDates={selectedSlotData.linkedDates}
                 />
               )}
               <AccountChoice
