@@ -273,7 +273,7 @@ function ActivityEditor({
   setForm: React.Dispatch<React.SetStateAction<ActivityForm>>;
   editingActivity: UnifiedActivity | null;
   instructorsList: { id: string; name: string }[];
-  onSave: () => void;
+  onSave: (closeAfter?: boolean) => void;
   onCancel: () => void;
   onDelete: () => void;
   currentDefaultReminder: string;
