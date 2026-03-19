@@ -350,8 +350,10 @@ function ActivityEditor({
           <h2 className="text-lg font-display font-semibold truncate">
             {editingActivity ? form.name || "Modifier l'activité" : "Nouvelle activité"}
           </h2>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground flex items-center gap-2">
             {editingActivity ? "Modification en cours" : "Création d'une nouvelle activité"}
+            {editingActivity && autoSaveStatus === "saving" && <span className="text-amber-500 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Enregistrement...</span>}
+            {editingActivity && autoSaveStatus === "saved" && <span className="text-emerald-500">✓ Enregistré</span>}
           </p>
         </div>
         <Button onClick={onSave} disabled={!form.name || form.events.length === 0} className="shrink-0">
