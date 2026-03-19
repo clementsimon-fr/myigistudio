@@ -1104,8 +1104,9 @@ export default function AdminActivites() {
     if (closeAfter) {
       toast({ title: editingActivity ? "Activité modifiée" : "Activité créée ✓" });
       setEditorOpen(false);
+      fetchData();
     }
-    fetchData();
+    // Don't fetchData on auto-save to avoid resetting the editor state
   };
 
   const executeDelete = async () => {
