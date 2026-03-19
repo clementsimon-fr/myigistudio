@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, Pencil, Trash2, Loader2, X, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText, MapPin, Settings, LayoutGrid, Copy, Info, CreditCard, ArrowLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, X, CalendarDays, Search, Clock, Users, CalendarIcon, Repeat, Mail, FileText, MapPin, Settings, LayoutGrid, Copy, Info, CreditCard, ArrowLeft, ChevronRight, CalendarRange } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ActivityCalendar from "@/components/admin/ActivityCalendar";
@@ -123,6 +123,7 @@ interface WorkshopEvent {
   id: string; date: string; time: string; end_time: string; duration: string;
   price: number; spots: number; spots_left: number;
   inclusions: string; card_yoga_count: number;
+  linked_group?: string | null;
 }
 
 interface UnifiedActivity {
@@ -133,7 +134,7 @@ interface UnifiedActivity {
   date?: string; time?: string; end_time?: string; duration?: string; price?: number;
   intensity?: string; reminder_timing?: string;
   inclusions?: string; card_yoga_count?: number;
-  workshopEvents?: WorkshopEvent[]; // all workshop rows grouped under this activity
+  workshopEvents?: WorkshopEvent[];
 }
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
@@ -163,7 +164,7 @@ const FREQUENCY_OPTIONS = [
 ];
 
 interface EventSlot {
-  type: "recurring" | "ponctuel";
+  type: "recurring" | "ponctuel" | "multi-sessions";
   frequency: string;
   day: string; time: string; end_time: string; spots: number;
   date: string; price: number;
@@ -175,6 +176,8 @@ interface EventSlot {
   complementary_info: string;
   _scheduleId?: string;
   _workshopId?: string;
+  linkedDates: string[];
+  _linkedGroup?: string;
 }
 
 interface ActivityForm {
@@ -191,6 +194,7 @@ const emptyEvent = (): EventSlot => ({
   type: "recurring", frequency: "hebdomadaire", day: "Lundi", time: "09:00", end_time: "10:00", spots: 12,
   date: "", price: 0, reminder_template: "", modalities: "", customDates: [],
   inclusions: "", card_yoga_count: 0, complementary_info: "",
+  linkedDates: [],
 });
 
 const emptyForm = (): ActivityForm => ({
@@ -346,6 +350,11 @@ function ActivityEditor({
       if (evt.type === "ponctuel" && evt.date) {
         dates.push({ date: evt.date, idx, label: `${evt.time}-${evt.end_time}` });
       }
+      if (evt.type === "multi-sessions") {
+        evt.linkedDates.forEach(d => {
+          dates.push({ date: d, idx, label: `${evt.time}-${evt.end_time}` });
+        });
+      }
       if (evt.type === "recurring" && evt.frequency === "personnalise") {
         evt.customDates.forEach(d => {
           dates.push({ date: d, idx, label: `${evt.time}-${evt.end_time}` });
@@ -359,7 +368,7 @@ function ActivityEditor({
 
   const [addMenuOpen, setAddMenuOpen] = useState(false);
 
-  const addEvent = (type: "recurring" | "ponctuel") => {
+  const addEvent = (type: "recurring" | "ponctuel" | "multi-sessions") => {
     setForm(prev => ({ ...prev, events: [...prev.events, { ...emptyEvent(), type }] }));
     setAddMenuOpen(false);
   };
@@ -498,12 +507,15 @@ function ActivityEditor({
                   <Plus className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Ajouter</span>
                 </Button>
                 {addMenuOpen && (
-                  <div className="absolute top-full left-0 mt-1 bg-card border rounded-lg shadow-lg z-20 py-1 min-w-[160px]">
+                  <div className="absolute top-full left-0 mt-1 bg-card border rounded-lg shadow-lg z-20 py-1 min-w-[180px]">
                     <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted w-full text-left" onClick={() => addEvent("recurring")}>
                       <Repeat className="h-3.5 w-3.5" /> Récurrent
                     </button>
                     <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted w-full text-left" onClick={() => addEvent("ponctuel")}>
                       <CalendarIcon className="h-3.5 w-3.5" /> Ponctuel
+                    </button>
+                    <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted w-full text-left" onClick={() => addEvent("multi-sessions")}>
+                      <CalendarRange className="h-3.5 w-3.5" /> Multi-sessions
                     </button>
                   </div>
                 )}
@@ -536,6 +548,7 @@ function ActivityEditor({
                   .map((evt, idx) => ({ evt, idx }))
                   .filter(({ evt }) => {
                     if (evt.type === "ponctuel" && evt.date === selectedCalDate) return true;
+                    if (evt.type === "multi-sessions" && evt.linkedDates.includes(selectedCalDate)) return true;
                     if (evt.type === "recurring" && evt.frequency === "personnalise" && evt.customDates.includes(selectedCalDate)) return true;
                     return false;
                   });
@@ -592,13 +605,14 @@ function ActivityEditor({
                 <div key={idx} className="rounded-lg border bg-card p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Select value={evt.type} onValueChange={v => updateEvent(idx, { type: v as "recurring" | "ponctuel" })}>
-                        <SelectTrigger className="w-[140px] h-8 text-xs">
+                      <Select value={evt.type} onValueChange={v => updateEvent(idx, { type: v as "recurring" | "ponctuel" | "multi-sessions" })}>
+                        <SelectTrigger className="w-[155px] h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="recurring"><span className="flex items-center gap-1"><Repeat className="h-3 w-3" /> Récurrent</span></SelectItem>
                           <SelectItem value="ponctuel"><span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> Ponctuel</span></SelectItem>
+                          <SelectItem value="multi-sessions"><span className="flex items-center gap-1"><CalendarRange className="h-3 w-3" /> Multi-sessions</span></SelectItem>
                         </SelectContent>
                       </Select>
                       {evt.type === "recurring" && (
@@ -630,7 +644,16 @@ function ActivityEditor({
                   </div>
 
                   {/* Temporality */}
-                  {evt.type === "recurring" && evt.frequency === "personnalise" ? (
+                  {evt.type === "multi-sessions" ? (
+                    <CustomDatesPicker
+                      dates={evt.linkedDates}
+                      onChange={dates => updateEvent(idx, { linkedDates: dates })}
+                      time={evt.time} endTime={evt.end_time} spots={evt.spots}
+                      onTimeChange={v => updateEvent(idx, { time: v })}
+                      onEndTimeChange={v => updateEvent(idx, { end_time: v })}
+                      onSpotsChange={v => updateEvent(idx, { spots: v })}
+                    />
+                  ) : evt.type === "recurring" && evt.frequency === "personnalise" ? (
                     <CustomDatesPicker
                       dates={evt.customDates}
                       onChange={dates => updateEvent(idx, { customDates: dates })}
@@ -933,6 +956,7 @@ export default function AdminActivites() {
           id: w.id, date: w.date, time: w.time, end_time: w.end_time, duration: w.duration,
           price: w.price, spots: w.spots, spots_left: w.spots_left,
           inclusions: w.inclusions || "", card_yoga_count: w.card_yoga_count || 0,
+          linked_group: w.linked_group || null,
         }));
         unified.push({
           id: first.id, name: first.name, description: first.description || "", long_description: first.long_description || "",
@@ -984,11 +1008,40 @@ export default function AdminActivites() {
           customDates: [],
           inclusions: s.inclusions || "", card_yoga_count: s.card_yoga_count || 0,
           complementary_info: "",
+          linkedDates: [],
           _scheduleId: s.id,
         });
       }
     } else if (a.source === "workshop" && a.workshopEvents) {
+      // Check if there are linked groups
+      const linkedGroups: Record<string, WorkshopEvent[]> = {};
+      const standalone: WorkshopEvent[] = [];
       for (const we of a.workshopEvents) {
+        if (we.linked_group) {
+          if (!linkedGroups[we.linked_group]) linkedGroups[we.linked_group] = [];
+          linkedGroups[we.linked_group].push(we);
+        } else {
+          standalone.push(we);
+        }
+      }
+      // Create multi-sessions events for linked groups
+      for (const [groupId, groupEvents] of Object.entries(linkedGroups)) {
+        const first = groupEvents[0];
+        events.push({
+          type: "multi-sessions", frequency: "hebdomadaire",
+          day: "Lundi", time: first.time || "09:00", end_time: first.end_time || "10:00",
+          spots: first.spots || 8, date: "", price: first.price || 0,
+          reminder_template: a.reminder_template, modalities: a.modalities,
+          customDates: [],
+          inclusions: first.inclusions || "", card_yoga_count: first.card_yoga_count || 0,
+          complementary_info: "",
+          linkedDates: groupEvents.map(we => we.date).sort(),
+          _linkedGroup: groupId,
+          _workshopId: first.id,
+        });
+      }
+      // Create ponctuel events for standalone workshops
+      for (const we of standalone) {
         events.push({
           type: "ponctuel", frequency: "hebdomadaire",
           day: "Lundi", time: we.time || "09:00", end_time: we.end_time || "10:00",
@@ -997,6 +1050,7 @@ export default function AdminActivites() {
           customDates: [],
           inclusions: we.inclusions || "", card_yoga_count: we.card_yoga_count || 0,
           complementary_info: "",
+          linkedDates: [],
           _workshopId: we.id,
         });
       }
@@ -1019,6 +1073,7 @@ export default function AdminActivites() {
     const recurringEvents = form.events.filter(e => e.type === "recurring" && e.frequency !== "personnalise");
     const customDateEvents = form.events.filter(e => e.type === "recurring" && e.frequency === "personnalise");
     const ponctuelEvents = form.events.filter(e => e.type === "ponctuel");
+    const multiSessionEvents = form.events.filter(e => e.type === "multi-sessions");
 
     const allPonctuelEvents: EventSlot[] = [...ponctuelEvents];
     for (const evt of customDateEvents) {
@@ -1084,7 +1139,7 @@ export default function AdminActivites() {
       await supabase.from("courses").delete().eq("id", editingActivity.id);
     }
 
-    // ── Handle ponctuel events → workshops table ──
+    // ── Handle ponctuel + multi-sessions events → workshops table ──
     const validPonctuelEvents = allPonctuelEvents.filter(e => !!e.date);
     // Collect all existing workshop IDs for this activity group
     const allExistingWsIds = new Set<string>(
@@ -1092,6 +1147,7 @@ export default function AdminActivites() {
     );
     const keptWsIds = new Set<string>();
 
+    // Save standalone ponctuel events (no linked_group)
     if (validPonctuelEvents.length > 0) {
       for (const evt of validPonctuelEvents) {
         const duration = calcDuration(evt.time, evt.end_time);
@@ -1101,6 +1157,7 @@ export default function AdminActivites() {
           duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
           frequency: "ponctuel",
           inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
+          linked_group: null,
         };
 
         if (evt._workshopId) {
@@ -1111,7 +1168,6 @@ export default function AdminActivites() {
             toast({ title: "Erreur lors de la mise à jour", description: error.message, variant: "destructive" });
           }
         } else {
-          // Insert new workshop row and capture its ID for future saves
           const { data, error } = await supabase.from("workshops").insert(wsPayload as any).select("id").single();
           if (error) {
             console.error("Workshop insert error:", error);
@@ -1122,6 +1178,47 @@ export default function AdminActivites() {
             keptWsIds.add(data.id);
           }
         }
+      }
+    }
+
+    // Save multi-sessions events (with linked_group)
+    for (const evt of multiSessionEvents) {
+      const validDates = evt.linkedDates.filter(Boolean);
+      if (validDates.length === 0) continue;
+      
+      const linkedGroupId = evt._linkedGroup || crypto.randomUUID();
+      evt._linkedGroup = linkedGroupId;
+      const duration = calcDuration(evt.time, evt.end_time);
+
+      // Delete old workshops in this linked group (if editing)
+      if (evt._linkedGroup && editingActivity?.workshopEvents) {
+        const oldGroupWs = editingActivity.workshopEvents.filter(we => we.linked_group === evt._linkedGroup);
+        for (const old of oldGroupWs) {
+          keptWsIds.add(old.id); // Mark as handled
+        }
+        // Delete all old linked workshops, we'll re-create them
+        for (const old of oldGroupWs) {
+          await supabase.from("workshops").delete().eq("id", old.id);
+          allExistingWsIds.delete(old.id);
+        }
+      }
+
+      // Insert all dates with the same linked_group
+      for (const dateStr of validDates) {
+        const wsPayload = {
+          ...workshopData,
+          date: dateStr, time: evt.time, end_time: evt.end_time,
+          duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
+          frequency: "multi-sessions",
+          inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
+          linked_group: linkedGroupId,
+        };
+        const { data, error } = await supabase.from("workshops").insert(wsPayload as any).select("id").single();
+        if (error) {
+          console.error("Multi-session workshop insert error:", error);
+          toast({ title: "Erreur lors de la création", description: error.message, variant: "destructive" });
+        }
+        if (data) keptWsIds.add(data.id);
       }
     }
 

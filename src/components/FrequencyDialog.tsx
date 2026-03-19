@@ -41,7 +41,21 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
     for (const c of courses) {
       result.push({ name: c.name, category: c.category, frequency: c.frequency || "hebdomadaire", slots: schedulesByCourse[c.id] || [] });
     }
+    
+    // Group workshops by linked_group
+    const linkedGroups: Record<string, Workshop[]> = {};
+    const standaloneWs: Workshop[] = [];
     for (const w of workshops) {
+      if (w.linked_group) {
+        if (!linkedGroups[w.linked_group]) linkedGroups[w.linked_group] = [];
+        linkedGroups[w.linked_group].push(w);
+      } else {
+        standaloneWs.push(w);
+      }
+    }
+    
+    // Add standalone workshops
+    for (const w of standaloneWs) {
       const slots: TimeSlot[] = [];
       if (w.date) {
         const day = getDayFromDate(w.date);
@@ -49,6 +63,21 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
       }
       result.push({ name: w.name, category: w.category, frequency: w.frequency || "ponctuel", slots });
     }
+    
+    // Add linked groups as single rows with multiple slots
+    for (const [, groupWs] of Object.entries(linkedGroups)) {
+      const sorted = [...groupWs].sort((a, b) => a.date.localeCompare(b.date));
+      const first = sorted[0];
+      const slots: TimeSlot[] = [];
+      for (const w of sorted) {
+        if (w.date) {
+          const day = getDayFromDate(w.date);
+          if (day) slots.push({ day, time: w.time, end_time: w.end_time, date: w.date });
+        }
+      }
+      result.push({ name: first.name, category: first.category, frequency: "multi-sessions", slots });
+    }
+    
     return result;
   }, [courses, schedules, workshops]);
 
@@ -78,6 +107,7 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
     mensuel: "Récurrent – Tous les mois",
     ponctuel: "Ponctuel",
     personnalise: "Dates personnalisées",
+    "multi-sessions": "Multi-sessions (dates liées)",
   };
 
   const dialogTitle = title || (specificActivity ? `Planning – ${specificActivity}` : "Semaine type");

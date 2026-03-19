@@ -26,18 +26,18 @@ interface BookingSummaryProps {
   isYoga?: boolean;
   pricingCards?: PricingCard[];
   onCreateAccount?: () => void;
-  // 2.1 & 2.3 props
   inclusions?: string;
   longDescription?: string;
   shortDescription?: string;
   instructorName?: string;
   instructorPhoto?: string;
   cardYogaCount?: number;
+  linkedDates?: string[];
 }
 
 export default function BookingSummary({
   activityName, date, time, endTime, duration, price, category, isYoga, pricingCards, onCreateAccount,
-  inclusions, longDescription, shortDescription, instructorName, instructorPhoto, cardYogaCount,
+  inclusions, longDescription, shortDescription, instructorName, instructorPhoto, cardYogaCount, linkedDates,
 }: BookingSummaryProps) {
   const [showFormulas, setShowFormulas] = useState(false);
   const [showMoreInfo, setShowMoreInfo] = useState(false);
@@ -55,7 +55,17 @@ export default function BookingSummary({
         )}
         <div className="flex justify-between">
           <span className="text-muted-foreground">Date</span>
-          <span className="font-medium">{date.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}</span>
+          {linkedDates && linkedDates.length > 1 ? (
+            <div className="text-right">
+              {linkedDates.map(d => (
+                <div key={d} className="font-medium">
+                  {new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <span className="font-medium">{date.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}</span>
+          )}
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Horaire</span>

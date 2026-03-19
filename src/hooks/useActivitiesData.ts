@@ -51,6 +51,7 @@ export interface Workshop {
   instructor_id: string | null;
   inclusions?: string;
   card_yoga_count?: number;
+  linked_group?: string | null;
 }
 
 export function useActivitiesData() {

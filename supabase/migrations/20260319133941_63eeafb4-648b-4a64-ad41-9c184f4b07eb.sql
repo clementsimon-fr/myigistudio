@@ -1,0 +1,1 @@
+ALTER TABLE public.workshops ADD COLUMN linked_group uuid DEFAULT NULL;

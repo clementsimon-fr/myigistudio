@@ -28,6 +28,7 @@ interface AvailableSlot {
   id: string; name: string; time: string; end_time: string; duration: string;
   spots: number; spotsLeft: number; type: "course" | "workshop"; sourceId: string; scheduleId?: string; price?: number;
   inclusions?: string; cardYogaCount?: number;
+  linkedDates?: string[]; linkedWorkshopIds?: string[];
 }
 
 interface PricingCard {
@@ -139,14 +140,27 @@ export default function Reserver() {
       } else {
         const res = await supabase.from("workshops").select("*").eq("id", activityId).single();
         if (res.data) {
-          setActivity({ ...res.data, type: "workshop" });
-          if (res.data.instructor_id) {
-            const { data: instrData } = await supabase.from("instructors").select("name, photo_url").eq("id", res.data.instructor_id).single();
+          const wsData = res.data as any;
+          setActivity({ ...wsData, type: "workshop" });
+          
+          // If this workshop has a linked_group, fetch all siblings
+          if (wsData.linked_group) {
+            const { data: linkedWs } = await supabase.from("workshops").select("*")
+              .eq("linked_group", wsData.linked_group).order("date");
+            if (linkedWs && linkedWs.length > 1) {
+              const linkedDates = (linkedWs as any[]).map(w => w.date).sort();
+              const linkedIds = (linkedWs as any[]).map(w => w.id);
+              setActivity((prev: any) => ({ ...prev, linkedDates, linkedWorkshopIds: linkedIds, linkedWorkshops: linkedWs }));
+            }
+          }
+          
+          if (wsData.instructor_id) {
+            const { data: instrData } = await supabase.from("instructors").select("name, photo_url").eq("id", wsData.instructor_id).single();
             if (instrData) setInstructorData(instrData as any);
           }
           if (preselectedDate) {
             setSelectedDate(new Date(preselectedDate + "T00:00:00"));
-            setSelectedSlot(res.data.id);
+            setSelectedSlot(wsData.id);
           }
         }
       }
@@ -171,13 +185,15 @@ export default function Reserver() {
     }
     if (activity.type === "workshop") {
       const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
-      if (activity.date === dateStr) {
+      if (activity.date === dateStr || (activity.linkedDates && activity.linkedDates.includes(dateStr))) {
         return [{
           id: activity.id, name: activity.name, time: activity.time,
           end_time: activity.end_time || "", duration: calcDuration(activity.time, activity.end_time || "") || activity.duration,
           spots: activity.spots, spotsLeft: activity.spots_left,
           type: "workshop" as const, sourceId: activity.id, price: activity.price,
           inclusions: activity.inclusions || "", cardYogaCount: activity.card_yoga_count || 0,
+          linkedDates: activity.linkedDates || undefined,
+          linkedWorkshopIds: activity.linkedWorkshopIds || undefined,
         }];
       }
     }
@@ -333,31 +349,46 @@ export default function Reserver() {
   const handleFinalConfirm = async () => {
     if (!selectedSlotData || !selectedDate) return;
     setSubmitting(true);
-    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
     const clientName = currentProfile?.name || guestName || "Visiteur";
     const totalParticipants = 1 + extraParticipants.filter(p => p.firstName.trim()).length;
-
-    await supabase.from("reservations").insert({
-      client_name: clientName,
-      activity_name: selectedSlotData.name,
-      activity_type: selectedSlotData.type,
-      course_id: selectedSlotData.type === "course" ? selectedSlotData.sourceId : null,
-      workshop_id: selectedSlotData.type === "workshop" ? selectedSlotData.sourceId : null,
-      schedule_id: selectedSlotData.scheduleId || null,
-      date: dateStr,
-      time: selectedSlotData.time,
-      end_time: selectedSlotData.end_time,
-      participants: totalParticipants,
-      status: "confirmé",
-      notes: extraParticipants.filter(p => p.firstName.trim()).map(p => `Invité: ${p.firstName} ${p.lastName}`).join(", "),
-    } as any);
-
-    // Update spots
+    const notesStr = extraParticipants.filter(p => p.firstName.trim()).map(p => `Invité: ${p.firstName} ${p.lastName}`).join(", ");
     const spotsToDecrement = totalParticipants;
-    if (selectedSlotData.scheduleId) {
-      await supabase.from("course_schedules").update({ spots_left: selectedSlotData.spotsLeft - spotsToDecrement }).eq("id", selectedSlotData.scheduleId);
-    } else if (selectedSlotData.type === "workshop") {
-      await supabase.from("workshops").update({ spots_left: selectedSlotData.spotsLeft - spotsToDecrement }).eq("id", selectedSlotData.sourceId);
+
+    // Determine dates to book: linked dates or single date
+    const datesToBook: { dateStr: string; workshopId?: string }[] = [];
+    
+    if (selectedSlotData.linkedDates && selectedSlotData.linkedDates.length > 1 && activity?.linkedWorkshops) {
+      // Multi-session: book all linked dates
+      for (const ws of activity.linkedWorkshops as any[]) {
+        datesToBook.push({ dateStr: ws.date, workshopId: ws.id });
+      }
+    } else {
+      const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+      datesToBook.push({ dateStr, workshopId: selectedSlotData.type === "workshop" ? selectedSlotData.sourceId : undefined });
+    }
+
+    for (const { dateStr, workshopId } of datesToBook) {
+      await supabase.from("reservations").insert({
+        client_name: clientName,
+        activity_name: selectedSlotData.name,
+        activity_type: selectedSlotData.type,
+        course_id: selectedSlotData.type === "course" ? selectedSlotData.sourceId : null,
+        workshop_id: workshopId || null,
+        schedule_id: selectedSlotData.scheduleId || null,
+        date: dateStr,
+        time: selectedSlotData.time,
+        end_time: selectedSlotData.end_time,
+        participants: totalParticipants,
+        status: "confirmé",
+        notes: notesStr,
+      } as any);
+
+      // Update spots
+      if (selectedSlotData.scheduleId) {
+        await supabase.from("course_schedules").update({ spots_left: selectedSlotData.spotsLeft - spotsToDecrement }).eq("id", selectedSlotData.scheduleId);
+      } else if (workshopId) {
+        await supabase.from("workshops").update({ spots_left: (selectedSlotData.spotsLeft || 0) - spotsToDecrement } as any).eq("id", workshopId);
+      }
     }
 
     // Decrement card if using card
@@ -376,8 +407,11 @@ export default function Reserver() {
       }
     }
 
-    addReservation(selectedSlotData.name, dateStr, selectedSlotData.time);
-    addNotification(`${clientName} a réservé ${selectedSlotData.name} du ${selectedDate.toLocaleDateString("fr-FR")}${totalParticipants > 1 ? ` (${totalParticipants} pers.)` : ""}`, "reservation");
+    addReservation(selectedSlotData.name, datesToBook[0].dateStr, selectedSlotData.time);
+    const dateLabel = datesToBook.length > 1 
+      ? `${datesToBook.length} dates` 
+      : selectedDate.toLocaleDateString("fr-FR");
+    addNotification(`${clientName} a réservé ${selectedSlotData.name} du ${dateLabel}${totalParticipants > 1 ? ` (${totalParticipants} pers.)` : ""}`, "reservation");
     setSubmitting(false);
     setBookingStep("confirmed");
   };
@@ -447,6 +481,7 @@ export default function Reserver() {
                   instructorName={instructorData?.name || activity?.instructor}
                   instructorPhoto={instructorData?.photo_url}
                   cardYogaCount={selectedSlotData.cardYogaCount}
+                  linkedDates={selectedSlotData.linkedDates}
                 />
               )}
               <AccountChoice
@@ -492,6 +527,7 @@ export default function Reserver() {
                   instructorName={instructorData?.name || activity?.instructor}
                   instructorPhoto={instructorData?.photo_url}
                   cardYogaCount={selectedSlotData.cardYogaCount}
+                  linkedDates={selectedSlotData.linkedDates}
                 />
               )}
 
