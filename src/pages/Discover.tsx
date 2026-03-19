@@ -45,11 +45,11 @@ export default function Discover() {
     setSubFilter(value);
   }, []);
 
-  const handleSwitchToReserver = useCallback((params?: { filter?: FilterCategory; activity?: string; date?: string; linkedGroup?: string | null }) => {
+  const handleSwitchToReserver = useCallback((params?: { type: "course" | "workshop"; id: string; date?: string }) => {
     const urlParams = new URLSearchParams();
-    if (params?.activity) urlParams.set("activity", params.activity);
+    if (params?.type) urlParams.set("type", params.type);
+    if (params?.id) urlParams.set("id", params.id);
     if (params?.date) urlParams.set("date", params.date);
-    if (params?.linkedGroup) urlParams.set("linkedGroup", params.linkedGroup);
     window.location.href = `/reserver?${urlParams.toString()}`;
   }, []);
 

@@ -40,7 +40,7 @@ const App = () => (
             <Route path="/yoga" element={<Navigate to="/" replace />} />
             <Route path="/poterie" element={<Navigate to="/" replace />} />
             <Route path="/ateliers" element={<Navigate to="/" replace />} />
-            <Route path="/calendrier" element={<Navigate to="/?view=planning" replace />} />
+            <Route path="/calendrier" element={<Navigate to="/" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/mon-espace" element={<MonEspace />} />

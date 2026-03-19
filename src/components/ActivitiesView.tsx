@@ -25,7 +25,7 @@ interface ActivitiesViewProps {
   schedules: Schedule[];
   filter: FilterCategory;
   getInstructorPhoto: (id: string | null, name?: string) => string | undefined;
-  onSwitchToPlanning: (params?: { filter?: FilterCategory; activity?: string; date?: string; linkedGroup?: string | null }) => void;
+  onSwitchToPlanning: (params?: { type: "course" | "workshop"; id: string; date?: string }) => void;
 }
 
 function InstructorBadge({ instructor, photo }: { instructor: string; photo?: string }) {
@@ -292,18 +292,12 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const potteryStyle = getCategoryStyle("poterie");
 
   const handleBookCourse = (course: Course) => {
-    onSwitchToPlanning({ filter: "yoga", activity: course.name });
+    onSwitchToPlanning({ type: "course", id: course.id });
   };
 
   const handleBookGroup = (group: WorkshopGroup) => {
     const ws = group.workshops[0];
-    // For linked groups, pass the first workshop's date and linked_group info
-    const params: any = { filter: ws.category as FilterCategory, activity: ws.name, date: ws.date };
-    if (group.isLinked) {
-      // Pass linked_group as query param so Reserver knows to load all linked workshops
-      params.linkedGroup = group.workshops[0].linked_group;
-    }
-    onSwitchToPlanning(params);
+    onSwitchToPlanning({ type: "workshop", id: ws.id, date: ws.date });
   };
 
   const openFrequency = (category: string, activityName?: string) => {
@@ -314,11 +308,14 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
 
   const handleFrequencyTimeClick = (params: { activity: string; category: string; date?: string }) => {
     setFrequencyOpen(false);
-    onSwitchToPlanning({
-      filter: params.category as FilterCategory,
-      activity: params.activity,
-      date: params.date,
-    });
+    // Find matching course or workshop to get the right type/id
+    const course = courses.find(c => c.name === params.activity);
+    if (course) {
+      onSwitchToPlanning({ type: "course", id: course.id, date: params.date });
+    } else {
+      const ws = workshops.find(w => w.name === params.activity);
+      if (ws) onSwitchToPlanning({ type: "workshop", id: ws.id, date: params.date });
+    }
   };
 
   const descriptionCourseDays = descriptionCourse ? (schedulesMap[descriptionCourse.id] || new Set<string>()) : new Set<string>();
