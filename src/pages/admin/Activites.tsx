@@ -357,11 +357,18 @@ function ActivityEditor({
 
   const calendarSelectedDates = allEventDates.map(d => new Date(d.date + "T12:00:00"));
 
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+
+  const addEvent = (type: "recurring" | "ponctuel") => {
+    setForm(prev => ({ ...prev, events: [...prev.events, { ...emptyEvent(), type }] }));
+    setAddMenuOpen(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={onCancel}>
+        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={handleBack}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1 min-w-0">
@@ -374,9 +381,11 @@ function ActivityEditor({
             {editingActivity && autoSaveStatus === "saved" && <span className="text-emerald-500">✓ Enregistré</span>}
           </p>
         </div>
-        <Button onClick={() => onSave(true)} disabled={!form.name || form.events.length === 0} className="shrink-0">
-          {editingActivity ? "Enregistrer" : "Créer"}
-        </Button>
+        {!editingActivity && (
+          <Button onClick={() => onSave(true)} disabled={!form.name || form.events.length === 0} className="shrink-0">
+            Créer
+          </Button>
+        )}
       </div>
 
       {/* Section navigation */}
