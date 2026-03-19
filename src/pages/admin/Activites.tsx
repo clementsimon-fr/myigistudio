@@ -718,7 +718,7 @@ function ActivityEditor({
         ) : <div />}
         <div className="flex gap-2">
           <Button variant="outline" onClick={onCancel}>Annuler</Button>
-          <Button onClick={onSave} disabled={!form.name || form.events.length === 0}>
+          <Button onClick={() => onSave(true)} disabled={!form.name || form.events.length === 0}>
             {editingActivity ? "Enregistrer les modifications" : "Créer l'activité"}
           </Button>
         </div>
