@@ -26,13 +26,13 @@ interface BookingSummaryProps {
   isYoga?: boolean;
   pricingCards?: PricingCard[];
   onCreateAccount?: () => void;
-  // 2.1 & 2.3 props
   inclusions?: string;
   longDescription?: string;
   shortDescription?: string;
   instructorName?: string;
   instructorPhoto?: string;
   cardYogaCount?: number;
+  linkedDates?: string[];
 }
 
 export default function BookingSummary({
