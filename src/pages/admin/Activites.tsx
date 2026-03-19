@@ -1055,10 +1055,13 @@ export default function AdminActivites() {
 
     // ── Handle ponctuel events → workshops table ──
     const validPonctuelEvents = allPonctuelEvents.filter(e => !!e.date);
-    if (validPonctuelEvents.length > 0) {
-      // Track existing workshop IDs to know which to keep
-      const existingWsIds = new Set<string>();
+    // Collect all existing workshop IDs for this activity group
+    const allExistingWsIds = new Set<string>(
+      editingActivity?.workshopEvents?.map(we => we.id) || []
+    );
+    const keptWsIds = new Set<string>();
 
+    if (validPonctuelEvents.length > 0) {
       for (const evt of validPonctuelEvents) {
         const duration = calcDuration(evt.time, evt.end_time);
         const wsPayload = {
@@ -1070,21 +1073,31 @@ export default function AdminActivites() {
         };
 
         if (evt._workshopId) {
-          // Update existing workshop row
-          existingWsIds.add(evt._workshopId);
+          keptWsIds.add(evt._workshopId);
           const { error } = await supabase.from("workshops").update(wsPayload as any).eq("id", evt._workshopId);
           if (error) {
             console.error("Workshop update error:", error);
             toast({ title: "Erreur lors de la mise à jour", description: error.message, variant: "destructive" });
           }
         } else {
-          // Insert new workshop row
-          const { error } = await supabase.from("workshops").insert(wsPayload as any);
+          // Insert new workshop row and capture its ID for future saves
+          const { data, error } = await supabase.from("workshops").insert(wsPayload as any).select("id").single();
           if (error) {
             console.error("Workshop insert error:", error);
             toast({ title: "Erreur lors de la création", description: error.message, variant: "destructive" });
           }
+          if (data) {
+            evt._workshopId = data.id;
+            keptWsIds.add(data.id);
+          }
         }
+      }
+    }
+
+    // Delete workshop rows that were removed from the editor
+    for (const oldId of allExistingWsIds) {
+      if (!keptWsIds.has(oldId)) {
+        await supabase.from("workshops").delete().eq("id", oldId);
       }
     }
 
