@@ -70,8 +70,13 @@ export default function Reserver() {
 
   const activityType = searchParams.get("type") as "course" | "workshop" | null;
   const activityId = searchParams.get("id");
+  const activityName = searchParams.get("name");
   const preselectedDate = searchParams.get("date");
   const preselectedScheduleId = searchParams.get("scheduleId");
+
+  // Date selection for standalone workshops loaded by name
+  const [availableDates, setAvailableDates] = useState<{ id: string; date: string; time: string; end_time: string; spots_left: number; price: number }[]>([]);
+  const [datePickerMode, setDatePickerMode] = useState(false);
 
   const [activity, setActivity] = useState<any>(null);
   const [schedules, setSchedules] = useState<CourseScheduleRow[]>([]);
@@ -113,17 +118,19 @@ export default function Reserver() {
   }, []);
 
   useEffect(() => {
-    if (!activityType || !activityId) { setLoading(false); return; }
+    if (!activityType) { setLoading(false); return; }
+    // Need either id or name
+    if (!activityId && !activityName) { setLoading(false); return; }
+
     const load = async () => {
       setLoading(true);
       if (activityType === "course") {
         const [courseRes, schedRes] = await Promise.all([
-          supabase.from("courses").select("*").eq("id", activityId).single(),
-          supabase.from("course_schedules").select("*").eq("course_id", activityId),
+          supabase.from("courses").select("*").eq("id", activityId!).single(),
+          supabase.from("course_schedules").select("*").eq("course_id", activityId!),
         ]);
         if (courseRes.data) {
           setActivity({ ...courseRes.data, type: "course" });
-          // Load instructor data
           if (courseRes.data.instructor_id) {
             const { data: instrData } = await supabase.from("instructors").select("name, photo_url").eq("id", courseRes.data.instructor_id).single();
             if (instrData) setInstructorData(instrData as any);
@@ -137,22 +144,53 @@ export default function Reserver() {
             setSelectedSlot(preselectedScheduleId);
           }
         }
-      } else {
+      } else if (activityType === "workshop" && activityName && !activityId) {
+        // ─── Load by NAME: show date picker ───
+        const today = new Date().toISOString().split("T")[0];
+        const { data: allWs } = await supabase
+          .from("workshops").select("*")
+          .eq("name", activityName)
+          .gte("date", today)
+          .order("date");
+        if (allWs && allWs.length > 0) {
+          const ws0 = allWs[0] as any;
+          setActivity({ ...ws0, type: "workshop" });
+          if (ws0.instructor_id) {
+            const { data: instrData } = await supabase.from("instructors").select("name, photo_url").eq("id", ws0.instructor_id).single();
+            if (instrData) setInstructorData(instrData as any);
+          }
+          // Dedupe by date
+          const byDate = new Map<string, any>();
+          for (const w of allWs as any[]) {
+            if (w.date && !byDate.has(w.date)) byDate.set(w.date, w);
+          }
+          const uniqueDates = [...byDate.values()].sort((a: any, b: any) => a.date.localeCompare(b.date));
+          if (uniqueDates.length === 1) {
+            // Only one date: auto-select
+            setSelectedDate(new Date(uniqueDates[0].date + "T00:00:00"));
+            setSelectedSlot(uniqueDates[0].id);
+          } else {
+            // Multiple dates: show picker
+            setAvailableDates(uniqueDates.map((w: any) => ({
+              id: w.id, date: w.date, time: w.time, end_time: w.end_time,
+              spots_left: w.spots_left, price: w.price,
+            })));
+            setDatePickerMode(true);
+          }
+        }
+      } else if (activityId) {
         const res = await supabase.from("workshops").select("*").eq("id", activityId).single();
         if (res.data) {
           const wsData = res.data as any;
           setActivity({ ...wsData, type: "workshop" });
           
-          // If this workshop has a linked_group, fetch all siblings
           if (wsData.linked_group) {
             const { data: linkedWs } = await supabase.from("workshops").select("*")
               .eq("linked_group", wsData.linked_group).order("date");
             if (linkedWs && linkedWs.length > 1) {
               const byDate = new Map<string, any>();
               for (const w of linkedWs as any[]) {
-                if (w.date && !byDate.has(w.date)) {
-                  byDate.set(w.date, w);
-                }
+                if (w.date && !byDate.has(w.date)) byDate.set(w.date, w);
               }
               const dedupedLinkedWs = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
               const linkedDates = dedupedLinkedWs.map(w => w.date);
@@ -181,7 +219,7 @@ export default function Reserver() {
       setLoading(false);
     };
     load();
-  }, [activityType, activityId, preselectedDate, preselectedScheduleId]);
+  }, [activityType, activityId, activityName, preselectedDate, preselectedScheduleId]);
 
   // Compute slots
   const slots: AvailableSlot[] = useMemo(() => {
@@ -238,8 +276,17 @@ export default function Reserver() {
     }
   }, [bookingStep, currentProfile]);
 
+  // Handle date selection from picker
+  const handleDateSelect = (ws: typeof availableDates[0]) => {
+    setSelectedDate(new Date(ws.date + "T00:00:00"));
+    setSelectedSlot(ws.id);
+    // Update activity with the selected workshop's data
+    setActivity((prev: any) => ({ ...prev, id: ws.id, date: ws.date, time: ws.time, end_time: ws.end_time, spots_left: ws.spots_left, price: ws.price }));
+    setDatePickerMode(false);
+  };
+
   // ─── Redirect if no params ───
-  if (!loading && (!activityType || !activityId || !activity)) {
+  if (!loading && (!activityType || !activity)) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -247,7 +294,7 @@ export default function Reserver() {
           <div className="text-center max-w-md">
             <h1 className="text-2xl font-display font-bold text-primary-dark mb-3">Réserver une activité</h1>
             <p className="text-muted-foreground mb-6">Choisissez une activité depuis notre planning pour commencer.</p>
-            <Link to="/?view=planning"><Button>Voir le planning</Button></Link>
+            <Link to="/"><Button>Voir les activités</Button></Link>
           </div>
         </main>
         <Footer />
@@ -479,8 +526,41 @@ export default function Reserver() {
             )}
           </div>
 
+          {/* ═══ DATE PICKER for standalone workshops ═══ */}
+          {datePickerMode && availableDates.length > 0 && (
+            <div className="space-y-4 mb-6">
+              <h2 className="text-lg font-display font-semibold text-primary-dark">Choisissez votre date</h2>
+              <div className="grid gap-2">
+                {availableDates.map(ws => {
+                  const d = new Date(ws.date + "T12:00:00");
+                  const label = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+                  const time = ws.time?.slice(0, 5).replace(":", "h");
+                  const endTime = ws.end_time?.slice(0, 5).replace(":", "h");
+                  return (
+                    <button
+                      key={ws.id}
+                      onClick={() => handleDateSelect(ws)}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:border-primary hover:bg-primary/5 transition-colors text-left"
+                    >
+                      <div>
+                        <span className="font-medium text-sm capitalize">{label}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{time}–{endTime}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs">
+                        {ws.price > 0 && <span className="font-semibold">{ws.price}€</span>}
+                        <span className={ws.spots_left <= 2 ? "text-destructive font-medium" : "text-muted-foreground"}>
+                          {ws.spots_left} place{ws.spots_left > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ═══ STEP: SUMMARY ═══ */}
-          {bookingStep === "summary" && !currentProfile && (
+          {!datePickerMode && bookingStep === "summary" && !currentProfile && (
             <div className="space-y-6">
               {selectedSlotData && selectedDate && (
                 <BookingSummary

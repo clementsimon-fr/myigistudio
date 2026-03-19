@@ -296,8 +296,16 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   };
 
   const handleBookGroup = (group: WorkshopGroup) => {
-    const ws = group.workshops[0];
-    onSwitchToPlanning({ type: "workshop", id: ws.id, date: ws.date });
+    if (group.isLinked) {
+      const ws = group.workshops[0];
+      onSwitchToPlanning({ type: "workshop", id: ws.id, date: ws.date });
+    } else {
+      const ws = group.workshops[0];
+      const urlParams = new URLSearchParams();
+      urlParams.set("type", "workshop");
+      urlParams.set("name", ws.name);
+      window.location.href = `/reserver?${urlParams.toString()}`;
+    }
   };
 
   const openFrequency = (category: string, activityName?: string) => {
@@ -320,13 +328,11 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
 
   const descriptionCourseDays = descriptionCourse ? (schedulesMap[descriptionCourse.id] || new Set<string>()) : new Set<string>();
 
-  const showPlanningType = filter === "all" || filter === "yoga";
-
   return (
     <>
-      {/* ─── Rythme de la semaine (cours récurrents) ─── */}
-      {showPlanningType && courses.length > 0 && (
-        <PlanningTypeView courses={courses} schedules={schedules} filter={filter === "all" ? undefined : filter} compact />
+      {/* ─── Rythme de la semaine (toutes catégories) ─── */}
+      {(courses.length > 0 || workshops.length > 0) && (
+        <PlanningTypeView courses={courses} schedules={schedules} workshops={workshops} filter={filter === "all" ? undefined : filter} compact />
       )}
 
       {/* ─── Yoga & Pilates ─── */}
