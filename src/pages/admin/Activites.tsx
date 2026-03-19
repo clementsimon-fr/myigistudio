@@ -487,19 +487,27 @@ function ActivityEditor({
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex gap-1.5">
               <Button type="button" size="sm" variant={eventsView === "list" ? "default" : "outline"} className="gap-1 text-xs" onClick={() => setEventsView("list")}>
-                <FileText className="h-3.5 w-3.5" /> Liste
+                <FileText className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Liste</span>
               </Button>
               <Button type="button" size="sm" variant={eventsView === "calendar" ? "default" : "outline"} className="gap-1 text-xs" onClick={() => setEventsView("calendar")}>
-                <CalendarDays className="h-3.5 w-3.5" /> Calendrier
+                <CalendarDays className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Calendrier</span>
               </Button>
-            </div>
-            <div className="flex gap-1.5">
-              <Button type="button" size="sm" variant="outline" className="gap-1 h-8 text-xs" onClick={() => addEvent("recurring")}>
-                <Repeat className="h-3.5 w-3.5" /> + Récurrent
-              </Button>
-              <Button type="button" size="sm" variant="outline" className="gap-1 h-8 text-xs" onClick={() => addEvent("ponctuel")}>
-                <CalendarIcon className="h-3.5 w-3.5" /> + Ponctuel
-              </Button>
+              {/* Add button: "+" on mobile, "Ajouter" on desktop */}
+              <div className="relative">
+                <Button type="button" size="sm" variant="outline" className="gap-1 h-8 text-xs" onClick={() => setAddMenuOpen(!addMenuOpen)}>
+                  <Plus className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Ajouter</span>
+                </Button>
+                {addMenuOpen && (
+                  <div className="absolute top-full left-0 mt-1 bg-card border rounded-lg shadow-lg z-20 py-1 min-w-[160px]">
+                    <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted w-full text-left" onClick={() => addEvent("recurring")}>
+                      <Repeat className="h-3.5 w-3.5" /> Récurrent
+                    </button>
+                    <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted w-full text-left" onClick={() => addEvent("ponctuel")}>
+                      <CalendarIcon className="h-3.5 w-3.5" /> Ponctuel
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
