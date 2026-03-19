@@ -1302,14 +1302,14 @@ function ActivityCard({ activity: a, onEdit }: { activity: UnifiedActivity; onEd
               <span>· <Users className="h-3 w-3 inline" /> {s.spots - s.spots_left}/{s.spots}</span>
             </div>
           ))}
-          {a.source === "workshop" && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {a.source === "workshop" && a.workshopEvents?.map((we, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
               <CalendarIcon className="h-3 w-3 shrink-0" />
-              <span>{a.date ? new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "—"} {a.time}-{a.end_time}</span>
-              {a.price !== undefined && a.price > 0 && <span className="font-medium text-foreground">{a.price}€</span>}
-              <span>· <Users className="h-3 w-3 inline" /> {(a.spots || 0) - (a.spots_left || 0)}/{a.spots}</span>
+              <span>{we.date ? new Date(we.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "—"} {we.time}-{we.end_time}</span>
+              {we.price > 0 && <span className="font-medium text-foreground">{we.price}€</span>}
+              <span>· <Users className="h-3 w-3 inline" /> {we.spots - we.spots_left}/{we.spots}</span>
             </div>
-          )}
+          ))}
         </div>
       </div>
     </div>
