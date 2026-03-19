@@ -297,7 +297,7 @@ function ActivityEditor({
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       setAutoSaveStatus("saving");
-      onSave();
+      onSave(false);
       setTimeout(() => setAutoSaveStatus("saved"), 500);
     }, 2000);
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
