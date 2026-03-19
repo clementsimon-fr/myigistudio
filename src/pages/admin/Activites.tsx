@@ -507,12 +507,15 @@ function ActivityEditor({
                   <Plus className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Ajouter</span>
                 </Button>
                 {addMenuOpen && (
-                  <div className="absolute top-full left-0 mt-1 bg-card border rounded-lg shadow-lg z-20 py-1 min-w-[160px]">
+                  <div className="absolute top-full left-0 mt-1 bg-card border rounded-lg shadow-lg z-20 py-1 min-w-[180px]">
                     <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted w-full text-left" onClick={() => addEvent("recurring")}>
                       <Repeat className="h-3.5 w-3.5" /> Récurrent
                     </button>
                     <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted w-full text-left" onClick={() => addEvent("ponctuel")}>
                       <CalendarIcon className="h-3.5 w-3.5" /> Ponctuel
+                    </button>
+                    <button className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted w-full text-left" onClick={() => addEvent("multi-sessions")}>
+                      <CalendarRange className="h-3.5 w-3.5" /> Multi-sessions
                     </button>
                   </div>
                 )}
