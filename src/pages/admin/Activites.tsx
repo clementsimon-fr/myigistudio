@@ -955,6 +955,7 @@ export default function AdminActivites() {
           id: w.id, date: w.date, time: w.time, end_time: w.end_time, duration: w.duration,
           price: w.price, spots: w.spots, spots_left: w.spots_left,
           inclusions: w.inclusions || "", card_yoga_count: w.card_yoga_count || 0,
+          linked_group: w.linked_group || null,
         }));
         unified.push({
           id: first.id, name: first.name, description: first.description || "", long_description: first.long_description || "",
