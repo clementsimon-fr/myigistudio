@@ -118,17 +118,19 @@ export default function Reserver() {
   }, []);
 
   useEffect(() => {
-    if (!activityType || !activityId) { setLoading(false); return; }
+    if (!activityType) { setLoading(false); return; }
+    // Need either id or name
+    if (!activityId && !activityName) { setLoading(false); return; }
+
     const load = async () => {
       setLoading(true);
       if (activityType === "course") {
         const [courseRes, schedRes] = await Promise.all([
-          supabase.from("courses").select("*").eq("id", activityId).single(),
-          supabase.from("course_schedules").select("*").eq("course_id", activityId),
+          supabase.from("courses").select("*").eq("id", activityId!).single(),
+          supabase.from("course_schedules").select("*").eq("course_id", activityId!),
         ]);
         if (courseRes.data) {
           setActivity({ ...courseRes.data, type: "course" });
-          // Load instructor data
           if (courseRes.data.instructor_id) {
             const { data: instrData } = await supabase.from("instructors").select("name, photo_url").eq("id", courseRes.data.instructor_id).single();
             if (instrData) setInstructorData(instrData as any);
@@ -142,22 +144,53 @@ export default function Reserver() {
             setSelectedSlot(preselectedScheduleId);
           }
         }
-      } else {
+      } else if (activityType === "workshop" && activityName && !activityId) {
+        // ─── Load by NAME: show date picker ───
+        const today = new Date().toISOString().split("T")[0];
+        const { data: allWs } = await supabase
+          .from("workshops").select("*")
+          .eq("name", activityName)
+          .gte("date", today)
+          .order("date");
+        if (allWs && allWs.length > 0) {
+          const ws0 = allWs[0] as any;
+          setActivity({ ...ws0, type: "workshop" });
+          if (ws0.instructor_id) {
+            const { data: instrData } = await supabase.from("instructors").select("name, photo_url").eq("id", ws0.instructor_id).single();
+            if (instrData) setInstructorData(instrData as any);
+          }
+          // Dedupe by date
+          const byDate = new Map<string, any>();
+          for (const w of allWs as any[]) {
+            if (w.date && !byDate.has(w.date)) byDate.set(w.date, w);
+          }
+          const uniqueDates = [...byDate.values()].sort((a: any, b: any) => a.date.localeCompare(b.date));
+          if (uniqueDates.length === 1) {
+            // Only one date: auto-select
+            setSelectedDate(new Date(uniqueDates[0].date + "T00:00:00"));
+            setSelectedSlot(uniqueDates[0].id);
+          } else {
+            // Multiple dates: show picker
+            setAvailableDates(uniqueDates.map((w: any) => ({
+              id: w.id, date: w.date, time: w.time, end_time: w.end_time,
+              spots_left: w.spots_left, price: w.price,
+            })));
+            setDatePickerMode(true);
+          }
+        }
+      } else if (activityId) {
         const res = await supabase.from("workshops").select("*").eq("id", activityId).single();
         if (res.data) {
           const wsData = res.data as any;
           setActivity({ ...wsData, type: "workshop" });
           
-          // If this workshop has a linked_group, fetch all siblings
           if (wsData.linked_group) {
             const { data: linkedWs } = await supabase.from("workshops").select("*")
               .eq("linked_group", wsData.linked_group).order("date");
             if (linkedWs && linkedWs.length > 1) {
               const byDate = new Map<string, any>();
               for (const w of linkedWs as any[]) {
-                if (w.date && !byDate.has(w.date)) {
-                  byDate.set(w.date, w);
-                }
+                if (w.date && !byDate.has(w.date)) byDate.set(w.date, w);
               }
               const dedupedLinkedWs = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
               const linkedDates = dedupedLinkedWs.map(w => w.date);
@@ -186,7 +219,7 @@ export default function Reserver() {
       setLoading(false);
     };
     load();
-  }, [activityType, activityId, preselectedDate, preselectedScheduleId]);
+  }, [activityType, activityId, activityName, preselectedDate, preselectedScheduleId]);
 
   // Compute slots
   const slots: AvailableSlot[] = useMemo(() => {
