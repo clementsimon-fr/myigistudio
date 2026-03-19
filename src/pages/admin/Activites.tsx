@@ -1084,8 +1084,10 @@ export default function AdminActivites() {
       }
     }
 
-    toast({ title: editingActivity ? "Activité modifiée" : "Activité créée ✓" });
-    setEditorOpen(false);
+    if (closeAfter) {
+      toast({ title: editingActivity ? "Activité modifiée" : "Activité créée ✓" });
+      setEditorOpen(false);
+    }
     fetchData();
   };
 
