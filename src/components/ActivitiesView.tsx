@@ -6,6 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import PricingSection from "@/components/home/PricingSection";
+import PlanningTypeView from "@/components/PlanningTypeView";
 import TeamSection from "@/components/home/TeamSection";
 import ContactElodieButton from "@/components/ContactElodieButton";
 import FrequencyDialog from "@/components/FrequencyDialog";
@@ -322,8 +323,15 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
 
   const descriptionCourseDays = descriptionCourse ? (schedulesMap[descriptionCourse.id] || new Set<string>()) : new Set<string>();
 
+  const showPlanningType = filter === "all" || filter === "yoga";
+
   return (
     <>
+      {/* ─── Rythme de la semaine (cours récurrents) ─── */}
+      {showPlanningType && courses.length > 0 && (
+        <PlanningTypeView courses={courses} schedules={schedules} filter={filter === "all" ? undefined : filter} compact />
+      )}
+
       {/* ─── Yoga & Pilates ─── */}
       {showYoga && coursesWithSchedules.length > 0 && (
         <section className="py-12 md:py-16">

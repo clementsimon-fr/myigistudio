@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, ArrowLeft } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -40,11 +40,9 @@ interface ActivityFilterBarProps {
   subFilterOptions?: string[];
   subFilter?: string;
   onSubFilterChange?: (value: string) => void;
-  showBackButton?: boolean;
-  onBack?: () => void;
 }
 
-export default function ActivityFilterBar({ filter, onFilterChange, subFilterOptions, subFilter, onSubFilterChange, showBackButton, onBack }: ActivityFilterBarProps) {
+export default function ActivityFilterBar({ filter, onFilterChange, subFilterOptions, subFilter, onSubFilterChange }: ActivityFilterBarProps) {
   const navigate = useNavigate();
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const catFilter = CATEGORY_FILTERS.find(f => f.value === filter);
@@ -52,43 +50,34 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
 
   return (
     <div className="sticky top-16 z-30">
-      {/* Category pills */}
       <div className="bg-emerald-50/60 backdrop-blur border-b">
         <div className="container pb-1.5 pt-1.5">
-          <div className="flex items-center gap-2">
-            {showBackButton && onBack && (
-              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onBack}>
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            )}
-            <div className="flex items-center justify-center gap-1 flex-wrap flex-1">
-              {CATEGORY_FILTERS.map(f => {
-                const isActive = filter === f.value;
-                return (
-                  <Button
-                    key={f.value}
-                    variant={isActive ? null as any : "outline"}
-                    size="sm"
-                    onClick={() => onFilterChange(f.value)}
-                    className={`rounded-full gap-1 h-7 text-xs px-2.5 ${
-                      isActive
-                        ? f.activeBg
-                          ? `${f.activeBg} text-white border-transparent hover:text-white hover:opacity-90`
-                          : "bg-primary-dark text-white border-transparent hover:text-white hover:bg-primary-dark/90"
-                        : ""
-                    }`}
-                  >
-                    {f.dot && <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : f.dot}`} />}
-                    {f.label}
-                  </Button>
-                );
-              })}
-            </div>
+          <div className="flex items-center justify-center gap-1 flex-wrap">
+            {CATEGORY_FILTERS.map(f => {
+              const isActive = filter === f.value;
+              return (
+                <Button
+                  key={f.value}
+                  variant={isActive ? null as any : "outline"}
+                  size="sm"
+                  onClick={() => onFilterChange(f.value)}
+                  className={`rounded-full gap-1 h-7 text-xs px-2.5 ${
+                    isActive
+                      ? f.activeBg
+                        ? `${f.activeBg} text-white border-transparent hover:text-white hover:opacity-90`
+                        : "bg-primary-dark text-white border-transparent hover:text-white hover:bg-primary-dark/90"
+                      : ""
+                  }`}
+                >
+                  {f.dot && <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : f.dot}`} />}
+                  {f.label}
+                </Button>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Collapsible "Afficher plus de filtres" */}
       {subFilterOptions && subFilterOptions.length > 0 && onSubFilterChange && (
         <div className="bg-emerald-50/40 backdrop-blur border-b">
           <div className="container">
