@@ -369,20 +369,20 @@ function ActivityEditor({
       </div>
 
       {/* Section navigation */}
-      <div className="flex gap-1.5 border-b pb-0">
+      <div className="flex gap-1.5 border-b pb-0 overflow-x-auto">
         {EDITOR_SECTIONS.map(s => (
           <button
             key={s.key}
             onClick={() => setSection(s.key)}
             className={cn(
-              "flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors border-b-2 -mb-[2px]",
+              "flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-medium rounded-t-lg transition-colors border-b-2 -mb-[2px] whitespace-nowrap",
               section === s.key
                 ? "border-primary text-primary bg-primary/5"
                 : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
             )}
           >
             {s.icon}
-            {s.label}
+            <span className="hidden sm:inline">{s.label}</span>
           </button>
         ))}
       </div>
@@ -1104,8 +1104,9 @@ export default function AdminActivites() {
     if (closeAfter) {
       toast({ title: editingActivity ? "Activité modifiée" : "Activité créée ✓" });
       setEditorOpen(false);
+      fetchData();
     }
-    fetchData();
+    // Don't fetchData on auto-save to avoid resetting the editor state
   };
 
   const executeDelete = async () => {

@@ -271,7 +271,7 @@ export default function AdminReservations() {
 
           {/* Table */}
           <div className="rounded-xl border bg-card overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b bg-muted/30">
                   <th className="text-left p-3 font-medium text-muted-foreground">Client</th>
