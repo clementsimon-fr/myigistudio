@@ -887,18 +887,31 @@ export default function AdminActivites() {
         });
       }
     }
+    // Group workshops by name → one UnifiedActivity per group
     if (workshopsRes.data) {
+      const wsGrouped: Record<string, any[]> = {};
       for (const w of workshopsRes.data as any[]) {
-        const instrName = w.instructor_id && instrRes.data
-          ? (instrRes.data as any[]).find(i => i.id === w.instructor_id)?.name || "Élodie" : "Élodie";
-        unified.push({
-          id: w.id, name: w.name, description: w.description || "", long_description: w.long_description || "",
-          category: w.category, image: w.image || "", instructor: instrName, instructor_id: w.instructor_id,
-          reminder_template: w.reminder_template || "", modalities: w.modalities || "", source: "workshop",
-          date: w.date, time: w.time, end_time: w.end_time, duration: w.duration,
+        if (!wsGrouped[w.name]) wsGrouped[w.name] = [];
+        wsGrouped[w.name].push(w);
+      }
+      for (const [, group] of Object.entries(wsGrouped)) {
+        const first = group[0];
+        const instrName = first.instructor_id && instrRes.data
+          ? (instrRes.data as any[]).find(i => i.id === first.instructor_id)?.name || "Élodie" : "Élodie";
+        const workshopEvents: WorkshopEvent[] = group.map(w => ({
+          id: w.id, date: w.date, time: w.time, end_time: w.end_time, duration: w.duration,
           price: w.price, spots: w.spots, spots_left: w.spots_left,
-          intensity: w.intensity || "none", reminder_timing: w.reminder_timing || "1j",
           inclusions: w.inclusions || "", card_yoga_count: w.card_yoga_count || 0,
+        }));
+        unified.push({
+          id: first.id, name: first.name, description: first.description || "", long_description: first.long_description || "",
+          category: first.category, image: first.image || "", instructor: instrName, instructor_id: first.instructor_id,
+          reminder_template: first.reminder_template || "", modalities: first.modalities || "", source: "workshop",
+          date: first.date, time: first.time, end_time: first.end_time, duration: first.duration,
+          price: first.price, spots: first.spots, spots_left: first.spots_left,
+          intensity: first.intensity || "none", reminder_timing: first.reminder_timing || "1j",
+          inclusions: first.inclusions || "", card_yoga_count: first.card_yoga_count || 0,
+          workshopEvents,
         });
       }
     }
