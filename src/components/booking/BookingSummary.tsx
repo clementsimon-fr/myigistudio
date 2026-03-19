@@ -55,7 +55,17 @@ export default function BookingSummary({
         )}
         <div className="flex justify-between">
           <span className="text-muted-foreground">Date</span>
-          <span className="font-medium">{date.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}</span>
+          {linkedDates && linkedDates.length > 1 ? (
+            <div className="text-right">
+              {linkedDates.map(d => (
+                <div key={d} className="font-medium">
+                  {new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <span className="font-medium">{date.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}</span>
+          )}
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Horaire</span>
