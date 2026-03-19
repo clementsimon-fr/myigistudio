@@ -140,14 +140,27 @@ export default function Reserver() {
       } else {
         const res = await supabase.from("workshops").select("*").eq("id", activityId).single();
         if (res.data) {
-          setActivity({ ...res.data, type: "workshop" });
-          if (res.data.instructor_id) {
-            const { data: instrData } = await supabase.from("instructors").select("name, photo_url").eq("id", res.data.instructor_id).single();
+          const wsData = res.data as any;
+          setActivity({ ...wsData, type: "workshop" });
+          
+          // If this workshop has a linked_group, fetch all siblings
+          if (wsData.linked_group) {
+            const { data: linkedWs } = await supabase.from("workshops").select("*")
+              .eq("linked_group", wsData.linked_group).order("date");
+            if (linkedWs && linkedWs.length > 1) {
+              const linkedDates = (linkedWs as any[]).map(w => w.date).sort();
+              const linkedIds = (linkedWs as any[]).map(w => w.id);
+              setActivity((prev: any) => ({ ...prev, linkedDates, linkedWorkshopIds: linkedIds, linkedWorkshops: linkedWs }));
+            }
+          }
+          
+          if (wsData.instructor_id) {
+            const { data: instrData } = await supabase.from("instructors").select("name, photo_url").eq("id", wsData.instructor_id).single();
             if (instrData) setInstructorData(instrData as any);
           }
           if (preselectedDate) {
             setSelectedDate(new Date(preselectedDate + "T00:00:00"));
-            setSelectedSlot(res.data.id);
+            setSelectedSlot(wsData.id);
           }
         }
       }
