@@ -985,7 +985,7 @@ export default function AdminActivites() {
         const firstEvt = validPonctuelEvents[0];
         const duration = calcDuration(firstEvt.time, firstEvt.end_time);
         const { error: updateErr } = await supabase.from("workshops").update({
-          ...courseData,
+          ...workshopData,
           date: firstEvt.date, time: firstEvt.time, end_time: firstEvt.end_time,
           duration, spots: firstEvt.spots, spots_left: firstEvt.spots, price: firstEvt.price,
           frequency: "ponctuel",
