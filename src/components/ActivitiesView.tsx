@@ -263,77 +263,30 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const [frequencyOpen, setFrequencyOpen] = useState(false);
   const [frequencyCategory, setFrequencyCategory] = useState<string>("yoga");
   const [frequencyActivity, setFrequencyActivity] = useState<string | undefined>(undefined);
+  const planningRef = useRef<PlanningTypeViewHandle>(null);
 
-  const schedulesMap = useMemo(() => {
-    const map: Record<string, Set<string>> = {};
-    for (const s of schedules) {
-      if (!map[s.course_id]) map[s.course_id] = new Set();
-      map[s.course_id].add(s.day);
+  const openProgramme = useCallback(() => {
+    planningRef.current?.openAndScroll();
+  }, []);
+
+  const handleProgrammeEventClick = useCallback((params: { type: "course" | "workshop"; name: string; id?: string; date?: string }) => {
+    if (params.type === "course" && params.id) {
+      onSwitchToPlanning({ type: "course", id: params.id });
+    } else if (params.type === "workshop") {
+      if (params.id) {
+        // For workshops with a specific date, go directly
+        const urlParams = new URLSearchParams();
+        urlParams.set("type", "workshop");
+        if (params.date) {
+          urlParams.set("id", params.id);
+          urlParams.set("date", params.date);
+        } else {
+          urlParams.set("name", params.name);
+        }
+        window.location.href = `/reserver?${urlParams.toString()}`;
+      }
     }
-    return map;
-  }, [schedules]);
-
-  const coursesWithSchedules = useMemo(() => {
-    return courses.filter(c => c.category === "yoga").map(c => ({
-      ...c,
-      schedules: schedules.filter(s => s.course_id === c.id),
-      activeDays: schedulesMap[c.id] || new Set<string>(),
-    }));
-  }, [courses, schedules, schedulesMap]);
-
-  const potteryGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "poterie")), [workshops]);
-  const wellbeingGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "bien-etre")), [workshops]);
-
-  const showYoga = filter === "all" || filter === "yoga";
-  const showPoterie = filter === "all" || filter === "poterie";
-  const showAteliers = filter === "all" || filter === "bien-etre";
-
-  const yogaStyle = getCategoryStyle("yoga");
-  const potteryStyle = getCategoryStyle("poterie");
-
-  const handleBookCourse = (course: Course) => {
-    onSwitchToPlanning({ type: "course", id: course.id });
-  };
-
-  const handleBookGroup = (group: WorkshopGroup) => {
-    if (group.isLinked) {
-      const ws = group.workshops[0];
-      onSwitchToPlanning({ type: "workshop", id: ws.id, date: ws.date });
-    } else {
-      const ws = group.workshops[0];
-      const urlParams = new URLSearchParams();
-      urlParams.set("type", "workshop");
-      urlParams.set("name", ws.name);
-      window.location.href = `/reserver?${urlParams.toString()}`;
-    }
-  };
-
-  const openFrequency = (category: string, activityName?: string) => {
-    setFrequencyCategory(category);
-    setFrequencyActivity(activityName);
-    setFrequencyOpen(true);
-  };
-
-  const handleFrequencyTimeClick = (params: { activity: string; category: string; date?: string }) => {
-    setFrequencyOpen(false);
-    // Find matching course or workshop to get the right type/id
-    const course = courses.find(c => c.name === params.activity);
-    if (course) {
-      onSwitchToPlanning({ type: "course", id: course.id, date: params.date });
-    } else {
-      const ws = workshops.find(w => w.name === params.activity);
-      if (ws) onSwitchToPlanning({ type: "workshop", id: ws.id, date: params.date });
-    }
-  };
-
-  const descriptionCourseDays = descriptionCourse ? (schedulesMap[descriptionCourse.id] || new Set<string>()) : new Set<string>();
-
-  return (
-    <>
-      {/* ─── Rythme de la semaine (toutes catégories) ─── */}
-      {(courses.length > 0 || workshops.length > 0) && (
-        <PlanningTypeView courses={courses} schedules={schedules} workshops={workshops} filter={filter === "all" ? undefined : filter} compact />
-      )}
+  }, [onSwitchToPlanning]);
 
       {/* ─── Yoga & Pilates ─── */}
       {showYoga && coursesWithSchedules.length > 0 && (
