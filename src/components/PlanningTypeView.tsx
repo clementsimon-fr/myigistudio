@@ -130,6 +130,10 @@ function WeekProgram({ courses, schedules, workshops }: { courses: Course[]; sch
     return [...map.entries()];
   }, [events]);
 
+  if (grouped.length === 0) {
+    return <p className="text-xs text-muted-foreground text-center py-4">Aucun événement cette semaine.</p>;
+  }
+
   return (
     <div className="space-y-1">
       {grouped.map(([dateStr, dayEvents]) => (
