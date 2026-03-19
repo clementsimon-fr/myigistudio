@@ -390,7 +390,7 @@ function ActivityEditor({
                 <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Vinyasa Flow" />
               </div>
               <div>
-                <Label>Description courte</Label>
+                <Label className="text-emerald-700">Description courte</Label>
                 <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} placeholder="Résumé affiché sur la carte..." />
               </div>
               <div>
