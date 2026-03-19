@@ -1241,43 +1241,74 @@ export default function AdminActivites() {
 
     // Save multi-sessions events (with linked_group)
     for (const evt of multiSessionEvents) {
-      const validDates = evt.linkedDates.filter(Boolean);
+      const validDates = [...new Set(evt.linkedDates.map(d => d?.trim()).filter(Boolean) as string[])].sort();
       if (validDates.length === 0) continue;
-      
+
       const linkedGroupId = evt._linkedGroup || crypto.randomUUID();
       evt._linkedGroup = linkedGroupId;
+      evt.linkedDates = validDates;
       const duration = calcDuration(evt.time, evt.end_time);
 
-      // Delete old workshops in this linked group (if editing)
-      if (evt._linkedGroup && editingActivity?.workshopEvents) {
-        const oldGroupWs = editingActivity.workshopEvents.filter(we => we.linked_group === evt._linkedGroup);
-        for (const old of oldGroupWs) {
-          keptWsIds.add(old.id); // Mark as handled
-        }
-        // Delete all old linked workshops, we'll re-create them
-        for (const old of oldGroupWs) {
-          await supabase.from("workshops").delete().eq("id", old.id);
-          allExistingWsIds.delete(old.id);
+      const previousLinkedWorkshopIds = evt._linkedWorkshopIds || [];
+      const nextLinkedWorkshopIds: string[] = [];
+
+      for (let i = 0; i < validDates.length; i++) {
+        const dateStr = validDates[i];
+        const existingWorkshopId = previousLinkedWorkshopIds[i];
+        const wsPayload = {
+          ...workshopData,
+          date: dateStr,
+          time: evt.time,
+          end_time: evt.end_time,
+          duration,
+          spots: evt.spots,
+          spots_left: evt.spots,
+          price: evt.price,
+          frequency: "multi-sessions",
+          inclusions: evt.inclusions,
+          card_yoga_count: evt.card_yoga_count,
+          linked_group: linkedGroupId,
+        };
+
+        if (existingWorkshopId) {
+          const { error } = await supabase.from("workshops").update(wsPayload as any).eq("id", existingWorkshopId);
+          if (error) {
+            console.error("Multi-session workshop update error:", error);
+            toast({ title: "Erreur lors de la mise à jour", description: error.message, variant: "destructive" });
+          }
+          nextLinkedWorkshopIds.push(existingWorkshopId);
+          keptWsIds.add(existingWorkshopId);
+          allExistingWsIds.delete(existingWorkshopId);
+        } else {
+          const { data, error } = await supabase.from("workshops").insert(wsPayload as any).select("id").single();
+          if (error) {
+            console.error("Multi-session workshop insert error:", error);
+            toast({ title: "Erreur lors de la création", description: error.message, variant: "destructive" });
+          }
+          if (data?.id) {
+            nextLinkedWorkshopIds.push(data.id);
+            keptWsIds.add(data.id);
+          }
         }
       }
 
-      // Insert all dates with the same linked_group
-      for (const dateStr of validDates) {
-        const wsPayload = {
-          ...workshopData,
-          date: dateStr, time: evt.time, end_time: evt.end_time,
-          duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
-          frequency: "multi-sessions",
-          inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
-          linked_group: linkedGroupId,
-        };
-        const { data, error } = await supabase.from("workshops").insert(wsPayload as any).select("id").single();
-        if (error) {
-          console.error("Multi-session workshop insert error:", error);
-          toast({ title: "Erreur lors de la création", description: error.message, variant: "destructive" });
-        }
-        if (data) keptWsIds.add(data.id);
+      for (const staleId of previousLinkedWorkshopIds.slice(validDates.length)) {
+        await supabase.from("workshops").delete().eq("id", staleId);
+        allExistingWsIds.delete(staleId);
       }
+
+      const { data: groupRows } = await supabase.from("workshops").select("id").eq("linked_group", linkedGroupId);
+      if (groupRows) {
+        for (const row of groupRows as { id: string }[]) {
+          if (!nextLinkedWorkshopIds.includes(row.id)) {
+            await supabase.from("workshops").delete().eq("id", row.id);
+            allExistingWsIds.delete(row.id);
+          }
+        }
+      }
+
+      evt._linkedWorkshopIds = nextLinkedWorkshopIds;
+      evt._workshopId = nextLinkedWorkshopIds[0];
     }
 
     // Delete workshop rows that were removed from the editor
