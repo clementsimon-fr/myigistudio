@@ -456,32 +456,56 @@ export default function AdminActivites() {
     }
 
     // ── Handle ponctuel events → workshops table ──
-    if (allPonctuelEvents.length > 0) {
-      if (editingActivity?.source === "workshop" && allPonctuelEvents.length === 1) {
-        // UPDATE existing workshop
-        const evt = allPonctuelEvents[0];
-        if (!evt.date) { toast({ title: "Date requise pour événement ponctuel", variant: "destructive" }); return; }
-        const duration = calcDuration(evt.time, evt.end_time);
-        await supabase.from("workshops").update({
+    // Filter out events without dates
+    const validPonctuelEvents = allPonctuelEvents.filter(e => !!e.date);
+    if (validPonctuelEvents.length > 0) {
+      if (editingActivity?.source === "workshop") {
+        // UPDATE the first event on the existing workshop row
+        const firstEvt = validPonctuelEvents[0];
+        const duration = calcDuration(firstEvt.time, firstEvt.end_time);
+        const { error: updateErr } = await supabase.from("workshops").update({
           ...courseData,
-          date: evt.date, time: evt.time, end_time: evt.end_time,
-          duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
-          inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
+          date: firstEvt.date, time: firstEvt.time, end_time: firstEvt.end_time,
+          duration, spots: firstEvt.spots, spots_left: firstEvt.spots, price: firstEvt.price,
+          frequency: "ponctuel",
+          inclusions: firstEvt.inclusions, card_yoga_count: firstEvt.card_yoga_count,
         } as any).eq("id", editingActivity.id);
-      } else {
-        // If editing a workshop but now have multiple ponctuel events, delete old and create new
-        if (editingActivity?.source === "workshop") {
-          await supabase.from("workshops").delete().eq("id", editingActivity.id);
+        if (updateErr) {
+          console.error("Workshop update error:", updateErr);
+          toast({ title: "Erreur lors de la mise à jour", description: updateErr.message, variant: "destructive" });
+          return;
         }
-        for (const evt of allPonctuelEvents) {
-          if (!evt.date) continue;
+        // Insert remaining events as new workshops
+        for (let i = 1; i < validPonctuelEvents.length; i++) {
+          const evt = validPonctuelEvents[i];
+          const dur = calcDuration(evt.time, evt.end_time);
+          const { error: insertErr } = await supabase.from("workshops").insert({
+            ...courseData,
+            date: evt.date, time: evt.time, end_time: evt.end_time,
+            duration: dur, spots: evt.spots, spots_left: evt.spots, price: evt.price,
+            frequency: "ponctuel",
+            inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
+          } as any);
+          if (insertErr) {
+            console.error("Workshop insert error:", insertErr);
+            toast({ title: "Erreur lors de l'insertion", description: insertErr.message, variant: "destructive" });
+          }
+        }
+      } else {
+        // New activity — insert all as new workshops
+        for (const evt of validPonctuelEvents) {
           const duration = calcDuration(evt.time, evt.end_time);
-          await supabase.from("workshops").insert({
+          const { error: insertErr } = await supabase.from("workshops").insert({
             ...courseData,
             date: evt.date, time: evt.time, end_time: evt.end_time,
             duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
+            frequency: "ponctuel",
             inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
           } as any);
+          if (insertErr) {
+            console.error("Workshop insert error:", insertErr);
+            toast({ title: "Erreur lors de la création", description: insertErr.message, variant: "destructive" });
+          }
         }
       }
     } else if (editingActivity?.source === "workshop" && recurringEvents.length > 0) {
