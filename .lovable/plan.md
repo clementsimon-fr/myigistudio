@@ -1,56 +1,69 @@
 
 
-# Plan : Simplifier les vues planning visiteur
+# Plan : Choix de date dans le tunnel + Planning par catégorie
 
-## Diagnostic
+## Problème 1 : Pas de choix de date pour les ateliers
 
-Il y a actuellement 3 vues temporelles côté visiteur, ce qui crée de la confusion :
+Quand on clique "Réserver" sur un atelier poterie qui a plusieurs dates, le tunnel reçoit l'ID du premier workshop et sa date. Il charge ce workshop unique et verrouille la date. Le visiteur ne peut pas choisir une autre date.
 
-1. **Planning type** (grille L-M-M-J-V-S-D) — pertinent pour les cours récurrents, mais inutile pour les ateliers ponctuels (pas de date, frustrant)
-2. **Planning semaine** (vue calendrier avec dates réelles) — redondant avec le tunnel de réservation
-3. **Cartes d'activités** — la vue principale
+### Solution
 
-## Proposition de simplification
+**Fichier : `src/components/ActivitiesView.tsx`**
+- Modifier `handleBookGroup` pour les workshops standalone (non-linked) : au lieu d'envoyer `id` + `date` du premier workshop, envoyer uniquement le `name` en paramètre URL (ex: `/reserver?type=workshop&name=Initiation+poterie+au+tour`)
 
-### A. Planning type = uniquement les cours récurrents
+**Fichier : `src/pages/Reserver.tsx`**
+- Ajouter un paramètre URL `name` en plus de `id`
+- Quand `name` est fourni sans `date` : charger tous les workshops avec ce nom, extraire les dates futures
+- Afficher un **sélecteur de date** (liste de boutons-dates cliquables) avant le résumé de réservation
+- Une fois la date choisie, charger le workshop correspondant et poursuivre le flux normal
+- Pour les workshops linked (multi-sessions), conserver le comportement actuel (toutes les dates sont incluses automatiquement)
 
-Retirer les workshops (poterie, ateliers, stages) de la grille "Semaine type". Cette vue ne montre que les **cours hebdomadaires** (yoga, pilates). C'est exactement ce que l'admin veut montrer : "lundi = yoga, mardi = pilates, samedi = poterie récurrente".
+```text
+Flux corrigé :
+Carte "Initiation poterie" → Réserver
+  → Page /reserver?type=workshop&name=Initiation+poterie+au+tour
+  → "Choisissez votre date" : [Sam 4 avril] [Sam 11 avril] [Sam 18 avril]
+  → Clic sur une date → Résumé → Suite du tunnel
+```
 
-Les ateliers ponctuels et multi-sessions restent uniquement dans les cartes d'activités avec leurs vraies dates.
+## Problème 2 : Planning par catégorie dans "Rythme de la semaine"
 
-### B. Supprimer la vue Planning semaine (PlanningView) côté visiteur
+Le bloc collapsible "Rythme de la semaine" ne montre que le yoga. Le user veut un aperçu pour chaque catégorie, inspiré des plannings mensuels qu'Élodie partage sur Instagram.
 
-Cette vue calendrier hebdomadaire fait doublon avec les cartes + le tunnel de réservation. On la retire du parcours visiteur. Le bouton "Réserver" sur une carte mène directement au tunnel avec choix de date.
+### Solution
 
-### C. Conserver le Planning type comme section intégrée
+**Fichier : `src/components/PlanningTypeView.tsx`**
+- Ajouter les `workshops` en props
+- Créer 3 onglets/sections dans le bloc collapsible : **Yoga**, **Poterie**, **Ateliers**
+- **Yoga** : grille L-M-M-J-V-S-D avec horaires récurrents (identique à l'actuel)
+- **Poterie** : liste des prochains ateliers avec nom, date, horaire, places, prix — format liste verticale simple (pas la grille L-M-M, car les ateliers sont ponctuels)
+- **Ateliers & Stages** : même format liste que poterie
 
-Au lieu d'une vue séparée, le planning type devient une **section en haut** de la page Activités (au-dessus des cartes), visible quand le filtre est "Toutes" ou "Yoga". Compact, informatif, pas de navigation supplémentaire.
+```text
+┌─ Rythme de la semaine ──────────────────┐
+│ [Yoga] [Poterie] [Ateliers]             │
+│                                          │
+│ (onglet Poterie sélectionné)             │
+│ ┌──────────────────────────────────────┐ │
+│ │ Initiation poterie au tour           │ │
+│ │ Sam 4/04 · 14h-16h · 65€ · 3 places │ │
+│ │ Sam 11/04 · 14h-16h · 65€ · 2 places│ │
+│ ├──────────────────────────────────────┤ │
+│ │ Stage poterie tour & engobe          │ │
+│ │ Sam 14/03 & 21/03 · 14h-16h30 · 170€│ │
+│ └──────────────────────────────────────┘ │
+└──────────────────────────────────────────┘
+```
 
-### D. Admin : aucun changement
-
-Le planning type admin (`/admin/planning-type`) reste identique — l'admin garde sa vue macro complète.
-
-## Modifications techniques
+**Fichier : `src/components/ActivitiesView.tsx`**
+- Passer les `workshops` en props à `PlanningTypeView`
+- Afficher le bloc pour toutes les catégories (retirer la condition `showPlanningType` limitée à yoga)
 
 ### Fichiers impactés
 
-| Fichier | Action |
-|---------|--------|
-| `PlanningTypeView.tsx` | Filtrer pour n'afficher que les courses (retirer workshops) |
-| `ActivitiesView.tsx` | Intégrer PlanningTypeView en section au-dessus des cartes |
-| `Discover.tsx` | Supprimer le mode `planning`, retirer les refs à PlanningView |
-| `ActivityFilterBar.tsx` | Retirer le bouton retour planning (plus de vue planning) |
-| `ClientSidebar.tsx` | Changer le lien "Planning" → `/?view=planning-type` en simple `/` |
-| `PlanningView.tsx` | Conserver le fichier (utilisé potentiellement admin) mais ne plus l'appeler côté visiteur |
-
-### Résumé du flux simplifié
-
-```text
-Visiteur arrive sur /
-  → Grille "Semaine type" (cours récurrents uniquement)
-  → Cartes d'activités (cours + ateliers avec dates)
-  → Clic "Réserver" → Tunnel /reserver (avec choix de date)
-```
-
-Pas de navigation entre vues, pas de confusion entre grille sans dates et calendrier avec dates.
+| Fichier | Modification |
+|---------|-------------|
+| `ActivitiesView.tsx` | Modifier `handleBookGroup` pour standalone, passer workshops à PlanningTypeView |
+| `Reserver.tsx` | Ajouter chargement par `name`, sélecteur de dates |
+| `PlanningTypeView.tsx` | Ajouter onglets catégorie + vue liste pour poterie/ateliers |
 
