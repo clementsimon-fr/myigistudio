@@ -548,6 +548,7 @@ function ActivityEditor({
                   .map((evt, idx) => ({ evt, idx }))
                   .filter(({ evt }) => {
                     if (evt.type === "ponctuel" && evt.date === selectedCalDate) return true;
+                    if (evt.type === "multi-sessions" && evt.linkedDates.includes(selectedCalDate)) return true;
                     if (evt.type === "recurring" && evt.frequency === "personnalise" && evt.customDates.includes(selectedCalDate)) return true;
                     return false;
                   });
