@@ -160,17 +160,22 @@ function groupWorkshops(workshops: Workshop[]): WorkshopGroup[] {
     });
   }
 
-  // Add standalone workshops (dedupe by date/time)
-  const standaloneSeen = new Set<string>();
+  // Group standalone workshops by name → single card per activity
+  const byName: Record<string, Workshop[]> = {};
   for (const ws of standalone) {
-    const key = `${ws.name}:${ws.date}:${ws.time}:${ws.end_time}`;
-    if (standaloneSeen.has(key)) continue;
-    standaloneSeen.add(key);
+    if (!byName[ws.name]) byName[ws.name] = [];
+    // Dedupe by date
+    if (!byName[ws.name].some(existing => existing.date === ws.date)) {
+      byName[ws.name].push(ws);
+    }
+  }
 
+  for (const [, nameWs] of Object.entries(byName)) {
+    const sorted = [...nameWs].sort((a, b) => a.date.localeCompare(b.date));
     groups.push({
-      key: ws.id,
-      workshops: [ws],
-      linkedDates: [ws.date],
+      key: sorted[0].id,
+      workshops: sorted,
+      linkedDates: sorted.map(w => w.date),
       isLinked: false,
     });
   }
