@@ -673,6 +673,7 @@ export type Database = {
           inclusions: string
           instructor_id: string | null
           intensity: string
+          linked_group: string | null
           long_description: string
           modalities: string
           name: string
@@ -697,6 +698,7 @@ export type Database = {
           inclusions?: string
           instructor_id?: string | null
           intensity?: string
+          linked_group?: string | null
           long_description?: string
           modalities?: string
           name: string
@@ -721,6 +723,7 @@ export type Database = {
           inclusions?: string
           instructor_id?: string | null
           intensity?: string
+          linked_group?: string | null
           long_description?: string
           modalities?: string
           name?: string
