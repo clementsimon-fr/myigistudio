@@ -394,7 +394,7 @@ function ActivityEditor({
                 <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} placeholder="Résumé affiché sur la carte..." />
               </div>
               <div>
-                <Label>Catégorie</Label>
+                <Label className="text-emerald-700">Catégorie</Label>
                 <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
