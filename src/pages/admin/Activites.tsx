@@ -194,6 +194,7 @@ const emptyEvent = (): EventSlot => ({
   type: "recurring", frequency: "hebdomadaire", day: "Lundi", time: "09:00", end_time: "10:00", spots: 12,
   date: "", price: 0, reminder_template: "", modalities: "", customDates: [],
   inclusions: "", card_yoga_count: 0, complementary_info: "",
+  linkedDates: [],
 });
 
 const emptyForm = (): ActivityForm => ({
