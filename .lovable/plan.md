@@ -1,43 +1,56 @@
 
 
-# Plan : Simplifier l'UX multi-sessions dans l'éditeur admin
+# Plan : Simplifier les vues planning visiteur
 
-## Problème
+## Diagnostic
 
-L'éditeur multi-sessions utilise un `CustomDatesPicker` (calendrier + badges) qui cause des duplications massives de dates. L'utilisateur veut la **même UX simple** que les événements ponctuels : des champs inline sans calendrier complexe.
+Il y a actuellement 3 vues temporelles côté visiteur, ce qui crée de la confusion :
 
-## Solution
+1. **Planning type** (grille L-M-M-J-V-S-D) — pertinent pour les cours récurrents, mais inutile pour les ateliers ponctuels (pas de date, frustrant)
+2. **Planning semaine** (vue calendrier avec dates réelles) — redondant avec le tunnel de réservation
+3. **Cartes d'activités** — la vue principale
 
-Remplacer le `CustomDatesPicker` pour le type multi-sessions par une UX simple en liste :
-- Afficher les dates liées comme des champs `<input type="date">` inline, avec un petit bouton "+" pour ajouter une date supplémentaire et "×" pour en retirer
-- Conserver les champs horaire, places et prix communs (identique au ponctuel)
-- Pas de calendrier, pas de badges — juste des inputs date simples
+## Proposition de simplification
 
-## Modifications
+### A. Planning type = uniquement les cours récurrents
 
-### Fichier : `src/pages/admin/Activites.tsx`
+Retirer les workshops (poterie, ateliers, stages) de la grille "Semaine type". Cette vue ne montre que les **cours hebdomadaires** (yoga, pilates). C'est exactement ce que l'admin veut montrer : "lundi = yoga, mardi = pilates, samedi = poterie récurrente".
 
-1. **Remplacer le bloc multi-sessions** (lignes 647-655) : au lieu d'utiliser `CustomDatesPicker`, afficher :
-   - Une rangée avec les champs horaire (time → end_time), places
-   - En dessous, la liste des `linkedDates` sous forme de champs `<input type="date">` avec un bouton × pour chaque
-   - Un bouton "+ Ajouter une date" pour ajouter une entrée vide
+Les ateliers ponctuels et multi-sessions restent uniquement dans les cartes d'activités avec leurs vraies dates.
 
-```text
-┌─────────────────────────────────────────────┐
-│ [Multi-sessions ▾]           [ⓘ] [🗑]      │
-│                                              │
-│ [09:00] → [12:00]    👥 [8]                  │
-│                                              │
-│ 📅 [2026-03-14] ×                            │
-│ 📅 [2026-03-21] ×                            │
-│ [+ Ajouter une date]                         │
-│                                              │
-│ [180] € ou 💳 [0] carte yoga                 │
-└─────────────────────────────────────────────┘
-```
+### B. Supprimer la vue Planning semaine (PlanningView) côté visiteur
 
-2. **Dédupliquer les linkedDates** lors du chargement dans `openEdit` (lignes 1028-1041) : ajouter un `[...new Set(...)]` pour éviter les doublons existants en base.
+Cette vue calendrier hebdomadaire fait doublon avec les cartes + le tunnel de réservation. On la retire du parcours visiteur. Le bouton "Réserver" sur une carte mène directement au tunnel avec choix de date.
+
+### C. Conserver le Planning type comme section intégrée
+
+Au lieu d'une vue séparée, le planning type devient une **section en haut** de la page Activités (au-dessus des cartes), visible quand le filtre est "Toutes" ou "Yoga". Compact, informatif, pas de navigation supplémentaire.
+
+### D. Admin : aucun changement
+
+Le planning type admin (`/admin/planning-type`) reste identique — l'admin garde sa vue macro complète.
+
+## Modifications techniques
 
 ### Fichiers impactés
-- `src/pages/admin/Activites.tsx` — remplacement du bloc multi-sessions + déduplication au chargement
+
+| Fichier | Action |
+|---------|--------|
+| `PlanningTypeView.tsx` | Filtrer pour n'afficher que les courses (retirer workshops) |
+| `ActivitiesView.tsx` | Intégrer PlanningTypeView en section au-dessus des cartes |
+| `Discover.tsx` | Supprimer le mode `planning`, retirer les refs à PlanningView |
+| `ActivityFilterBar.tsx` | Retirer le bouton retour planning (plus de vue planning) |
+| `ClientSidebar.tsx` | Changer le lien "Planning" → `/?view=planning-type` en simple `/` |
+| `PlanningView.tsx` | Conserver le fichier (utilisé potentiellement admin) mais ne plus l'appeler côté visiteur |
+
+### Résumé du flux simplifié
+
+```text
+Visiteur arrive sur /
+  → Grille "Semaine type" (cours récurrents uniquement)
+  → Cartes d'activités (cours + ateliers avec dates)
+  → Clic "Réserver" → Tunnel /reserver (avec choix de date)
+```
+
+Pas de navigation entre vues, pas de confusion entre grille sans dates et calendrier avec dates.
 
