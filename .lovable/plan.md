@@ -1,69 +1,61 @@
 
 
-# Plan : Choix de date dans le tunnel + Planning par catégorie
+# Plan : Programme de la semaine + Programme du mois
 
-## Problème 1 : Pas de choix de date pour les ateliers
+## Concept UX
 
-Quand on clique "Réserver" sur un atelier poterie qui a plusieurs dates, le tunnel reçoit l'ID du premier workshop et sa date. Il charge ce workshop unique et verrouille la date. Le visiteur ne peut pas choisir une autre date.
+Remplacer le bloc actuel "Rythme de la semaine" par deux sous-vues accessibles via un toggle simple :
 
-### Solution
+### "Cette semaine"
+Liste chronologique jour par jour (lundi → dimanche) de **tous** les événements de la semaine en cours :
+- Cours récurrents (yoga, pilates) calculés depuis `course_schedules` + date réelle du jour
+- Ateliers ponctuels (poterie, bien-être) dont la date tombe cette semaine
 
-**Fichier : `src/components/ActivitiesView.tsx`**
-- Modifier `handleBookGroup` pour les workshops standalone (non-linked) : au lieu d'envoyer `id` + `date` du premier workshop, envoyer uniquement le `name` en paramètre URL (ex: `/reserver?type=workshop&name=Initiation+poterie+au+tour`)
-
-**Fichier : `src/pages/Reserver.tsx`**
-- Ajouter un paramètre URL `name` en plus de `id`
-- Quand `name` est fourni sans `date` : charger tous les workshops avec ce nom, extraire les dates futures
-- Afficher un **sélecteur de date** (liste de boutons-dates cliquables) avant le résumé de réservation
-- Une fois la date choisie, charger le workshop correspondant et poursuivre le flux normal
-- Pour les workshops linked (multi-sessions), conserver le comportement actuel (toutes les dates sont incluses automatiquement)
+Chaque ligne : **Jour · Horaire · Nom · Catégorie (pastille couleur)**. Compact, scannable.
 
 ```text
-Flux corrigé :
-Carte "Initiation poterie" → Réserver
-  → Page /reserver?type=workshop&name=Initiation+poterie+au+tour
-  → "Choisissez votre date" : [Sam 4 avril] [Sam 11 avril] [Sam 18 avril]
-  → Clic sur une date → Résumé → Suite du tunnel
+Lun 24 mar  · 10h00–11h00 · Yoga doux         🟢
+Mar 25 mar  · 18h30–19h30 · Pilates            🟢
+Sam 29 mar  · 14h00–16h00 · Initiation poterie 🟤
 ```
 
-## Problème 2 : Planning par catégorie dans "Rythme de la semaine"
+### "Ce mois"
+Deux sections empilées :
 
-Le bloc collapsible "Rythme de la semaine" ne montre que le yoga. Le user veut un aperçu pour chaque catégorie, inspiré des plannings mensuels qu'Élodie partage sur Instagram.
+1. **Cours récurrents** — la grille L-M-M-J-V-S-D existante (YogaGrid) étendue à toutes les catégories récurrentes. Montre le rythme sans répéter les dates.
 
-### Solution
+2. **Événements ponctuels** — liste des ateliers/stages du mois en cours, groupés par catégorie. Format identique au WorkshopList actuel.
 
-**Fichier : `src/components/PlanningTypeView.tsx`**
-- Ajouter les `workshops` en props
-- Créer 3 onglets/sections dans le bloc collapsible : **Yoga**, **Poterie**, **Ateliers**
-- **Yoga** : grille L-M-M-J-V-S-D avec horaires récurrents (identique à l'actuel)
-- **Poterie** : liste des prochains ateliers avec nom, date, horaire, places, prix — format liste verticale simple (pas la grille L-M-M, car les ateliers sont ponctuels)
-- **Ateliers & Stages** : même format liste que poterie
+Cela évite de surcharger : les Pilates du mercredi apparaissent une seule fois dans la grille, pas 4 fois.
 
-```text
-┌─ Rythme de la semaine ──────────────────┐
-│ [Yoga] [Poterie] [Ateliers]             │
-│                                          │
-│ (onglet Poterie sélectionné)             │
-│ ┌──────────────────────────────────────┐ │
-│ │ Initiation poterie au tour           │ │
-│ │ Sam 4/04 · 14h-16h · 65€ · 3 places │ │
-│ │ Sam 11/04 · 14h-16h · 65€ · 2 places│ │
-│ ├──────────────────────────────────────┤ │
-│ │ Stage poterie tour & engobe          │ │
-│ │ Sam 14/03 & 21/03 · 14h-16h30 · 170€│ │
-│ └──────────────────────────────────────┘ │
-└──────────────────────────────────────────┘
-```
+## Navigation
 
-**Fichier : `src/components/ActivitiesView.tsx`**
-- Passer les `workshops` en props à `PlanningTypeView`
-- Afficher le bloc pour toutes les catégories (retirer la condition `showPlanningType` limitée à yoga)
+Toggle simple au-dessus du contenu : `[Cette semaine]  [Ce mois]` — deux boutons style TabsTrigger. Pas d'onglets de catégories en plus (tout est mélangé, les pastilles de couleur suffisent à distinguer).
+
+## Modifications techniques
+
+### `PlanningTypeView.tsx` — refonte complète
+
+- Remplacer les onglets par catégorie (Yoga/Poterie/Ateliers) par un toggle **Semaine / Mois**
+- **Vue Semaine** : nouveau composant `WeekProgram`
+  - Calculer les dates lundi→dimanche de la semaine courante
+  - Pour chaque `course_schedule`, mapper le jour (Lundi, Mardi...) vers la date réelle de la semaine
+  - Fusionner avec les `workshops` dont la date tombe dans la semaine
+  - Trier chronologiquement, afficher jour par jour
+  - Pastille couleur par catégorie via `CATEGORY_STYLES`
+- **Vue Mois** : nouveau composant `MonthProgram`
+  - Section 1 : grille récurrente (réutiliser `YogaGrid` mais avec **tous** les cours récurrents, pas uniquement yoga)
+  - Section 2 : liste des workshops ponctuels du mois en cours, groupés par catégorie
+  - Titre du mois affiché (ex: "Mars 2026")
+- Le bouton d'ouverture devient "Programme" au lieu de "Rythme de la semaine"
+
+### `ActivitiesView.tsx` — aucun changement structurel
+
+Les props passées à `PlanningTypeView` (courses, schedules, workshops) restent identiques.
 
 ### Fichiers impactés
 
-| Fichier | Modification |
-|---------|-------------|
-| `ActivitiesView.tsx` | Modifier `handleBookGroup` pour standalone, passer workshops à PlanningTypeView |
-| `Reserver.tsx` | Ajouter chargement par `name`, sélecteur de dates |
-| `PlanningTypeView.tsx` | Ajouter onglets catégorie + vue liste pour poterie/ateliers |
+| Fichier | Action |
+|---------|--------|
+| `PlanningTypeView.tsx` | Refonte : toggle Semaine/Mois, composants WeekProgram et MonthProgram |
 
