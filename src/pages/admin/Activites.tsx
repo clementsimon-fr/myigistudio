@@ -956,17 +956,19 @@ export default function AdminActivites() {
           _scheduleId: s.id,
         });
       }
-    } else if (a.source === "workshop") {
-      events.push({
-        type: "ponctuel", frequency: "hebdomadaire",
-        day: "Lundi", time: a.time || "09:00", end_time: a.end_time || "10:00",
-        spots: a.spots || 8, date: a.date || "", price: a.price || 0,
-        reminder_template: a.reminder_template, modalities: a.modalities,
-        customDates: [],
-        inclusions: a.inclusions || "", card_yoga_count: a.card_yoga_count || 0,
-        complementary_info: "",
-        _workshopId: a.id,
-      });
+    } else if (a.source === "workshop" && a.workshopEvents) {
+      for (const we of a.workshopEvents) {
+        events.push({
+          type: "ponctuel", frequency: "hebdomadaire",
+          day: "Lundi", time: we.time || "09:00", end_time: we.end_time || "10:00",
+          spots: we.spots || 8, date: we.date || "", price: we.price || 0,
+          reminder_template: a.reminder_template, modalities: a.modalities,
+          customDates: [],
+          inclusions: we.inclusions || "", card_yoga_count: we.card_yoga_count || 0,
+          complementary_info: "",
+          _workshopId: we.id,
+        });
+      }
     }
     if (events.length === 0) events.push(emptyEvent());
     setForm({
