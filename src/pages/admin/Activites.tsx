@@ -1179,7 +1179,7 @@ export default function AdminActivites() {
           editingActivity={editingActivity}
           instructorsList={instructorsList}
           onSave={save}
-          onCancel={() => setEditorOpen(false)}
+          onCancel={() => { setEditorOpen(false); fetchData(); }}
           onDelete={() => {
             if (editingActivity) {
               setEditorOpen(false);
