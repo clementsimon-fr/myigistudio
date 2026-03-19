@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -273,7 +273,7 @@ function ActivityEditor({
   setForm: React.Dispatch<React.SetStateAction<ActivityForm>>;
   editingActivity: UnifiedActivity | null;
   instructorsList: { id: string; name: string }[];
-  onSave: () => void;
+  onSave: (closeAfter?: boolean) => void;
   onCancel: () => void;
   onDelete: () => void;
   currentDefaultReminder: string;
@@ -283,6 +283,25 @@ function ActivityEditor({
   const [eventsView, setEventsView] = useState<"list" | "calendar">("list");
   const [eventsCalMonth, setEventsCalMonth] = useState<Date>(new Date());
   const [detailDialogIdx, setDetailDialogIdx] = useState<number | null>(null);
+  const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null);
+
+  // ── Auto-save with debounce ──
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (!editingActivity) return; // only auto-save for existing activities
+    setAutoSaveStatus("idle");
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      setAutoSaveStatus("saving");
+      onSave(false);
+      setTimeout(() => setAutoSaveStatus("saved"), 500);
+    }, 2000);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [form]);
 
   const addEvent = (type: "recurring" | "ponctuel") => {
     setForm(prev => ({ ...prev, events: [...prev.events, { ...emptyEvent(), type }] }));
@@ -331,11 +350,13 @@ function ActivityEditor({
           <h2 className="text-lg font-display font-semibold truncate">
             {editingActivity ? form.name || "Modifier l'activité" : "Nouvelle activité"}
           </h2>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground flex items-center gap-2">
             {editingActivity ? "Modification en cours" : "Création d'une nouvelle activité"}
+            {editingActivity && autoSaveStatus === "saving" && <span className="text-amber-500 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Enregistrement...</span>}
+            {editingActivity && autoSaveStatus === "saved" && <span className="text-emerald-500">✓ Enregistré</span>}
           </p>
         </div>
-        <Button onClick={onSave} disabled={!form.name || form.events.length === 0} className="shrink-0">
+        <Button onClick={() => onSave(true)} disabled={!form.name || form.events.length === 0} className="shrink-0">
           {editingActivity ? "Enregistrer" : "Créer"}
         </Button>
       </div>
@@ -365,22 +386,22 @@ function ActivityEditor({
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
-                <Label>Nom</Label>
+                <Label className="text-emerald-700">Nom</Label>
                 <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Vinyasa Flow" />
               </div>
               <div>
-                <Label>Description courte</Label>
+                <Label className="text-emerald-700">Description courte</Label>
                 <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} placeholder="Résumé affiché sur la carte..." />
               </div>
               <div>
-                <Label>Catégorie</Label>
+                <Label className="text-emerald-700">Catégorie</Label>
                 <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Intensité</Label>
+                <Label className="text-emerald-700">Intensité</Label>
                 <Select value={form.intensity} onValueChange={v => setForm({ ...form, intensity: v })}>
                   <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
                   <SelectContent>
@@ -391,7 +412,7 @@ function ActivityEditor({
             </div>
             <div className="space-y-4">
               <div>
-                <Label>Intervenant</Label>
+                <Label className="text-emerald-700">Intervenant</Label>
                 {instructorsList.length > 0 ? (
                   <Select value={form.instructor} onValueChange={v => setForm({ ...form, instructor: v })}>
                     <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
@@ -404,7 +425,7 @@ function ActivityEditor({
                 )}
               </div>
               <div>
-                <Label>Image</Label>
+                <Label className="text-emerald-700">Image</Label>
                 <div className="flex items-center gap-3 mt-1.5">
                   {form.image && <img src={form.image} alt="Preview" className="h-14 w-14 rounded-lg object-cover" />}
                   <Input type="file" accept="image/*" onChange={async (e) => {
@@ -426,7 +447,7 @@ function ActivityEditor({
           </div>
 
           <div>
-            <Label>Fiche produit (description longue)</Label>
+            <Label className="text-emerald-700">Fiche produit (description longue)</Label>
             <Textarea value={form.long_description} onChange={e => setForm({ ...form, long_description: e.target.value })} rows={5} placeholder="Description détaillée affichée dans les détails de l'activité..." />
           </div>
         </div>
@@ -457,41 +478,75 @@ function ActivityEditor({
 
           {/* Calendar view */}
           {eventsView === "calendar" && (
-            <div className="border rounded-lg p-4 bg-muted/10">
-              <Calendar
-                mode="multiple"
-                selected={calendarSelectedDates}
-                onSelect={(_, selectedDay) => {
-                  if (!selectedDay) return;
-                  const dateStr = format(selectedDay, "yyyy-MM-dd");
-                  // Check if there's already an event on this date
-                  const existing = allEventDates.find(d => d.date === dateStr);
-                  if (existing) {
-                    // Scroll to it in list view
-                    setEventsView("list");
-                  } else {
-                    // Create a new ponctuel event for this date
-                    setForm(prev => ({
-                      ...prev,
-                      events: [...prev.events, { ...emptyEvent(), type: "ponctuel", date: dateStr }],
-                    }));
-                    setEventsView("list");
-                  }
-                }}
-                month={eventsCalMonth}
-                onMonthChange={setEventsCalMonth}
-                className="p-3 pointer-events-auto"
-                locale={fr}
-              />
-              {allEventDates.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {allEventDates.map((d, i) => (
-                    <Badge key={i} variant="secondary" className="text-[10px] gap-1">
-                      {new Date(d.date + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} · {d.label}
-                    </Badge>
-                  ))}
-                </div>
-              )}
+            <div className="space-y-3">
+              <div className="border rounded-lg p-4 bg-muted/10">
+                <Calendar
+                  mode="multiple"
+                  selected={calendarSelectedDates}
+                  onSelect={(_, selectedDay) => {
+                    if (!selectedDay) return;
+                    const dateStr = format(selectedDay, "yyyy-MM-dd");
+                    setSelectedCalDate(dateStr);
+                  }}
+                  month={eventsCalMonth}
+                  onMonthChange={setEventsCalMonth}
+                  className="p-3 pointer-events-auto"
+                  locale={fr}
+                />
+              </div>
+
+              {/* Date detail block below calendar */}
+              {selectedCalDate && (() => {
+                const eventsOnDate = form.events
+                  .map((evt, idx) => ({ evt, idx }))
+                  .filter(({ evt }) => {
+                    if (evt.type === "ponctuel" && evt.date === selectedCalDate) return true;
+                    if (evt.type === "recurring" && evt.frequency === "personnalise" && evt.customDates.includes(selectedCalDate)) return true;
+                    return false;
+                  });
+                const dateLabel = new Date(selectedCalDate + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+
+                return (
+                  <div className="border rounded-lg p-4 bg-card space-y-3">
+                    <h4 className="text-sm font-semibold text-emerald-700 capitalize">{dateLabel}</h4>
+
+                    {eventsOnDate.length > 0 ? (
+                      <div className="space-y-2">
+                        {eventsOnDate.map(({ evt, idx }) => (
+                          <div key={idx} className="flex items-center gap-3 p-2.5 rounded-md border bg-muted/30">
+                            <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-sm font-medium">{evt.time} → {evt.end_time}</span>
+                            <span className="text-xs text-muted-foreground">{calcDuration(evt.time, evt.end_time)}</span>
+                            <span className="text-xs text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" />{evt.spots}</span>
+                            {evt.price > 0 && <span className="text-xs font-medium">{evt.price}€</span>}
+                            <div className="ml-auto flex gap-1">
+                              <Button type="button" size="sm" variant="outline" className="h-7 text-xs gap-1"
+                                onClick={() => { setDetailDialogIdx(idx); }}>
+                                <Info className="h-3 w-3" /> Détailler
+                              </Button>
+                              <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeEvent(idx)}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Aucun événement sur cette date.</p>
+                    )}
+
+                    <Button type="button" size="sm" variant="outline" className="gap-1.5 text-xs"
+                      onClick={() => {
+                        setForm(prev => ({
+                          ...prev,
+                          events: [...prev.events, { ...emptyEvent(), type: "ponctuel", date: selectedCalDate }],
+                        }));
+                      }}>
+                      <Plus className="h-3.5 w-3.5" /> Ajouter un événement le {new Date(selectedCalDate + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                    </Button>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -663,7 +718,7 @@ function ActivityEditor({
         ) : <div />}
         <div className="flex gap-2">
           <Button variant="outline" onClick={onCancel}>Annuler</Button>
-          <Button onClick={onSave} disabled={!form.name || form.events.length === 0}>
+          <Button onClick={() => onSave(true)} disabled={!form.name || form.events.length === 0}>
             {editingActivity ? "Enregistrer les modifications" : "Créer l'activité"}
           </Button>
         </div>
@@ -907,7 +962,7 @@ export default function AdminActivites() {
     setEditorOpen(true);
   };
 
-  const save = async () => {
+  const save = async (closeAfter = true) => {
     const instrId = instructorsList.find(i => i.name === form.instructor)?.id || null;
 
     const recurringEvents = form.events.filter(e => e.type === "recurring" && e.frequency !== "personnalise");
@@ -921,13 +976,17 @@ export default function AdminActivites() {
       }
     }
 
-    const courseData = {
+    // Shared fields (without 'instructor' which doesn't exist in workshops table)
+    const sharedData = {
       name: form.name, description: form.description, long_description: form.long_description,
-      category: form.category, instructor: form.instructor, instructor_id: instrId,
+      category: form.category, instructor_id: instrId,
       image: form.image, reminder_template: form.default_reminder,
       modalities: form.default_modalities,
       intensity: form.intensity === "none" ? "" : form.intensity, reminder_timing: form.reminder_timing,
     };
+    // courses table has 'instructor' column, workshops does not
+    const courseData = { ...sharedData, instructor: form.instructor };
+    const workshopData = sharedData;
 
     // ── Handle recurring events → courses table ──
     if (recurringEvents.length > 0) {
@@ -981,7 +1040,7 @@ export default function AdminActivites() {
         const firstEvt = validPonctuelEvents[0];
         const duration = calcDuration(firstEvt.time, firstEvt.end_time);
         const { error: updateErr } = await supabase.from("workshops").update({
-          ...courseData,
+          ...workshopData,
           date: firstEvt.date, time: firstEvt.time, end_time: firstEvt.end_time,
           duration, spots: firstEvt.spots, spots_left: firstEvt.spots, price: firstEvt.price,
           frequency: "ponctuel",
@@ -996,7 +1055,7 @@ export default function AdminActivites() {
           const evt = validPonctuelEvents[i];
           const dur = calcDuration(evt.time, evt.end_time);
           const { error: insertErr } = await supabase.from("workshops").insert({
-            ...courseData,
+            ...workshopData,
             date: evt.date, time: evt.time, end_time: evt.end_time,
             duration: dur, spots: evt.spots, spots_left: evt.spots, price: evt.price,
             frequency: "ponctuel",
@@ -1011,7 +1070,7 @@ export default function AdminActivites() {
         for (const evt of validPonctuelEvents) {
           const duration = calcDuration(evt.time, evt.end_time);
           const { error: insertErr } = await supabase.from("workshops").insert({
-            ...courseData,
+            ...workshopData,
             date: evt.date, time: evt.time, end_time: evt.end_time,
             duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
             frequency: "ponctuel",
@@ -1025,8 +1084,10 @@ export default function AdminActivites() {
       }
     }
 
-    toast({ title: editingActivity ? "Activité modifiée" : "Activité créée ✓" });
-    setEditorOpen(false);
+    if (closeAfter) {
+      toast({ title: editingActivity ? "Activité modifiée" : "Activité créée ✓" });
+      setEditorOpen(false);
+    }
     fetchData();
   };
 
