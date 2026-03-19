@@ -164,7 +164,7 @@ const FREQUENCY_OPTIONS = [
 ];
 
 interface EventSlot {
-  type: "recurring" | "ponctuel";
+  type: "recurring" | "ponctuel" | "multi-sessions";
   frequency: string;
   day: string; time: string; end_time: string; spots: number;
   date: string; price: number;
@@ -176,6 +176,8 @@ interface EventSlot {
   complementary_info: string;
   _scheduleId?: string;
   _workshopId?: string;
+  linkedDates: string[];
+  _linkedGroup?: string;
 }
 
 interface ActivityForm {
