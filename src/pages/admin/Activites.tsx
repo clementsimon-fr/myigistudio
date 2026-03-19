@@ -386,7 +386,7 @@ function ActivityEditor({
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
-                <Label>Nom</Label>
+                <Label className="text-emerald-700">Nom</Label>
                 <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Vinyasa Flow" />
               </div>
               <div>
