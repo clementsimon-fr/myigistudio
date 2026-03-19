@@ -57,7 +57,7 @@ export default function BookingSummary({
           <span className="text-muted-foreground">Date</span>
           {linkedDates && linkedDates.length > 1 ? (
             <div className="text-right">
-              {linkedDates.map(d => (
+              {[...new Set(linkedDates)].map(d => (
                 <div key={d} className="font-medium">
                   {new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}
                 </div>
