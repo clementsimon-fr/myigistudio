@@ -921,13 +921,17 @@ export default function AdminActivites() {
       }
     }
 
-    const courseData = {
+    // Shared fields (without 'instructor' which doesn't exist in workshops table)
+    const sharedData = {
       name: form.name, description: form.description, long_description: form.long_description,
-      category: form.category, instructor: form.instructor, instructor_id: instrId,
+      category: form.category, instructor_id: instrId,
       image: form.image, reminder_template: form.default_reminder,
       modalities: form.default_modalities,
       intensity: form.intensity === "none" ? "" : form.intensity, reminder_timing: form.reminder_timing,
     };
+    // courses table has 'instructor' column, workshops does not
+    const courseData = { ...sharedData, instructor: form.instructor };
+    const workshopData = sharedData;
 
     // ── Handle recurring events → courses table ──
     if (recurringEvents.length > 0) {
