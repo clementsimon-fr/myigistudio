@@ -645,14 +645,46 @@ function ActivityEditor({
 
                   {/* Temporality */}
                   {evt.type === "multi-sessions" ? (
-                    <CustomDatesPicker
-                      dates={evt.linkedDates}
-                      onChange={dates => updateEvent(idx, { linkedDates: dates })}
-                      time={evt.time} endTime={evt.end_time} spots={evt.spots}
-                      onTimeChange={v => updateEvent(idx, { time: v })}
-                      onEndTimeChange={v => updateEvent(idx, { end_time: v })}
-                      onSpotsChange={v => updateEvent(idx, { spots: v })}
-                    />
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <Input type="time" className="w-[90px] h-8 text-xs" value={evt.time} onChange={e => updateEvent(idx, { time: e.target.value })} />
+                          <span className="text-muted-foreground text-xs">→</span>
+                          <Input type="time" className="w-[90px] h-8 text-xs" value={evt.end_time} onChange={e => updateEvent(idx, { end_time: e.target.value })} />
+                        </div>
+                        {evt.time && evt.end_time && <span className="text-xs text-muted-foreground">{calcDuration(evt.time, evt.end_time)}</span>}
+                        <div className="flex items-center gap-1">
+                          <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                          <Input type="number" className="w-[70px] h-8 text-xs" value={evt.spots} onChange={e => updateEvent(idx, { spots: Number(e.target.value) })} placeholder="Places" />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        {(evt.linkedDates || []).map((d, di) => (
+                          <div key={di} className="flex items-center gap-1">
+                            <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                            <Input type="date" className="w-[150px] h-8 text-xs" value={d}
+                              onChange={e => {
+                                const newDates = [...(evt.linkedDates || [])];
+                                newDates[di] = e.target.value;
+                                updateEvent(idx, { linkedDates: newDates });
+                              }} />
+                            {(evt.linkedDates || []).length > 1 && (
+                              <Button type="button" size="icon" variant="ghost" className="h-6 w-6"
+                                onClick={() => {
+                                  const newDates = (evt.linkedDates || []).filter((_, i) => i !== di);
+                                  updateEvent(idx, { linkedDates: newDates });
+                                }}>
+                                <X className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1"
+                          onClick={() => updateEvent(idx, { linkedDates: [...(evt.linkedDates || []), ""] })}>
+                          <Plus className="h-3 w-3" /> Ajouter une date
+                        </Button>
+                      </div>
+                    </div>
                   ) : evt.type === "recurring" && evt.frequency === "personnalise" ? (
                     <CustomDatesPicker
                       dates={evt.customDates}
