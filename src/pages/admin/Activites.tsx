@@ -447,7 +447,7 @@ function ActivityEditor({
           </div>
 
           <div>
-            <Label>Fiche produit (description longue)</Label>
+            <Label className="text-emerald-700">Fiche produit (description longue)</Label>
             <Textarea value={form.long_description} onChange={e => setForm({ ...form, long_description: e.target.value })} rows={5} placeholder="Description détaillée affichée dans les détails de l'activité..." />
           </div>
         </div>
