@@ -148,9 +148,21 @@ export default function Reserver() {
             const { data: linkedWs } = await supabase.from("workshops").select("*")
               .eq("linked_group", wsData.linked_group).order("date");
             if (linkedWs && linkedWs.length > 1) {
-              const linkedDates = (linkedWs as any[]).map(w => w.date).sort();
-              const linkedIds = (linkedWs as any[]).map(w => w.id);
-              setActivity((prev: any) => ({ ...prev, linkedDates, linkedWorkshopIds: linkedIds, linkedWorkshops: linkedWs }));
+              const byDate = new Map<string, any>();
+              for (const w of linkedWs as any[]) {
+                if (w.date && !byDate.has(w.date)) {
+                  byDate.set(w.date, w);
+                }
+              }
+              const dedupedLinkedWs = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+              const linkedDates = dedupedLinkedWs.map(w => w.date);
+              const linkedIds = dedupedLinkedWs.map(w => w.id);
+              setActivity((prev: any) => ({
+                ...prev,
+                linkedDates,
+                linkedWorkshopIds: linkedIds,
+                linkedWorkshops: dedupedLinkedWs,
+              }));
             }
           }
           
