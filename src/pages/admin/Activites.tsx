@@ -356,7 +356,7 @@ function ActivityEditor({
             {editingActivity && autoSaveStatus === "saved" && <span className="text-emerald-500">✓ Enregistré</span>}
           </p>
         </div>
-        <Button onClick={onSave} disabled={!form.name || form.events.length === 0} className="shrink-0">
+        <Button onClick={() => onSave(true)} disabled={!form.name || form.events.length === 0} className="shrink-0">
           {editingActivity ? "Enregistrer" : "Créer"}
         </Button>
       </div>
