@@ -638,12 +638,10 @@ function ActivityEditor({
                       <Input type="number" className="w-[50px] h-8 text-xs" value={evt.card_yoga_count} onChange={e => updateEvent(idx, { card_yoga_count: Number(e.target.value) })} min={0} />
                       <span className="text-xs text-muted-foreground">carte{evt.card_yoga_count > 1 ? "s" : ""} yoga</span>
                     </div>
-                    {/* Indicators */}
-                    {(evt.inclusions || evt.complementary_info || evt.reminder_template || evt.modalities) && (
+                     {/* Indicators - only show Inclus badge */}
+                    {evt.inclusions && (
                       <div className="flex gap-1 ml-auto">
-                        {evt.inclusions && <Badge variant="outline" className="text-[10px] gap-0.5"><Info className="h-2.5 w-2.5" /> Inclus</Badge>}
-                        {evt.complementary_info && <Badge variant="outline" className="text-[10px] gap-0.5"><FileText className="h-2.5 w-2.5" /> Infos</Badge>}
-                        {(evt.reminder_template || evt.modalities) && <Badge variant="outline" className="text-[10px] gap-0.5"><Mail className="h-2.5 w-2.5" /> Rappel</Badge>}
+                        <Badge variant="outline" className="text-[10px] gap-0.5"><Info className="h-2.5 w-2.5" /> Inclus</Badge>
                       </div>
                     )}
                   </div>
@@ -1036,49 +1034,33 @@ export default function AdminActivites() {
     // ── Handle ponctuel events → workshops table ──
     const validPonctuelEvents = allPonctuelEvents.filter(e => !!e.date);
     if (validPonctuelEvents.length > 0) {
-      if (editingActivity?.source === "workshop") {
-        const firstEvt = validPonctuelEvents[0];
-        const duration = calcDuration(firstEvt.time, firstEvt.end_time);
-        const { error: updateErr } = await supabase.from("workshops").update({
+      // Track existing workshop IDs to know which to keep
+      const existingWsIds = new Set<string>();
+
+      for (const evt of validPonctuelEvents) {
+        const duration = calcDuration(evt.time, evt.end_time);
+        const wsPayload = {
           ...workshopData,
-          date: firstEvt.date, time: firstEvt.time, end_time: firstEvt.end_time,
-          duration, spots: firstEvt.spots, spots_left: firstEvt.spots, price: firstEvt.price,
+          date: evt.date, time: evt.time, end_time: evt.end_time,
+          duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
           frequency: "ponctuel",
-          inclusions: firstEvt.inclusions, card_yoga_count: firstEvt.card_yoga_count,
-        } as any).eq("id", editingActivity.id);
-        if (updateErr) {
-          console.error("Workshop update error:", updateErr);
-          toast({ title: "Erreur lors de la mise à jour", description: updateErr.message, variant: "destructive" });
-          return;
-        }
-        for (let i = 1; i < validPonctuelEvents.length; i++) {
-          const evt = validPonctuelEvents[i];
-          const dur = calcDuration(evt.time, evt.end_time);
-          const { error: insertErr } = await supabase.from("workshops").insert({
-            ...workshopData,
-            date: evt.date, time: evt.time, end_time: evt.end_time,
-            duration: dur, spots: evt.spots, spots_left: evt.spots, price: evt.price,
-            frequency: "ponctuel",
-            inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
-          } as any);
-          if (insertErr) {
-            console.error("Workshop insert error:", insertErr);
-            toast({ title: "Erreur lors de l'insertion", description: insertErr.message, variant: "destructive" });
+          inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
+        };
+
+        if (evt._workshopId) {
+          // Update existing workshop row
+          existingWsIds.add(evt._workshopId);
+          const { error } = await supabase.from("workshops").update(wsPayload as any).eq("id", evt._workshopId);
+          if (error) {
+            console.error("Workshop update error:", error);
+            toast({ title: "Erreur lors de la mise à jour", description: error.message, variant: "destructive" });
           }
-        }
-      } else {
-        for (const evt of validPonctuelEvents) {
-          const duration = calcDuration(evt.time, evt.end_time);
-          const { error: insertErr } = await supabase.from("workshops").insert({
-            ...workshopData,
-            date: evt.date, time: evt.time, end_time: evt.end_time,
-            duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
-            frequency: "ponctuel",
-            inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
-          } as any);
-          if (insertErr) {
-            console.error("Workshop insert error:", insertErr);
-            toast({ title: "Erreur lors de la création", description: insertErr.message, variant: "destructive" });
+        } else {
+          // Insert new workshop row
+          const { error } = await supabase.from("workshops").insert(wsPayload as any);
+          if (error) {
+            console.error("Workshop insert error:", error);
+            toast({ title: "Erreur lors de la création", description: error.message, variant: "destructive" });
           }
         }
       }

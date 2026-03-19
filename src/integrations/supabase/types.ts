@@ -408,6 +408,27 @@ export type Database = {
         }
         Relationships: []
       }
+      interest_emails: {
+        Row: {
+          activity_name: string
+          created_at: string
+          email: string
+          id: string
+        }
+        Insert: {
+          activity_name?: string
+          created_at?: string
+          email: string
+          id?: string
+        }
+        Update: {
+          activity_name?: string
+          created_at?: string
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
       planned_sessions: {
         Row: {
           course_id: string | null
