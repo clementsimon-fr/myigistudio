@@ -276,8 +276,17 @@ export default function Reserver() {
     }
   }, [bookingStep, currentProfile]);
 
+  // Handle date selection from picker
+  const handleDateSelect = (ws: typeof availableDates[0]) => {
+    setSelectedDate(new Date(ws.date + "T00:00:00"));
+    setSelectedSlot(ws.id);
+    // Update activity with the selected workshop's data
+    setActivity((prev: any) => ({ ...prev, id: ws.id, date: ws.date, time: ws.time, end_time: ws.end_time, spots_left: ws.spots_left, price: ws.price }));
+    setDatePickerMode(false);
+  };
+
   // ─── Redirect if no params ───
-  if (!loading && (!activityType || !activityId || !activity)) {
+  if (!loading && (!activityType || !activity)) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -285,7 +294,7 @@ export default function Reserver() {
           <div className="text-center max-w-md">
             <h1 className="text-2xl font-display font-bold text-primary-dark mb-3">Réserver une activité</h1>
             <p className="text-muted-foreground mb-6">Choisissez une activité depuis notre planning pour commencer.</p>
-            <Link to="/?view=planning"><Button>Voir le planning</Button></Link>
+            <Link to="/"><Button>Voir les activités</Button></Link>
           </div>
         </main>
         <Footer />
