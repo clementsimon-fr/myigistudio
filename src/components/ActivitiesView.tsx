@@ -1,16 +1,18 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Info, Users, Euro, Clock, CalendarRange } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Info, Users, Euro, Clock, CalendarRange, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import PricingSection from "@/components/home/PricingSection";
 import TeamSection from "@/components/home/TeamSection";
 import ContactElodieButton from "@/components/ContactElodieButton";
 import FrequencyDialog from "@/components/FrequencyDialog";
 import { CATEGORY_STYLES, type FilterCategory } from "@/components/ActivityFilterBar";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const PLACEHOLDER_IMG = "/placeholder.svg";
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
@@ -41,7 +43,6 @@ function getCategoryStyle(category: string) {
   return CATEGORY_STYLES[category] || { block: "", dot: "", text: "text-primary-dark", bookBtn: "bg-primary hover:bg-primary/90 text-primary-foreground" };
 }
 
-/** Inline week dots for a specific course's scheduled days */
 function WeekDots({ activeDays, dotColor }: { activeDays: Set<string>; dotColor: string }) {
   return (
     <div className="flex items-center gap-1">
@@ -49,9 +50,7 @@ function WeekDots({ activeDays, dotColor }: { activeDays: Set<string>; dotColor:
         <div
           key={day}
           className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-medium ${
-            activeDays.has(day)
-              ? `${dotColor} text-white`
-              : "bg-muted text-muted-foreground/50"
+            activeDays.has(day) ? `${dotColor} text-white` : "bg-muted text-muted-foreground/50"
           }`}
           title={day}
         >
@@ -62,16 +61,65 @@ function WeekDots({ activeDays, dotColor }: { activeDays: Set<string>; dotColor:
   );
 }
 
+/** Check if a workshop has a future date */
+function isFutureDate(dateStr?: string): boolean {
+  if (!dateStr) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr + "T12:00:00");
+  return d >= today;
+}
+
+/** Email interest form for past events */
+function InterestForm({ activityName }: { activityName: string }) {
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const { toast } = useToast();
+
+  const handleSubmit = async () => {
+    if (!email.includes("@")) return;
+    await supabase.from("interest_emails" as any).insert({ email, activity_name: activityName } as any);
+    setSubmitted(true);
+    toast({ title: "Merci ! Vous serez informé(e) des prochaines dates." });
+  };
+
+  if (submitted) {
+    return <p className="text-xs text-emerald-600 text-center">✓ Vous serez informé(e) des prochaines dates</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground text-center">
+        Cet événement est passé. Restez informé(e) des prochaines dates !
+      </p>
+      <div className="flex gap-1.5">
+        <Input
+          type="email"
+          placeholder="votre@email.com"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          className="h-8 text-xs flex-1"
+          onKeyDown={e => e.key === "Enter" && handleSubmit()}
+        />
+        <Button size="sm" className="h-8 text-xs gap-1" onClick={handleSubmit}>
+          <Mail className="h-3 w-3" /> M'informer
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function WorkshopCard({ ws, i, onDescription, instructorPhoto, onBook, onFrequency }: {
   ws: Workshop; i: number; onDescription: (w: Workshop) => void; instructorPhoto?: string;
   onBook: (ws: Workshop) => void; onFrequency: () => void;
 }) {
   const style = getCategoryStyle(ws.category);
+  const hasFutureDate = isFutureDate(ws.date);
+
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow">
       <div className="aspect-[4/3] overflow-hidden bg-muted relative">
         <img src={ws.image || PLACEHOLDER_IMG} alt={ws.name} className="w-full h-full object-cover" loading="lazy" />
-        <Badge variant="secondary" className="absolute top-2 right-2 text-[10px]">Ponctuel</Badge>
       </div>
       <div className="p-4 md:p-5">
         <h3 className={`font-display font-semibold text-base md:text-lg leading-tight mb-2 ${style.text}`}>{ws.name}</h3>
@@ -86,17 +134,33 @@ function WorkshopCard({ ws, i, onDescription, instructorPhoto, onBook, onFrequen
             </div>
           )}
         </div>
-        <div className="flex gap-2">
-          {(ws.long_description || ws.description) && (
-            <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => onDescription(ws)}>
-              <Info className="h-3 w-3" /> Description
+        {hasFutureDate ? (
+          <div className="flex gap-2">
+            {(ws.long_description || ws.description) && (
+              <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => onDescription(ws)}>
+                <Info className="h-3 w-3" /> Description
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={onFrequency}>
+              <CalendarRange className="h-3 w-3" />
             </Button>
-          )}
-          <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={onFrequency}>
-            <CalendarRange className="h-3 w-3" />
-          </Button>
-          <Button size="sm" className={`flex-1 text-xs ${style.bookBtn}`} onClick={() => onBook(ws)}>Réserver</Button>
-        </div>
+            <Button size="sm" className={`flex-1 text-xs ${style.bookBtn}`} onClick={() => onBook(ws)}>Réserver</Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              {(ws.long_description || ws.description) && (
+                <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => onDescription(ws)}>
+                  <Info className="h-3 w-3" /> Description
+                </Button>
+              )}
+              <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={onFrequency}>
+                <CalendarRange className="h-3 w-3" />
+              </Button>
+            </div>
+            <InterestForm activityName={ws.name} />
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -150,7 +214,15 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
     setFrequencyOpen(true);
   };
 
-  // Get active days for the description dialog course
+  const handleFrequencyTimeClick = (params: { activity: string; category: string; date?: string }) => {
+    setFrequencyOpen(false);
+    onSwitchToPlanning({
+      filter: params.category as FilterCategory,
+      activity: params.activity,
+      date: params.date,
+    });
+  };
+
   const descriptionCourseDays = descriptionCourse ? (schedulesMap[descriptionCourse.id] || new Set<string>()) : new Set<string>();
 
   return (
@@ -167,7 +239,6 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                   <motion.div key={course.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow">
                     <div className="aspect-[4/3] overflow-hidden bg-muted relative">
                       <img src={course.image || PLACEHOLDER_IMG} alt={course.name} className="w-full h-full object-cover" loading="lazy" />
-                      <Badge variant="secondary" className="absolute top-2 right-2 text-[10px]">Récurrent</Badge>
                     </div>
                     <div className="p-4 md:p-5">
                       <h3 className={`font-display font-semibold text-base md:text-lg leading-tight mb-2 ${yogaStyle.text}`}>{course.name}</h3>
@@ -246,7 +317,6 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
               <div className="space-y-4 pt-2">
                 <img src={descriptionCourse.image || PLACEHOLDER_IMG} alt={descriptionCourse.name} className="w-full rounded-lg object-cover max-h-64" />
                 <div className="text-sm text-muted-foreground whitespace-pre-line">{descriptionCourse.long_description || descriptionCourse.description}</div>
-                {/* Weekly frequency dots */}
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-1.5">Jours de la semaine</p>
                   <WeekDots activeDays={descriptionCourseDays} dotColor={yogaStyle.dot} />
@@ -276,7 +346,11 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                   <div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {descriptionWs.duration}</div>
                   <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionWs.spots} places max</div>
                 </div>
-                <Button className={`w-full ${getCategoryStyle(descriptionWs.category).bookBtn}`} onClick={() => { const ws = descriptionWs; setDescriptionWs(null); handleBookWorkshop(ws); }}>Réserver</Button>
+                {isFutureDate(descriptionWs.date) ? (
+                  <Button className={`w-full ${getCategoryStyle(descriptionWs.category).bookBtn}`} onClick={() => { const ws = descriptionWs; setDescriptionWs(null); handleBookWorkshop(ws); }}>Réserver</Button>
+                ) : (
+                  <InterestForm activityName={descriptionWs.name} />
+                )}
               </div>
             </>
           )}
@@ -292,6 +366,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         schedules={schedules}
         highlightCategory={frequencyCategory}
         specificActivity={frequencyActivity}
+        onTimeClick={handleFrequencyTimeClick}
       />
     </>
   );

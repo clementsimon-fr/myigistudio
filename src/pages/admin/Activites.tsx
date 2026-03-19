@@ -638,12 +638,10 @@ function ActivityEditor({
                       <Input type="number" className="w-[50px] h-8 text-xs" value={evt.card_yoga_count} onChange={e => updateEvent(idx, { card_yoga_count: Number(e.target.value) })} min={0} />
                       <span className="text-xs text-muted-foreground">carte{evt.card_yoga_count > 1 ? "s" : ""} yoga</span>
                     </div>
-                    {/* Indicators */}
-                    {(evt.inclusions || evt.complementary_info || evt.reminder_template || evt.modalities) && (
+                     {/* Indicators - only show Inclus badge */}
+                    {evt.inclusions && (
                       <div className="flex gap-1 ml-auto">
-                        {evt.inclusions && <Badge variant="outline" className="text-[10px] gap-0.5"><Info className="h-2.5 w-2.5" /> Inclus</Badge>}
-                        {evt.complementary_info && <Badge variant="outline" className="text-[10px] gap-0.5"><FileText className="h-2.5 w-2.5" /> Infos</Badge>}
-                        {(evt.reminder_template || evt.modalities) && <Badge variant="outline" className="text-[10px] gap-0.5"><Mail className="h-2.5 w-2.5" /> Rappel</Badge>}
+                        <Badge variant="outline" className="text-[10px] gap-0.5"><Info className="h-2.5 w-2.5" /> Inclus</Badge>
                       </div>
                     )}
                   </div>

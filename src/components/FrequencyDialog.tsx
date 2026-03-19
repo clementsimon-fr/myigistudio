@@ -14,7 +14,7 @@ function getDayFromDate(dateStr: string): string | null {
   } catch { return null; }
 }
 
-interface TimeSlot { day: string; time: string; end_time: string; }
+interface TimeSlot { day: string; time: string; end_time: string; date?: string; }
 
 interface FrequencyDialogProps {
   open: boolean;
@@ -25,11 +25,12 @@ interface FrequencyDialogProps {
   highlightCategory?: string;
   specificActivity?: string;
   title?: string;
+  onTimeClick?: (params: { activity: string; category: string; date?: string }) => void;
 }
 
-interface ActivityRow { name: string; category: string; slots: TimeSlot[]; }
+interface ActivityRow { name: string; category: string; frequency?: string; slots: TimeSlot[]; }
 
-export default function FrequencyDialog({ open, onOpenChange, courses, workshops, schedules, highlightCategory, specificActivity, title }: FrequencyDialogProps) {
+export default function FrequencyDialog({ open, onOpenChange, courses, workshops, schedules, highlightCategory, specificActivity, title, onTimeClick }: FrequencyDialogProps) {
   const rows = useMemo(() => {
     const result: ActivityRow[] = [];
     const schedulesByCourse: Record<string, TimeSlot[]> = {};
@@ -38,15 +39,15 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
       schedulesByCourse[s.course_id].push({ day: s.day, time: s.time, end_time: s.end_time });
     }
     for (const c of courses) {
-      result.push({ name: c.name, category: c.category, slots: schedulesByCourse[c.id] || [] });
+      result.push({ name: c.name, category: c.category, frequency: c.frequency || "hebdomadaire", slots: schedulesByCourse[c.id] || [] });
     }
     for (const w of workshops) {
       const slots: TimeSlot[] = [];
       if (w.date) {
         const day = getDayFromDate(w.date);
-        if (day) slots.push({ day, time: w.time, end_time: w.end_time });
+        if (day) slots.push({ day, time: w.time, end_time: w.end_time, date: w.date });
       }
-      result.push({ name: w.name, category: w.category, slots });
+      result.push({ name: w.name, category: w.category, frequency: w.frequency || "ponctuel", slots });
     }
     return result;
   }, [courses, schedules, workshops]);
@@ -70,6 +71,13 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
     yoga: "Yoga & Pilates",
     poterie: "Poterie",
     "bien-etre": "Ateliers & Stages",
+  };
+
+  const frequencyLabels: Record<string, string> = {
+    hebdomadaire: "Récurrent – Toutes les semaines",
+    mensuel: "Récurrent – Tous les mois",
+    ponctuel: "Ponctuel",
+    personnalise: "Dates personnalisées",
   };
 
   const dialogTitle = title || (specificActivity ? `Planning – ${specificActivity}` : "Semaine type");
@@ -104,7 +112,14 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
                     <tbody>
                       {activities.map(a => (
                         <tr key={a.name} className="border-b border-muted/30">
-                          <td className="py-2 px-2 font-medium text-xs">{a.name}</td>
+                          <td className="py-2 px-2">
+                            <div className="font-medium text-xs">{a.name}</div>
+                            {a.frequency && (
+                              <div className="text-[10px] text-muted-foreground mt-0.5">
+                                {frequencyLabels[a.frequency] || a.frequency}
+                              </div>
+                            )}
+                          </td>
                           {DAYS.map(day => {
                             const daySlots = a.slots.filter(s => s.day === day);
                             return (
@@ -112,9 +127,18 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
                                 {daySlots.length > 0 ? (
                                   <div className="flex flex-col items-center gap-0.5">
                                     {daySlots.map((s, i) => (
-                                      <span key={i} className={`inline-flex items-center justify-center px-1 py-0.5 rounded text-[8px] font-semibold text-white ${dotColor}`}>
+                                      <button
+                                        key={i}
+                                        className={`inline-flex items-center justify-center px-1 py-0.5 rounded text-[8px] font-semibold text-white ${dotColor} hover:opacity-80 transition-opacity cursor-pointer`}
+                                        onClick={() => {
+                                          if (onTimeClick) {
+                                            onTimeClick({ activity: a.name, category: a.category, date: s.date });
+                                          }
+                                        }}
+                                        title={`${s.time} - ${s.end_time} · Cliquer pour voir le planning`}
+                                      >
                                         {s.time}
-                                      </span>
+                                      </button>
                                     ))}
                                   </div>
                                 ) : (
