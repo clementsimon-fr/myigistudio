@@ -425,7 +425,7 @@ function ActivityEditor({
                 )}
               </div>
               <div>
-                <Label>Image</Label>
+                <Label className="text-emerald-700">Image</Label>
                 <div className="flex items-center gap-3 mt-1.5">
                   {form.image && <img src={form.image} alt="Preview" className="h-14 w-14 rounded-lg object-cover" />}
                   <Input type="file" accept="image/*" onChange={async (e) => {
