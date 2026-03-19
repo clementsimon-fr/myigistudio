@@ -297,6 +297,15 @@ function ActivityEditor({
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const isFirstRender = useRef(true);
 
+  // Flush pending auto-save (used when leaving the editor)
+  const flushSave = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+      onSave(false);
+    }
+  }, [onSave]);
+
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return; }
     if (!editingActivity) return; // only auto-save for existing activities
@@ -305,13 +314,15 @@ function ActivityEditor({
     saveTimerRef.current = setTimeout(() => {
       setAutoSaveStatus("saving");
       onSave(false);
+      saveTimerRef.current = null;
       setTimeout(() => setAutoSaveStatus("saved"), 500);
     }, 2000);
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [form]);
 
-  const addEvent = (type: "recurring" | "ponctuel") => {
-    setForm(prev => ({ ...prev, events: [...prev.events, { ...emptyEvent(), type }] }));
+  const handleBack = () => {
+    flushSave();
+    onCancel();
   };
   const removeEvent = (idx: number) => {
     setForm(prev => ({ ...prev, events: prev.events.filter((_, i) => i !== idx) }));
