@@ -1,4 +1,4 @@
-import { CalendarDays, CreditCard, User, Compass, Calendar, LogOut } from "lucide-react";
+import { CalendarDays, CreditCard, User, Compass, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { useDemoContext } from "@/contexts/DemoContext";
