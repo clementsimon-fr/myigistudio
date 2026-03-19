@@ -1067,7 +1067,7 @@ export default function AdminActivites() {
           customDates: [],
           inclusions: first.inclusions || "", card_yoga_count: first.card_yoga_count || 0,
           complementary_info: "",
-          linkedDates: groupEvents.map(we => we.date).sort(),
+          linkedDates: [...new Set(groupEvents.map(we => we.date))].sort(),
           _linkedGroup: groupId,
           _workshopId: first.id,
         });
