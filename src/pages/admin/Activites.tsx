@@ -604,13 +604,14 @@ function ActivityEditor({
                 <div key={idx} className="rounded-lg border bg-card p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Select value={evt.type} onValueChange={v => updateEvent(idx, { type: v as "recurring" | "ponctuel" })}>
-                        <SelectTrigger className="w-[140px] h-8 text-xs">
+                      <Select value={evt.type} onValueChange={v => updateEvent(idx, { type: v as "recurring" | "ponctuel" | "multi-sessions" })}>
+                        <SelectTrigger className="w-[155px] h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="recurring"><span className="flex items-center gap-1"><Repeat className="h-3 w-3" /> Récurrent</span></SelectItem>
                           <SelectItem value="ponctuel"><span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> Ponctuel</span></SelectItem>
+                          <SelectItem value="multi-sessions"><span className="flex items-center gap-1"><CalendarRange className="h-3 w-3" /> Multi-sessions</span></SelectItem>
                         </SelectContent>
                       </Select>
                       {evt.type === "recurring" && (
