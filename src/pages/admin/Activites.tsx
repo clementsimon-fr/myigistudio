@@ -643,7 +643,16 @@ function ActivityEditor({
                   </div>
 
                   {/* Temporality */}
-                  {evt.type === "recurring" && evt.frequency === "personnalise" ? (
+                  {evt.type === "multi-sessions" ? (
+                    <CustomDatesPicker
+                      dates={evt.linkedDates}
+                      onChange={dates => updateEvent(idx, { linkedDates: dates })}
+                      time={evt.time} endTime={evt.end_time} spots={evt.spots}
+                      onTimeChange={v => updateEvent(idx, { time: v })}
+                      onEndTimeChange={v => updateEvent(idx, { end_time: v })}
+                      onSpotsChange={v => updateEvent(idx, { spots: v })}
+                    />
+                  ) : evt.type === "recurring" && evt.frequency === "personnalise" ? (
                     <CustomDatesPicker
                       dates={evt.customDates}
                       onChange={dates => updateEvent(idx, { customDates: dates })}
