@@ -78,7 +78,16 @@ export function useActivitiesData() {
 
       if (coursesRes.data) setCourses(coursesRes.data as unknown as Course[]);
       if (schedulesRes.data) setSchedules(schedulesRes.data as unknown as Schedule[]);
-      if (workshopsRes.data) setWorkshops(workshopsRes.data as unknown as Workshop[]);
+      if (workshopsRes.data) {
+        const uniqueWorkshops = new Map<string, Workshop>();
+        for (const ws of workshopsRes.data as unknown as Workshop[]) {
+          const key = `${ws.linked_group || "single"}:${ws.name}:${ws.date}:${ws.time}:${ws.end_time}:${ws.price}:${ws.spots}`;
+          if (!uniqueWorkshops.has(key)) {
+            uniqueWorkshops.set(key, ws);
+          }
+        }
+        setWorkshops([...uniqueWorkshops.values()].sort((a, b) => a.date.localeCompare(b.date)));
+      }
       setLoading(false);
     };
     load();
