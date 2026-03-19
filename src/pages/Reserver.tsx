@@ -526,8 +526,41 @@ export default function Reserver() {
             )}
           </div>
 
+          {/* ═══ DATE PICKER for standalone workshops ═══ */}
+          {datePickerMode && availableDates.length > 0 && (
+            <div className="space-y-4 mb-6">
+              <h2 className="text-lg font-display font-semibold text-primary-dark">Choisissez votre date</h2>
+              <div className="grid gap-2">
+                {availableDates.map(ws => {
+                  const d = new Date(ws.date + "T12:00:00");
+                  const label = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+                  const time = ws.time?.slice(0, 5).replace(":", "h");
+                  const endTime = ws.end_time?.slice(0, 5).replace(":", "h");
+                  return (
+                    <button
+                      key={ws.id}
+                      onClick={() => handleDateSelect(ws)}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:border-primary hover:bg-primary/5 transition-colors text-left"
+                    >
+                      <div>
+                        <span className="font-medium text-sm capitalize">{label}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{time}–{endTime}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs">
+                        {ws.price > 0 && <span className="font-semibold">{ws.price}€</span>}
+                        <span className={ws.spots_left <= 2 ? "text-destructive font-medium" : "text-muted-foreground"}>
+                          {ws.spots_left} place{ws.spots_left > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ═══ STEP: SUMMARY ═══ */}
-          {bookingStep === "summary" && !currentProfile && (
+          {!datePickerMode && bookingStep === "summary" && !currentProfile && (
             <div className="space-y-6">
               {selectedSlotData && selectedDate && (
                 <BookingSummary
