@@ -1073,7 +1073,17 @@ export default function AdminActivites() {
       }
       // Create multi-sessions events for linked groups
       for (const [groupId, groupEvents] of Object.entries(linkedGroups)) {
-        const first = groupEvents[0];
+        const sortedGroup = [...groupEvents].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+        const first = sortedGroup[0];
+        const dateToWorkshop = new Map<string, WorkshopEvent>();
+        for (const ge of sortedGroup) {
+          if (ge.date && !dateToWorkshop.has(ge.date)) {
+            dateToWorkshop.set(ge.date, ge);
+          }
+        }
+        const linkedDates = [...dateToWorkshop.keys()].sort();
+        const linkedWorkshopIds = linkedDates.map(date => dateToWorkshop.get(date)?.id).filter((id): id is string => !!id);
+
         events.push({
           type: "multi-sessions", frequency: "hebdomadaire",
           day: "Lundi", time: first.time || "09:00", end_time: first.end_time || "10:00",
@@ -1082,9 +1092,10 @@ export default function AdminActivites() {
           customDates: [],
           inclusions: first.inclusions || "", card_yoga_count: first.card_yoga_count || 0,
           complementary_info: "",
-          linkedDates: [...new Set(groupEvents.map(we => we.date))].sort(),
+          linkedDates,
           _linkedGroup: groupId,
           _workshopId: first.id,
+          _linkedWorkshopIds: linkedWorkshopIds,
         });
       }
       // Create ponctuel events for standalone workshops
