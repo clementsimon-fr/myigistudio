@@ -24,7 +24,7 @@ interface ActivitiesViewProps {
   schedules: Schedule[];
   filter: FilterCategory;
   getInstructorPhoto: (id: string | null, name?: string) => string | undefined;
-  onSwitchToPlanning: (params?: { filter?: FilterCategory; activity?: string; date?: string }) => void;
+  onSwitchToPlanning: (params?: { filter?: FilterCategory; activity?: string; date?: string; linkedGroup?: string | null }) => void;
 }
 
 function InstructorBadge({ instructor, photo }: { instructor: string; photo?: string }) {
