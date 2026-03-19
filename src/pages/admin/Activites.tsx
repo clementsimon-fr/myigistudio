@@ -988,6 +988,7 @@ export default function AdminActivites() {
           customDates: [],
           inclusions: s.inclusions || "", card_yoga_count: s.card_yoga_count || 0,
           complementary_info: "",
+          linkedDates: [],
           _scheduleId: s.id,
         });
       }
