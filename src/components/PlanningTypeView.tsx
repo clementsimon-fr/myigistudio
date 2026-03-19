@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
+import { ChevronDown, CalendarDays } from "lucide-react";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 import type { Course, Schedule } from "@/hooks/useActivitiesData";
 
