@@ -119,6 +119,12 @@ interface Schedule {
   price?: number; inclusions?: string; card_yoga_count?: number;
 }
 
+interface WorkshopEvent {
+  id: string; date: string; time: string; end_time: string; duration: string;
+  price: number; spots: number; spots_left: number;
+  inclusions: string; card_yoga_count: number;
+}
+
 interface UnifiedActivity {
   id: string; name: string; description: string; long_description: string; category: string;
   image: string; instructor: string; instructor_id: string | null;
@@ -127,6 +133,7 @@ interface UnifiedActivity {
   date?: string; time?: string; end_time?: string; duration?: string; price?: number;
   intensity?: string; reminder_timing?: string;
   inclusions?: string; card_yoga_count?: number;
+  workshopEvents?: WorkshopEvent[]; // all workshop rows grouped under this activity
 }
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
