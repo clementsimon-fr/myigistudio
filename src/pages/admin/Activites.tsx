@@ -1071,6 +1071,7 @@ export default function AdminActivites() {
     const recurringEvents = form.events.filter(e => e.type === "recurring" && e.frequency !== "personnalise");
     const customDateEvents = form.events.filter(e => e.type === "recurring" && e.frequency === "personnalise");
     const ponctuelEvents = form.events.filter(e => e.type === "ponctuel");
+    const multiSessionEvents = form.events.filter(e => e.type === "multi-sessions");
 
     const allPonctuelEvents: EventSlot[] = [...ponctuelEvents];
     for (const evt of customDateEvents) {
@@ -1136,7 +1137,7 @@ export default function AdminActivites() {
       await supabase.from("courses").delete().eq("id", editingActivity.id);
     }
 
-    // ── Handle ponctuel events → workshops table ──
+    // ── Handle ponctuel + multi-sessions events → workshops table ──
     const validPonctuelEvents = allPonctuelEvents.filter(e => !!e.date);
     // Collect all existing workshop IDs for this activity group
     const allExistingWsIds = new Set<string>(
@@ -1144,6 +1145,7 @@ export default function AdminActivites() {
     );
     const keptWsIds = new Set<string>();
 
+    // Save standalone ponctuel events (no linked_group)
     if (validPonctuelEvents.length > 0) {
       for (const evt of validPonctuelEvents) {
         const duration = calcDuration(evt.time, evt.end_time);
@@ -1153,6 +1155,7 @@ export default function AdminActivites() {
           duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
           frequency: "ponctuel",
           inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
+          linked_group: null,
         };
 
         if (evt._workshopId) {
@@ -1163,7 +1166,6 @@ export default function AdminActivites() {
             toast({ title: "Erreur lors de la mise à jour", description: error.message, variant: "destructive" });
           }
         } else {
-          // Insert new workshop row and capture its ID for future saves
           const { data, error } = await supabase.from("workshops").insert(wsPayload as any).select("id").single();
           if (error) {
             console.error("Workshop insert error:", error);
@@ -1174,6 +1176,47 @@ export default function AdminActivites() {
             keptWsIds.add(data.id);
           }
         }
+      }
+    }
+
+    // Save multi-sessions events (with linked_group)
+    for (const evt of multiSessionEvents) {
+      const validDates = evt.linkedDates.filter(Boolean);
+      if (validDates.length === 0) continue;
+      
+      const linkedGroupId = evt._linkedGroup || crypto.randomUUID();
+      evt._linkedGroup = linkedGroupId;
+      const duration = calcDuration(evt.time, evt.end_time);
+
+      // Delete old workshops in this linked group (if editing)
+      if (evt._linkedGroup && editingActivity?.workshopEvents) {
+        const oldGroupWs = editingActivity.workshopEvents.filter(we => we.linked_group === evt._linkedGroup);
+        for (const old of oldGroupWs) {
+          keptWsIds.add(old.id); // Mark as handled
+        }
+        // Delete all old linked workshops, we'll re-create them
+        for (const old of oldGroupWs) {
+          await supabase.from("workshops").delete().eq("id", old.id);
+          allExistingWsIds.delete(old.id);
+        }
+      }
+
+      // Insert all dates with the same linked_group
+      for (const dateStr of validDates) {
+        const wsPayload = {
+          ...workshopData,
+          date: dateStr, time: evt.time, end_time: evt.end_time,
+          duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
+          frequency: "multi-sessions",
+          inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
+          linked_group: linkedGroupId,
+        };
+        const { data, error } = await supabase.from("workshops").insert(wsPayload as any).select("id").single();
+        if (error) {
+          console.error("Multi-session workshop insert error:", error);
+          toast({ title: "Erreur lors de la création", description: error.message, variant: "destructive" });
+        }
+        if (data) keptWsIds.add(data.id);
       }
     }
 
