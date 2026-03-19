@@ -258,8 +258,8 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
     }));
   }, [courses, schedules, schedulesMap]);
 
-  const potteryWorkshops = workshops.filter(w => w.category === "poterie");
-  const wellbeingWorkshops = workshops.filter(w => w.category === "bien-etre");
+  const potteryGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "poterie")), [workshops]);
+  const wellbeingGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "bien-etre")), [workshops]);
 
   const showYoga = filter === "all" || filter === "yoga";
   const showPoterie = filter === "all" || filter === "poterie";
@@ -272,8 +272,15 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
     onSwitchToPlanning({ filter: "yoga", activity: course.name });
   };
 
-  const handleBookWorkshop = (ws: Workshop) => {
-    onSwitchToPlanning({ filter: ws.category as FilterCategory, activity: ws.name, date: ws.date });
+  const handleBookGroup = (group: WorkshopGroup) => {
+    const ws = group.workshops[0];
+    // For linked groups, pass the first workshop's date and linked_group info
+    const params: any = { filter: ws.category as FilterCategory, activity: ws.name, date: ws.date };
+    if (group.isLinked) {
+      // Pass linked_group as query param so Reserver knows to load all linked workshops
+      params.linkedGroup = group.workshops[0].linked_group;
+    }
+    onSwitchToPlanning(params);
   };
 
   const openFrequency = (category: string, activityName?: string) => {
