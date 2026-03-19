@@ -119,6 +119,12 @@ interface Schedule {
   price?: number; inclusions?: string; card_yoga_count?: number;
 }
 
+interface WorkshopEvent {
+  id: string; date: string; time: string; end_time: string; duration: string;
+  price: number; spots: number; spots_left: number;
+  inclusions: string; card_yoga_count: number;
+}
+
 interface UnifiedActivity {
   id: string; name: string; description: string; long_description: string; category: string;
   image: string; instructor: string; instructor_id: string | null;
@@ -127,6 +133,7 @@ interface UnifiedActivity {
   date?: string; time?: string; end_time?: string; duration?: string; price?: number;
   intensity?: string; reminder_timing?: string;
   inclusions?: string; card_yoga_count?: number;
+  workshopEvents?: WorkshopEvent[]; // all workshop rows grouped under this activity
 }
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
@@ -880,18 +887,31 @@ export default function AdminActivites() {
         });
       }
     }
+    // Group workshops by name → one UnifiedActivity per group
     if (workshopsRes.data) {
+      const wsGrouped: Record<string, any[]> = {};
       for (const w of workshopsRes.data as any[]) {
-        const instrName = w.instructor_id && instrRes.data
-          ? (instrRes.data as any[]).find(i => i.id === w.instructor_id)?.name || "Élodie" : "Élodie";
-        unified.push({
-          id: w.id, name: w.name, description: w.description || "", long_description: w.long_description || "",
-          category: w.category, image: w.image || "", instructor: instrName, instructor_id: w.instructor_id,
-          reminder_template: w.reminder_template || "", modalities: w.modalities || "", source: "workshop",
-          date: w.date, time: w.time, end_time: w.end_time, duration: w.duration,
+        if (!wsGrouped[w.name]) wsGrouped[w.name] = [];
+        wsGrouped[w.name].push(w);
+      }
+      for (const [, group] of Object.entries(wsGrouped)) {
+        const first = group[0];
+        const instrName = first.instructor_id && instrRes.data
+          ? (instrRes.data as any[]).find(i => i.id === first.instructor_id)?.name || "Élodie" : "Élodie";
+        const workshopEvents: WorkshopEvent[] = group.map(w => ({
+          id: w.id, date: w.date, time: w.time, end_time: w.end_time, duration: w.duration,
           price: w.price, spots: w.spots, spots_left: w.spots_left,
-          intensity: w.intensity || "none", reminder_timing: w.reminder_timing || "1j",
           inclusions: w.inclusions || "", card_yoga_count: w.card_yoga_count || 0,
+        }));
+        unified.push({
+          id: first.id, name: first.name, description: first.description || "", long_description: first.long_description || "",
+          category: first.category, image: first.image || "", instructor: instrName, instructor_id: first.instructor_id,
+          reminder_template: first.reminder_template || "", modalities: first.modalities || "", source: "workshop",
+          date: first.date, time: first.time, end_time: first.end_time, duration: first.duration,
+          price: first.price, spots: first.spots, spots_left: first.spots_left,
+          intensity: first.intensity || "none", reminder_timing: first.reminder_timing || "1j",
+          inclusions: first.inclusions || "", card_yoga_count: first.card_yoga_count || 0,
+          workshopEvents,
         });
       }
     }
@@ -936,17 +956,19 @@ export default function AdminActivites() {
           _scheduleId: s.id,
         });
       }
-    } else if (a.source === "workshop") {
-      events.push({
-        type: "ponctuel", frequency: "hebdomadaire",
-        day: "Lundi", time: a.time || "09:00", end_time: a.end_time || "10:00",
-        spots: a.spots || 8, date: a.date || "", price: a.price || 0,
-        reminder_template: a.reminder_template, modalities: a.modalities,
-        customDates: [],
-        inclusions: a.inclusions || "", card_yoga_count: a.card_yoga_count || 0,
-        complementary_info: "",
-        _workshopId: a.id,
-      });
+    } else if (a.source === "workshop" && a.workshopEvents) {
+      for (const we of a.workshopEvents) {
+        events.push({
+          type: "ponctuel", frequency: "hebdomadaire",
+          day: "Lundi", time: we.time || "09:00", end_time: we.end_time || "10:00",
+          spots: we.spots || 8, date: we.date || "", price: we.price || 0,
+          reminder_template: a.reminder_template, modalities: a.modalities,
+          customDates: [],
+          inclusions: we.inclusions || "", card_yoga_count: we.card_yoga_count || 0,
+          complementary_info: "",
+          _workshopId: we.id,
+        });
+      }
     }
     if (events.length === 0) events.push(emptyEvent());
     setForm({
@@ -1033,10 +1055,13 @@ export default function AdminActivites() {
 
     // ── Handle ponctuel events → workshops table ──
     const validPonctuelEvents = allPonctuelEvents.filter(e => !!e.date);
-    if (validPonctuelEvents.length > 0) {
-      // Track existing workshop IDs to know which to keep
-      const existingWsIds = new Set<string>();
+    // Collect all existing workshop IDs for this activity group
+    const allExistingWsIds = new Set<string>(
+      editingActivity?.workshopEvents?.map(we => we.id) || []
+    );
+    const keptWsIds = new Set<string>();
 
+    if (validPonctuelEvents.length > 0) {
       for (const evt of validPonctuelEvents) {
         const duration = calcDuration(evt.time, evt.end_time);
         const wsPayload = {
@@ -1048,21 +1073,31 @@ export default function AdminActivites() {
         };
 
         if (evt._workshopId) {
-          // Update existing workshop row
-          existingWsIds.add(evt._workshopId);
+          keptWsIds.add(evt._workshopId);
           const { error } = await supabase.from("workshops").update(wsPayload as any).eq("id", evt._workshopId);
           if (error) {
             console.error("Workshop update error:", error);
             toast({ title: "Erreur lors de la mise à jour", description: error.message, variant: "destructive" });
           }
         } else {
-          // Insert new workshop row
-          const { error } = await supabase.from("workshops").insert(wsPayload as any);
+          // Insert new workshop row and capture its ID for future saves
+          const { data, error } = await supabase.from("workshops").insert(wsPayload as any).select("id").single();
           if (error) {
             console.error("Workshop insert error:", error);
             toast({ title: "Erreur lors de la création", description: error.message, variant: "destructive" });
           }
+          if (data) {
+            evt._workshopId = data.id;
+            keptWsIds.add(data.id);
+          }
         }
+      }
+    }
+
+    // Delete workshop rows that were removed from the editor
+    for (const oldId of allExistingWsIds) {
+      if (!keptWsIds.has(oldId)) {
+        await supabase.from("workshops").delete().eq("id", oldId);
       }
     }
 
@@ -1079,7 +1114,15 @@ export default function AdminActivites() {
       await supabase.from("course_schedules").delete().eq("course_id", deletingItem.id);
       await supabase.from("courses").delete().eq("id", deletingItem.id);
     } else {
-      await supabase.from("workshops").delete().eq("id", deletingItem.id);
+      // Delete all workshop rows in this group
+      const act = activities.find(a => a.id === deletingItem.id && a.source === "workshop");
+      if (act?.workshopEvents) {
+        for (const we of act.workshopEvents) {
+          await supabase.from("workshops").delete().eq("id", we.id);
+        }
+      } else {
+        await supabase.from("workshops").delete().eq("id", deletingItem.id);
+      }
     }
     toast({ title: "Activité supprimée", variant: "destructive" });
     setDeletingItem(null);
@@ -1259,14 +1302,14 @@ function ActivityCard({ activity: a, onEdit }: { activity: UnifiedActivity; onEd
               <span>· <Users className="h-3 w-3 inline" /> {s.spots - s.spots_left}/{s.spots}</span>
             </div>
           ))}
-          {a.source === "workshop" && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {a.source === "workshop" && a.workshopEvents?.map((we, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
               <CalendarIcon className="h-3 w-3 shrink-0" />
-              <span>{a.date ? new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "—"} {a.time}-{a.end_time}</span>
-              {a.price !== undefined && a.price > 0 && <span className="font-medium text-foreground">{a.price}€</span>}
-              <span>· <Users className="h-3 w-3 inline" /> {(a.spots || 0) - (a.spots_left || 0)}/{a.spots}</span>
+              <span>{we.date ? new Date(we.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "—"} {we.time}-{we.end_time}</span>
+              {we.price > 0 && <span className="font-medium text-foreground">{we.price}€</span>}
+              <span>· <Users className="h-3 w-3 inline" /> {we.spots - we.spots_left}/{we.spots}</span>
             </div>
-          )}
+          ))}
         </div>
       </div>
     </div>
