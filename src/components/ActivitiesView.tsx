@@ -109,12 +109,72 @@ function InterestForm({ activityName }: { activityName: string }) {
   );
 }
 
-function WorkshopCard({ ws, i, onDescription, instructorPhoto, onBook, onFrequency }: {
-  ws: Workshop; i: number; onDescription: (w: Workshop) => void; instructorPhoto?: string;
-  onBook: (ws: Workshop) => void; onFrequency: () => void;
+/** Format linked dates nicely */
+function formatLinkedDates(dates: string[]): string {
+  if (dates.length === 0) return "";
+  const formatted = dates.map(d => {
+    const date = new Date(d + "T12:00:00");
+    return date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+  });
+  if (formatted.length === 1) return formatted[0];
+  return formatted.slice(0, -1).join(", ") + " & " + formatted[formatted.length - 1];
+}
+
+/** Group workshops: linked_group workshops shown as single card */
+interface WorkshopGroup {
+  key: string;
+  workshops: Workshop[];
+  linkedDates: string[];
+  isLinked: boolean;
+}
+
+function groupWorkshops(workshops: Workshop[]): WorkshopGroup[] {
+  const linkedGroups: Record<string, Workshop[]> = {};
+  const standalone: Workshop[] = [];
+  
+  for (const ws of workshops) {
+    if (ws.linked_group) {
+      if (!linkedGroups[ws.linked_group]) linkedGroups[ws.linked_group] = [];
+      linkedGroups[ws.linked_group].push(ws);
+    } else {
+      standalone.push(ws);
+    }
+  }
+
+  const groups: WorkshopGroup[] = [];
+  
+  // Add linked groups
+  for (const [groupId, gws] of Object.entries(linkedGroups)) {
+    const sortedWs = [...gws].sort((a, b) => a.date.localeCompare(b.date));
+    groups.push({
+      key: groupId,
+      workshops: sortedWs,
+      linkedDates: sortedWs.map(w => w.date),
+      isLinked: true,
+    });
+  }
+  
+  // Add standalone workshops
+  for (const ws of standalone) {
+    groups.push({
+      key: ws.id,
+      workshops: [ws],
+      linkedDates: [ws.date],
+      isLinked: false,
+    });
+  }
+
+  return groups;
+}
+
+function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook, onFrequency }: {
+  group: WorkshopGroup; i: number; onDescription: (w: Workshop) => void; instructorPhoto?: string;
+  onBook: (group: WorkshopGroup) => void; onFrequency: () => void;
 }) {
+  const ws = group.workshops[0]; // Use first workshop for metadata
   const style = getCategoryStyle(ws.category);
-  const hasFutureDate = isFutureDate(ws.date);
+  const hasFutureDate = group.workshops.some(w => isFutureDate(w.date));
+  const spotsLeft = Math.min(...group.workshops.map(w => w.spots_left));
 
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow">
@@ -124,6 +184,11 @@ function WorkshopCard({ ws, i, onDescription, instructorPhoto, onBook, onFrequen
       <div className="p-4 md:p-5">
         <h3 className={`font-display font-semibold text-base md:text-lg leading-tight mb-2 ${style.text}`}>{ws.name}</h3>
         <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{ws.description}</p>
+        {group.isLinked && (
+          <p className="text-xs text-primary font-medium mb-2">
+            📅 {formatLinkedDates(group.linkedDates)}
+          </p>
+        )}
         <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
           {instructorPhoto && (
             <div className="flex items-center gap-1.5">
@@ -132,6 +197,9 @@ function WorkshopCard({ ws, i, onDescription, instructorPhoto, onBook, onFrequen
                 <AvatarFallback className="text-[9px] bg-primary/10 text-primary">I</AvatarFallback>
               </Avatar>
             </div>
+          )}
+          {spotsLeft <= 3 && spotsLeft > 0 && (
+            <span className="text-amber-600 font-medium">Plus que {spotsLeft} place{spotsLeft > 1 ? "s" : ""}</span>
           )}
         </div>
         {hasFutureDate ? (
@@ -144,7 +212,7 @@ function WorkshopCard({ ws, i, onDescription, instructorPhoto, onBook, onFrequen
             <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={onFrequency}>
               <CalendarRange className="h-3 w-3" />
             </Button>
-            <Button size="sm" className={`flex-1 text-xs ${style.bookBtn}`} onClick={() => onBook(ws)}>Réserver</Button>
+            <Button size="sm" className={`flex-1 text-xs ${style.bookBtn}`} onClick={() => onBook(group)}>Réserver</Button>
           </div>
         ) : (
           <div className="space-y-2">
