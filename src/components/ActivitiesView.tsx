@@ -296,8 +296,16 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   };
 
   const handleBookGroup = (group: WorkshopGroup) => {
-    const ws = group.workshops[0];
-    onSwitchToPlanning({ type: "workshop", id: ws.id, date: ws.date });
+    if (group.isLinked) {
+      const ws = group.workshops[0];
+      onSwitchToPlanning({ type: "workshop", id: ws.id, date: ws.date });
+    } else {
+      const ws = group.workshops[0];
+      const urlParams = new URLSearchParams();
+      urlParams.set("type", "workshop");
+      urlParams.set("name", ws.name);
+      window.location.href = `/reserver?${urlParams.toString()}`;
+    }
   };
 
   const openFrequency = (category: string, activityName?: string) => {
