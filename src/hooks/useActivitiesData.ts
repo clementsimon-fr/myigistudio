@@ -81,7 +81,9 @@ export function useActivitiesData() {
       if (workshopsRes.data) {
         const uniqueWorkshops = new Map<string, Workshop>();
         for (const ws of workshopsRes.data as unknown as Workshop[]) {
-          const key = `${ws.linked_group || "single"}:${ws.name}:${ws.date}:${ws.time}:${ws.end_time}:${ws.price}:${ws.spots}`;
+          const key = ws.linked_group
+            ? `group:${ws.linked_group}:${ws.date}`
+            : `single:${ws.name}:${ws.date}:${ws.time}:${ws.end_time}`;
           if (!uniqueWorkshops.has(key)) {
             uniqueWorkshops.set(key, ws);
           }

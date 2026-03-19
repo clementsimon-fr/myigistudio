@@ -990,7 +990,9 @@ export default function AdminActivites() {
       for (const [, group] of Object.entries(wsGrouped)) {
         const uniqueWorkshops = new Map<string, any>();
         for (const w of group) {
-          const key = `${w.linked_group || "single"}:${w.date || ""}:${w.time || ""}:${w.end_time || ""}:${w.price || 0}:${w.spots || 0}`;
+          const key = w.linked_group
+            ? `group:${w.linked_group}:${w.date || ""}`
+            : `single:${w.name || ""}:${w.date || ""}:${w.time || ""}:${w.end_time || ""}`;
           if (!uniqueWorkshops.has(key)) {
             uniqueWorkshops.set(key, w);
           }

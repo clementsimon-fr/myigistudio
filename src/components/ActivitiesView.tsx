@@ -163,7 +163,7 @@ function groupWorkshops(workshops: Workshop[]): WorkshopGroup[] {
   // Add standalone workshops (dedupe by date/time)
   const standaloneSeen = new Set<string>();
   for (const ws of standalone) {
-    const key = `${ws.name}:${ws.date}:${ws.time}:${ws.end_time}:${ws.price}:${ws.spots}`;
+    const key = `${ws.name}:${ws.date}:${ws.time}:${ws.end_time}`;
     if (standaloneSeen.has(key)) continue;
     standaloneSeen.add(key);
 
