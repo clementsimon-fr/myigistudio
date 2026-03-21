@@ -17,17 +17,6 @@ const clientSections = [
   { label: "Profil", to: "/mon-espace?section=profil", icon: User },
 ];
 
-const studioSections = [
-  { label: "Activités", to: "/", icon: Compass },
-  { label: "Planning", to: "/?view=planning", icon: Calendar },
-];
-
-const adminSections = [
-  { label: "Bonjour", to: "/admin/bonjour", icon: Sun },
-  { label: "Activités et réservations", to: "/admin/activites", icon: BookOpen },
-  { label: "Paramètres", to: "/admin/parametres", icon: Settings },
-];
-
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
