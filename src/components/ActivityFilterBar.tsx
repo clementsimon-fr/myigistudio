@@ -64,7 +64,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
                   variant={isActive ? null as any : "outline"}
                   size="sm"
                   onClick={() => onFilterChange(f.value)}
-                  className={`rounded-full gap-1 h-7 text-xs px-2.5 ${
+                  className={`rounded-full gap-1 ${f.icon ? "flex-col h-auto py-1 px-3" : "h-7 px-2.5"} text-xs ${
                     isActive
                       ? f.activeBg
                         ? `${f.activeBg} text-white border-transparent hover:text-white hover:opacity-90`
@@ -72,9 +72,11 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
                       : ""
                   }`}
                 >
-                  {f.icon && <img src={f.icon} alt="" className="w-4 h-4 rounded-full object-cover" />}
-                  {f.dot && <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : f.dot}`} />}
-                  {f.label}
+                  {f.icon && <img src={f.icon} alt="" className="w-7 h-7 rounded-full object-cover" />}
+                  <span className="flex items-center gap-1">
+                    {f.dot && <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : f.dot}`} />}
+                    {f.label}
+                  </span>
                 </Button>
               );
             })}
