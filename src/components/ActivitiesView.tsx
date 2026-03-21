@@ -322,10 +322,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
 
   return (
     <>
-      {/* ─── Programme (semaine / mois) ─── */}
-      {(courses.length > 0 || workshops.length > 0) && (
-        <PlanningTypeView ref={planningRef} courses={courses} schedules={schedules} workshops={workshops} filter={filter === "all" ? undefined : filter} compact onEventClick={handleProgrammeEventClick} />
-      )}
+      {/* ─── Yoga & Pilates ─── */}
 
       {/* ─── Yoga & Pilates ─── */}
       {showYoga && coursesWithSchedules.length > 0 && (
