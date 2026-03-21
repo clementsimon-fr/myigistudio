@@ -1,4 +1,4 @@
-import { Bell, CalendarDays, CalendarRange, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText, Lightbulb, FileSignature } from "lucide-react";
+import { Bell, CalendarDays, CalendarRange, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText, Lightbulb, FileSignature, Sun } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -15,6 +15,12 @@ import {
 import { Separator } from "@/components/ui/separator";
 
 const sidebarGroups = [
+  {
+    label: "",
+    items: [
+      { title: "Bonjour", url: "/admin/bonjour", icon: Sun },
+    ],
+  },
   {
     label: "Organisation",
     items: [

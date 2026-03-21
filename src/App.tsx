@@ -10,6 +10,7 @@ import Register from "./pages/Register";
 import MonEspace from "./pages/MonEspace";
 import Reserver from "./pages/Reserver";
 import AdminDashboard from "./pages/admin/Dashboard";
+import AdminBonjour from "./pages/admin/Bonjour";
 import AdminReservations from "./pages/admin/Reservations";
 import AdminClients from "./pages/admin/Clients";
 import AdminActivites from "./pages/admin/Activites";
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/mon-espace" element={<MonEspace />} />
             <Route path="/reserver" element={<Reserver />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/bonjour" element={<AdminBonjour />} />
             <Route path="/admin/reservations" element={<Navigate to="/admin/activites" replace />} />
             <Route path="/admin/activites" element={<AdminActivites />} />
             <Route path="/admin/clients" element={<AdminClients />} />

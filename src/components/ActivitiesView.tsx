@@ -196,16 +196,16 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
   const nextFuture = futureDates.sort((a, b) => a.date.localeCompare(b.date))[0];
 
   return (
-    <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow">
+    <motion.div id={`card-workshop-${ws.name}`} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-all">
       <div className="aspect-[4/3] overflow-hidden bg-muted relative">
         <img src={ws.image || PLACEHOLDER_IMG} alt={ws.name} className="w-full h-full object-cover" loading="lazy" />
       </div>
       <div className="p-4 md:p-5">
         <h3 className={`font-display font-semibold text-base md:text-lg leading-tight mb-2 ${style.text}`}>{ws.name}</h3>
         <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{ws.description}</p>
-        {group.isLinked && (
+        {group.isLinked && futureDates.length > 0 && (
           <p className="text-xs text-primary font-medium mb-2">
-            📅 {formatLinkedDates(group.linkedDates)}
+            📅 {formatLinkedDates(futureDates.map(w => w.date))}
           </p>
         )}
         {!group.isLinked && hasFutureDate && nextFuture && (
@@ -255,23 +255,15 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
 
   const handleProgrammeEventClick = useCallback((params: { type: "course" | "workshop"; name: string; id?: string; date?: string }) => {
-    if (params.type === "course" && params.id) {
-      onSwitchToPlanning({ type: "course", id: params.id });
-    } else if (params.type === "workshop") {
-      if (params.id) {
-        // For workshops with a specific date, go directly
-        const urlParams = new URLSearchParams();
-        urlParams.set("type", "workshop");
-        if (params.date) {
-          urlParams.set("id", params.id);
-          urlParams.set("date", params.date);
-        } else {
-          urlParams.set("name", params.name);
-        }
-        window.location.href = `/reserver?${urlParams.toString()}`;
-      }
+    // Scroll to the relevant card instead of navigating to booking
+    const cardId = params.type === "course" ? `card-course-${params.id}` : `card-workshop-${params.name}`;
+    const el = document.getElementById(cardId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-primary", "ring-offset-2");
+      setTimeout(() => el.classList.remove("ring-2", "ring-primary", "ring-offset-2"), 2000);
     }
-  }, [onSwitchToPlanning]);
+  }, []);
 
   const schedulesMap = useMemo(() => {
     const map: Record<string, Set<string>> = {};
@@ -339,14 +331,38 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {coursesWithSchedules.map((course, i) => {
                 const photo = getInstructorPhoto(course.instructor_id, course.instructor);
+                // Compute next session date from schedule days
+                const nextDate = (() => {
+                  const today = new Date();
+                  const dayIdx = today.getDay(); // 0=Sun
+                  const dayMap: Record<string, number> = { Lundi: 1, Mardi: 2, Mercredi: 3, Jeudi: 4, Vendredi: 5, Samedi: 6, Dimanche: 0 };
+                  let minDiff = Infinity;
+                  for (const d of course.activeDays) {
+                    const target = dayMap[d];
+                    if (target === undefined) continue;
+                    let diff = target - dayIdx;
+                    if (diff < 0) diff += 7;
+                    if (diff === 0) diff = 0; // today
+                    if (diff < minDiff) minDiff = diff;
+                  }
+                  if (minDiff === Infinity) return null;
+                  const next = new Date(today);
+                  next.setDate(today.getDate() + minDiff);
+                  return next;
+                })();
                 return (
-                  <motion.div key={course.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow">
+                  <motion.div id={`card-course-${course.id}`} key={course.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-all">
                     <div className="aspect-[4/3] overflow-hidden bg-muted relative">
                       <img src={course.image || PLACEHOLDER_IMG} alt={course.name} className="w-full h-full object-cover" loading="lazy" />
                     </div>
                     <div className="p-4 md:p-5">
                       <h3 className={`font-display font-semibold text-base md:text-lg leading-tight mb-2 ${yogaStyle.text}`}>{course.name}</h3>
                       {course.description && <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{course.description}</p>}
+                      {nextDate && (
+                        <p className="text-xs text-muted-foreground mb-2">
+                          📅 Prochain cours : {nextDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                        </p>
+                      )}
                       <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
                         <InstructorBadge instructor={course.instructor} photo={photo} />
                       </div>
