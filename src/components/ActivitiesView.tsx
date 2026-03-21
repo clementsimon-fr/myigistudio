@@ -318,7 +318,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
 
       {/* ─── Yoga & Pilates ─── */}
       {showYoga && coursesWithSchedules.length > 0 && (
-        <section className="py-12 md:py-16">
+        <section className="py-12 md:py-16" data-planning-section>
           <div className="container">
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${yogaStyle.text}`}>Yoga & Pilates</h2>
             <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-3 text-center">

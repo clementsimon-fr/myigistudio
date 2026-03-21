@@ -375,9 +375,10 @@ export default function Reserver() {
             const { data: linkedWs } = await supabase.from("workshops").select("*")
               .eq("linked_group", wsData.linked_group).order("date");
             if (linkedWs && linkedWs.length > 1) {
+              const todayStr = new Date().toISOString().split("T")[0];
               const byDate = new Map<string, any>();
               for (const w of linkedWs as any[]) {
-                if (w.date && !byDate.has(w.date)) byDate.set(w.date, w);
+                if (w.date && w.date >= todayStr && !byDate.has(w.date)) byDate.set(w.date, w);
               }
               const dedupedLinkedWs = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
               const linkedDates = dedupedLinkedWs.map(w => w.date);
@@ -388,6 +389,14 @@ export default function Reserver() {
                 linkedWorkshopIds: linkedIds,
                 linkedWorkshops: dedupedLinkedWs,
               }));
+              // Force date picker for linked groups with multiple future dates
+              if (dedupedLinkedWs.length > 0) {
+                setAvailableDates(dedupedLinkedWs.map((w: any) => ({
+                  id: w.id, date: w.date, time: w.time, end_time: w.end_time,
+                  spots_left: w.spots_left, price: w.price,
+                })));
+                setDatePickerMode(true);
+              }
             }
           }
           

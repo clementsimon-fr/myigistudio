@@ -310,10 +310,7 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
 
       {viewMode === "daily" ? (
         <>
-          <div className="flex items-center justify-between">
-            <Button variant="outline" size="icon" onClick={prevDay}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+          <div className="flex items-center justify-center">
             <div className="text-center">
               <h3 className="text-sm md:text-lg font-semibold capitalize">
                 {currentDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
@@ -324,9 +321,6 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
                 </Button>
               )}
             </div>
-            <Button variant="outline" size="icon" onClick={nextDay}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
           </div>
 
           {blocks.length === 0 ? (
