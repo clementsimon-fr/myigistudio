@@ -369,7 +369,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${potteryStyle.text}`}>Poterie</h2>
             {/* Inline upcoming workshops */}
             <div className="mb-6 max-w-2xl mx-auto">
-              <MonthWorkshops workshops={workshops.filter(w => w.category === "poterie")} onEventClick={handleProgrammeEventClick} />
+              <MonthWorkshops workshops={workshops.filter(w => w.category === "poterie")} onEventClick={handleProgrammeEventClick} hideTitle />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {potteryGroups.map((group, i) => (
