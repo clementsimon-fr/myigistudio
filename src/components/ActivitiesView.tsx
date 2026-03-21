@@ -331,14 +331,38 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {coursesWithSchedules.map((course, i) => {
                 const photo = getInstructorPhoto(course.instructor_id, course.instructor);
+                // Compute next session date from schedule days
+                const nextDate = (() => {
+                  const today = new Date();
+                  const dayIdx = today.getDay(); // 0=Sun
+                  const dayMap: Record<string, number> = { Lundi: 1, Mardi: 2, Mercredi: 3, Jeudi: 4, Vendredi: 5, Samedi: 6, Dimanche: 0 };
+                  let minDiff = Infinity;
+                  for (const d of course.activeDays) {
+                    const target = dayMap[d];
+                    if (target === undefined) continue;
+                    let diff = target - dayIdx;
+                    if (diff < 0) diff += 7;
+                    if (diff === 0) diff = 0; // today
+                    if (diff < minDiff) minDiff = diff;
+                  }
+                  if (minDiff === Infinity) return null;
+                  const next = new Date(today);
+                  next.setDate(today.getDate() + minDiff);
+                  return next;
+                })();
                 return (
-                  <motion.div key={course.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow">
+                  <motion.div id={`card-course-${course.id}`} key={course.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-all">
                     <div className="aspect-[4/3] overflow-hidden bg-muted relative">
                       <img src={course.image || PLACEHOLDER_IMG} alt={course.name} className="w-full h-full object-cover" loading="lazy" />
                     </div>
                     <div className="p-4 md:p-5">
                       <h3 className={`font-display font-semibold text-base md:text-lg leading-tight mb-2 ${yogaStyle.text}`}>{course.name}</h3>
                       {course.description && <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{course.description}</p>}
+                      {nextDate && (
+                        <p className="text-xs text-muted-foreground mb-2">
+                          📅 Prochain cours : {nextDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                        </p>
+                      )}
                       <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
                         <InstructorBadge instructor={course.instructor} photo={photo} />
                       </div>
