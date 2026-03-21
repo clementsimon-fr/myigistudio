@@ -311,9 +311,9 @@ export default function Reserver() {
   const handleDateSelect = (ws: typeof availableDates[0]) => {
     setSelectedDate(new Date(ws.date + "T00:00:00"));
     setSelectedSlot(ws.id);
-    // Update activity with the selected workshop's data
     setActivity((prev: any) => ({ ...prev, id: ws.id, date: ws.date, time: ws.time, end_time: ws.end_time, spots_left: ws.spots_left, price: ws.price }));
     setDatePickerMode(false);
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 100);
   };
 
   // ─── Redirect if no params ───

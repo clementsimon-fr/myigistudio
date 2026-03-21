@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, User, CalendarDays, CreditCard, LogOut, Compass, Calendar, Settings, BookOpen } from "lucide-react";
+import { Menu, X, User, CalendarDays, CreditCard, LogOut, Compass, Calendar, Settings, BookOpen, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,6 +23,7 @@ const studioSections = [
 ];
 
 const adminSections = [
+  { label: "Bonjour", to: "/admin/bonjour", icon: Sun },
   { label: "Activités et réservations", to: "/admin/activites", icon: BookOpen },
   { label: "Paramètres", to: "/admin/parametres", icon: Settings },
 ];
