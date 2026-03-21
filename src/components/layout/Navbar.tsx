@@ -132,7 +132,7 @@ export default function Navbar() {
         <div className="md:hidden border-t bg-background p-4 space-y-2">
           <p className="text-xs text-muted-foreground px-2 mb-1">Connecté : {currentProfile.name}</p>
           
-          {isAdmin && (
+          {(isAdmin || currentProfile?.role === "fournisseur") && (
             <>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground px-2 pt-2 font-semibold">Administration</p>
               {adminSections.map((item) => (
