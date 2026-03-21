@@ -85,7 +85,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
                         : ""
                   }`}
                 >
-                  <img src={f.icon} alt="" className="w-7 h-7 rounded-full object-cover" />
+                  <img src={getIcon(f)} alt="" className="w-7 h-7 rounded-full object-cover" />
                   <span className="leading-tight">{f.label}</span>
                 </Button>
               );
