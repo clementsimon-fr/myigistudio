@@ -183,9 +183,9 @@ function groupWorkshops(workshops: Workshop[]): WorkshopGroup[] {
   return groups;
 }
 
-function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook, onFrequency }: {
+function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
   group: WorkshopGroup; i: number; onDescription: (w: Workshop) => void; instructorPhoto?: string;
-  onBook: (group: WorkshopGroup) => void; onFrequency: () => void;
+  onBook: (group: WorkshopGroup) => void;
 }) {
   const ws = group.workshops[0]; // Use first workshop for metadata
   const style = getCategoryStyle(ws.category);
