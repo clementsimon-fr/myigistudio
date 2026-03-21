@@ -10,6 +10,7 @@ import Register from "./pages/Register";
 import MonEspace from "./pages/MonEspace";
 import Reserver from "./pages/Reserver";
 import AdminDashboard from "./pages/admin/Dashboard";
+import AdminBonjour from "./pages/admin/Bonjour";
 import AdminReservations from "./pages/admin/Reservations";
 import AdminClients from "./pages/admin/Clients";
 import AdminActivites from "./pages/admin/Activites";
