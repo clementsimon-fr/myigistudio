@@ -58,6 +58,194 @@ const DAY_NAMES_MAP: Record<number, string> = {
 
 type BookingStep = "summary" | "login" | "register" | "registering" | "guest_form" | "purchase_options" | "payment" | "confirmed";
 
+// ─── Week/Month navigation helpers ───
+function getWeekOfDate(d: Date): { start: Date; end: Date } {
+  const start = new Date(d);
+  const day = start.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  start.setDate(start.getDate() + diff);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+function formatWeekLabel(start: Date, end: Date): string {
+  const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
+  return `${start.toLocaleDateString("fr-FR", opts)} – ${end.toLocaleDateString("fr-FR", opts)}`;
+}
+
+function WorkshopDatePicker({ dates, onSelect }: {
+  dates: { id: string; date: string; time: string; end_time: string; spots_left: number; price: number }[];
+  onSelect: (ws: typeof dates[0]) => void;
+}) {
+  const [viewMode, setViewMode] = useState<"semaine" | "mois">("semaine");
+  const firstDate = dates.length > 0 ? new Date(dates[0].date + "T12:00:00") : new Date();
+  const [weekStart, setWeekStart] = useState(() => getWeekOfDate(firstDate).start);
+  const [monthOffset, setMonthOffset] = useState(0);
+
+  const weekEnd = useMemo(() => {
+    const e = new Date(weekStart);
+    e.setDate(e.getDate() + 6);
+    return e;
+  }, [weekStart]);
+
+  const visibleDates = useMemo(() => {
+    if (viewMode === "semaine") {
+      return dates.filter(ws => {
+        const d = new Date(ws.date + "T12:00:00");
+        return d >= weekStart && d <= weekEnd;
+      });
+    }
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + monthOffset + 1, 0, 23, 59, 59);
+    return dates.filter(ws => {
+      const d = new Date(ws.date + "T12:00:00");
+      return d >= monthStart && d <= monthEnd;
+    });
+  }, [dates, viewMode, weekStart, weekEnd, monthOffset]);
+
+  const monthLabel = useMemo(() => {
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+    const l = d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+    return l.charAt(0).toUpperCase() + l.slice(1);
+  }, [monthOffset]);
+
+  return (
+    <div className="space-y-4 mb-6">
+      <h2 className="text-lg font-display font-semibold text-primary-dark">Choisissez votre date</h2>
+      <div className="flex items-center gap-2">
+        <div className="flex gap-1">
+          <Button size="sm" variant={viewMode === "semaine" ? "default" : "outline"} className="text-xs h-7 px-2.5" onClick={() => setViewMode("semaine")}>Semaine</Button>
+          <Button size="sm" variant={viewMode === "mois" ? "default" : "outline"} className="text-xs h-7 px-2.5" onClick={() => setViewMode("mois")}>Mois</Button>
+        </div>
+        <div className="flex items-center gap-1 ml-auto">
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => {
+            if (viewMode === "semaine") { const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d); }
+            else setMonthOffset(p => p - 1);
+          }}><ChevronLeft className="h-4 w-4" /></Button>
+          <span className="text-xs font-medium min-w-[120px] text-center">
+            {viewMode === "semaine" ? formatWeekLabel(weekStart, weekEnd) : monthLabel}
+          </span>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => {
+            if (viewMode === "semaine") { const d = new Date(weekStart); d.setDate(d.getDate() + 7); setWeekStart(d); }
+            else setMonthOffset(p => p + 1);
+          }}><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+      </div>
+      {visibleDates.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4">Aucune date disponible sur cette période.</p>
+      ) : (
+        <div className="grid gap-2">
+          {visibleDates.map(ws => {
+            const d = new Date(ws.date + "T12:00:00");
+            const label = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+            const time = ws.time?.slice(0, 5).replace(":", "h");
+            const endTime = ws.end_time?.slice(0, 5).replace(":", "h");
+            return (
+              <button key={ws.id} onClick={() => onSelect(ws)} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:border-primary hover:bg-primary/5 transition-colors text-left">
+                <div>
+                  <span className="font-medium text-sm capitalize">{label}</span>
+                  <span className="text-xs text-muted-foreground ml-2">{time}–{endTime}</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  {ws.price > 0 && <span className="font-semibold">{ws.price}€</span>}
+                  <span className={ws.spots_left <= 2 ? "text-destructive font-medium" : "text-muted-foreground"}>
+                    {ws.spots_left} place{ws.spots_left > 1 ? "s" : ""}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CourseDatePicker({ dates, onSelect }: {
+  dates: { date: Date; schedule: CourseScheduleRow }[];
+  onSelect: (d: Date, sched: CourseScheduleRow) => void;
+}) {
+  const [viewMode, setViewMode] = useState<"semaine" | "mois">("semaine");
+  const firstDate = dates.length > 0 ? dates[0].date : new Date();
+  const [weekStart, setWeekStart] = useState(() => getWeekOfDate(firstDate).start);
+  const [monthOffset, setMonthOffset] = useState(0);
+
+  const weekEnd = useMemo(() => {
+    const e = new Date(weekStart);
+    e.setDate(e.getDate() + 6);
+    return e;
+  }, [weekStart]);
+
+  const visibleDates = useMemo(() => {
+    if (viewMode === "semaine") {
+      return dates.filter(({ date: d }) => d >= weekStart && d <= weekEnd);
+    }
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + monthOffset + 1, 0, 23, 59, 59);
+    return dates.filter(({ date: d }) => d >= monthStart && d <= monthEnd);
+  }, [dates, viewMode, weekStart, weekEnd, monthOffset]);
+
+  const monthLabel = useMemo(() => {
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+    const l = d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+    return l.charAt(0).toUpperCase() + l.slice(1);
+  }, [monthOffset]);
+
+  return (
+    <div className="space-y-4 mb-6">
+      <h2 className="text-lg font-display font-semibold text-primary-dark">Choisissez votre date</h2>
+      <div className="flex items-center gap-2">
+        <div className="flex gap-1">
+          <Button size="sm" variant={viewMode === "semaine" ? "default" : "outline"} className="text-xs h-7 px-2.5" onClick={() => setViewMode("semaine")}>Semaine</Button>
+          <Button size="sm" variant={viewMode === "mois" ? "default" : "outline"} className="text-xs h-7 px-2.5" onClick={() => setViewMode("mois")}>Mois</Button>
+        </div>
+        <div className="flex items-center gap-1 ml-auto">
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => {
+            if (viewMode === "semaine") { const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d); }
+            else setMonthOffset(p => p - 1);
+          }}><ChevronLeft className="h-4 w-4" /></Button>
+          <span className="text-xs font-medium min-w-[120px] text-center">
+            {viewMode === "semaine" ? formatWeekLabel(weekStart, weekEnd) : monthLabel}
+          </span>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => {
+            if (viewMode === "semaine") { const d = new Date(weekStart); d.setDate(d.getDate() + 7); setWeekStart(d); }
+            else setMonthOffset(p => p + 1);
+          }}><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+      </div>
+      {visibleDates.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4">Aucune date disponible sur cette période.</p>
+      ) : (
+        <div className="grid gap-2">
+          {visibleDates.map(({ date: d, schedule: sched }, idx) => {
+            const label = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+            const time = sched.time?.slice(0, 5).replace(":", "h");
+            const endTime = sched.end_time?.slice(0, 5).replace(":", "h");
+            return (
+              <button key={`${sched.id}-${idx}`} onClick={() => onSelect(d, sched)} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:border-primary hover:bg-primary/5 transition-colors text-left">
+                <div>
+                  <span className="font-medium text-sm capitalize">{label}</span>
+                  <span className="text-xs text-muted-foreground ml-2">{time}–{endTime}</span>
+                </div>
+                <span className={`text-xs ${sched.spots_left <= 2 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                  {sched.spots_left} place{sched.spots_left > 1 ? "s" : ""}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Reserver() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
