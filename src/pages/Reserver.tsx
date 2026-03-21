@@ -249,6 +249,7 @@ export default function Reserver() {
     setSelectedDate(d);
     setSelectedSlot(sched.id);
     setCourseDatePickerMode(false);
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 100);
   };
 
   // Compute slots
