@@ -54,8 +54,8 @@ export default function Navbar() {
             {/* Desktop: dropdown menu for logged-in users */}
             <div className="hidden md:flex items-center gap-3">
               {/* Admin quick link */}
-              {isAdmin && !location.pathname.startsWith("/admin") && (
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate("/admin/activites")}>
+              {(isAdmin || currentProfile?.role === "fournisseur") && !location.pathname.startsWith("/admin") && (
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate("/admin/bonjour")}>
                   <Settings className="h-3.5 w-3.5" /> Espace admin
                 </Button>
               )}
