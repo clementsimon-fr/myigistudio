@@ -2,19 +2,19 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 import filterYoga from "@/assets/filter-yoga.png";
 import filterPoterie from "@/assets/filter-poterie.png";
 import filterAteliers from "@/assets/filter-ateliers.png";
-
 import filterTout from "@/assets/filter-tout.png";
 
 export type FilterCategory = "all" | "yoga" | "poterie" | "bien-etre";
 
-export const CATEGORY_FILTERS: { value: FilterCategory; label: string; dot?: string; activeBg?: string; inactiveBg?: string; icon?: string }[] = [
-  { value: "all", label: "Tout", icon: filterTout },
-  { value: "yoga", label: "Yoga", dot: "bg-[hsl(210,60%,55%)]", activeBg: "bg-[hsl(210,60%,55%)]", inactiveBg: "bg-[hsl(210,60%,90%)] text-[hsl(210,60%,35%)]", icon: filterYoga },
-  { value: "poterie", label: "Poterie", dot: "bg-[hsl(40,76%,60%)]", activeBg: "bg-[hsl(40,76%,60%)]", inactiveBg: "bg-[hsl(40,76%,90%)] text-[hsl(40,76%,30%)]", icon: filterPoterie },
-  { value: "bien-etre", label: "Atelier", dot: "bg-[hsl(0,55%,58%)]", activeBg: "bg-[hsl(0,55%,58%)]", inactiveBg: "bg-[hsl(0,55%,90%)] text-[hsl(0,55%,35%)]", icon: filterAteliers },
+export const CATEGORY_FILTERS: { value: FilterCategory; label: string; dot?: string; activeBg?: string; inactiveBg?: string; icon?: string; iconSettingKey?: string }[] = [
+  { value: "all", label: "Tout", icon: filterTout, iconSettingKey: "filter_icon_tout" },
+  { value: "yoga", label: "Yoga", dot: "bg-[hsl(210,60%,55%)]", activeBg: "bg-[hsl(210,60%,55%)]", inactiveBg: "bg-[hsl(210,60%,90%)] text-[hsl(210,60%,35%)]", icon: filterYoga, iconSettingKey: "filter_icon_yoga" },
+  { value: "poterie", label: "Poterie", dot: "bg-[hsl(40,76%,60%)]", activeBg: "bg-[hsl(40,76%,60%)]", inactiveBg: "bg-[hsl(40,76%,90%)] text-[hsl(40,76%,30%)]", icon: filterPoterie, iconSettingKey: "filter_icon_poterie" },
+  { value: "bien-etre", label: "Atelier", dot: "bg-[hsl(0,55%,58%)]", activeBg: "bg-[hsl(0,55%,58%)]", inactiveBg: "bg-[hsl(0,55%,90%)] text-[hsl(0,55%,35%)]", icon: filterAteliers, iconSettingKey: "filter_icon_bien_etre" },
 ];
 
 export const CATEGORY_STYLES: Record<string, { block: string; dot: string; text: string; bookBtn: string }> = {
@@ -49,9 +49,18 @@ interface ActivityFilterBarProps {
 export default function ActivityFilterBar({ filter, onFilterChange, subFilterOptions, subFilter, onSubFilterChange }: ActivityFilterBarProps) {
   const navigate = useNavigate();
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+  const { get: getSetting } = useSiteSettings();
   const catFilter = CATEGORY_FILTERS.find(f => f.value === filter);
   const activeBg = catFilter?.activeBg || "bg-primary-dark";
   const hasSubFilters = filter !== "all" && subFilterOptions && subFilterOptions.length > 0;
+
+  const getIcon = (f: typeof CATEGORY_FILTERS[0]) => {
+    if (f.iconSettingKey) {
+      const customUrl = getSetting(f.iconSettingKey, "");
+      if (customUrl) return customUrl;
+    }
+    return f.icon || "";
+  };
 
   return (
     <div className="sticky top-16 z-30">
@@ -76,7 +85,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
                         : ""
                   }`}
                 >
-                  <img src={f.icon} alt="" className="w-7 h-7 rounded-full object-cover" />
+                  <img src={getIcon(f)} alt="" className="w-7 h-7 rounded-full object-cover" />
                   <span className="leading-tight">{f.label}</span>
                 </Button>
               );
