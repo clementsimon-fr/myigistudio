@@ -1,54 +1,49 @@
+1)Quand admin est connecté est va dans page visiteur, il doit voir dans son menu uniquement : Espace admin (oriente vers Bonjour) et Déconnexion 
+
+2)Dans admin, activités et réservations, vue Plannings aujourd'hui, il n'est pas utile d'avoir les flèches pour changer de jour.
+
+  
+3) Plan : Corrections des flux de navigation et réservation
+
+## Problèmes identifiés
+
+### 1. Route `/?view=planning` non gérée
+
+Le menu Navbar contient un lien "Planning" vers `/?view=planning`, mais `Discover.tsx` n'exploite pas ce paramètre. Résultat : cliquer sur "Planning" affiche la page d'accueil sans changement visible. Aussi utilisé dans `MonEspace.tsx` et `PricingSection.tsx`.
+
+**Correction** : Dans `Discover.tsx`, lire le paramètre `view` et scroller automatiquement vers la première section planning inline (ou activer un mode dédié).
+
+### 2. Console warning : `Function components cannot be given refs`
+
+Les composants `Dialog` dans `ActivitiesView.tsx` et `PricingSection.tsx` reçoivent un ref qu'ils ne supportent pas. Probablement un artefact d'anciens usages.
+
+**Correction** : Vérifier et supprimer tout ref invalide passé à `Dialog`.
+
+### 3. Dates passées dans les workshops liés (linked_group)
+
+Quand on accède à `/reserver?type=workshop&id=xxx`, les `linkedDates` ne sont pas filtrées pour exclure les dates passées. Un visiteur pourrait voir et réserver une date passée.
+
+**Correction** : Dans `Reserver.tsx`, filtrer `linkedDates` et `linkedWorkshops` pour ne garder que les dates futures (lignes 374-391).
+
+### 4. Workshop par ID sans date picker
+
+Quand un workshop lié est réservé via `handleBookGroup` (clic "Réserver" sur une carte liée), il envoie directement `type=workshop&id=xxx&date=xxx` sans passer par le date picker. Incohérent avec la demande de toujours proposer le choix de date.
+
+**Correction** : Pour les workshops liés avec plusieurs dates futures, afficher le date picker au lieu de pré-sélectionner la première date.
+
+### 5. Lien "Planning" dans le menu pointe vers une vue inexistante
+
+Le planning centralisé a été supprimé. Le lien devrait soit être retiré, soit pointer vers la page d'accueil avec un scroll vers les sections planning inline.
+
+**Correction** : Changer le lien "Planning" dans `studioSections` pour scroller vers les sections inline, ou le supprimer du menu puisque le planning est maintenant directement visible.
+
+## Fichiers impactés
 
 
-# Plan : Planning inline par catégorie (sans bandeau "À venir")
-
-## Résumé
-
-Supprimer le bloc Programme collapsible central. À la place, intégrer un mini-planning directement dans chaque section de catégorie (au-dessus des cartes). Supprimer le bouton calendrier des cartes.
-
-## Changements
-
-### `ActivitiesView.tsx`
-
-1. **Retirer le `PlanningTypeView` collapsible** (lignes 356-359) — plus de Programme centralisé
-2. **Retirer le bouton calendrier** (`CalendarRange`) de chaque carte (yoga ligne 384-386, workshop lignes 235-237 et 248-249)
-3. **Retirer les refs et imports** liés à `PlanningTypeView`, `planningRef`, `openProgramme`, `handleProgrammeEventClick`
-4. **Ajouter un mini-planning inline dans chaque section** :
-   - **Yoga** : `RecurringGrid` (exporté depuis `PlanningTypeView`) inséré entre le titre "Yoga & Pilates" et la grille de cartes
-   - **Poterie** : liste des prochaines dates du mois (réutiliser `MonthWorkshops` filtré poterie) entre le titre et les cartes
-   - **Ateliers** : même chose filtré bien-être
-
-### `PlanningTypeView.tsx`
-
-5. **Exporter `RecurringGrid` et `MonthWorkshops`** comme named exports pour réutilisation inline
-6. Le composant principal `PlanningTypeView` reste exporté (utilisé côté admin) mais n'est plus appelé côté visiteur
-
-### `FrequencyDialog.tsx`
-
-7. Vérifier si encore utilisé — si le bouton calendrier est supprimé des cartes, le `FrequencyDialog` n'est plus déclenché. On conserve l'import au cas où mais on retire les appels `onFrequency` / `openFrequency`.
-
-## Résultat visuel
-
-```text
-── Yoga & Pilates ─────────────────────
-│ Grille L-M-M-J-V-S-D (RecurringGrid)│  ← inline, visible
-├──────────────────────────────────────┤
-│ [Carte Yoga] [Carte Pilates]         │
-────────────────────────────────────────
-
-── Poterie ────────────────────────────
-│ Sam 29/03 · 14h-16h · Initiation    │
-│ Sam 05/04 · 14h-16h · Initiation    │  ← liste dates inline
-├──────────────────────────────────────┤
-│ [Carte Initiation] [Carte Stage]     │
-────────────────────────────────────────
-
-── Ateliers & Stages ──────────────────
-│ Dim 30/03 · 10h-12h · Atelier       │  ← liste dates inline
-├──────────────────────────────────────┤
-│ [Carte Atelier]                      │
-────────────────────────────────────────
-```
-
-Zéro clic pour voir les plannings. Chaque ligne de planning reste cliquable → tunnel de réservation.
-
+| Fichier              | Action                                                                                             |
+| -------------------- | -------------------------------------------------------------------------------------------------- |
+| `Discover.tsx`       | Gérer `?view=planning` : scroll auto vers la première section planning                             |
+| `Reserver.tsx`       | Filtrer les dates passées des linked workshops ; forcer date picker pour linked groups multi-dates |
+| `ActivitiesView.tsx` | Corriger le ref warning sur Dialog                                                                 |
+| `Navbar.tsx`         | Mettre à jour le lien Planning (ancre ou suppression)                                              |
+| `PricingSection.tsx` | Corriger le ref warning sur Dialog                                                                 |
