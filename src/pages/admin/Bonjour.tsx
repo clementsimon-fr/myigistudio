@@ -181,7 +181,7 @@ function MoodCard({ mood, onClose }: { mood: Mood; onClose: () => void }) {
   if (mood === "nuageux") {
     if (step === "breathing") {
       return (
-        <Card className="border-amber-200 bg-amber-50/50">
+        <Card className="border-accent/30 bg-accent/5">
           <CardContent className="p-5">
             <BreathingExercise onDone={() => setStep("gratitude")} />
           </CardContent>
@@ -190,7 +190,7 @@ function MoodCard({ mood, onClose }: { mood: Mood; onClose: () => void }) {
     }
     if (step === "gratitude") {
       return (
-        <Card className="border-amber-200 bg-amber-50/50">
+        <Card className="border-accent/30 bg-accent/5">
           <CardContent className="p-5">
             <GratitudePage onDone={onClose} />
           </CardContent>
@@ -198,7 +198,7 @@ function MoodCard({ mood, onClose }: { mood: Mood; onClose: () => void }) {
       );
     }
     return (
-      <Card className="border-amber-200 bg-amber-50/50">
+      <Card className="border-accent/30 bg-accent/5">
         <CardContent className="p-5 space-y-3">
           <p className="text-sm leading-relaxed">
             Peut-être pourriez-vous recentrer l'énergie sur l'essentiel, prendre de la hauteur ?
@@ -214,7 +214,7 @@ function MoodCard({ mood, onClose }: { mood: Mood; onClose: () => void }) {
 
   if (mood === "sous-eau") {
     return (
-      <Card className="border-blue-200 bg-blue-50/50">
+      <Card className="border-secondary/30 bg-secondary/5">
         <CardContent className="p-5 space-y-3">
           <p className="text-sm leading-relaxed">
             Quand nous sommes sous l'eau, nous pouvons remonter à la surface, par l'ancrage et le regard.
