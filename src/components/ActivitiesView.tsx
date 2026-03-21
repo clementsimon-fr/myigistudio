@@ -253,14 +253,6 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
 export default function ActivitiesView({ courses, workshops, schedules, filter, getInstructorPhoto, onSwitchToPlanning }: ActivitiesViewProps) {
   const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
-  const [frequencyOpen, setFrequencyOpen] = useState(false);
-  const [frequencyCategory, setFrequencyCategory] = useState<string>("yoga");
-  const [frequencyActivity, setFrequencyActivity] = useState<string | undefined>(undefined);
-  const planningRef = useRef<PlanningTypeViewHandle>(null);
-
-  const openProgramme = useCallback(() => {
-    planningRef.current?.openAndScroll();
-  }, []);
 
   const handleProgrammeEventClick = useCallback((params: { type: "course" | "workshop"; name: string; id?: string; date?: string }) => {
     if (params.type === "course" && params.id) {
