@@ -77,6 +77,8 @@ export default function Reserver() {
   // Date selection for standalone workshops loaded by name
   const [availableDates, setAvailableDates] = useState<{ id: string; date: string; time: string; end_time: string; spots_left: number; price: number }[]>([]);
   const [datePickerMode, setDatePickerMode] = useState(false);
+  // For courses: show upcoming dates derived from schedules
+  const [courseDatePickerMode, setCourseDatePickerMode] = useState(false);
 
   const [activity, setActivity] = useState<any>(null);
   const [schedules, setSchedules] = useState<CourseScheduleRow[]>([]);
