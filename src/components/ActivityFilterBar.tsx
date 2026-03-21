@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export type FilterCategory = "all" | "yoga" | "poterie" | "bien-etre";
 
@@ -47,6 +46,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const catFilter = CATEGORY_FILTERS.find(f => f.value === filter);
   const activeBg = catFilter?.activeBg || "bg-primary-dark";
+  const hasSubFilters = filter !== "all" && subFilterOptions && subFilterOptions.length > 0;
 
   return (
     <div className="sticky top-16 z-30">
@@ -74,46 +74,45 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
                 </Button>
               );
             })}
+            {hasSubFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMoreFiltersOpen(!moreFiltersOpen)}
+                className={`rounded-full h-7 w-7 p-0 ${moreFiltersOpen ? "bg-muted" : ""}`}
+                title="Plus de filtres"
+              >
+                {moreFiltersOpen ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      {subFilterOptions && subFilterOptions.length > 0 && onSubFilterChange && (
+      {hasSubFilters && moreFiltersOpen && onSubFilterChange && (
         <div className="bg-emerald-50/40 backdrop-blur border-b">
-          <div className="container">
-            <Collapsible open={moreFiltersOpen} onOpenChange={setMoreFiltersOpen}>
-              <CollapsibleTrigger asChild>
-                <button className="w-full flex items-center justify-center gap-1 py-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
-                  <span>Afficher plus de filtres</span>
-                  <ChevronDown className={`h-3 w-3 transition-transform ${moreFiltersOpen ? "rotate-180" : ""}`} />
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="pb-2 pt-0.5">
-                  <div className="flex flex-wrap items-center gap-1.5 justify-center">
-                    <Button
-                      variant={subFilter === "all" ? null as any : "outline"}
-                      size="sm"
-                      className={`rounded-full h-6 text-[11px] px-3 italic ${subFilter === "all" ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
-                      onClick={() => onSubFilterChange("all")}
-                    >
-                      Tout voir
-                    </Button>
-                    {subFilterOptions.map(name => (
-                      <Button
-                        key={name}
-                        variant={subFilter === name ? null as any : "outline"}
-                        size="sm"
-                        className={`rounded-full h-6 text-[11px] px-3 italic ${subFilter === name ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
-                        onClick={() => onSubFilterChange(name)}
-                      >
-                        {name}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+          <div className="container py-2">
+            <div className="flex flex-wrap items-center gap-1.5 justify-center">
+              <Button
+                variant={subFilter === "all" ? null as any : "outline"}
+                size="sm"
+                className={`rounded-full h-6 text-[11px] px-3 italic ${subFilter === "all" ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
+                onClick={() => onSubFilterChange("all")}
+              >
+                Tout voir
+              </Button>
+              {subFilterOptions.map(name => (
+                <Button
+                  key={name}
+                  variant={subFilter === name ? null as any : "outline"}
+                  size="sm"
+                  className={`rounded-full h-6 text-[11px] px-3 italic ${subFilter === name ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
+                  onClick={() => onSubFilterChange(name)}
+                >
+                  {name}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
       )}

@@ -285,17 +285,20 @@ function RecurringGrid({ courses, schedules, onEventClick }: {
   );
 }
 
-function MonthWorkshops({ workshops, onEventClick, hideTitle }: {
+function MonthWorkshops({ workshops, onEventClick, hideTitle, hidePriceSpots }: {
   workshops: Workshop[];
   onEventClick?: PlanningTypeViewProps["onEventClick"];
   hideTitle?: boolean;
+  hidePriceSpots?: boolean;
 }) {
   const { start, end } = getMonthBounds();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const grouped = useMemo(() => {
     const filtered = workshops.filter(w => {
       const d = new Date(w.date + "T12:00:00");
-      return d >= start && d <= end;
+      return d >= start && d <= end && d >= today;
     });
 
     const byCat: Record<string, Workshop[]> = {};
@@ -333,15 +336,17 @@ function MonthWorkshops({ workshops, onEventClick, hideTitle }: {
                 <span className="text-muted-foreground">{formatTime(w.time)}–{formatTime(w.end_time)}</span>
                 <span className="text-muted-foreground">·</span>
                 <span className="font-medium text-foreground truncate">{w.name}</span>
-                {w.price > 0 && (
+                {!hidePriceSpots && w.price > 0 && (
                   <>
                     <span className="text-muted-foreground">·</span>
                     <span className="font-medium text-foreground whitespace-nowrap">{w.price}€</span>
                   </>
                 )}
-                <span className={`ml-auto whitespace-nowrap ${w.spots_left <= 2 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                  {w.spots_left} pl.
-                </span>
+                {!hidePriceSpots && (
+                  <span className={`ml-auto whitespace-nowrap ${w.spots_left <= 2 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                    {w.spots_left} pl.
+                  </span>
+                )}
               </button>
             ))}
           </div>
