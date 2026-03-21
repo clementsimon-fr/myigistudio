@@ -165,18 +165,12 @@ export default function Reserver() {
             if (w.date && !byDate.has(w.date)) byDate.set(w.date, w);
           }
           const uniqueDates = [...byDate.values()].sort((a: any, b: any) => a.date.localeCompare(b.date));
-          if (uniqueDates.length === 1) {
-            // Only one date: auto-select
-            setSelectedDate(new Date(uniqueDates[0].date + "T00:00:00"));
-            setSelectedSlot(uniqueDates[0].id);
-          } else {
-            // Multiple dates: show picker
-            setAvailableDates(uniqueDates.map((w: any) => ({
-              id: w.id, date: w.date, time: w.time, end_time: w.end_time,
-              spots_left: w.spots_left, price: w.price,
-            })));
-            setDatePickerMode(true);
-          }
+          // Always show date picker for workshops loaded by name
+          setAvailableDates(uniqueDates.map((w: any) => ({
+            id: w.id, date: w.date, time: w.time, end_time: w.end_time,
+            spots_left: w.spots_left, price: w.price,
+          })));
+          setDatePickerMode(true);
         }
       } else if (activityId) {
         const res = await supabase.from("workshops").select("*").eq("id", activityId).single();
