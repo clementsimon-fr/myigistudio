@@ -3,8 +3,8 @@ import { Shield, User, UserPlus, Eye, Wrench } from "lucide-react";
 import { useDemoContext } from "@/contexts/DemoContext";
 
 const PROFILE_CARDS = [
-  { id: "fournisseur", name: "Fournisseur", subtitle: "Accès complet", icon: Wrench, defaultNavigateTo: "/admin/reservations", supportsReturn: false },
-  { id: "elodie", name: "Élodie", subtitle: "Administratrice", icon: Shield, defaultNavigateTo: "/admin/reservations", supportsReturn: false },
+  { id: "fournisseur", name: "Fournisseur", subtitle: "Accès complet", icon: Wrench, defaultNavigateTo: "/admin/bonjour", supportsReturn: false },
+  { id: "elodie", name: "Élodie", subtitle: "Administratrice", icon: Shield, defaultNavigateTo: "/admin/bonjour", supportsReturn: false },
 ];
 
 export default function Login() {

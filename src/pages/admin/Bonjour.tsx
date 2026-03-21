@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,42 +20,70 @@ const MOODS = [
 
 // ─── Breathing animation ───
 
+type BreathFormat = "court" | "moyen" | "long";
+const BREATH_FORMATS: { key: BreathFormat; label: string; rounds: number; sideSeconds: number }[] = [
+  { key: "court", label: "Court", rounds: 5, sideSeconds: 5 },
+  { key: "moyen", label: "Moyen", rounds: 7, sideSeconds: 5 },
+  { key: "long", label: "Long", rounds: 10, sideSeconds: 5 },
+];
+
+function playBell(frequency = 800, duration = 0.6, volume = 0.08) {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = frequency;
+    gain.gain.value = volume;
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.stop(ctx.currentTime + duration);
+  } catch {}
+}
+
+function playEndBell() {
+  playBell(528, 2, 0.15);
+}
+
 function BreathingExercise({ onDone }: { onDone: () => void }) {
   const [phase, setPhase] = useState<"idle" | "running" | "done">("idle");
-  const [seconds, setSeconds] = useState(180); // 3 min
+  const [format, setFormat] = useState<BreathFormat>("court");
+  const [seconds, setSeconds] = useState(0);
   const [breathPhase, setBreathPhase] = useState(0); // 0-3 for 4 sides
+  const [currentRound, setCurrentRound] = useState(1);
   const [breathLabel, setBreathLabel] = useState("Inspirez");
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
   const breathRef = useRef<ReturnType<typeof setInterval>>();
-  const audioRef = useRef<AudioContext | null>(null);
 
   const BREATH_LABELS = ["Inspirez", "Bloquez", "Expirez", "Bloquez"];
-  const BREATH_DURATION = 4000; // 4s per side
+
+  const selectedFormat = BREATH_FORMATS.find(f => f.key === format)!;
+  const totalSeconds = selectedFormat.rounds * 4 * selectedFormat.sideSeconds;
+  const totalMinSec = `${Math.floor(totalSeconds / 60)}min${totalSeconds % 60 > 0 ? `${(totalSeconds % 60).toString().padStart(2, "0")}` : ""}`;
+
+  const stop = useCallback(() => {
+    clearInterval(intervalRef.current);
+    clearInterval(breathRef.current);
+    setPhase("done");
+    playEndBell();
+  }, []);
 
   const start = () => {
+    const totalSec = selectedFormat.rounds * 4 * selectedFormat.sideSeconds;
     setPhase("running");
-    setSeconds(180);
+    setSeconds(totalSec);
     setBreathPhase(0);
+    setCurrentRound(1);
     setBreathLabel(BREATH_LABELS[0]);
+    playBell();
 
     intervalRef.current = setInterval(() => {
       setSeconds(prev => {
         if (prev <= 1) {
           clearInterval(intervalRef.current);
           clearInterval(breathRef.current);
-          // Play a gentle tone
-          try {
-            const ctx = new AudioContext();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.frequency.value = 528;
-            gain.gain.value = 0.15;
-            osc.start();
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
-            osc.stop(ctx.currentTime + 2);
-          } catch {}
+          playEndBell();
           setPhase("done");
           return 0;
         }
@@ -64,11 +92,15 @@ function BreathingExercise({ onDone }: { onDone: () => void }) {
     }, 1000);
 
     let bIdx = 0;
+    let roundCount = 1;
     breathRef.current = setInterval(() => {
       bIdx = (bIdx + 1) % 4;
+      if (bIdx === 0) roundCount++;
       setBreathPhase(bIdx);
       setBreathLabel(BREATH_LABELS[bIdx]);
-    }, BREATH_DURATION);
+      setCurrentRound(roundCount);
+      playBell();
+    }, selectedFormat.sideSeconds * 1000);
   };
 
   useEffect(() => {
@@ -80,7 +112,6 @@ function BreathingExercise({ onDone }: { onDone: () => void }) {
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
 
-  // Square animation: each side highlights in sequence
   const sideColors = [0, 1, 2, 3].map(i =>
     i === breathPhase && phase === "running" ? "bg-primary" : "bg-muted"
   );
@@ -89,7 +120,7 @@ function BreathingExercise({ onDone }: { onDone: () => void }) {
     return (
       <div className="text-center space-y-4 py-6">
         <div className="text-4xl">🕊️</div>
-        <p className="text-sm text-muted-foreground">Bravo, vous avez pris 3 minutes pour vous recentrer.</p>
+        <p className="text-sm text-muted-foreground">Bravo, vous avez pris un moment pour vous recentrer.</p>
         <Button size="sm" onClick={onDone}>Continuer</Button>
       </div>
     );
@@ -106,29 +137,47 @@ function BreathingExercise({ onDone }: { onDone: () => void }) {
       </div>
 
       {phase === "idle" ? (
-        <div className="text-center">
-          <Button onClick={start} className="gap-2">
-            <Sparkles className="h-4 w-4" /> Lancer 3 min
-          </Button>
+        <div className="space-y-4">
+          <div className="flex justify-center gap-2">
+            {BREATH_FORMATS.map(f => {
+              const dur = f.rounds * 4 * f.sideSeconds;
+              const label = `${Math.floor(dur / 60)}min${dur % 60 > 0 ? (dur % 60).toString().padStart(2, "0") : ""}`;
+              return (
+                <button
+                  key={f.key}
+                  onClick={() => setFormat(f.key)}
+                  className={`px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
+                    format === f.key ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  {f.label} ({label})
+                </button>
+              );
+            })}
+          </div>
+          <div className="text-center">
+            <Button onClick={start} className="gap-2">
+              <Sparkles className="h-4 w-4" /> Lancer {totalMinSec}
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col items-center gap-6">
           {/* Breathing square */}
           <div className="relative w-32 h-32">
-            {/* Top */}
             <div className={`absolute top-0 left-2 right-2 h-2 rounded-full transition-colors duration-700 ${sideColors[0]}`} />
-            {/* Right */}
             <div className={`absolute top-2 right-0 bottom-2 w-2 rounded-full transition-colors duration-700 ${sideColors[1]}`} />
-            {/* Bottom */}
             <div className={`absolute bottom-0 left-2 right-2 h-2 rounded-full transition-colors duration-700 ${sideColors[2]}`} />
-            {/* Left */}
             <div className={`absolute top-2 left-0 bottom-2 w-2 rounded-full transition-colors duration-700 ${sideColors[3]}`} />
-            {/* Center label */}
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-sm font-medium text-primary animate-pulse">{breathLabel}</span>
             </div>
           </div>
           <div className="text-2xl font-mono text-foreground">{formatTime(seconds)}</div>
+          <p className="text-xs text-muted-foreground">Tour {currentRound}/{selectedFormat.rounds}</p>
+          <Button size="sm" variant="outline" onClick={stop} className="gap-1 text-xs">
+            <X className="h-3 w-3" /> Terminer
+          </Button>
         </div>
       )}
     </div>
@@ -277,7 +326,7 @@ function TodayStats() {
             </div>
           </div>
         )}
-        <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => navigate("/admin/activites")}>
+        <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => navigate("/admin/activites?tab=planning")}>
           <ArrowRight className="h-3 w-3" /> Planning et réservations
         </Button>
       </CardContent>

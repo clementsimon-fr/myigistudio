@@ -54,8 +54,8 @@ export default function Navbar() {
             {/* Desktop: dropdown menu for logged-in users */}
             <div className="hidden md:flex items-center gap-3">
               {/* Admin quick link */}
-              {isAdmin && !location.pathname.startsWith("/admin") && (
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate("/admin/activites")}>
+              {(isAdmin || currentProfile?.role === "fournisseur") && !location.pathname.startsWith("/admin") && (
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate("/admin/bonjour")}>
                   <Settings className="h-3.5 w-3.5" /> Espace admin
                 </Button>
               )}
@@ -69,7 +69,7 @@ export default function Navbar() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52">
-                  {isAdmin && (
+                  {(isAdmin || currentProfile?.role === "fournisseur") && (
                     <>
                       <p className="px-2 py-1.5 text-xs text-muted-foreground font-normal">Administration</p>
                       {adminSections.map((item) => (
@@ -132,7 +132,7 @@ export default function Navbar() {
         <div className="md:hidden border-t bg-background p-4 space-y-2">
           <p className="text-xs text-muted-foreground px-2 mb-1">Connecté : {currentProfile.name}</p>
           
-          {isAdmin && (
+          {(isAdmin || currentProfile?.role === "fournisseur") && (
             <>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground px-2 pt-2 font-semibold">Administration</p>
               {adminSections.map((item) => (

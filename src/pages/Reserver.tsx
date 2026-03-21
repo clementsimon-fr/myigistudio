@@ -77,6 +77,8 @@ export default function Reserver() {
   // Date selection for standalone workshops loaded by name
   const [availableDates, setAvailableDates] = useState<{ id: string; date: string; time: string; end_time: string; spots_left: number; price: number }[]>([]);
   const [datePickerMode, setDatePickerMode] = useState(false);
+  // For courses: show upcoming dates derived from schedules
+  const [courseDatePickerMode, setCourseDatePickerMode] = useState(false);
 
   const [activity, setActivity] = useState<any>(null);
   const [schedules, setSchedules] = useState<CourseScheduleRow[]>([]);
@@ -142,6 +144,9 @@ export default function Reserver() {
           if (preselectedDate && preselectedScheduleId) {
             setSelectedDate(new Date(preselectedDate + "T00:00:00"));
             setSelectedSlot(preselectedScheduleId);
+          } else if (scheds.length > 0) {
+            // Show course date picker
+            setCourseDatePickerMode(true);
           }
         }
       } else if (activityType === "workshop" && activityName && !activityId) {
@@ -165,18 +170,12 @@ export default function Reserver() {
             if (w.date && !byDate.has(w.date)) byDate.set(w.date, w);
           }
           const uniqueDates = [...byDate.values()].sort((a: any, b: any) => a.date.localeCompare(b.date));
-          if (uniqueDates.length === 1) {
-            // Only one date: auto-select
-            setSelectedDate(new Date(uniqueDates[0].date + "T00:00:00"));
-            setSelectedSlot(uniqueDates[0].id);
-          } else {
-            // Multiple dates: show picker
-            setAvailableDates(uniqueDates.map((w: any) => ({
-              id: w.id, date: w.date, time: w.time, end_time: w.end_time,
-              spots_left: w.spots_left, price: w.price,
-            })));
-            setDatePickerMode(true);
-          }
+          // Always show date picker for workshops loaded by name
+          setAvailableDates(uniqueDates.map((w: any) => ({
+            id: w.id, date: w.date, time: w.time, end_time: w.end_time,
+            spots_left: w.spots_left, price: w.price,
+          })));
+          setDatePickerMode(true);
         }
       } else if (activityId) {
         const res = await supabase.from("workshops").select("*").eq("id", activityId).single();
@@ -220,6 +219,37 @@ export default function Reserver() {
     };
     load();
   }, [activityType, activityId, activityName, preselectedDate, preselectedScheduleId]);
+
+  // Compute upcoming course dates from schedules
+  const upcomingCourseDates = useMemo(() => {
+    if (!activity || activity.type !== "course" || schedules.length === 0) return [];
+    const dayMap: Record<string, number> = { Lundi: 1, Mardi: 2, Mercredi: 3, Jeudi: 4, Vendredi: 5, Samedi: 6, Dimanche: 0 };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dates: { date: Date; schedule: CourseScheduleRow }[] = [];
+    
+    for (const sched of schedules) {
+      const targetDay = dayMap[sched.day];
+      if (targetDay === undefined) continue;
+      // Generate next 4 occurrences
+      for (let week = 0; week < 4; week++) {
+        const d = new Date(today);
+        let diff = targetDay - d.getDay();
+        if (diff < 0) diff += 7;
+        d.setDate(d.getDate() + diff + week * 7);
+        if (d >= today) {
+          dates.push({ date: d, schedule: sched });
+        }
+      }
+    }
+    return dates.sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [activity, schedules]);
+
+  const handleCourseDateSelect = (d: Date, sched: CourseScheduleRow) => {
+    setSelectedDate(d);
+    setSelectedSlot(sched.id);
+    setCourseDatePickerMode(false);
+  };
 
   // Compute slots
   const slots: AvailableSlot[] = useMemo(() => {
@@ -559,8 +589,37 @@ export default function Reserver() {
             </div>
           )}
 
+          {/* ═══ COURSE DATE PICKER ═══ */}
+          {courseDatePickerMode && upcomingCourseDates.length > 0 && (
+            <div className="space-y-4 mb-6">
+              <h2 className="text-lg font-display font-semibold text-primary-dark">Choisissez votre date</h2>
+              <div className="grid gap-2">
+                {upcomingCourseDates.map(({ date: d, schedule: sched }, idx) => {
+                  const label = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+                  const time = sched.time?.slice(0, 5).replace(":", "h");
+                  const endTime = sched.end_time?.slice(0, 5).replace(":", "h");
+                  return (
+                    <button
+                      key={`${sched.id}-${idx}`}
+                      onClick={() => handleCourseDateSelect(d, sched)}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:border-primary hover:bg-primary/5 transition-colors text-left"
+                    >
+                      <div>
+                        <span className="font-medium text-sm capitalize">{label}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{time}–{endTime}</span>
+                      </div>
+                      <span className={`text-xs ${sched.spots_left <= 2 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                        {sched.spots_left} place{sched.spots_left > 1 ? "s" : ""}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ═══ STEP: SUMMARY ═══ */}
-          {!datePickerMode && bookingStep === "summary" && !currentProfile && (
+          {!datePickerMode && !courseDatePickerMode && bookingStep === "summary" && !currentProfile && (
             <div className="space-y-6">
               {selectedSlotData && selectedDate && (
                 <BookingSummary
