@@ -16,6 +16,12 @@ import { Separator } from "@/components/ui/separator";
 
 const sidebarGroups = [
   {
+    label: "",
+    items: [
+      { title: "Bonjour", url: "/admin/bonjour", icon: Sun },
+    ],
+  },
+  {
     label: "Organisation",
     items: [
       { title: "Activités et réservations", url: "/admin/activites", icon: BookOpen },
