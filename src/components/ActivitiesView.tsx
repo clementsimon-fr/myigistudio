@@ -329,10 +329,13 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         <section className="py-12 md:py-16">
           <div className="container">
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${yogaStyle.text}`}>Yoga & Pilates</h2>
-            {/* Inline recurring grid */}
-            <div className="mb-6 max-w-2xl mx-auto">
+            <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-3 text-center">
+              Planning du mois de {new Date().toLocaleDateString("fr-FR", { month: "long" })}
+            </h3>
+            <div className="mb-8 max-w-2xl mx-auto">
               <RecurringGrid courses={courses.filter(c => c.category === "yoga")} schedules={schedules} onEventClick={handleProgrammeEventClick} />
             </div>
+            <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {coursesWithSchedules.map((course, i) => {
                 const photo = getInstructorPhoto(course.instructor_id, course.instructor);
