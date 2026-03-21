@@ -566,7 +566,6 @@ export default function Reserver() {
           {courseDatePickerMode && upcomingCourseDates.length > 0 && (
             <CourseDatePicker dates={upcomingCourseDates} onSelect={handleCourseDateSelect} />
           )}
-          )}
 
           {/* ═══ STEP: SUMMARY ═══ */}
           {!datePickerMode && !courseDatePickerMode && bookingStep === "summary" && !currentProfile && (
