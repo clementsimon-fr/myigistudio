@@ -72,6 +72,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
                       : ""
                   }`}
                 >
+                  {f.icon && <img src={f.icon} alt="" className="w-4 h-4 rounded-full object-cover" />}
                   {f.dot && <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : f.dot}`} />}
                   {f.label}
                 </Button>
