@@ -6,10 +6,12 @@ import filterYoga from "@/assets/filter-yoga.png";
 import filterPoterie from "@/assets/filter-poterie.png";
 import filterAteliers from "@/assets/filter-ateliers.png";
 
+import filterTout from "@/assets/filter-tout.png";
+
 export type FilterCategory = "all" | "yoga" | "poterie" | "bien-etre";
 
 export const CATEGORY_FILTERS: { value: FilterCategory; label: string; dot?: string; activeBg?: string; inactiveBg?: string; icon?: string }[] = [
-  { value: "all", label: "Tout" },
+  { value: "all", label: "Tout", icon: filterTout },
   { value: "yoga", label: "Yoga", dot: "bg-[hsl(210,60%,55%)]", activeBg: "bg-[hsl(210,60%,55%)]", inactiveBg: "bg-[hsl(210,60%,90%)] text-[hsl(210,60%,35%)]", icon: filterYoga },
   { value: "poterie", label: "Poterie", dot: "bg-[hsl(40,76%,60%)]", activeBg: "bg-[hsl(40,76%,60%)]", inactiveBg: "bg-[hsl(40,76%,90%)] text-[hsl(40,76%,30%)]", icon: filterPoterie },
   { value: "bien-etre", label: "Atelier", dot: "bg-[hsl(0,55%,58%)]", activeBg: "bg-[hsl(0,55%,58%)]", inactiveBg: "bg-[hsl(0,55%,90%)] text-[hsl(0,55%,35%)]", icon: filterAteliers },
