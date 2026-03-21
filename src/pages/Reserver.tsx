@@ -144,6 +144,9 @@ export default function Reserver() {
           if (preselectedDate && preselectedScheduleId) {
             setSelectedDate(new Date(preselectedDate + "T00:00:00"));
             setSelectedSlot(preselectedScheduleId);
+          } else if (scheds.length > 0) {
+            // Show course date picker
+            setCourseDatePickerMode(true);
           }
         }
       } else if (activityType === "workshop" && activityName && !activityId) {
