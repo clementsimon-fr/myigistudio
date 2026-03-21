@@ -463,17 +463,6 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         </DialogContent>
       </Dialog>
 
-      {/* Frequency dialog */}
-      <FrequencyDialog
-        open={frequencyOpen}
-        onOpenChange={setFrequencyOpen}
-        courses={courses}
-        workshops={workshops}
-        schedules={schedules}
-        highlightCategory={frequencyCategory}
-        specificActivity={frequencyActivity}
-        onTimeClick={handleFrequencyTimeClick}
-      />
     </>
   );
 }
