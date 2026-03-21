@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, User, CalendarDays, CreditCard, LogOut, Compass, Calendar, Settings, BookOpen, Sun } from "lucide-react";
+import { Menu, X, User, CalendarDays, CreditCard, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
