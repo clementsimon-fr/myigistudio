@@ -1,15 +1,14 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Info, Users, Euro, Clock, CalendarRange, Mail } from "lucide-react";
+import { Info, Users, Euro, Clock, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import PricingSection from "@/components/home/PricingSection";
-import PlanningTypeView, { type PlanningTypeViewHandle } from "@/components/PlanningTypeView";
+import { RecurringGrid, MonthWorkshops } from "@/components/PlanningTypeView";
 import TeamSection from "@/components/home/TeamSection";
 import ContactElodieButton from "@/components/ContactElodieButton";
-import FrequencyDialog from "@/components/FrequencyDialog";
 import { CATEGORY_STYLES, type FilterCategory } from "@/components/ActivityFilterBar";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 import { supabase } from "@/integrations/supabase/client";

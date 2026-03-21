@@ -435,3 +435,4 @@ const PlanningTypeView = forwardRef<PlanningTypeViewHandle, PlanningTypeViewProp
 );
 
 export default PlanningTypeView;
+export { RecurringGrid, MonthWorkshops, formatTime, formatDateShort, getCategoryStyle, getMonthBounds };
