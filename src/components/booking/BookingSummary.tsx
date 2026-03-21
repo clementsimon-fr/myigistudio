@@ -86,16 +86,6 @@ export default function BookingSummary({
             <span className="text-muted-foreground">Prix unitaire</span>
             <span className="font-semibold text-primary-dark flex items-center gap-1.5">
               {price} €
-              {cardYogaCount && cardYogaCount > 0 && (
-                <span className="text-xs font-normal text-muted-foreground">
-                  ou {cardYogaCount} carte{cardYogaCount > 1 ? "s" : ""} yoga
-                </span>
-              )}
-              {inclusions && (
-                <span className="inline-flex items-center gap-0.5 text-xs font-normal text-primary cursor-help" title={inclusions}>
-                  <Info className="h-3 w-3" />
-                </span>
-              )}
               {isYoga && pricingCards && pricingCards.length > 0 && (
                 <button
                   className="inline-flex items-center gap-1 text-xs font-normal text-primary hover:underline"
@@ -103,6 +93,11 @@ export default function BookingSummary({
                 >
                   ou 1 carte <Info className="h-3 w-3" />
                 </button>
+              )}
+              {inclusions && (
+                <span className="inline-flex items-center gap-0.5 text-xs font-normal text-primary cursor-help" title={inclusions}>
+                  <Info className="h-3 w-3" />
+                </span>
               )}
             </span>
           </div>

@@ -1,9 +1,8 @@
 import { useState, useMemo } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, CalendarDays, RotateCcw } from "lucide-react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useActivitiesData } from "@/hooks/useActivitiesData";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 
@@ -17,107 +16,71 @@ const CATEGORY_FILTERS = [
   { value: "bien-etre", label: "Ateliers", dot: "bg-[hsl(0,55%,58%)]", activeBg: "bg-[hsl(0,55%,58%)]" },
 ];
 
-function getDayFromDate(dateStr: string): string | null {
-  try {
-    const d = new Date(dateStr + "T12:00:00");
-    const map = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
-    return map[d.getDay()] || null;
-  } catch { return null; }
+function formatTime(t: string): string {
+  return t?.slice(0, 5).replace(":", "h") || "";
 }
 
-interface TimeSlot {
-  day: string;
-  time: string;
-  end_time: string;
+function formatDateShort(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  return d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
 }
 
-interface ActivityRow {
-  name: string;
-  category: string;
-  slots: TimeSlot[];
-}
+const categoryLabels: Record<string, string> = {
+  yoga: "Yoga & Pilates",
+  poterie: "Poterie",
+  "bien-etre": "Ateliers & Stages",
+};
 
 export default function PlanningType() {
   const { courses, schedules, workshops, loading } = useActivitiesData();
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [viewMode, setViewMode] = useState<"compiled" | "by-category">("by-category");
-  const [showTimes, setShowTimes] = useState(true);
 
-  const rows = useMemo(() => {
-    const result: ActivityRow[] = [];
-    const schedulesByCourse: Record<string, TimeSlot[]> = {};
-    for (const s of schedules) {
-      if (!schedulesByCourse[s.course_id]) schedulesByCourse[s.course_id] = [];
-      schedulesByCourse[s.course_id].push({ day: s.day, time: s.time, end_time: s.end_time });
-    }
-    for (const c of courses) {
-      result.push({ name: c.name, category: c.category, slots: schedulesByCourse[c.id] || [] });
-    }
-    for (const w of workshops) {
-      const slots: TimeSlot[] = [];
-      if (w.date) {
-        const day = getDayFromDate(w.date);
-        if (day) slots.push({ day, time: w.time, end_time: w.end_time });
+  // Categorize data
+  const categorizedData = useMemo(() => {
+    const categories = ["yoga", "poterie", "bien-etre"];
+    const result: Record<string, {
+      recurring: { name: string; category: string; slots: { day: string; time: string; end_time: string }[] }[];
+      ponctual: { name: string; category: string; date: string; time: string; end_time: string; id: string }[];
+    }> = {};
+
+    for (const cat of categories) {
+      const schedulesByCourse: Record<string, { day: string; time: string; end_time: string }[]> = {};
+      const catCourses = courses.filter(c => c.category === cat);
+      for (const s of schedules) {
+        const course = catCourses.find(c => c.id === s.course_id);
+        if (!course) continue;
+        if (!schedulesByCourse[s.course_id]) schedulesByCourse[s.course_id] = [];
+        schedulesByCourse[s.course_id].push({ day: s.day, time: s.time, end_time: s.end_time });
       }
-      result.push({ name: w.name, category: w.category, slots });
+
+      const recurring = catCourses
+        .map(c => ({ name: c.name, category: c.category, slots: schedulesByCourse[c.id] || [] }))
+        .filter(r => r.slots.length > 0);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const catWorkshops = workshops.filter(w => w.category === cat);
+      // Dedupe by name+date
+      const seen = new Set<string>();
+      const ponctual = catWorkshops
+        .filter(w => {
+          const key = `${w.name}-${w.date}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return new Date(w.date + "T12:00:00") >= today;
+        })
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map(w => ({ name: w.name, category: w.category, date: w.date, time: w.time, end_time: w.end_time, id: w.id }));
+
+      result[cat] = { recurring, ponctual };
     }
     return result;
   }, [courses, schedules, workshops]);
 
-  const filtered = useMemo(() => {
-    if (categoryFilter === "all") return rows;
-    return rows.filter(r => r.category === categoryFilter);
-  }, [rows, categoryFilter]);
-
-  const grouped = useMemo(() => {
-    const map: Record<string, ActivityRow[]> = {};
-    for (const r of filtered) {
-      if (!map[r.category]) map[r.category] = [];
-      map[r.category].push(r);
-    }
-    return map;
-  }, [filtered]);
-
-  const categoryLabels: Record<string, string> = {
-    yoga: "Yoga & Pilates",
-    poterie: "Poterie",
-    "bien-etre": "Ateliers & Stages",
-  };
-
-  const renderTimeCell = (activity: ActivityRow, day: string) => {
-    const daySlots = activity.slots.filter(s => s.day === day);
-    if (daySlots.length === 0) return <span className="text-muted-foreground/20">·</span>;
-
-    const style = CATEGORY_STYLES[activity.category];
-    const dotColor = style?.dot || "bg-primary";
-
-    if (showTimes) {
-      return (
-        <div className="space-y-0.5">
-          {daySlots.map((s, i) => (
-            <div key={i} className={`text-[9px] sm:text-[10px] font-medium rounded px-0.5 py-0.5 text-white leading-tight ${dotColor}`}>
-              {s.time}–{s.end_time}
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className={`inline-flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold text-white cursor-default ${dotColor}`}>
-            ✕
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs">
-          {daySlots.map((s, i) => (
-            <div key={i}>{s.time} – {s.end_time}</div>
-          ))}
-        </TooltipContent>
-      </Tooltip>
-    );
-  };
+  const visibleCategories = useMemo(() => {
+    if (categoryFilter === "all") return ["yoga", "poterie", "bien-etre"];
+    return [categoryFilter];
+  }, [categoryFilter]);
 
   return (
     <AdminLayout title="Planning type">
@@ -128,110 +91,119 @@ export default function PlanningType() {
       ) : (
         <div className="space-y-6">
           <p className="text-sm text-muted-foreground">
-            Vue automatique de la semaine type, générée à partir de vos activités et créneaux.
+            Vue synthétique de votre rythme par activité : récurrent vs ponctuel.
           </p>
 
-          {/* Toolbar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div className="flex gap-1.5">
-              <Button size="sm" variant={viewMode === "by-category" ? "default" : "outline"} className="text-xs h-8" onClick={() => setViewMode("by-category")}>
-                Par catégorie
-              </Button>
-              <Button size="sm" variant={viewMode === "compiled" ? "default" : "outline"} className="text-xs h-8" onClick={() => setViewMode("compiled")}>
-                Vue compilée
-              </Button>
-            </div>
-            <div className="flex gap-1.5 flex-wrap">
-              {CATEGORY_FILTERS.map(f => {
-                const isActive = categoryFilter === f.value;
-                return (
-                  <Badge
-                    key={f.value}
-                    variant={isActive ? "default" : "outline"}
-                    className={`cursor-pointer text-xs gap-1 ${isActive && f.activeBg ? `${f.activeBg} text-white border-transparent hover:opacity-90` : ""}`}
-                    onClick={() => setCategoryFilter(f.value)}
-                  >
-                    {f.dot && <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : f.dot}`} />}
-                    {f.label}
-                  </Badge>
-                );
-              })}
-            </div>
+          <div className="flex gap-1.5 flex-wrap">
+            {CATEGORY_FILTERS.map(f => {
+              const isActive = categoryFilter === f.value;
+              return (
+                <Badge
+                  key={f.value}
+                  variant={isActive ? "default" : "outline"}
+                  className={`cursor-pointer text-xs gap-1 ${isActive && f.activeBg ? `${f.activeBg} text-white border-transparent hover:opacity-90` : ""}`}
+                  onClick={() => setCategoryFilter(f.value)}
+                >
+                  {f.dot && <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : f.dot}`} />}
+                  {f.label}
+                </Badge>
+              );
+            })}
           </div>
 
-          {viewMode === "by-category" ? (
-            Object.entries(grouped).map(([category, activities]) => {
-              const style = CATEGORY_STYLES[category];
-              return (
-                <div key={category} className="space-y-3">
-                  <h2 className={`text-lg font-semibold ${style?.text || "text-foreground"}`}>
-                    {categoryLabels[category] || category}
-                  </h2>
-                  <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-                    <table className="w-full border-collapse text-sm min-w-[420px]">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground min-w-[100px]">Activité</th>
-                          {DAYS_SHORT.map((d, i) => (
-                            <th key={i} className={`py-2 px-1 sm:px-2 font-medium text-muted-foreground text-center ${showTimes ? "w-16 sm:w-20" : "w-10 sm:w-12"}`}>{d}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {activities.map(a => (
-                          <tr key={a.name} className="border-b border-muted/30 hover:bg-muted/20">
-                            <td className="py-2.5 px-2 sm:px-3 font-medium text-xs sm:text-sm">{a.name}</td>
-                            {DAYS.map(day => (
-                              <td key={day} className="py-2.5 px-1 sm:px-2 text-center">
-                                {renderTimeCell(a, day)}
-                              </td>
+          {visibleCategories.map(cat => {
+            const data = categorizedData[cat];
+            if (!data) return null;
+            const style = CATEGORY_STYLES[cat];
+            const hasRecurring = data.recurring.length > 0;
+            const hasPonctual = data.ponctual.length > 0;
+            if (!hasRecurring && !hasPonctual) return null;
+
+            return (
+              <div key={cat} className="space-y-4">
+                <h2 className={`text-lg font-semibold ${style?.text || "text-foreground"}`}>
+                  {categoryLabels[cat] || cat}
+                </h2>
+
+                {/* ── Recurring section ── */}
+                {hasRecurring && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground font-semibold uppercase tracking-wide">
+                      <RotateCcw className="h-3.5 w-3.5" /> Récurrent (chaque semaine)
+                    </div>
+                    <div className="overflow-x-auto rounded-lg border bg-card">
+                      <table className="w-full border-collapse text-sm">
+                        <thead>
+                          <tr className="border-b bg-muted/30">
+                            <th className="text-left py-2 px-3 font-medium text-muted-foreground min-w-[100px]">Cours</th>
+                            {DAYS_SHORT.map((d, i) => (
+                              <th key={`${d}-${i}`} className="py-2 px-1 font-medium text-muted-foreground text-center w-16">{d}</th>
                             ))}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {data.recurring.map(a => (
+                            <tr key={a.name} className="border-b border-muted/30 last:border-0 hover:bg-muted/20">
+                              <td className="py-2.5 px-3">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full shrink-0 ${style?.dot || "bg-primary"}`} />
+                                  <span className="font-medium text-xs">{a.name}</span>
+                                </div>
+                              </td>
+                              {DAYS.map(day => {
+                                const daySlots = a.slots.filter(s => s.day === day);
+                                return (
+                                  <td key={day} className="py-2.5 px-1 text-center">
+                                    {daySlots.length > 0 ? (
+                                      <div className="space-y-0.5">
+                                        {daySlots.map((s, i) => (
+                                          <div key={i} className={`text-[9px] font-medium rounded px-0.5 py-0.5 text-white leading-tight ${style?.dot || "bg-primary"}`}>
+                                            {formatTime(s.time)}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <span className="text-muted-foreground/20">·</span>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-              <table className="w-full border-collapse text-sm min-w-[420px]">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground min-w-[100px]">Activité</th>
-                    {DAYS_SHORT.map((d, i) => (
-                      <th key={i} className={`py-2 px-1 sm:px-2 font-medium text-muted-foreground text-center ${showTimes ? "w-16 sm:w-20" : "w-10 sm:w-14"}`}>{d}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(grouped).map(([category, activities]) => {
-                    const style = CATEGORY_STYLES[category];
-                    return activities.map((a, idx) => (
-                      <tr key={a.name} className={`border-b border-muted/30 hover:bg-muted/20 ${idx === 0 ? "border-t-2" : ""}`}>
-                        <td className="py-2.5 px-2 sm:px-3">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full shrink-0 ${style?.dot || "bg-primary"}`} />
-                            <span className={`font-medium text-xs sm:text-sm ${style?.text || ""}`}>{a.name}</span>
-                          </div>
-                        </td>
-                        {DAYS.map(day => (
-                          <td key={day} className="py-2.5 px-1 sm:px-2 text-center">
-                            {renderTimeCell(a, day)}
-                          </td>
-                        ))}
-                      </tr>
-                    ));
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                )}
 
-          {filtered.length === 0 && (
-            <p className="text-center text-muted-foreground py-10">Aucune activité configurée.</p>
-          )}
+                {/* ── Ponctual section ── */}
+                {hasPonctual && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground font-semibold uppercase tracking-wide">
+                      <CalendarDays className="h-3.5 w-3.5" /> Événements ponctuels
+                    </div>
+                    <div className="space-y-1">
+                      {data.ponctual.map((w, i) => (
+                        <div
+                          key={`${w.id}-${i}`}
+                          className="flex items-center gap-3 px-3 py-2 rounded-md border bg-card text-sm"
+                        >
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${style?.dot || "bg-primary"}`} />
+                          <span className="font-medium text-foreground min-w-[110px]">{formatDateShort(w.date)}</span>
+                          <span className="text-muted-foreground">{formatTime(w.time)}–{formatTime(w.end_time)}</span>
+                          <span className="font-medium text-foreground truncate">{w.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {!hasRecurring && !hasPonctual && (
+                  <p className="text-sm text-muted-foreground py-4">Aucune activité configurée.</p>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </AdminLayout>
