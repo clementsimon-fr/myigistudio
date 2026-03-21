@@ -18,8 +18,20 @@ export default function Discover() {
     initialFilter && CATEGORY_FILTERS.some(f => f.value === initialFilter) ? initialFilter : "all"
   );
   const [subFilter, setSubFilter] = useState<string>("all");
+  const planningScrolled = useRef(false);
 
   const { courses, schedules, workshops, loading, getInstructorPhoto } = useActivitiesData();
+
+  // Handle ?view=planning: scroll to first planning section once loaded
+  useEffect(() => {
+    if (searchParams.get("view") === "planning" && !loading && !planningScrolled.current) {
+      planningScrolled.current = true;
+      setTimeout(() => {
+        const el = document.querySelector("[data-planning-section]");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 300);
+    }
+  }, [searchParams, loading]);
 
   const featuredEventTitle = settingsReady ? getSetting("featured_event_title", "") : "";
   const featuredEventLink = settingsReady ? getSetting("featured_event_link", "") : "";
