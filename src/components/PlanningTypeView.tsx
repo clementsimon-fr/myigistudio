@@ -285,17 +285,20 @@ function RecurringGrid({ courses, schedules, onEventClick }: {
   );
 }
 
-function MonthWorkshops({ workshops, onEventClick, hideTitle }: {
+function MonthWorkshops({ workshops, onEventClick, hideTitle, hidePriceSpots }: {
   workshops: Workshop[];
   onEventClick?: PlanningTypeViewProps["onEventClick"];
   hideTitle?: boolean;
+  hidePriceSpots?: boolean;
 }) {
   const { start, end } = getMonthBounds();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const grouped = useMemo(() => {
     const filtered = workshops.filter(w => {
       const d = new Date(w.date + "T12:00:00");
-      return d >= start && d <= end;
+      return d >= start && d <= end && d >= today;
     });
 
     const byCat: Record<string, Workshop[]> = {};
