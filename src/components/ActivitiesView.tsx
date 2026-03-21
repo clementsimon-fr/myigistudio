@@ -255,23 +255,15 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
 
   const handleProgrammeEventClick = useCallback((params: { type: "course" | "workshop"; name: string; id?: string; date?: string }) => {
-    if (params.type === "course" && params.id) {
-      onSwitchToPlanning({ type: "course", id: params.id });
-    } else if (params.type === "workshop") {
-      if (params.id) {
-        // For workshops with a specific date, go directly
-        const urlParams = new URLSearchParams();
-        urlParams.set("type", "workshop");
-        if (params.date) {
-          urlParams.set("id", params.id);
-          urlParams.set("date", params.date);
-        } else {
-          urlParams.set("name", params.name);
-        }
-        window.location.href = `/reserver?${urlParams.toString()}`;
-      }
+    // Scroll to the relevant card instead of navigating to booking
+    const cardId = params.type === "course" ? `card-course-${params.id}` : `card-workshop-${params.name}`;
+    const el = document.getElementById(cardId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-primary", "ring-offset-2");
+      setTimeout(() => el.classList.remove("ring-2", "ring-primary", "ring-offset-2"), 2000);
     }
-  }, [onSwitchToPlanning]);
+  }, []);
 
   const schedulesMap = useMemo(() => {
     const map: Record<string, Set<string>> = {};
