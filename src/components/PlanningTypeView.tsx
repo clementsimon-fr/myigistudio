@@ -336,15 +336,17 @@ function MonthWorkshops({ workshops, onEventClick, hideTitle, hidePriceSpots }: 
                 <span className="text-muted-foreground">{formatTime(w.time)}–{formatTime(w.end_time)}</span>
                 <span className="text-muted-foreground">·</span>
                 <span className="font-medium text-foreground truncate">{w.name}</span>
-                {w.price > 0 && (
+                {!hidePriceSpots && w.price > 0 && (
                   <>
                     <span className="text-muted-foreground">·</span>
                     <span className="font-medium text-foreground whitespace-nowrap">{w.price}€</span>
                   </>
                 )}
-                <span className={`ml-auto whitespace-nowrap ${w.spots_left <= 2 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                  {w.spots_left} pl.
-                </span>
+                {!hidePriceSpots && (
+                  <span className={`ml-auto whitespace-nowrap ${w.spots_left <= 2 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                    {w.spots_left} pl.
+                  </span>
+                )}
               </button>
             ))}
           </div>
