@@ -196,16 +196,16 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
   const nextFuture = futureDates.sort((a, b) => a.date.localeCompare(b.date))[0];
 
   return (
-    <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-shadow">
+    <motion.div id={`card-workshop-${ws.name}`} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-all">
       <div className="aspect-[4/3] overflow-hidden bg-muted relative">
         <img src={ws.image || PLACEHOLDER_IMG} alt={ws.name} className="w-full h-full object-cover" loading="lazy" />
       </div>
       <div className="p-4 md:p-5">
         <h3 className={`font-display font-semibold text-base md:text-lg leading-tight mb-2 ${style.text}`}>{ws.name}</h3>
         <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{ws.description}</p>
-        {group.isLinked && (
+        {group.isLinked && futureDates.length > 0 && (
           <p className="text-xs text-primary font-medium mb-2">
-            📅 {formatLinkedDates(group.linkedDates)}
+            📅 {formatLinkedDates(futureDates.map(w => w.date))}
           </p>
         )}
         {!group.isLinked && hasFutureDate && nextFuture && (
