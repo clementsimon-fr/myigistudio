@@ -49,9 +49,18 @@ interface ActivityFilterBarProps {
 export default function ActivityFilterBar({ filter, onFilterChange, subFilterOptions, subFilter, onSubFilterChange }: ActivityFilterBarProps) {
   const navigate = useNavigate();
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+  const { get: getSetting } = useSiteSettings();
   const catFilter = CATEGORY_FILTERS.find(f => f.value === filter);
   const activeBg = catFilter?.activeBg || "bg-primary-dark";
   const hasSubFilters = filter !== "all" && subFilterOptions && subFilterOptions.length > 0;
+
+  const getIcon = (f: typeof CATEGORY_FILTERS[0]) => {
+    if (f.iconSettingKey) {
+      const customUrl = getSetting(f.iconSettingKey, "");
+      if (customUrl) return customUrl;
+    }
+    return f.icon || "";
+  };
 
   return (
     <div className="sticky top-16 z-30">
