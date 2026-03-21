@@ -1,15 +1,14 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Info, Users, Euro, Clock, CalendarRange, Mail } from "lucide-react";
+import { Info, Users, Euro, Clock, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import PricingSection from "@/components/home/PricingSection";
-import PlanningTypeView, { type PlanningTypeViewHandle } from "@/components/PlanningTypeView";
+import { RecurringGrid, MonthWorkshops } from "@/components/PlanningTypeView";
 import TeamSection from "@/components/home/TeamSection";
 import ContactElodieButton from "@/components/ContactElodieButton";
-import FrequencyDialog from "@/components/FrequencyDialog";
 import { CATEGORY_STYLES, type FilterCategory } from "@/components/ActivityFilterBar";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 import { supabase } from "@/integrations/supabase/client";
@@ -184,9 +183,9 @@ function groupWorkshops(workshops: Workshop[]): WorkshopGroup[] {
   return groups;
 }
 
-function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook, onFrequency }: {
+function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
   group: WorkshopGroup; i: number; onDescription: (w: Workshop) => void; instructorPhoto?: string;
-  onBook: (group: WorkshopGroup) => void; onFrequency: () => void;
+  onBook: (group: WorkshopGroup) => void;
 }) {
   const ws = group.workshops[0]; // Use first workshop for metadata
   const style = getCategoryStyle(ws.category);
@@ -232,9 +231,6 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook, onFreq
                 <Info className="h-3 w-3" /> Description
               </Button>
             )}
-            <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={onFrequency}>
-              <CalendarRange className="h-3 w-3" />
-            </Button>
             <Button size="sm" className={`flex-1 text-xs ${style.bookBtn}`} onClick={() => onBook(group)}>Réserver</Button>
           </div>
         ) : (
@@ -245,9 +241,6 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook, onFreq
                   <Info className="h-3 w-3" /> Description
                 </Button>
               )}
-              <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={onFrequency}>
-                <CalendarRange className="h-3 w-3" />
-              </Button>
             </div>
             <InterestForm activityName={ws.name} />
           </div>
@@ -260,14 +253,6 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook, onFreq
 export default function ActivitiesView({ courses, workshops, schedules, filter, getInstructorPhoto, onSwitchToPlanning }: ActivitiesViewProps) {
   const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
-  const [frequencyOpen, setFrequencyOpen] = useState(false);
-  const [frequencyCategory, setFrequencyCategory] = useState<string>("yoga");
-  const [frequencyActivity, setFrequencyActivity] = useState<string | undefined>(undefined);
-  const planningRef = useRef<PlanningTypeViewHandle>(null);
-
-  const openProgramme = useCallback(() => {
-    planningRef.current?.openAndScroll();
-  }, []);
 
   const handleProgrammeEventClick = useCallback((params: { type: "course" | "workshop"; name: string; id?: string; date?: string }) => {
     if (params.type === "course" && params.id) {
@@ -332,37 +317,22 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
     }
   };
 
-  const openFrequency = (category: string, activityName?: string) => {
-    setFrequencyCategory(category);
-    setFrequencyActivity(activityName);
-    setFrequencyOpen(true);
-  };
-
-  const handleFrequencyTimeClick = (params: { activity: string; category: string; date?: string }) => {
-    setFrequencyOpen(false);
-    const course = courses.find(c => c.name === params.activity);
-    if (course) {
-      onSwitchToPlanning({ type: "course", id: course.id, date: params.date });
-    } else {
-      const ws = workshops.find(w => w.name === params.activity);
-      if (ws) onSwitchToPlanning({ type: "workshop", id: ws.id, date: params.date });
-    }
-  };
 
   const descriptionCourseDays = descriptionCourse ? (schedulesMap[descriptionCourse.id] || new Set<string>()) : new Set<string>();
 
   return (
     <>
-      {/* ─── Programme (semaine / mois) ─── */}
-      {(courses.length > 0 || workshops.length > 0) && (
-        <PlanningTypeView ref={planningRef} courses={courses} schedules={schedules} workshops={workshops} filter={filter === "all" ? undefined : filter} compact onEventClick={handleProgrammeEventClick} />
-      )}
+      {/* ─── Yoga & Pilates ─── */}
 
       {/* ─── Yoga & Pilates ─── */}
       {showYoga && coursesWithSchedules.length > 0 && (
         <section className="py-12 md:py-16">
           <div className="container">
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${yogaStyle.text}`}>Yoga & Pilates</h2>
+            {/* Inline recurring grid */}
+            <div className="mb-6 max-w-2xl mx-auto">
+              <RecurringGrid courses={courses.filter(c => c.category === "yoga")} schedules={schedules} onEventClick={handleProgrammeEventClick} />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {coursesWithSchedules.map((course, i) => {
                 const photo = getInstructorPhoto(course.instructor_id, course.instructor);
@@ -381,9 +351,6 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                         <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => setDescriptionCourse(course)}>
                           <Info className="h-3 w-3" /> Description
                         </Button>
-                        <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={openProgramme}>
-                          <CalendarRange className="h-3 w-3" />
-                        </Button>
                         <Button size="sm" className={`flex-1 text-xs ${yogaStyle.bookBtn}`} onClick={() => handleBookCourse(course)}>Réserver</Button>
                       </div>
                     </div>
@@ -400,9 +367,13 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         <section className={`py-12 md:py-16 ${showYoga && coursesWithSchedules.length > 0 ? "bg-secondary/10" : ""}`}>
           <div className="container">
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${potteryStyle.text}`}>Poterie</h2>
+            {/* Inline upcoming workshops */}
+            <div className="mb-6 max-w-2xl mx-auto">
+              <MonthWorkshops workshops={workshops.filter(w => w.category === "poterie")} onEventClick={handleProgrammeEventClick} hideTitle />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {potteryGroups.map((group, i) => (
-                <WorkshopCard key={group.key} group={group} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(group.workshops[0].instructor_id)} onBook={handleBookGroup} onFrequency={openProgramme} />
+                <WorkshopCard key={group.key} group={group} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(group.workshops[0].instructor_id)} onBook={handleBookGroup} />
               ))}
             </div>
           </div>
@@ -414,9 +385,13 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         <section className="py-12 md:py-16">
           <div className="container">
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${getCategoryStyle("bien-etre").text}`}>Ateliers & Stages</h2>
+            {/* Inline upcoming workshops */}
+            <div className="mb-6 max-w-2xl mx-auto">
+              <MonthWorkshops workshops={workshops.filter(w => w.category === "bien-etre")} onEventClick={handleProgrammeEventClick} hideTitle />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {wellbeingGroups.map((group, i) => (
-                <WorkshopCard key={group.key} group={group} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(group.workshops[0].instructor_id)} onBook={handleBookGroup} onFrequency={openProgramme} />
+                <WorkshopCard key={group.key} group={group} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(group.workshops[0].instructor_id)} onBook={handleBookGroup} />
               ))}
             </div>
           </div>
@@ -488,17 +463,6 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         </DialogContent>
       </Dialog>
 
-      {/* Frequency dialog */}
-      <FrequencyDialog
-        open={frequencyOpen}
-        onOpenChange={setFrequencyOpen}
-        courses={courses}
-        workshops={workshops}
-        schedules={schedules}
-        highlightCategory={frequencyCategory}
-        specificActivity={frequencyActivity}
-        onTimeClick={handleFrequencyTimeClick}
-      />
     </>
   );
 }

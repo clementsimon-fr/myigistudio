@@ -285,9 +285,10 @@ function RecurringGrid({ courses, schedules, onEventClick }: {
   );
 }
 
-function MonthWorkshops({ workshops, onEventClick }: {
+function MonthWorkshops({ workshops, onEventClick, hideTitle }: {
   workshops: Workshop[];
   onEventClick?: PlanningTypeViewProps["onEventClick"];
+  hideTitle?: boolean;
 }) {
   const { start, end } = getMonthBounds();
 
@@ -315,7 +316,7 @@ function MonthWorkshops({ workshops, onEventClick }: {
 
   return (
     <div className="space-y-3">
-      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ateliers & stages</h4>
+      {!hideTitle && <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ateliers & stages</h4>}
       {grouped.map(({ category, items }) => {
         const style = getCategoryStyle(category);
         return (
@@ -435,3 +436,4 @@ const PlanningTypeView = forwardRef<PlanningTypeViewHandle, PlanningTypeViewProp
 );
 
 export default PlanningTypeView;
+export { RecurringGrid, MonthWorkshops, formatTime, formatDateShort, getCategoryStyle, getMonthBounds };
