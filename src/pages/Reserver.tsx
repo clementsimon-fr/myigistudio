@@ -220,6 +220,37 @@ export default function Reserver() {
     load();
   }, [activityType, activityId, activityName, preselectedDate, preselectedScheduleId]);
 
+  // Compute upcoming course dates from schedules
+  const upcomingCourseDates = useMemo(() => {
+    if (!activity || activity.type !== "course" || schedules.length === 0) return [];
+    const dayMap: Record<string, number> = { Lundi: 1, Mardi: 2, Mercredi: 3, Jeudi: 4, Vendredi: 5, Samedi: 6, Dimanche: 0 };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dates: { date: Date; schedule: CourseScheduleRow }[] = [];
+    
+    for (const sched of schedules) {
+      const targetDay = dayMap[sched.day];
+      if (targetDay === undefined) continue;
+      // Generate next 4 occurrences
+      for (let week = 0; week < 4; week++) {
+        const d = new Date(today);
+        let diff = targetDay - d.getDay();
+        if (diff < 0) diff += 7;
+        d.setDate(d.getDate() + diff + week * 7);
+        if (d >= today) {
+          dates.push({ date: d, schedule: sched });
+        }
+      }
+    }
+    return dates.sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [activity, schedules]);
+
+  const handleCourseDateSelect = (d: Date, sched: CourseScheduleRow) => {
+    setSelectedDate(d);
+    setSelectedSlot(sched.id);
+    setCourseDatePickerMode(false);
+  };
+
   // Compute slots
   const slots: AvailableSlot[] = useMemo(() => {
     if (!selectedDate || !activity) return [];
