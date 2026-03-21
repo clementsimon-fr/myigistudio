@@ -231,9 +231,6 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
                 <Info className="h-3 w-3" /> Description
               </Button>
             )}
-            <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={onFrequency}>
-              <CalendarRange className="h-3 w-3" />
-            </Button>
             <Button size="sm" className={`flex-1 text-xs ${style.bookBtn}`} onClick={() => onBook(group)}>Réserver</Button>
           </div>
         ) : (
@@ -244,9 +241,6 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
                   <Info className="h-3 w-3" /> Description
                 </Button>
               )}
-              <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={onFrequency}>
-                <CalendarRange className="h-3 w-3" />
-              </Button>
             </div>
             <InterestForm activityName={ws.name} />
           </div>
