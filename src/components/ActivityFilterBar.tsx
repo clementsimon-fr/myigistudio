@@ -2,14 +2,17 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import filterYoga from "@/assets/filter-yoga.png";
+import filterPoterie from "@/assets/filter-poterie.png";
+import filterAteliers from "@/assets/filter-ateliers.png";
 
 export type FilterCategory = "all" | "yoga" | "poterie" | "bien-etre";
 
-export const CATEGORY_FILTERS: { value: FilterCategory; label: string; dot?: string; activeBg?: string }[] = [
+export const CATEGORY_FILTERS: { value: FilterCategory; label: string; dot?: string; activeBg?: string; icon?: string }[] = [
   { value: "all", label: "Tout" },
-  { value: "yoga", label: "Yoga", dot: "bg-[hsl(210,60%,55%)]", activeBg: "bg-[hsl(210,60%,55%)]" },
-  { value: "poterie", label: "Poterie", dot: "bg-[hsl(40,76%,60%)]", activeBg: "bg-[hsl(40,76%,60%)]" },
-  { value: "bien-etre", label: "Atelier", dot: "bg-[hsl(0,55%,58%)]", activeBg: "bg-[hsl(0,55%,58%)]" },
+  { value: "yoga", label: "Yoga", dot: "bg-[hsl(210,60%,55%)]", activeBg: "bg-[hsl(210,60%,55%)]", icon: filterYoga },
+  { value: "poterie", label: "Poterie", dot: "bg-[hsl(40,76%,60%)]", activeBg: "bg-[hsl(40,76%,60%)]", icon: filterPoterie },
+  { value: "bien-etre", label: "Atelier", dot: "bg-[hsl(0,55%,58%)]", activeBg: "bg-[hsl(0,55%,58%)]", icon: filterAteliers },
 ];
 
 export const CATEGORY_STYLES: Record<string, { block: string; dot: string; text: string; bookBtn: string }> = {
