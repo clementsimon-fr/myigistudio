@@ -69,7 +69,7 @@ export default function Navbar() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52">
-                  {isAdmin && (
+                  {(isAdmin || currentProfile?.role === "fournisseur") && (
                     <>
                       <p className="px-2 py-1.5 text-xs text-muted-foreground font-normal">Administration</p>
                       {adminSections.map((item) => (
