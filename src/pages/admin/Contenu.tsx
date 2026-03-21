@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Save, Megaphone } from "lucide-react";
+import { Loader2, Save, Megaphone, Upload, ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { saveSiteSettings } from "@/hooks/useSiteSettings";
@@ -47,6 +47,62 @@ interface ActivityOption {
   date?: string;
 }
 
+const FILTER_ICONS = [
+  { key: "filter_icon_tout", label: "Tout" },
+  { key: "filter_icon_yoga", label: "Yoga" },
+  { key: "filter_icon_poterie", label: "Poterie" },
+  { key: "filter_icon_bien_etre", label: "Atelier" },
+];
+
+function FilterIconUploader({ settingKey, label, currentUrl, onUploaded }: { settingKey: string; label: string; currentUrl: string; onUploaded: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const path = `${settingKey}.${ext}`;
+    // Remove old file first
+    await supabase.storage.from("filter-icons").remove([path]);
+    const { error } = await supabase.storage.from("filter-icons").upload(path, file, { upsert: true });
+    if (error) {
+      toast({ title: "Erreur upload", description: error.message, variant: "destructive" });
+      setUploading(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from("filter-icons").getPublicUrl(path);
+    const url = urlData.publicUrl + "?t=" + Date.now();
+    onUploaded(url);
+    setUploading(false);
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <span className="text-xs text-muted-foreground font-medium">{label}</span>
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="relative w-16 h-16 rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors flex items-center justify-center overflow-hidden bg-muted/30"
+      >
+        {currentUrl ? (
+          <img src={currentUrl} alt={label} className="w-full h-full object-cover rounded-lg" />
+        ) : (
+          <ImageIcon className="h-6 w-6 text-muted-foreground/50" />
+        )}
+        {uploading && (
+          <div className="absolute inset-0 bg-background/70 flex items-center justify-center">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        )}
+      </button>
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+    </div>
+  );
+}
+
 export default function AdminContenu() {
   const { toast } = useToast();
   const [values, setValues] = useState<Record<string, string>>({});
@@ -80,16 +136,20 @@ export default function AdminContenu() {
     });
   }, []);
 
+  const handleIconUploaded = async (key: string, url: string) => {
+    setValues(prev => ({ ...prev, [key]: url }));
+    await saveSiteSettings([{ key, value: url }]);
+    toast({ title: "Icône mise à jour ✓" });
+  };
+
   const handleSave = async () => {
     setSaving(true);
-    // Build the link from selected activity
     const actId = values.featured_event_activity_id;
     const activity = activityOptions.find(a => a.id === actId);
     let link = "";
     if (activity) {
       link = `/reserver?type=${activity.type}&id=${activity.id}`;
       if (activity.date) link += `&date=${activity.date}`;
-      // If no custom title, use activity name
       if (!values.featured_event_title?.trim()) {
         values.featured_event_title = activity.name;
       }
@@ -149,7 +209,6 @@ export default function AdminContenu() {
                     onValueChange={v => {
                       const newVal = v === "none" ? "" : v;
                       setValues(prev => ({ ...prev, [field.key]: newVal }));
-                      // Auto-fill title
                       if (newVal) {
                         const act = activityOptions.find(a => a.id === newVal);
                         if (act && !values.featured_event_title?.trim()) {
@@ -179,6 +238,28 @@ export default function AdminContenu() {
             ))}
           </div>
         ))}
+
+        {/* Filter Icons Section */}
+        <div className="rounded-xl border bg-card p-5 space-y-4">
+          <h3 className="font-display font-semibold text-primary-dark flex items-center gap-2">
+            <ImageIcon className="h-4 w-4" />
+            Icônes des filtres
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Cliquez sur une icône pour la remplacer. Les changements sont sauvegardés immédiatement.
+          </p>
+          <div className="flex items-start justify-center gap-6 pt-2">
+            {FILTER_ICONS.map(fi => (
+              <FilterIconUploader
+                key={fi.key}
+                settingKey={fi.key}
+                label={fi.label}
+                currentUrl={values[fi.key] || ""}
+                onUploaded={(url) => handleIconUploaded(fi.key, url)}
+              />
+            ))}
+          </div>
+        </div>
 
         <Button className="gap-2" onClick={handleSave} disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
