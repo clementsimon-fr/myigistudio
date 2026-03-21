@@ -370,10 +370,13 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         <section className={`py-12 md:py-16 ${showYoga && coursesWithSchedules.length > 0 ? "bg-secondary/10" : ""}`}>
           <div className="container">
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${potteryStyle.text}`}>Poterie</h2>
-            {/* Inline upcoming workshops */}
-            <div className="mb-6 max-w-2xl mx-auto">
-              <MonthWorkshops workshops={workshops.filter(w => w.category === "poterie")} onEventClick={handleProgrammeEventClick} hideTitle />
+            <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-3 text-center">
+              Planning du mois de {new Date().toLocaleDateString("fr-FR", { month: "long" })}
+            </h3>
+            <div className="mb-8 max-w-2xl mx-auto">
+              <MonthWorkshops workshops={workshops.filter(w => w.category === "poterie")} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots />
             </div>
+            <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {potteryGroups.map((group, i) => (
                 <WorkshopCard key={group.key} group={group} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(group.workshops[0].instructor_id)} onBook={handleBookGroup} />
