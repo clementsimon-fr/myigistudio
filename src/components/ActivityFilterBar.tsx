@@ -8,11 +8,11 @@ import filterAteliers from "@/assets/filter-ateliers.png";
 
 export type FilterCategory = "all" | "yoga" | "poterie" | "bien-etre";
 
-export const CATEGORY_FILTERS: { value: FilterCategory; label: string; dot?: string; activeBg?: string; icon?: string }[] = [
+export const CATEGORY_FILTERS: { value: FilterCategory; label: string; dot?: string; activeBg?: string; inactiveBg?: string; icon?: string }[] = [
   { value: "all", label: "Tout" },
-  { value: "yoga", label: "Yoga", dot: "bg-[hsl(210,60%,55%)]", activeBg: "bg-[hsl(210,60%,55%)]", icon: filterYoga },
-  { value: "poterie", label: "Poterie", dot: "bg-[hsl(40,76%,60%)]", activeBg: "bg-[hsl(40,76%,60%)]", icon: filterPoterie },
-  { value: "bien-etre", label: "Atelier", dot: "bg-[hsl(0,55%,58%)]", activeBg: "bg-[hsl(0,55%,58%)]", icon: filterAteliers },
+  { value: "yoga", label: "Yoga", dot: "bg-[hsl(210,60%,55%)]", activeBg: "bg-[hsl(210,60%,55%)]", inactiveBg: "bg-[hsl(210,60%,90%)] text-[hsl(210,60%,35%)]", icon: filterYoga },
+  { value: "poterie", label: "Poterie", dot: "bg-[hsl(40,76%,60%)]", activeBg: "bg-[hsl(40,76%,60%)]", inactiveBg: "bg-[hsl(40,76%,90%)] text-[hsl(40,76%,30%)]", icon: filterPoterie },
+  { value: "bien-etre", label: "Atelier", dot: "bg-[hsl(0,55%,58%)]", activeBg: "bg-[hsl(0,55%,58%)]", inactiveBg: "bg-[hsl(0,55%,90%)] text-[hsl(0,55%,35%)]", icon: filterAteliers },
 ];
 
 export const CATEGORY_STYLES: Record<string, { block: string; dot: string; text: string; bookBtn: string }> = {
@@ -64,19 +64,18 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
                   variant={isActive ? null as any : "outline"}
                   size="sm"
                   onClick={() => onFilterChange(f.value)}
-                  className={`rounded-full gap-1 ${f.icon ? "flex-col h-auto py-1 px-3" : "h-7 px-2.5"} text-xs ${
+                  className={`rounded-full flex-col h-auto py-1 px-3 gap-0.5 text-xs ${
                     isActive
                       ? f.activeBg
                         ? `${f.activeBg} text-white border-transparent hover:text-white hover:opacity-90`
                         : "bg-primary-dark text-white border-transparent hover:text-white hover:bg-primary-dark/90"
-                      : ""
+                      : f.inactiveBg
+                        ? `${f.inactiveBg} border-transparent`
+                        : ""
                   }`}
                 >
                   {f.icon && <img src={f.icon} alt="" className="w-7 h-7 rounded-full object-cover" />}
-                  <span className="flex items-center gap-1">
-                    {f.dot && <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : f.dot}`} />}
-                    {f.label}
-                  </span>
+                  <span className="leading-tight">{f.label}</span>
                 </Button>
               );
             })}
