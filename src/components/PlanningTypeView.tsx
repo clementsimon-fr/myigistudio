@@ -285,9 +285,10 @@ function RecurringGrid({ courses, schedules, onEventClick }: {
   );
 }
 
-function MonthWorkshops({ workshops, onEventClick }: {
+function MonthWorkshops({ workshops, onEventClick, hideTitle }: {
   workshops: Workshop[];
   onEventClick?: PlanningTypeViewProps["onEventClick"];
+  hideTitle?: boolean;
 }) {
   const { start, end } = getMonthBounds();
 
