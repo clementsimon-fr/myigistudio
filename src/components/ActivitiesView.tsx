@@ -258,14 +258,21 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const [atelierMonthOffset, setAtelierMonthOffset] = useState(0);
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
 
+  const potteryMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + potteryMonthOffset); return d; }, [potteryMonthOffset]);
+  const atelierMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + atelierMonthOffset); return d; }, [atelierMonthOffset]);
+  const potteryMonthLabel = potteryMonthDate.toLocaleDateString("fr-FR", { month: "long" });
+  const atelierMonthLabel = atelierMonthDate.toLocaleDateString("fr-FR", { month: "long" });
+
   const handleProgrammeEventClick = useCallback((params: { type: "course" | "workshop"; name: string; id?: string; date?: string }) => {
-    // Scroll to the relevant card instead of navigating to booking
     const cardId = params.type === "course" ? `card-course-${params.id}` : `card-workshop-${params.name}`;
     const el = document.getElementById(cardId);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
       el.classList.add("ring-2", "ring-primary", "ring-offset-2");
-      setTimeout(() => el.classList.remove("ring-2", "ring-primary", "ring-offset-2"), 2000);
+      setTimeout(() => {
+        el.classList.remove("ring-2", "ring-primary", "ring-offset-2");
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      }, 500);
     }
   }, []);
 
