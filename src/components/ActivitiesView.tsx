@@ -256,7 +256,6 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
   const [potteryMonthOffset, setPotteryMonthOffset] = useState(0);
   const [atelierMonthOffset, setAtelierMonthOffset] = useState(0);
-  const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
 
   const potteryMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + potteryMonthOffset); return d; }, [potteryMonthOffset]);
   const atelierMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + atelierMonthOffset); return d; }, [atelierMonthOffset]);
