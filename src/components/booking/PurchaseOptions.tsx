@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,16 @@ export default function PurchaseOptions({
   const [voucherCode, setVoucherCode] = useState("");
   const [showFormulas, setShowFormulas] = useState(false);
   const isYoga = category === "yoga";
+  const cardGridRef = useRef<HTMLDivElement>(null);
+
+  // 1.2: Scroll to card grid when formulas are shown
+  useEffect(() => {
+    if (showFormulas && cardGridRef.current) {
+      setTimeout(() => {
+        cardGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [showFormulas]);
 
   // ─── YOGA — connected with cards ───
   if (isYoga && userState === "logged_user_with_cards") {
@@ -62,14 +72,17 @@ export default function PurchaseOptions({
         <p className="text-xs text-muted-foreground text-center -mt-2">1 carte sera déduite après confirmation.</p>
 
         <div className="grid gap-2">
-          <Button variant="outline" className="w-full gap-2" onClick={() => setShowFormulas(true)}>
-            <ShoppingCart className="h-4 w-4" /> Acheter des cartes yoga
+          {/* 1.9: "Acheter carte yoga" */}
+          <Button variant="outline" className="w-full gap-2" onClick={() => setShowFormulas(!showFormulas)}>
+            <ShoppingCart className="h-4 w-4" /> Acheter carte yoga
           </Button>
           <VoucherButton showVoucher={showVoucher} setShowVoucher={setShowVoucher} voucherCode={voucherCode} setVoucherCode={setVoucherCode} onUseVoucher={onUseVoucher} voucherStatus={voucherStatus} onVoucherCodeChange={onVoucherCodeChange} />
         </div>
 
         {showFormulas && (
-          <CardGrid pricingCards={pricingCards} unitPrice={unitPrice} onBuyCard={onBuyCard} />
+          <div ref={cardGridRef}>
+            <CardGrid pricingCards={pricingCards} unitPrice={unitPrice} onBuyCard={onBuyCard} />
+          </div>
         )}
       </div>
     );
@@ -85,11 +98,20 @@ export default function PurchaseOptions({
             Cartes yoga disponibles : <strong>0</strong>
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            {userName}, achetez des cartes yoga pour réserver vos cours.
+            {userName}, achetez une carte yoga pour réserver vos cours.
           </p>
         </div>
 
-        <CardGrid pricingCards={pricingCards} unitPrice={unitPrice} onBuyCard={onBuyCard} />
+        {/* 1.5: Button to reveal formulas */}
+        <Button variant="outline" className="w-full gap-2" onClick={() => setShowFormulas(!showFormulas)}>
+          <ShoppingCart className="h-4 w-4" /> {showFormulas ? "Masquer les formules" : "Acheter carte yoga"}
+        </Button>
+
+        {showFormulas && (
+          <div ref={cardGridRef}>
+            <CardGrid pricingCards={pricingCards} unitPrice={unitPrice} onBuyCard={onBuyCard} />
+          </div>
+        )}
 
         <VoucherButton showVoucher={showVoucher} setShowVoucher={setShowVoucher} voucherCode={voucherCode} setVoucherCode={setVoucherCode} onUseVoucher={onUseVoucher} voucherStatus={voucherStatus} onVoucherCodeChange={onVoucherCodeChange} />
       </div>
@@ -106,7 +128,7 @@ export default function PurchaseOptions({
           </Button>
           <VoucherButton showVoucher={showVoucher} setShowVoucher={setShowVoucher} voucherCode={voucherCode} setVoucherCode={setVoucherCode} onUseVoucher={onUseVoucher} voucherStatus={voucherStatus} onVoucherCodeChange={onVoucherCodeChange} />
           <Button variant="outline" className="w-full gap-2" onClick={() => setShowFormulas(true)}>
-            <Eye className="h-4 w-4" /> Voir les formules
+            <Eye className="h-4 w-4" /> Voir les formules carte yoga
           </Button>
         </div>
 
@@ -173,6 +195,7 @@ function VoucherButton({ showVoucher, setShowVoucher, voucherCode, setVoucherCod
 }
 
 // ─── Sub: Card grid ───
+// 1.1: Remove percentage display
 function CardGrid({ pricingCards, unitPrice, onBuyCard }: {
   pricingCards: PricingCard[]; unitPrice: number | null; onBuyCard: (card: PricingCard) => void;
 }) {
@@ -180,7 +203,6 @@ function CardGrid({ pricingCards, unitPrice, onBuyCard }: {
     <div className="grid gap-3 sm:grid-cols-2">
       {pricingCards.map(card => {
         const perSession = card.sessions < 9999 ? card.price / card.sessions : null;
-        const savingsPercent = perSession && unitPrice ? Math.round((1 - perSession / unitPrice) * 100) : null;
         return (
           <div
             key={card.id}
@@ -201,7 +223,6 @@ function CardGrid({ pricingCards, unitPrice, onBuyCard }: {
             {perSession && (
               <p className="text-xs text-muted-foreground">
                 {perSession.toFixed(2)}€ / cours
-                {savingsPercent && savingsPercent > 0 && <span className="ml-1 text-primary font-semibold">-{savingsPercent}%</span>}
               </p>
             )}
             <Button size="sm" className={cn("mt-3", card.popular ? "bg-primary-dark text-primary-dark-foreground" : "")} variant={card.popular ? "default" : "outline"}>

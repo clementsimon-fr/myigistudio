@@ -60,6 +60,7 @@ export default function MonEspace() {
   const [reminderSms, setReminderSms] = useState(false);
   const [reminderEmail, setReminderEmail] = useState(true);
   const [resFilter, setResFilter] = useState("all");
+  const [showBuyCards, setShowBuyCards] = useState(false);
   const [viewingReservation, setViewingReservation] = useState<Reservation | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState<Reservation | null>(null);
   const [activityModalities, setActivityModalities] = useState<string>("");
@@ -104,9 +105,11 @@ export default function MonEspace() {
     fetchModalities();
   }, [viewingReservation]);
 
-  const yogaRes = reservations.filter(r => r.activity_type === "course");
-  const potteryRes = reservations.filter(r => r.activity_type === "workshop" && (r.activity_name.toLowerCase().includes("poterie") || r.activity_name.toLowerCase().includes("tour") || r.activity_name.toLowerCase().includes("modelage")));
-  const atelierRes = reservations.filter(r => r.activity_type === "workshop" && !potteryRes.includes(r));
+  // 1.11: Only count confirmed reservations (exclude cancelled)
+  const confirmedRes = reservations.filter(r => r.status !== "annulé");
+  const yogaRes = confirmedRes.filter(r => r.activity_type === "course");
+  const potteryRes = confirmedRes.filter(r => r.activity_type === "workshop" && (r.activity_name.toLowerCase().includes("poterie") || r.activity_name.toLowerCase().includes("tour") || r.activity_name.toLowerCase().includes("modelage")));
+  const atelierRes = confirmedRes.filter(r => r.activity_type === "workshop" && !potteryRes.includes(r));
   const filteredRes = resFilter === "all" ? reservations : resFilter === "yoga" ? yogaRes : resFilter === "poterie" ? potteryRes : atelierRes;
 
   const saveProfile = async () => {
@@ -273,55 +276,58 @@ export default function MonEspace() {
                 )}
               </div>
 
-              {/* Buy new card */}
+              {/* 1.5: Button to reveal buying section */}
               <div>
-                <h3 className="text-sm font-semibold text-primary-dark mb-3">Acheter une carte</h3>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {pricingCards.map(card => {
-                    const perSession = card.sessions > 0 && card.sessions < 9999 ? card.price / card.sessions : null;
-                    const savingsPercent = unitPrice && perSession && card.sessions > 1 ? Math.round((1 - perSession / unitPrice) * 100) : null;
-                    return (
-                      <div
-                        key={card.id}
-                        className={cn(
-                          "relative rounded-xl border p-5 bg-card flex flex-col cursor-pointer transition-all hover:shadow-md",
-                          card.popular ? "border-[hsl(210,60%,55%)] shadow-lg ring-2 ring-[hsl(210,60%,55%)]/20" : "hover:border-[hsl(210,60%,55%)]/40"
-                        )}
-                        onClick={() => handleBuyCard(card)}
-                      >
-                        {card.popular && (
-                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                            <Star className="h-3 w-3" /> Populaire
-                          </div>
-                        )}
-                        <h3 className="font-display font-semibold text-lg text-primary-dark">{card.name}</h3>
-                        <div className="mt-3 mb-1">
-                          <span className="text-3xl font-bold text-foreground">{card.price}€</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-1">
-                          {card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`} · {card.validity}
-                        </p>
-                        {perSession !== null && (
-                          <p className="text-xs text-muted-foreground mb-1">
-                            {perSession.toFixed(2)}€ / cours
-                            {savingsPercent && savingsPercent > 0 && (
-                              <span className="ml-1.5 text-[hsl(210,60%,55%)] font-semibold">-{savingsPercent}%</span>
+                <Button variant="outline" className="w-full gap-2" onClick={() => setShowBuyCards(!showBuyCards)}>
+                  <ShoppingCart className="h-4 w-4" /> {showBuyCards ? "Masquer les formules" : "Acheter carte yoga"}
+                </Button>
+                {showBuyCards && (
+                  <div className="mt-4">
+                    <h3 className="text-sm font-semibold text-primary-dark mb-3">Choisir une formule</h3>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {pricingCards.map(card => {
+                        const perSession = card.sessions > 0 && card.sessions < 9999 ? card.price / card.sessions : null;
+                        return (
+                          <div
+                            key={card.id}
+                            className={cn(
+                              "relative rounded-xl border p-5 bg-card flex flex-col cursor-pointer transition-all hover:shadow-md",
+                              card.popular ? "border-[hsl(210,60%,55%)] shadow-lg ring-2 ring-[hsl(210,60%,55%)]/20" : "hover:border-[hsl(210,60%,55%)]/40"
                             )}
-                          </p>
-                        )}
-                        {card.payment_info && <p className="text-xs text-[hsl(210,60%,55%)] italic mb-3">{card.payment_info}</p>}
-                        <div className="mt-auto pt-3">
-                          <Button className={cn("w-full", card.popular ? "bg-[hsl(210,60%,55%)] hover:bg-[hsl(210,60%,45%)] text-white" : "")} variant={card.popular ? "default" : "outline"}>
-                            <ShoppingCart className="h-4 w-4 mr-1.5" /> Acheter
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="mt-4">
-                  <ContactElodieButton variant="outline" className="text-xs" />
-                </div>
+                            onClick={() => handleBuyCard(card)}
+                          >
+                            {card.popular && (
+                              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                                <Star className="h-3 w-3" /> Populaire
+                              </div>
+                            )}
+                            <h3 className="font-display font-semibold text-lg text-primary-dark">{card.name}</h3>
+                            <div className="mt-3 mb-1">
+                              <span className="text-3xl font-bold text-foreground">{card.price}€</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-1">
+                              {card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`} · {card.validity}
+                            </p>
+                            {perSession !== null && (
+                              <p className="text-xs text-muted-foreground mb-1">
+                                {perSession.toFixed(2)}€ / cours
+                              </p>
+                            )}
+                            {card.payment_info && <p className="text-xs text-[hsl(210,60%,55%)] italic mb-3">{card.payment_info}</p>}
+                            <div className="mt-auto pt-3">
+                              <Button className={cn("w-full", card.popular ? "bg-[hsl(210,60%,55%)] hover:bg-[hsl(210,60%,45%)] text-white" : "")} variant={card.popular ? "default" : "outline"}>
+                                <ShoppingCart className="h-4 w-4 mr-1.5" /> Acheter
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-4">
+                      <ContactElodieButton variant="outline" className="text-xs" />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
