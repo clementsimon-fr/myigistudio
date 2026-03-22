@@ -81,8 +81,8 @@ function WorkshopDatePicker({ dates, onSelect }: {
   onSelect: (ws: typeof dates[0]) => void;
 }) {
   const [viewMode, setViewMode] = useState<"semaine" | "mois">("semaine");
-  const firstDate = dates.length > 0 ? new Date(dates[0].date + "T12:00:00") : new Date();
-  const [weekStart, setWeekStart] = useState(() => getWeekOfDate(firstDate).start);
+  // 1.7: Initialize week to current week so all upcoming dates are reachable
+  const [weekStart, setWeekStart] = useState(() => getWeekOfDate(new Date()).start);
   const [monthOffset, setMonthOffset] = useState(0);
 
   const weekEnd = useMemo(() => {
