@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Info, Users, Euro, Clock, Mail } from "lucide-react";
+import { Info, Users, Euro, Clock, Mail, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
