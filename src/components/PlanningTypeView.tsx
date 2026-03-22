@@ -201,8 +201,8 @@ function WeekProgram({ courses, schedules, workshops, onEventClick }: {
 
 // ─── Month helpers ───
 
-function getMonthBounds(): { start: Date; end: Date; label: string } {
-  const now = new Date();
+function getMonthBounds(monthDate?: Date): { start: Date; end: Date; label: string } {
+  const now = monthDate || new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   const label = now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
