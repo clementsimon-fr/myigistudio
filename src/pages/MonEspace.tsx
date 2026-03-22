@@ -175,7 +175,7 @@ export default function MonEspace() {
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {[
-                  { v: "all", l: `Toutes (${reservations.length})` },
+                  { v: "all", l: `Toutes (${confirmedRes.length})` },
                   { v: "yoga", l: `Yoga (${yogaRes.length})` },
                   { v: "poterie", l: `Poterie (${potteryRes.length})` },
                   { v: "ateliers", l: `Ateliers (${atelierRes.length})` },
