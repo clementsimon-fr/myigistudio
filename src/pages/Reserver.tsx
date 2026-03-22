@@ -686,25 +686,22 @@ export default function Reserver() {
       }
     }
 
-    // Decrement card if using card or just bought a card
-    if ((paymentMode === "1 carte yoga utilisée" || paymentMode === "card_just_bought") && currentProfile) {
+    // Decrement card if using existing card (not card_just_bought — that's already handled in handleStripeSuccess)
+    if (paymentMode === "1 carte yoga utilisée" && currentProfile) {
       useCredit();
-      // For "1 carte yoga utilisée", also update DB
-      if (paymentMode === "1 carte yoga utilisée") {
-        const { data: activeCards } = await supabase
-          .from("client_cards").select("*")
-          .eq("client_name", clientName)
-          .gte("expires_at", new Date().toISOString().split("T")[0])
-          .order("expires_at", { ascending: true });
-        if (activeCards && activeCards.length > 0) {
-          const card = activeCards[0] as any;
-          if (card.total_sessions > card.used_sessions) {
-            await supabase.from("client_cards").update({ used_sessions: card.used_sessions + 1 } as any).eq("id", card.id);
-          }
+      const { data: activeCards } = await supabase
+        .from("client_cards").select("*")
+        .eq("client_name", clientName)
+        .gte("expires_at", new Date().toISOString().split("T")[0])
+        .order("expires_at", { ascending: true });
+      if (activeCards && activeCards.length > 0) {
+        const card = activeCards[0] as any;
+        if (card.total_sessions > card.used_sessions) {
+          await supabase.from("client_cards").update({ used_sessions: card.used_sessions + 1 } as any).eq("id", card.id);
         }
       }
-      // For "card_just_bought", DB card was already created with used_sessions: 1
     }
+    // For "card_just_bought", credits already adjusted (N-1) and DB card has used_sessions: 1
 
     addReservation(selectedSlotData.name, datesToBook[0].dateStr, selectedSlotData.time);
     const dateLabel = datesToBook.length > 1 
