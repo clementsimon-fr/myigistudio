@@ -60,6 +60,7 @@ export default function MonEspace() {
   const [reminderSms, setReminderSms] = useState(false);
   const [reminderEmail, setReminderEmail] = useState(true);
   const [resFilter, setResFilter] = useState("all");
+  const [showBuyCards, setShowBuyCards] = useState(false);
   const [viewingReservation, setViewingReservation] = useState<Reservation | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState<Reservation | null>(null);
   const [activityModalities, setActivityModalities] = useState<string>("");
