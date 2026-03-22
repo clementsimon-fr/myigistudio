@@ -398,11 +398,15 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         <section className={`py-12 md:py-16 ${showYoga && coursesWithSchedules.length > 0 ? "bg-secondary/10" : ""}`}>
           <div className="container">
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${potteryStyle.text}`}>Poterie</h2>
-            <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-3 text-center">
-              Planning du mois de {new Date().toLocaleDateString("fr-FR", { month: "long" })}
-            </h3>
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <button onClick={() => setPotteryMonthOffset(o => o - 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronLeft className="h-4 w-4 text-muted-foreground" /></button>
+              <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground">
+                Planning du mois de {potteryMonthLabel}
+              </h3>
+              <button onClick={() => setPotteryMonthOffset(o => o + 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>
+            </div>
             <div className="mb-8 max-w-2xl mx-auto">
-              <MonthWorkshops workshops={workshops.filter(w => w.category === "poterie")} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots />
+              <MonthWorkshops workshops={workshops.filter(w => w.category === "poterie" && (subFilter === "all" || w.name === subFilter))} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots monthDate={potteryMonthDate} />
             </div>
             <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
