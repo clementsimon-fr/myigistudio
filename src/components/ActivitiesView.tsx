@@ -254,11 +254,14 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
 export default function ActivitiesView({ courses, workshops, schedules, filter, subFilter = "all", getInstructorPhoto, onSwitchToPlanning }: ActivitiesViewProps) {
   const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
+  const [yogaMonthOffset, setYogaMonthOffset] = useState(0);
   const [potteryMonthOffset, setPotteryMonthOffset] = useState(0);
   const [atelierMonthOffset, setAtelierMonthOffset] = useState(0);
 
+  const yogaMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + yogaMonthOffset); return d; }, [yogaMonthOffset]);
   const potteryMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + potteryMonthOffset); return d; }, [potteryMonthOffset]);
   const atelierMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + atelierMonthOffset); return d; }, [atelierMonthOffset]);
+  const yogaMonthLabel = yogaMonthDate.toLocaleDateString("fr-FR", { month: "long" });
   const potteryMonthLabel = potteryMonthDate.toLocaleDateString("fr-FR", { month: "long" });
   const atelierMonthLabel = atelierMonthDate.toLocaleDateString("fr-FR", { month: "long" });
 
