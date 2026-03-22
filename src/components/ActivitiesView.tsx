@@ -130,40 +130,10 @@ interface WorkshopGroup {
 }
 
 function groupWorkshops(workshops: Workshop[]): WorkshopGroup[] {
-  const linkedGroups: Record<string, Workshop[]> = {};
-  const standalone: Workshop[] = [];
+  // Group ALL workshops by name → single card per activity name
+  const byName: Record<string, Workshop[]> = {};
 
   for (const ws of workshops) {
-    if (ws.linked_group) {
-      if (!linkedGroups[ws.linked_group]) linkedGroups[ws.linked_group] = [];
-      linkedGroups[ws.linked_group].push(ws);
-    } else {
-      standalone.push(ws);
-    }
-  }
-
-  const groups: WorkshopGroup[] = [];
-
-  // Add linked groups (dedupe by date)
-  for (const [groupId, gws] of Object.entries(linkedGroups)) {
-    const byDate = new Map<string, Workshop>();
-    for (const ws of gws) {
-      if (ws.date && !byDate.has(ws.date)) {
-        byDate.set(ws.date, ws);
-      }
-    }
-    const sortedWs = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
-    groups.push({
-      key: groupId,
-      workshops: sortedWs,
-      linkedDates: sortedWs.map(w => w.date),
-      isLinked: true,
-    });
-  }
-
-  // Group standalone workshops by name → single card per activity
-  const byName: Record<string, Workshop[]> = {};
-  for (const ws of standalone) {
     if (!byName[ws.name]) byName[ws.name] = [];
     // Dedupe by date
     if (!byName[ws.name].some(existing => existing.date === ws.date)) {
@@ -171,13 +141,17 @@ function groupWorkshops(workshops: Workshop[]): WorkshopGroup[] {
     }
   }
 
+  const groups: WorkshopGroup[] = [];
+
   for (const [, nameWs] of Object.entries(byName)) {
     const sorted = [...nameWs].sort((a, b) => a.date.localeCompare(b.date));
+    // Check if any have a linked_group
+    const hasLinked = sorted.some(w => w.linked_group);
     groups.push({
       key: sorted[0].id,
       workshops: sorted,
       linkedDates: sorted.map(w => w.date),
-      isLinked: false,
+      isLinked: hasLinked,
     });
   }
 
