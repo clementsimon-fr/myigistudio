@@ -103,6 +103,7 @@ export default function Discover() {
             workshops={workshops}
             schedules={schedules}
             filter={filter}
+            subFilter={subFilter}
             getInstructorPhoto={getInstructorPhoto}
             onSwitchToPlanning={handleSwitchToReserver}
           />
