@@ -618,17 +618,17 @@ export default function Reserver() {
   const handleStripeSuccess = async () => {
     setShowStripeModal(false);
     if (pendingCard) {
-      addCredits(pendingCard.sessions, pendingCard.name);
+      // 1.4: Add N-1 credits (1 is used immediately for this booking)
+      addCredits(pendingCard.sessions - 1, pendingCard.name);
       addNotification(`${currentProfile?.name || guestName || "Client"} a acheté une ${pendingCard.name}`, "purchase");
       await supabase.from("client_cards").insert({
         client_name: currentProfile?.name || guestName || "Client",
         card_name: pendingCard.name,
         total_sessions: pendingCard.sessions,
-        used_sessions: 1, // 1.4: First session used immediately for this booking
+        used_sessions: 1,
         expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
       } as any);
       toast({ title: `${pendingCard.name} achetée avec succès ! 🎉` });
-      // Mark that we should use a credit from demo context too
       setPaymentMode("card_just_bought");
       setPendingCard(null);
     }
