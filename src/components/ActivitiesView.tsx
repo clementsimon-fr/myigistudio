@@ -130,40 +130,10 @@ interface WorkshopGroup {
 }
 
 function groupWorkshops(workshops: Workshop[]): WorkshopGroup[] {
-  const linkedGroups: Record<string, Workshop[]> = {};
-  const standalone: Workshop[] = [];
+  // Group ALL workshops by name → single card per activity name
+  const byName: Record<string, Workshop[]> = {};
 
   for (const ws of workshops) {
-    if (ws.linked_group) {
-      if (!linkedGroups[ws.linked_group]) linkedGroups[ws.linked_group] = [];
-      linkedGroups[ws.linked_group].push(ws);
-    } else {
-      standalone.push(ws);
-    }
-  }
-
-  const groups: WorkshopGroup[] = [];
-
-  // Add linked groups (dedupe by date)
-  for (const [groupId, gws] of Object.entries(linkedGroups)) {
-    const byDate = new Map<string, Workshop>();
-    for (const ws of gws) {
-      if (ws.date && !byDate.has(ws.date)) {
-        byDate.set(ws.date, ws);
-      }
-    }
-    const sortedWs = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
-    groups.push({
-      key: groupId,
-      workshops: sortedWs,
-      linkedDates: sortedWs.map(w => w.date),
-      isLinked: true,
-    });
-  }
-
-  // Group standalone workshops by name → single card per activity
-  const byName: Record<string, Workshop[]> = {};
-  for (const ws of standalone) {
     if (!byName[ws.name]) byName[ws.name] = [];
     // Dedupe by date
     if (!byName[ws.name].some(existing => existing.date === ws.date)) {
@@ -171,13 +141,17 @@ function groupWorkshops(workshops: Workshop[]): WorkshopGroup[] {
     }
   }
 
+  const groups: WorkshopGroup[] = [];
+
   for (const [, nameWs] of Object.entries(byName)) {
     const sorted = [...nameWs].sort((a, b) => a.date.localeCompare(b.date));
+    // Check if any have a linked_group
+    const hasLinked = sorted.some(w => w.linked_group);
     groups.push({
       key: sorted[0].id,
       workshops: sorted,
       linkedDates: sorted.map(w => w.date),
-      isLinked: false,
+      isLinked: hasLinked,
     });
   }
 
@@ -254,11 +228,14 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
 export default function ActivitiesView({ courses, workshops, schedules, filter, subFilter = "all", getInstructorPhoto, onSwitchToPlanning }: ActivitiesViewProps) {
   const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
+  const [yogaMonthOffset, setYogaMonthOffset] = useState(0);
   const [potteryMonthOffset, setPotteryMonthOffset] = useState(0);
   const [atelierMonthOffset, setAtelierMonthOffset] = useState(0);
 
+  const yogaMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + yogaMonthOffset); return d; }, [yogaMonthOffset]);
   const potteryMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + potteryMonthOffset); return d; }, [potteryMonthOffset]);
   const atelierMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + atelierMonthOffset); return d; }, [atelierMonthOffset]);
+  const yogaMonthLabel = yogaMonthDate.toLocaleDateString("fr-FR", { month: "long" });
   const potteryMonthLabel = potteryMonthDate.toLocaleDateString("fr-FR", { month: "long" });
   const atelierMonthLabel = atelierMonthDate.toLocaleDateString("fr-FR", { month: "long" });
 
@@ -333,11 +310,16 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         <section className="py-12 md:py-16" data-planning-section>
           <div className="container">
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${yogaStyle.text}`}>Yoga & Pilates</h2>
-            <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-3 text-center">
-              Planning du mois de {new Date().toLocaleDateString("fr-FR", { month: "long" })}
-            </h3>
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <button onClick={() => setYogaMonthOffset(o => o - 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronLeft className="h-4 w-4 text-muted-foreground" /></button>
+              <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground">
+                Planning du mois de {yogaMonthLabel}
+              </h3>
+              <button onClick={() => setYogaMonthOffset(o => o + 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>
+            </div>
             <div className="mb-8 max-w-2xl mx-auto">
               <RecurringGrid courses={courses.filter(c => c.category === "yoga" && (subFilter === "all" || c.name === subFilter))} schedules={schedules} onEventClick={handleProgrammeEventClick} />
+              <MonthWorkshops workshops={workshops.filter(w => w.category === "yoga" && (subFilter === "all" || w.name === subFilter))} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots monthDate={yogaMonthDate} />
             </div>
             <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
