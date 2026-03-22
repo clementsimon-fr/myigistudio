@@ -624,10 +624,12 @@ export default function Reserver() {
         client_name: currentProfile?.name || guestName || "Client",
         card_name: pendingCard.name,
         total_sessions: pendingCard.sessions,
-        used_sessions: 0,
+        used_sessions: 1, // 1.4: First session used immediately for this booking
         expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
       } as any);
       toast({ title: `${pendingCard.name} achetée avec succès ! 🎉` });
+      // Mark that we should use a credit from demo context too
+      setPaymentMode("card_just_bought");
       setPendingCard(null);
     }
     handleFinalConfirm();
