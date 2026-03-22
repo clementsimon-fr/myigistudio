@@ -251,8 +251,11 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
   );
 }
 
-export default function ActivitiesView({ courses, workshops, schedules, filter, getInstructorPhoto, onSwitchToPlanning }: ActivitiesViewProps) {
+export default function ActivitiesView({ courses, workshops, schedules, filter, subFilter = "all", getInstructorPhoto, onSwitchToPlanning }: ActivitiesViewProps) {
   const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
+  const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
+  const [potteryMonthOffset, setPotteryMonthOffset] = useState(0);
+  const [atelierMonthOffset, setAtelierMonthOffset] = useState(0);
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
 
   const handleProgrammeEventClick = useCallback((params: { type: "course" | "workshop"; name: string; id?: string; date?: string }) => {
