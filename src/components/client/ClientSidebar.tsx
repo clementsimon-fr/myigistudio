@@ -1,4 +1,4 @@
-import { CalendarDays, CreditCard, User, Compass, LogOut } from "lucide-react";
+import { CalendarDays, CreditCard, User, Home, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import { useDemoContext } from "@/contexts/DemoContext";
@@ -18,17 +18,17 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 const clientGroups = [
   {
+    label: "Navigation",
+    items: [
+      { title: "Accueil", url: "/", icon: Home },
+    ],
+  },
+  {
     label: "Mon espace",
     items: [
       { title: "Réservations", url: "/mon-espace?section=reservations", icon: CalendarDays },
       { title: "Cartes Yoga", url: "/mon-espace?section=cartes", icon: CreditCard },
       { title: "Profil", url: "/mon-espace?section=profil", icon: User },
-    ],
-  },
-  {
-    label: "IgiStudio",
-    items: [
-      { title: "Activités", url: "/", icon: Compass },
     ],
   },
 ];

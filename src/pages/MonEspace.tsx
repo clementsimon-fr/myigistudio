@@ -105,9 +105,11 @@ export default function MonEspace() {
     fetchModalities();
   }, [viewingReservation]);
 
-  const yogaRes = reservations.filter(r => r.activity_type === "course");
-  const potteryRes = reservations.filter(r => r.activity_type === "workshop" && (r.activity_name.toLowerCase().includes("poterie") || r.activity_name.toLowerCase().includes("tour") || r.activity_name.toLowerCase().includes("modelage")));
-  const atelierRes = reservations.filter(r => r.activity_type === "workshop" && !potteryRes.includes(r));
+  // 1.11: Only count confirmed reservations (exclude cancelled)
+  const confirmedRes = reservations.filter(r => r.status !== "annulé");
+  const yogaRes = confirmedRes.filter(r => r.activity_type === "course");
+  const potteryRes = confirmedRes.filter(r => r.activity_type === "workshop" && (r.activity_name.toLowerCase().includes("poterie") || r.activity_name.toLowerCase().includes("tour") || r.activity_name.toLowerCase().includes("modelage")));
+  const atelierRes = confirmedRes.filter(r => r.activity_type === "workshop" && !potteryRes.includes(r));
   const filteredRes = resFilter === "all" ? reservations : resFilter === "yoga" ? yogaRes : resFilter === "poterie" ? potteryRes : atelierRes;
 
   const saveProfile = async () => {
