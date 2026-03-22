@@ -75,7 +75,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
                   variant={isActive ? null as any : "outline"}
                   size="sm"
                   onClick={() => onFilterChange(f.value)}
-                  className={`rounded-full flex-col h-auto py-1 px-3 gap-0.5 text-xs ${
+                  className={`rounded-full flex-col h-auto py-1 px-3 gap-0.5 text-xs min-w-[4.5rem] ${
                     isActive
                       ? f.activeBg
                         ? `${f.activeBg} text-white border-transparent hover:text-white hover:opacity-90`

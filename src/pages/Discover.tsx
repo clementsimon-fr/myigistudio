@@ -51,6 +51,7 @@ export default function Discover() {
     const params = new URLSearchParams();
     if (f !== "all") params.set("filter", f);
     setSearchParams(params, { replace: true });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, [setSearchParams]);
 
   const handleSubFilterChange = useCallback((value: string) => {
@@ -102,6 +103,7 @@ export default function Discover() {
             workshops={workshops}
             schedules={schedules}
             filter={filter}
+            subFilter={subFilter}
             getInstructorPhoto={getInstructorPhoto}
             onSwitchToPlanning={handleSwitchToReserver}
           />

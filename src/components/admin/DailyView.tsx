@@ -294,9 +294,9 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
           variant={viewMode === "daily" ? "default" : "outline"}
           size="sm"
           className="gap-1.5"
-          onClick={() => setViewMode("daily")}
+          onClick={() => { setViewMode("daily"); setCurrentDate(new Date()); }}
         >
-          <CalendarDays className="h-4 w-4" /> Journalier
+          <CalendarDays className="h-4 w-4" /> Aujourd'hui
         </Button>
         <Button
           variant={viewMode === "weekly" ? "default" : "outline"}
@@ -313,13 +313,8 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
           <div className="flex items-center justify-center">
             <div className="text-center">
               <h3 className="text-sm md:text-lg font-semibold capitalize">
-                {currentDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
               </h3>
-              {!isToday && (
-                <Button variant="link" size="sm" className="text-xs h-auto p-0" onClick={goToday}>
-                  Aujourd'hui
-                </Button>
-              )}
             </div>
           </div>
 

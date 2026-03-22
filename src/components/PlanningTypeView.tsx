@@ -201,8 +201,8 @@ function WeekProgram({ courses, schedules, workshops, onEventClick }: {
 
 // ─── Month helpers ───
 
-function getMonthBounds(): { start: Date; end: Date; label: string } {
-  const now = new Date();
+function getMonthBounds(monthDate?: Date): { start: Date; end: Date; label: string } {
+  const now = monthDate || new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   const label = now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
@@ -285,20 +285,21 @@ function RecurringGrid({ courses, schedules, onEventClick }: {
   );
 }
 
-function MonthWorkshops({ workshops, onEventClick, hideTitle, hidePriceSpots }: {
+function MonthWorkshops({ workshops, onEventClick, hideTitle, hidePriceSpots, monthDate }: {
   workshops: Workshop[];
   onEventClick?: PlanningTypeViewProps["onEventClick"];
   hideTitle?: boolean;
   hidePriceSpots?: boolean;
+  monthDate?: Date;
 }) {
-  const { start, end } = getMonthBounds();
+  const { start, end } = getMonthBounds(monthDate);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const grouped = useMemo(() => {
     const filtered = workshops.filter(w => {
       const d = new Date(w.date + "T12:00:00");
-      return d >= start && d <= end && d >= today;
+      return d >= start && d <= end && (monthDate ? true : d >= today);
     });
 
     const byCat: Record<string, Workshop[]> = {};
@@ -313,9 +314,11 @@ function MonthWorkshops({ workshops, onEventClick, hideTitle, hidePriceSpots }: 
       category: cat,
       items: items.sort((a, b) => a.date.localeCompare(b.date)),
     }));
-  }, [workshops, start, end]);
+  }, [workshops, start, end, monthDate]);
 
-  if (grouped.length === 0) return null;
+  if (grouped.length === 0) {
+    return <p className="text-sm text-muted-foreground text-center py-4">Rien de prévu pour le moment</p>;
+  }
 
   return (
     <div className="space-y-3">

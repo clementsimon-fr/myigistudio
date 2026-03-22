@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Info, Users, Euro, Clock, Mail } from "lucide-react";
+import { Info, Users, Euro, Clock, Mail, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -23,6 +23,7 @@ interface ActivitiesViewProps {
   workshops: Workshop[];
   schedules: Schedule[];
   filter: FilterCategory;
+  subFilter?: string;
   getInstructorPhoto: (id: string | null, name?: string) => string | undefined;
   onSwitchToPlanning: (params?: { type: "course" | "workshop"; id: string; date?: string }) => void;
 }
@@ -250,18 +251,27 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
   );
 }
 
-export default function ActivitiesView({ courses, workshops, schedules, filter, getInstructorPhoto, onSwitchToPlanning }: ActivitiesViewProps) {
+export default function ActivitiesView({ courses, workshops, schedules, filter, subFilter = "all", getInstructorPhoto, onSwitchToPlanning }: ActivitiesViewProps) {
   const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
+  const [potteryMonthOffset, setPotteryMonthOffset] = useState(0);
+  const [atelierMonthOffset, setAtelierMonthOffset] = useState(0);
+
+  const potteryMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + potteryMonthOffset); return d; }, [potteryMonthOffset]);
+  const atelierMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + atelierMonthOffset); return d; }, [atelierMonthOffset]);
+  const potteryMonthLabel = potteryMonthDate.toLocaleDateString("fr-FR", { month: "long" });
+  const atelierMonthLabel = atelierMonthDate.toLocaleDateString("fr-FR", { month: "long" });
 
   const handleProgrammeEventClick = useCallback((params: { type: "course" | "workshop"; name: string; id?: string; date?: string }) => {
-    // Scroll to the relevant card instead of navigating to booking
     const cardId = params.type === "course" ? `card-course-${params.id}` : `card-workshop-${params.name}`;
     const el = document.getElementById(cardId);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
       el.classList.add("ring-2", "ring-primary", "ring-offset-2");
-      setTimeout(() => el.classList.remove("ring-2", "ring-primary", "ring-offset-2"), 2000);
+      setTimeout(() => {
+        el.classList.remove("ring-2", "ring-primary", "ring-offset-2");
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      }, 500);
     }
   }, []);
 
@@ -275,15 +285,17 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   }, [schedules]);
 
   const coursesWithSchedules = useMemo(() => {
-    return courses.filter(c => c.category === "yoga").map(c => ({
-      ...c,
-      schedules: schedules.filter(s => s.course_id === c.id),
-      activeDays: schedulesMap[c.id] || new Set<string>(),
-    }));
-  }, [courses, schedules, schedulesMap]);
+    return courses.filter(c => c.category === "yoga")
+      .filter(c => subFilter === "all" || c.name === subFilter)
+      .map(c => ({
+        ...c,
+        schedules: schedules.filter(s => s.course_id === c.id),
+        activeDays: schedulesMap[c.id] || new Set<string>(),
+      }));
+  }, [courses, schedules, schedulesMap, subFilter]);
 
-  const potteryGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "poterie")), [workshops]);
-  const wellbeingGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "bien-etre")), [workshops]);
+  const potteryGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "poterie" && (subFilter === "all" || w.name === subFilter))), [workshops, subFilter]);
+  const wellbeingGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "bien-etre" && (subFilter === "all" || w.name === subFilter))), [workshops, subFilter]);
 
   const showYoga = filter === "all" || filter === "yoga";
   const showPoterie = filter === "all" || filter === "poterie";
@@ -325,7 +337,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
               Planning du mois de {new Date().toLocaleDateString("fr-FR", { month: "long" })}
             </h3>
             <div className="mb-8 max-w-2xl mx-auto">
-              <RecurringGrid courses={courses.filter(c => c.category === "yoga")} schedules={schedules} onEventClick={handleProgrammeEventClick} />
+              <RecurringGrid courses={courses.filter(c => c.category === "yoga" && (subFilter === "all" || c.name === subFilter))} schedules={schedules} onEventClick={handleProgrammeEventClick} />
             </div>
             <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
@@ -386,11 +398,15 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         <section className={`py-12 md:py-16 ${showYoga && coursesWithSchedules.length > 0 ? "bg-secondary/10" : ""}`}>
           <div className="container">
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${potteryStyle.text}`}>Poterie</h2>
-            <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-3 text-center">
-              Planning du mois de {new Date().toLocaleDateString("fr-FR", { month: "long" })}
-            </h3>
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <button onClick={() => setPotteryMonthOffset(o => o - 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronLeft className="h-4 w-4 text-muted-foreground" /></button>
+              <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground">
+                Planning du mois de {potteryMonthLabel}
+              </h3>
+              <button onClick={() => setPotteryMonthOffset(o => o + 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>
+            </div>
             <div className="mb-8 max-w-2xl mx-auto">
-              <MonthWorkshops workshops={workshops.filter(w => w.category === "poterie")} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots />
+              <MonthWorkshops workshops={workshops.filter(w => w.category === "poterie" && (subFilter === "all" || w.name === subFilter))} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots monthDate={potteryMonthDate} />
             </div>
             <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
@@ -407,11 +423,15 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         <section className="py-12 md:py-16">
           <div className="container">
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${getCategoryStyle("bien-etre").text}`}>Ateliers & Stages</h2>
-            <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-3 text-center">
-              Planning du mois de {new Date().toLocaleDateString("fr-FR", { month: "long" })}
-            </h3>
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <button onClick={() => setAtelierMonthOffset(o => o - 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronLeft className="h-4 w-4 text-muted-foreground" /></button>
+              <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground">
+                Planning du mois de {atelierMonthLabel}
+              </h3>
+              <button onClick={() => setAtelierMonthOffset(o => o + 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>
+            </div>
             <div className="mb-8 max-w-2xl mx-auto">
-              <MonthWorkshops workshops={workshops.filter(w => w.category === "bien-etre")} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots />
+              <MonthWorkshops workshops={workshops.filter(w => w.category === "bien-etre" && (subFilter === "all" || w.name === subFilter))} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots monthDate={atelierMonthDate} />
             </div>
             <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
