@@ -23,6 +23,7 @@ interface ActivitiesViewProps {
   workshops: Workshop[];
   schedules: Schedule[];
   filter: FilterCategory;
+  subFilter?: string;
   getInstructorPhoto: (id: string | null, name?: string) => string | undefined;
   onSwitchToPlanning: (params?: { type: "course" | "workshop"; id: string; date?: string }) => void;
 }
