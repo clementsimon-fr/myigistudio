@@ -110,7 +110,7 @@ export default function MonEspace() {
   const yogaRes = confirmedRes.filter(r => r.activity_type === "course");
   const potteryRes = confirmedRes.filter(r => r.activity_type === "workshop" && (r.activity_name.toLowerCase().includes("poterie") || r.activity_name.toLowerCase().includes("tour") || r.activity_name.toLowerCase().includes("modelage")));
   const atelierRes = confirmedRes.filter(r => r.activity_type === "workshop" && !potteryRes.includes(r));
-  const filteredRes = resFilter === "all" ? reservations : resFilter === "yoga" ? yogaRes : resFilter === "poterie" ? potteryRes : atelierRes;
+  const filteredRes = resFilter === "all" ? confirmedRes : resFilter === "yoga" ? yogaRes : resFilter === "poterie" ? potteryRes : atelierRes;
 
   const saveProfile = async () => {
     if (profile) await supabase.from("profiles").update({ reminder_sms: reminderSms, reminder_email: reminderEmail } as any).eq("id", profile.id);
@@ -175,7 +175,7 @@ export default function MonEspace() {
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {[
-                  { v: "all", l: `Toutes (${reservations.length})` },
+                  { v: "all", l: `Toutes (${confirmedRes.length})` },
                   { v: "yoga", l: `Yoga (${yogaRes.length})` },
                   { v: "poterie", l: `Poterie (${potteryRes.length})` },
                   { v: "ateliers", l: `Ateliers (${atelierRes.length})` },
@@ -279,7 +279,7 @@ export default function MonEspace() {
               {/* 1.5: Button to reveal buying section */}
               <div>
                 <Button variant="outline" className="w-full gap-2" onClick={() => setShowBuyCards(!showBuyCards)}>
-                  <ShoppingCart className="h-4 w-4" /> {showBuyCards ? "Masquer les formules" : "Acheter carte yoga"}
+                  <ShoppingCart className="h-4 w-4" /> {showBuyCards ? "Masquer les formules" : "Ajouter cartes yoga"}
                 </Button>
                 {showBuyCards && (
                   <div className="mt-4">

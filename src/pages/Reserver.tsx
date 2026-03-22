@@ -81,8 +81,8 @@ function WorkshopDatePicker({ dates, onSelect }: {
   onSelect: (ws: typeof dates[0]) => void;
 }) {
   const [viewMode, setViewMode] = useState<"semaine" | "mois">("semaine");
-  const firstDate = dates.length > 0 ? new Date(dates[0].date + "T12:00:00") : new Date();
-  const [weekStart, setWeekStart] = useState(() => getWeekOfDate(firstDate).start);
+  // 1.7: Initialize week to current week so all upcoming dates are reachable
+  const [weekStart, setWeekStart] = useState(() => getWeekOfDate(new Date()).start);
   const [monthOffset, setMonthOffset] = useState(0);
 
   const weekEnd = useMemo(() => {
@@ -171,8 +171,8 @@ function CourseDatePicker({ dates, onSelect }: {
   onSelect: (d: Date, sched: CourseScheduleRow) => void;
 }) {
   const [viewMode, setViewMode] = useState<"semaine" | "mois">("semaine");
-  const firstDate = dates.length > 0 ? dates[0].date : new Date();
-  const [weekStart, setWeekStart] = useState(() => getWeekOfDate(firstDate).start);
+  // 1.7: Initialize week to current week
+  const [weekStart, setWeekStart] = useState(() => getWeekOfDate(new Date()).start);
   const [monthOffset, setMonthOffset] = useState(0);
 
   const weekEnd = useMemo(() => {
@@ -618,17 +618,17 @@ export default function Reserver() {
   const handleStripeSuccess = async () => {
     setShowStripeModal(false);
     if (pendingCard) {
-      addCredits(pendingCard.sessions, pendingCard.name);
+      // 1.4: Add N-1 credits (1 is used immediately for this booking)
+      addCredits(pendingCard.sessions - 1, pendingCard.name);
       addNotification(`${currentProfile?.name || guestName || "Client"} a acheté une ${pendingCard.name}`, "purchase");
       await supabase.from("client_cards").insert({
         client_name: currentProfile?.name || guestName || "Client",
         card_name: pendingCard.name,
         total_sessions: pendingCard.sessions,
-        used_sessions: 1, // 1.4: First session used immediately for this booking
+        used_sessions: 1,
         expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
       } as any);
       toast({ title: `${pendingCard.name} achetée avec succès ! 🎉` });
-      // Mark that we should use a credit from demo context too
       setPaymentMode("card_just_bought");
       setPendingCard(null);
     }
@@ -686,25 +686,22 @@ export default function Reserver() {
       }
     }
 
-    // Decrement card if using card or just bought a card
-    if ((paymentMode === "1 carte yoga utilisée" || paymentMode === "card_just_bought") && currentProfile) {
+    // Decrement card if using existing card (not card_just_bought — that's already handled in handleStripeSuccess)
+    if (paymentMode === "1 carte yoga utilisée" && currentProfile) {
       useCredit();
-      // For "1 carte yoga utilisée", also update DB
-      if (paymentMode === "1 carte yoga utilisée") {
-        const { data: activeCards } = await supabase
-          .from("client_cards").select("*")
-          .eq("client_name", clientName)
-          .gte("expires_at", new Date().toISOString().split("T")[0])
-          .order("expires_at", { ascending: true });
-        if (activeCards && activeCards.length > 0) {
-          const card = activeCards[0] as any;
-          if (card.total_sessions > card.used_sessions) {
-            await supabase.from("client_cards").update({ used_sessions: card.used_sessions + 1 } as any).eq("id", card.id);
-          }
+      const { data: activeCards } = await supabase
+        .from("client_cards").select("*")
+        .eq("client_name", clientName)
+        .gte("expires_at", new Date().toISOString().split("T")[0])
+        .order("expires_at", { ascending: true });
+      if (activeCards && activeCards.length > 0) {
+        const card = activeCards[0] as any;
+        if (card.total_sessions > card.used_sessions) {
+          await supabase.from("client_cards").update({ used_sessions: card.used_sessions + 1 } as any).eq("id", card.id);
         }
       }
-      // For "card_just_bought", DB card was already created with used_sessions: 1
     }
+    // For "card_just_bought", credits already adjusted (N-1) and DB card has used_sessions: 1
 
     addReservation(selectedSlotData.name, datesToBook[0].dateStr, selectedSlotData.time);
     const dateLabel = datesToBook.length > 1 
