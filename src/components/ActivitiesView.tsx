@@ -286,15 +286,17 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   }, [schedules]);
 
   const coursesWithSchedules = useMemo(() => {
-    return courses.filter(c => c.category === "yoga").map(c => ({
-      ...c,
-      schedules: schedules.filter(s => s.course_id === c.id),
-      activeDays: schedulesMap[c.id] || new Set<string>(),
-    }));
-  }, [courses, schedules, schedulesMap]);
+    return courses.filter(c => c.category === "yoga")
+      .filter(c => subFilter === "all" || c.name === subFilter)
+      .map(c => ({
+        ...c,
+        schedules: schedules.filter(s => s.course_id === c.id),
+        activeDays: schedulesMap[c.id] || new Set<string>(),
+      }));
+  }, [courses, schedules, schedulesMap, subFilter]);
 
-  const potteryGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "poterie")), [workshops]);
-  const wellbeingGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "bien-etre")), [workshops]);
+  const potteryGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "poterie" && (subFilter === "all" || w.name === subFilter))), [workshops, subFilter]);
+  const wellbeingGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "bien-etre" && (subFilter === "all" || w.name === subFilter))), [workshops, subFilter]);
 
   const showYoga = filter === "all" || filter === "yoga";
   const showPoterie = filter === "all" || filter === "poterie";
