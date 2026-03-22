@@ -279,7 +279,7 @@ export default function MonEspace() {
               {/* 1.5: Button to reveal buying section */}
               <div>
                 <Button variant="outline" className="w-full gap-2" onClick={() => setShowBuyCards(!showBuyCards)}>
-                  <ShoppingCart className="h-4 w-4" /> {showBuyCards ? "Masquer les formules" : "Acheter carte yoga"}
+                  <ShoppingCart className="h-4 w-4" /> {showBuyCards ? "Masquer les formules" : "Ajouter cartes yoga"}
                 </Button>
                 {showBuyCards && (
                   <div className="mt-4">

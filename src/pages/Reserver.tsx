@@ -171,8 +171,8 @@ function CourseDatePicker({ dates, onSelect }: {
   onSelect: (d: Date, sched: CourseScheduleRow) => void;
 }) {
   const [viewMode, setViewMode] = useState<"semaine" | "mois">("semaine");
-  const firstDate = dates.length > 0 ? dates[0].date : new Date();
-  const [weekStart, setWeekStart] = useState(() => getWeekOfDate(firstDate).start);
+  // 1.7: Initialize week to current week
+  const [weekStart, setWeekStart] = useState(() => getWeekOfDate(new Date()).start);
   const [monthOffset, setMonthOffset] = useState(0);
 
   const weekEnd = useMemo(() => {
