@@ -47,6 +47,8 @@ export default function ClientSidebar() {
 
   const handleNavClick = () => {
     if (isMobile) setOpenMobile(false);
+    // 1.8: Scroll to top on navigation
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
