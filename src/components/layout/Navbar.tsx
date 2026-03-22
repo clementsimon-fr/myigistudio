@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, User, CalendarDays, CreditCard, LogOut, Settings } from "lucide-react";
+import { Menu, X, User, CalendarDays, CreditCard, LogOut, Settings, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,6 +25,10 @@ export default function Navbar() {
   const isLoggedIn = !!currentProfile;
   const isAdmin = currentProfile?.role === "admin";
   const isAdminLike = isAdmin || currentProfile?.role === "fournisseur";
+  const isClient = currentProfile?.role === "client";
+
+  // Compute credits for display
+  const credits = currentProfile?.credits ?? 0;
 
   const handleLogout = () => {
     setCurrentProfile(null);
@@ -44,6 +48,21 @@ export default function Navbar() {
           <>
             {/* Desktop */}
             <div className="hidden md:flex items-center gap-3">
+              {/* 1.10 / 1.13: Show connected status + credits */}
+              {isClient && (
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="flex items-center gap-1.5 bg-primary/10 text-primary-dark font-medium px-3 py-1.5 rounded-full">
+                    <User className="h-3.5 w-3.5" />
+                    {currentProfile.name}
+                    {credits > 0 && (
+                      <span className="ml-1 bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full text-[10px] font-bold">
+                        {credits} carte{credits > 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {isAdminLike && !location.pathname.startsWith("/admin") && (
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate("/admin/bonjour")}>
                   <Settings className="h-3.5 w-3.5" /> Espace admin
@@ -51,14 +70,19 @@ export default function Navbar() {
               )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="default" className="gap-2">
-                    <div className="h-7 w-7 rounded-full bg-primary/15 flex items-center justify-center">
-                      <User className="h-4 w-4 text-primary-dark" />
-                    </div>
-                    {currentProfile.name}
+                  <Button variant="ghost" size="sm" className="gap-1.5">
+                    <Menu className="h-4 w-4" />
+                    Menu
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52">
+                  {/* 1.6 / 1.13: Home button */}
+                  <DropdownMenuItem onClick={() => navigate("/")} className="flex items-center gap-2 cursor-pointer">
+                    <Home className="h-4 w-4" />
+                    Accueil
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+
                   {isAdminLike && (
                     <>
                       <DropdownMenuItem onClick={() => navigate("/admin/bonjour")} className="flex items-center gap-2 cursor-pointer">
@@ -68,7 +92,7 @@ export default function Navbar() {
                       <DropdownMenuSeparator />
                     </>
                   )}
-                  {currentProfile.role === "client" && (
+                  {isClient && (
                     <>
                       <p className="px-2 py-1.5 text-xs text-muted-foreground font-normal">Mon espace</p>
                       {clientSections.map((item) => (
@@ -91,10 +115,25 @@ export default function Navbar() {
               </DropdownMenu>
             </div>
 
-            {/* Mobile: hamburger */}
-            <button className="md:hidden p-2" onClick={() => setOpen(!open)} aria-label="Menu">
-              {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
+            {/* Mobile: show connected status + menu button */}
+            <div className="md:hidden flex items-center gap-2">
+              {/* 1.10: Show connection status on mobile */}
+              {isClient && (
+                <div className="flex items-center gap-1 text-[10px] bg-primary/10 text-primary-dark font-medium px-2 py-1 rounded-full">
+                  <User className="h-3 w-3" />
+                  {currentProfile.name}
+                  {credits > 0 && (
+                    <span className="bg-primary text-primary-foreground px-1 py-0.5 rounded-full text-[9px] font-bold">
+                      {credits}
+                    </span>
+                  )}
+                </div>
+              )}
+              {/* 1.3: Label "Menu" on the hamburger button */}
+              <button className="flex items-center gap-1 p-2 text-sm font-medium" onClick={() => setOpen(!open)} aria-label="Menu">
+                {open ? <X className="h-5 w-5" /> : <><Menu className="h-5 w-5" /> <span className="text-xs">Menu</span></>}
+              </button>
+            </div>
           </>
         ) : (
           <Link to="/login">
@@ -110,6 +149,14 @@ export default function Navbar() {
         <div className="md:hidden border-t bg-background p-4 space-y-2">
           <p className="text-xs text-muted-foreground px-2 mb-1">Connecté : {currentProfile.name}</p>
 
+          {/* 1.6: Home button */}
+          <Link to="/" onClick={() => setOpen(false)}>
+            <Button variant="ghost" className="w-full justify-start gap-2">
+              <Home className="h-4 w-4" />
+              Accueil
+            </Button>
+          </Link>
+
           {isAdminLike && (
             <Link to="/admin/bonjour" onClick={() => setOpen(false)}>
               <Button variant="ghost" className="w-full justify-start gap-2">
@@ -119,7 +166,7 @@ export default function Navbar() {
             </Link>
           )}
 
-          {currentProfile.role === "client" && (
+          {isClient && (
             <>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground px-2 pt-2 font-semibold">Mon espace</p>
               {clientSections.map((item) => (

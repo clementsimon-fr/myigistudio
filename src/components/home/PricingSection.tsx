@@ -53,10 +53,7 @@ export default function PricingSection() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-5xl mx-auto">
           {cards.map((card, i) => {
             const perSession = card.sessions > 0 && card.sessions < 9999 ? card.price / card.sessions : null;
-            const savingsPercent = unitPrice && perSession && card.sessions > 1
-              ? Math.round((1 - perSession / unitPrice) * 100)
-              : null;
-
+            // 1.1: Remove percentage — only show per-session price
             return (
               <motion.div
                 key={card.id}
@@ -87,9 +84,6 @@ export default function PricingSection() {
                 {perSession !== null && (
                   <p className="text-xs text-muted-foreground mb-1">
                     {perSession.toFixed(2)}€ / cours
-                    {savingsPercent && savingsPercent > 0 && (
-                      <span className="ml-1.5 text-primary font-semibold">-{savingsPercent}%</span>
-                    )}
                   </p>
                 )}
                 {card.sessions >= 9999 && (
