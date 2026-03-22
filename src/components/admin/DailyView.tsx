@@ -294,9 +294,9 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
           variant={viewMode === "daily" ? "default" : "outline"}
           size="sm"
           className="gap-1.5"
-          onClick={() => setViewMode("daily")}
+          onClick={() => { setViewMode("daily"); setCurrentDate(new Date()); }}
         >
-          <CalendarDays className="h-4 w-4" /> Journalier
+          <CalendarDays className="h-4 w-4" /> Aujourd'hui
         </Button>
         <Button
           variant={viewMode === "weekly" ? "default" : "outline"}
