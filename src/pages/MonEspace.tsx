@@ -33,7 +33,7 @@ export default function MonEspace() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { currentProfile, addCredits, addNotification } = useDemoContext();
+  const { currentProfile, setCurrentProfile, addCredits, addNotification } = useDemoContext();
   const CLIENT_NAME = currentProfile?.name || "Sophie";
   const sectionParam = searchParams.get("section") as Section | null;
   const isWelcome = searchParams.get("welcome") === "1";
