@@ -268,7 +268,7 @@ export default function MonEspace() {
                             </div>
                             <span className="text-xs font-medium">{card.used_sessions}/{card.total_sessions}</span>
                           </div>
-                          <p className="text-xs text-muted-foreground">{remaining} crédit{remaining > 1 ? "s" : ""} restant{remaining > 1 ? "s" : ""}</p>
+                          <p className="text-xs text-muted-foreground">{remaining} carte{remaining > 1 ? "s" : ""} yoga restante{remaining > 1 ? "s" : ""}</p>
                         </div>
                       );
                     })}
