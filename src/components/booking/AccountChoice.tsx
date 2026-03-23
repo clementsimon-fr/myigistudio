@@ -17,9 +17,6 @@ export default function AccountChoice({ onLogin, onRegister, onGuest }: AccountC
         <h2 className="text-lg font-display font-semibold text-primary-dark">
           Comment souhaitez-vous continuer ?
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Connectez-vous pour accéder à vos cartes et vos réservations.
-        </p>
       </div>
       <div className="grid gap-3 pt-2">
         <Button className="w-full gap-2" onClick={onLogin}>

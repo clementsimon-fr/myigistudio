@@ -317,9 +317,8 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
               </h3>
               <button onClick={() => setYogaMonthOffset(o => o + 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>
             </div>
-            <div className="mb-8 max-w-2xl mx-auto">
+            <div className="mb-8 max-w-2xl mx-auto space-y-4">
               <RecurringGrid courses={courses.filter(c => c.category === "yoga" && (subFilter === "all" || c.name === subFilter))} schedules={schedules} onEventClick={handleProgrammeEventClick} />
-              {/* 1.12: Only show MonthWorkshops for yoga if there are yoga workshops — don't show "Rien de prévu" when recurring courses exist */}
               {workshops.filter(w => w.category === "yoga" && (subFilter === "all" || w.name === subFilter)).length > 0 && (
                 <MonthWorkshops workshops={workshops.filter(w => w.category === "yoga" && (subFilter === "all" || w.name === subFilter))} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots monthDate={yogaMonthDate} />
               )}

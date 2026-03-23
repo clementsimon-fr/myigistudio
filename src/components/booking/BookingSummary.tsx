@@ -45,7 +45,7 @@ export default function BookingSummary({
   return (
     <>
       <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-sm">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Résumé de la réservation</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Résumé de votre choix</p>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Activité</span>
           <span className="font-medium">{activityName}</span>

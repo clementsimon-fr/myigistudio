@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoContext } from "@/contexts/DemoContext";
@@ -56,7 +56,7 @@ const DAY_NAMES_MAP: Record<number, string> = {
   0: "Dimanche", 1: "Lundi", 2: "Mardi", 3: "Mercredi", 4: "Jeudi", 5: "Vendredi", 6: "Samedi",
 };
 
-type BookingStep = "summary" | "login" | "register" | "registering" | "guest_form" | "purchase_options" | "payment" | "confirmed";
+type BookingStep = "date_picker" | "summary" | "login" | "register" | "registering" | "guest_form" | "purchase_options" | "payment" | "confirmed";
 
 // ─── Week/Month navigation helpers ───
 function getWeekOfDate(d: Date): { start: Date; end: Date } {
@@ -81,7 +81,6 @@ function WorkshopDatePicker({ dates, onSelect }: {
   onSelect: (ws: typeof dates[0]) => void;
 }) {
   const [viewMode, setViewMode] = useState<"semaine" | "mois">("semaine");
-  // 1.7: Initialize week to current week so all upcoming dates are reachable
   const [weekStart, setWeekStart] = useState(() => getWeekOfDate(new Date()).start);
   const [monthOffset, setMonthOffset] = useState(0);
 
@@ -116,7 +115,6 @@ function WorkshopDatePicker({ dates, onSelect }: {
 
   return (
     <div className="space-y-4 mb-6">
-      <h2 className="text-lg font-display font-semibold text-primary-dark">Choisissez votre date</h2>
       <div className="flex items-center gap-2">
         <div className="flex gap-1">
           <Button size="sm" variant={viewMode === "semaine" ? "default" : "outline"} className="text-xs h-7 px-2.5" onClick={() => setViewMode("semaine")}>Semaine</Button>
@@ -171,7 +169,6 @@ function CourseDatePicker({ dates, onSelect }: {
   onSelect: (d: Date, sched: CourseScheduleRow) => void;
 }) {
   const [viewMode, setViewMode] = useState<"semaine" | "mois">("semaine");
-  // 1.7: Initialize week to current week
   const [weekStart, setWeekStart] = useState(() => getWeekOfDate(new Date()).start);
   const [monthOffset, setMonthOffset] = useState(0);
 
@@ -200,7 +197,6 @@ function CourseDatePicker({ dates, onSelect }: {
 
   return (
     <div className="space-y-4 mb-6">
-      <h2 className="text-lg font-display font-semibold text-primary-dark">Choisissez votre date</h2>
       <div className="flex items-center gap-2">
         <div className="flex gap-1">
           <Button size="sm" variant={viewMode === "semaine" ? "default" : "outline"} className="text-xs h-7 px-2.5" onClick={() => setViewMode("semaine")}>Semaine</Button>
@@ -262,10 +258,8 @@ export default function Reserver() {
   const preselectedDate = searchParams.get("date");
   const preselectedScheduleId = searchParams.get("scheduleId");
 
-  // Date selection for standalone workshops loaded by name
   const [availableDates, setAvailableDates] = useState<{ id: string; date: string; time: string; end_time: string; spots_left: number; price: number }[]>([]);
   const [datePickerMode, setDatePickerMode] = useState(false);
-  // For courses: show upcoming dates derived from schedules
   const [courseDatePickerMode, setCourseDatePickerMode] = useState(false);
 
   const [activity, setActivity] = useState<any>(null);
@@ -278,14 +272,11 @@ export default function Reserver() {
   const [isNewUser, setIsNewUser] = useState(false);
   const [instructorData, setInstructorData] = useState<{ name: string; photo_url: string } | null>(null);
 
-  // Extra participants (2.2)
   const [extraParticipants, setExtraParticipants] = useState<ExtraParticipant[]>([]);
 
-  // Step
   const [bookingStep, setBookingStep] = useState<BookingStep>("summary");
   const [registering, setRegistering] = useState(false);
 
-  // Payment
   const [showStripeModal, setShowStripeModal] = useState(false);
   const [stripeAmount, setStripeAmount] = useState(0);
   const [stripeDescription, setStripeDescription] = useState("");
@@ -294,11 +285,34 @@ export default function Reserver() {
   const [conditionsAccepted, setConditionsAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Voucher
   const [voucherStatus, setVoucherStatus] = useState<"idle" | "valid" | "invalid" | "checking">("idle");
 
-  // Pre-payment card dialog
   const [pendingCard, setPendingCard] = useState<PricingCard | null>(null);
+
+  // ─── Browser back button handling ───
+  // Push history state for each step so the phone back button navigates steps
+  const goToStep = useCallback((step: BookingStep) => {
+    setBookingStep(step);
+    window.history.pushState({ step }, "");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      const state = e.state as { step?: BookingStep } | null;
+      if (state?.step) {
+        setBookingStep(state.step);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        // No more booking steps — go back to discover page
+        navigate("/", { replace: true });
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    // Push initial state
+    window.history.replaceState({ step: "summary" }, "");
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [navigate]);
 
   // Load data
   useEffect(() => {
@@ -309,7 +323,6 @@ export default function Reserver() {
 
   useEffect(() => {
     if (!activityType) { setLoading(false); return; }
-    // Need either id or name
     if (!activityId && !activityName) { setLoading(false); return; }
 
     const load = async () => {
@@ -333,12 +346,10 @@ export default function Reserver() {
             setSelectedDate(new Date(preselectedDate + "T00:00:00"));
             setSelectedSlot(preselectedScheduleId);
           } else if (scheds.length > 0) {
-            // Show course date picker
             setCourseDatePickerMode(true);
           }
         }
       } else if (activityType === "workshop" && activityName && !activityId) {
-        // ─── Load by NAME: show date picker ───
         const today = new Date().toISOString().split("T")[0];
         const { data: allWs } = await supabase
           .from("workshops").select("*")
@@ -352,13 +363,11 @@ export default function Reserver() {
             const { data: instrData } = await supabase.from("instructors").select("name, photo_url").eq("id", ws0.instructor_id).single();
             if (instrData) setInstructorData(instrData as any);
           }
-          // Dedupe by date
           const byDate = new Map<string, any>();
           for (const w of allWs as any[]) {
             if (w.date && !byDate.has(w.date)) byDate.set(w.date, w);
           }
           const uniqueDates = [...byDate.values()].sort((a: any, b: any) => a.date.localeCompare(b.date));
-          // Always show date picker for workshops loaded by name
           setAvailableDates(uniqueDates.map((w: any) => ({
             id: w.id, date: w.date, time: w.time, end_time: w.end_time,
             spots_left: w.spots_left, price: w.price,
@@ -389,7 +398,6 @@ export default function Reserver() {
                 linkedWorkshopIds: linkedIds,
                 linkedWorkshops: dedupedLinkedWs,
               }));
-              // Force date picker for linked groups with multiple future dates
               if (dedupedLinkedWs.length > 0) {
                 setAvailableDates(dedupedLinkedWs.map((w: any) => ({
                   id: w.id, date: w.date, time: w.time, end_time: w.end_time,
@@ -428,7 +436,6 @@ export default function Reserver() {
     for (const sched of schedules) {
       const targetDay = dayMap[sched.day];
       if (targetDay === undefined) continue;
-      // Generate next 4 occurrences
       for (let week = 0; week < 4; week++) {
         const d = new Date(today);
         let diff = targetDay - d.getDay();
@@ -490,19 +497,18 @@ export default function Reserver() {
     return conditions.filter(c => c.applies_to.includes(cat));
   }, [conditions, activity]);
 
-  // Determine user state
   type UserState = "guest" | "logged_user_no_cards" | "logged_user_with_cards";
   const userState: UserState = !currentProfile
     ? "guest"
     : (isYoga && currentProfile.credits > 0) ? "logged_user_with_cards"
     : "logged_user_no_cards";
 
-  // Auto-advance
+  // Auto-advance when logged in
   useEffect(() => {
     if (bookingStep === "summary" && currentProfile) {
-      setBookingStep("purchase_options");
+      goToStep("purchase_options");
     }
-  }, [bookingStep, currentProfile]);
+  }, [bookingStep, currentProfile, goToStep]);
 
   // Handle date selection from picker
   const handleDateSelect = (ws: typeof availableDates[0]) => {
@@ -543,30 +549,30 @@ export default function Reserver() {
   // ─── Handlers ───
   const handleRegister = (name: string) => {
     setRegistering(true);
-    setBookingStep("registering");
+    goToStep("registering");
     setTimeout(() => {
       createTempProfile(name);
       setIsNewUser(true);
       setRegistering(false);
-      setBookingStep("purchase_options");
+      goToStep("purchase_options");
     }, 2000);
   };
 
   const handleLoginSelect = (profile: DemoProfile) => {
     setCurrentProfile(profile);
     setIsNewUser(false);
-    setBookingStep("purchase_options");
+    goToStep("purchase_options");
   };
 
   const handleGuestSubmit = (name: string) => {
     setGuestName(name);
-    setBookingStep("purchase_options");
+    goToStep("purchase_options");
   };
 
   const handleReserveWithCard = () => {
     setPaymentMode("1 carte yoga utilisée");
     setPaymentAmount(0);
-    setBookingStep("payment");
+    goToStep("payment");
   };
 
   const handleBuyCard = (card: PricingCard) => {
@@ -575,7 +581,7 @@ export default function Reserver() {
     setPaymentAmount(card.price);
     setStripeAmount(card.price);
     setStripeDescription(`${card.name} — MyIgiStudio`);
-    setBookingStep("payment");
+    goToStep("payment");
   };
 
   const handleBuyUnit = () => {
@@ -584,7 +590,7 @@ export default function Reserver() {
     setPaymentAmount(price);
     setStripeAmount(price);
     setStripeDescription(`${activity.name} — Cours à l'unité`);
-    setBookingStep("payment");
+    goToStep("payment");
   };
 
   const handleUseVoucher = async (code: string) => {
@@ -604,7 +610,7 @@ export default function Reserver() {
     }
     setPaymentMode("Bon cadeau");
     setPaymentAmount(0);
-    setBookingStep("payment");
+    goToStep("payment");
   };
 
   const handlePay = () => {
@@ -618,7 +624,6 @@ export default function Reserver() {
   const handleStripeSuccess = async () => {
     setShowStripeModal(false);
     if (pendingCard) {
-      // 1.4: Add N-1 credits (1 is used immediately for this booking)
       addCredits(pendingCard.sessions - 1, pendingCard.name);
       addNotification(`${currentProfile?.name || guestName || "Client"} a acheté une ${pendingCard.name}`, "purchase");
       await supabase.from("client_cards").insert({
@@ -643,11 +648,9 @@ export default function Reserver() {
     const notesStr = extraParticipants.filter(p => p.firstName.trim()).map(p => `Invité: ${p.firstName} ${p.lastName}`).join(", ");
     const spotsToDecrement = totalParticipants;
 
-    // Determine dates to book: linked dates or single date
     const datesToBook: { dateStr: string; workshopId?: string }[] = [];
     
     if (selectedSlotData.linkedDates && selectedSlotData.linkedDates.length > 1 && activity?.linkedWorkshops) {
-      // Multi-session: book all linked dates (deduplicated by date)
       const uniqueByDate = new Map<string, any>();
       for (const ws of activity.linkedWorkshops as any[]) {
         if (ws.date && !uniqueByDate.has(ws.date)) {
@@ -678,7 +681,6 @@ export default function Reserver() {
         notes: notesStr,
       } as any);
 
-      // Update spots
       if (selectedSlotData.scheduleId) {
         await supabase.from("course_schedules").update({ spots_left: selectedSlotData.spotsLeft - spotsToDecrement }).eq("id", selectedSlotData.scheduleId);
       } else if (workshopId) {
@@ -686,7 +688,6 @@ export default function Reserver() {
       }
     }
 
-    // Decrement card if using existing card (not card_just_bought — that's already handled in handleStripeSuccess)
     if (paymentMode === "1 carte yoga utilisée" && currentProfile) {
       useCredit();
       const { data: activeCards } = await supabase
@@ -701,7 +702,6 @@ export default function Reserver() {
         }
       }
     }
-    // For "card_just_bought", credits already adjusted (N-1) and DB card has used_sessions: 1
 
     addReservation(selectedSlotData.name, datesToBook[0].dateStr, selectedSlotData.time);
     const dateLabel = datesToBook.length > 1 
@@ -720,6 +720,50 @@ export default function Reserver() {
     }
   };
 
+  // Determine if we're in date picker phase
+  const isDatePhase = datePickerMode || courseDatePickerMode;
+  const hasChosenDate = !!selectedDate && !!selectedSlotData;
+
+  // Back handler
+  const handleBack = () => {
+    if (bookingStep === "login" || bookingStep === "register" || bookingStep === "guest_form") {
+      goToStep("summary");
+    } else if (bookingStep === "purchase_options") {
+      if (!currentProfile && !guestName) goToStep("summary");
+      else {
+        // Go back to date picker
+        if (availableDates.length > 0) {
+          setDatePickerMode(true);
+          setSelectedDate(undefined);
+          setSelectedSlot("");
+        } else if (upcomingCourseDates.length > 0) {
+          setCourseDatePickerMode(true);
+          setSelectedDate(undefined);
+          setSelectedSlot("");
+        } else {
+          window.history.back();
+        }
+      }
+    } else if (bookingStep === "payment") {
+      goToStep("purchase_options");
+    } else if (bookingStep === "summary" && hasChosenDate) {
+      // Go back to date selection
+      if (availableDates.length > 0) {
+        setDatePickerMode(true);
+        setSelectedDate(undefined);
+        setSelectedSlot("");
+      } else if (upcomingCourseDates.length > 0) {
+        setCourseDatePickerMode(true);
+        setSelectedDate(undefined);
+        setSelectedSlot("");
+      } else {
+        window.history.back();
+      }
+    } else {
+      window.history.back();
+    }
+  };
+
   // ─── RENDER ───
   return (
     <div className="min-h-screen flex flex-col">
@@ -728,30 +772,22 @@ export default function Reserver() {
         <div className="container max-w-lg">
           {/* Header */}
           <div className="mb-6">
-            <Button variant="ghost" size="sm" className="mb-2 gap-1.5" onClick={() => {
-              if (bookingStep === "login" || bookingStep === "register" || bookingStep === "guest_form") {
-                setBookingStep("summary");
-              } else if (bookingStep === "purchase_options") {
-                if (!currentProfile && !guestName) setBookingStep("summary");
-                else window.history.back();
-              } else if (bookingStep === "payment") {
-                setBookingStep("purchase_options");
-              } else {
-                window.history.back();
-              }
-            }}>
+            <Button variant="ghost" size="sm" className="mb-2 gap-1.5" onClick={handleBack}>
               <ArrowLeft className="h-4 w-4" /> Retour
             </Button>
-            <h1 className="text-xl md:text-2xl font-display font-bold text-primary-dark">
-              Réserver : {activity.name}
-            </h1>
+            
+            {/* Step 1: Activity name */}
+            <p className="text-sm font-semibold text-foreground mb-1">
+              1. Votre activité : {activity.name}
+            </p>
+
             {currentProfile && (
-              <p className="text-sm text-primary-dark font-medium mt-1">
+              <p className="text-xs text-primary-dark font-medium mt-1">
                 Connecté en tant que <strong>{currentProfile.name}</strong>
               </p>
             )}
             {!currentProfile && guestName && (
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Invité : <strong>{guestName}</strong>
               </p>
             )}
@@ -759,85 +795,102 @@ export default function Reserver() {
 
           {/* ═══ DATE PICKER for standalone workshops ═══ */}
           {datePickerMode && availableDates.length > 0 && (
-            <WorkshopDatePicker dates={availableDates} onSelect={handleDateSelect} />
+            <div>
+              <p className="text-sm font-semibold text-foreground mb-3">2. Choisissez une date</p>
+              <WorkshopDatePicker dates={availableDates} onSelect={handleDateSelect} />
+            </div>
           )}
 
           {/* ═══ COURSE DATE PICKER ═══ */}
           {courseDatePickerMode && upcomingCourseDates.length > 0 && (
-            <CourseDatePicker dates={upcomingCourseDates} onSelect={handleCourseDateSelect} />
+            <div>
+              <p className="text-sm font-semibold text-foreground mb-3">2. Choisissez une date</p>
+              <CourseDatePicker dates={upcomingCourseDates} onSelect={handleCourseDateSelect} />
+            </div>
           )}
 
           {/* ═══ STEP: SUMMARY ═══ */}
           {!datePickerMode && !courseDatePickerMode && bookingStep === "summary" && !currentProfile && (
             <div className="space-y-6">
               {selectedSlotData && selectedDate && (
-                <BookingSummary
-                  activityName={selectedSlotData.name}
-                  date={selectedDate}
-                  time={selectedSlotData.time}
-                  endTime={selectedSlotData.end_time}
-                  duration={selectedSlotData.duration}
-                  price={selectedSlotData.price || unitPrice || undefined}
-                  category={category}
-                  isYoga={isYoga}
-                  pricingCards={pricingCards}
-                  inclusions={selectedSlotData.inclusions}
-                  longDescription={activity?.long_description}
-                  shortDescription={activity?.description}
-                  instructorName={instructorData?.name || activity?.instructor}
-                  instructorPhoto={instructorData?.photo_url}
-                  cardYogaCount={selectedSlotData.cardYogaCount}
-                  linkedDates={selectedSlotData.linkedDates}
-                />
+                <>
+                  <BookingSummary
+                    activityName={selectedSlotData.name}
+                    date={selectedDate}
+                    time={selectedSlotData.time}
+                    endTime={selectedSlotData.end_time}
+                    duration={selectedSlotData.duration}
+                    price={selectedSlotData.price || unitPrice || undefined}
+                    category={category}
+                    isYoga={isYoga}
+                    pricingCards={pricingCards}
+                    inclusions={selectedSlotData.inclusions}
+                    longDescription={activity?.long_description}
+                    shortDescription={activity?.description}
+                    instructorName={instructorData?.name || activity?.instructor}
+                    instructorPhoto={instructorData?.photo_url}
+                    cardYogaCount={selectedSlotData.cardYogaCount}
+                    linkedDates={selectedSlotData.linkedDates}
+                  />
+                  {/* Arrow pointing down */}
+                  <div className="flex justify-center">
+                    <ChevronDown className="h-6 w-6 text-muted-foreground animate-bounce" />
+                  </div>
+                </>
               )}
               <AccountChoice
-                onLogin={() => setBookingStep("login")}
-                onRegister={() => setBookingStep("register")}
-                onGuest={() => setBookingStep("guest_form")}
+                onLogin={() => goToStep("login")}
+                onRegister={() => goToStep("register")}
+                onGuest={() => goToStep("guest_form")}
               />
             </div>
           )}
 
           {/* ═══ STEP: LOGIN ═══ */}
           {bookingStep === "login" && !currentProfile && (
-            <LoginBlock onSelect={handleLoginSelect} onBack={() => setBookingStep("summary")} />
+            <LoginBlock onSelect={handleLoginSelect} onBack={() => goToStep("summary")} />
           )}
 
           {/* ═══ STEP: REGISTER ═══ */}
           {(bookingStep === "register" || bookingStep === "registering") && !currentProfile && (
-            <SignupBlock onSubmit={handleRegister} onBack={() => setBookingStep("summary")} registering={registering} />
+            <SignupBlock onSubmit={handleRegister} onBack={() => goToStep("summary")} registering={registering} />
           )}
 
           {/* ═══ STEP: GUEST FORM ═══ */}
           {bookingStep === "guest_form" && !currentProfile && (
-            <GuestForm onSubmit={handleGuestSubmit} onBack={() => setBookingStep("summary")} />
+            <GuestForm onSubmit={handleGuestSubmit} onBack={() => goToStep("summary")} />
           )}
 
           {/* ═══ STEP: PURCHASE OPTIONS ═══ */}
           {bookingStep === "purchase_options" && (
             <div className="space-y-6">
               {selectedSlotData && selectedDate && (
-                <BookingSummary
-                  activityName={selectedSlotData.name}
-                  date={selectedDate}
-                  time={selectedSlotData.time}
-                  endTime={selectedSlotData.end_time}
-                  duration={selectedSlotData.duration}
-                  price={selectedSlotData.price || unitPrice || undefined}
-                  category={category}
-                  isYoga={isYoga}
-                  pricingCards={pricingCards}
-                  inclusions={selectedSlotData.inclusions}
-                  longDescription={activity?.long_description}
-                  shortDescription={activity?.description}
-                  instructorName={instructorData?.name || activity?.instructor}
-                  instructorPhoto={instructorData?.photo_url}
-                  cardYogaCount={selectedSlotData.cardYogaCount}
-                  linkedDates={selectedSlotData.linkedDates}
-                />
+                <>
+                  <BookingSummary
+                    activityName={selectedSlotData.name}
+                    date={selectedDate}
+                    time={selectedSlotData.time}
+                    endTime={selectedSlotData.end_time}
+                    duration={selectedSlotData.duration}
+                    price={selectedSlotData.price || unitPrice || undefined}
+                    category={category}
+                    isYoga={isYoga}
+                    pricingCards={pricingCards}
+                    inclusions={selectedSlotData.inclusions}
+                    longDescription={activity?.long_description}
+                    shortDescription={activity?.description}
+                    instructorName={instructorData?.name || activity?.instructor}
+                    instructorPhoto={instructorData?.photo_url}
+                    cardYogaCount={selectedSlotData.cardYogaCount}
+                    linkedDates={selectedSlotData.linkedDates}
+                  />
+                  {/* Arrow pointing down */}
+                  <div className="flex justify-center">
+                    <ChevronDown className="h-6 w-6 text-muted-foreground animate-bounce" />
+                  </div>
+                </>
               )}
 
-              {/* 2.2: Add extra participants */}
               <AddParticipant
                 participants={extraParticipants}
                 onChange={setExtraParticipants}
@@ -858,7 +911,7 @@ export default function Reserver() {
                 onBuyCard={handleBuyCard}
                 onBuyUnit={handleBuyUnit}
                 onUseVoucher={handleUseVoucher}
-                onCreateAccount={() => setBookingStep("register")}
+                onCreateAccount={() => goToStep("register")}
                 voucherStatus={voucherStatus}
                 onVoucherCodeChange={() => setVoucherStatus("idle")}
               />

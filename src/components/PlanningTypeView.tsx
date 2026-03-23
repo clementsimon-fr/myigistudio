@@ -331,25 +331,30 @@ function MonthWorkshops({ workshops, onEventClick, hideTitle, hidePriceSpots, mo
               <button
                 key={w.id}
                 onClick={() => onEventClick?.({ type: "workshop", name: w.name, id: w.id, date: w.date })}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md bg-card border text-xs hover:bg-muted/50 transition-colors cursor-pointer text-left"
+                className="w-full flex flex-col gap-0.5 px-3 py-2 rounded-md bg-card border text-xs hover:bg-muted/50 transition-colors cursor-pointer text-left"
               >
-                <div className={`w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
-                <span className="font-medium text-foreground">{formatDateShort(w.date)}</span>
-                <span className="text-muted-foreground">·</span>
-                <span className="text-muted-foreground">{formatTime(w.time)}–{formatTime(w.end_time)}</span>
-                <span className="text-muted-foreground">·</span>
-                <span className="font-medium text-foreground truncate">{w.name}</span>
-                {!hidePriceSpots && w.price > 0 && (
-                  <>
-                    <span className="text-muted-foreground">·</span>
-                    <span className="font-medium text-foreground whitespace-nowrap">{w.price}€</span>
-                  </>
-                )}
-                {!hidePriceSpots && (
-                  <span className={`ml-auto whitespace-nowrap ${w.spots_left <= 2 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                    {w.spots_left} pl.
-                  </span>
-                )}
+                {/* Line 1: date + time */}
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
+                  <span className="font-medium text-foreground capitalize">{formatDateShort(w.date)}</span>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="text-muted-foreground">{formatTime(w.time)}–{formatTime(w.end_time)}</span>
+                  {!hidePriceSpots && w.price > 0 && (
+                    <>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="font-medium text-foreground whitespace-nowrap">{w.price}€</span>
+                    </>
+                  )}
+                  {!hidePriceSpots && (
+                    <span className={`ml-auto whitespace-nowrap ${w.spots_left <= 2 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                      {w.spots_left} pl.
+                    </span>
+                  )}
+                </div>
+                {/* Line 2: title */}
+                <div className="pl-4 ml-0.5">
+                  <span className="font-semibold text-foreground">{w.name}</span>
+                </div>
               </button>
             ))}
           </div>
@@ -386,7 +391,6 @@ const PlanningTypeView = forwardRef<PlanningTypeViewHandle, PlanningTypeViewProp
     useImperativeHandle(ref, () => ({
       openAndScroll: () => {
         setOpen(true);
-        // Small delay so the DOM expands before scrolling
         setTimeout(() => {
           document.getElementById("programme-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
         }, 100);
