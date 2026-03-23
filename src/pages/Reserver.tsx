@@ -293,8 +293,8 @@ export default function Reserver() {
   const [voucherStatus, setVoucherStatus] = useState<"idle" | "valid" | "invalid" | "checking">("idle");
 
   const [pendingCard, setPendingCard] = useState<PricingCard | null>(null);
+  const [reloadCard, setReloadCard] = useState<PricingCard | null>(null);
   const [showActivityDetails, setShowActivityDetails] = useState(false);
-  const [showFormulasInline, setShowFormulasInline] = useState(false);
 
   // Guest inline form state (visitor stays on page)
   const [guestFormVisible, setGuestFormVisible] = useState(false);
