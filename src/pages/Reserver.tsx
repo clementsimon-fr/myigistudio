@@ -1217,7 +1217,14 @@ export default function Reserver() {
               </div>
 
               <Button
-                onClick={handlePay}
+                onClick={() => {
+                  const totalP = 1 + extraParticipants.filter(p => p.firstName.trim()).length;
+                  const price = selectedSlotData.price || unitPrice || 0;
+                  const totalPrice = price * totalP;
+                  setStripeAmount(totalPrice);
+                  setStripeDescription(`${selectedSlotData.name} — ${totalP > 1 ? `${totalP} participants` : "1 participant"}`);
+                  setShowStripeModal(true);
+                }}
                 disabled={submitting}
                 className="w-full h-12 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-2 text-base font-semibold"
               >
