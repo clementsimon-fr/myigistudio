@@ -12,6 +12,7 @@ interface PricingCard {
   validity: string;
   popular: boolean;
   payment_info: string;
+  sort_order?: number;
 }
 
 interface FormulaInfoModalProps {
