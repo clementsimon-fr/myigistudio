@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Info, Users, Euro, Clock, Mail, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -226,6 +227,7 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
 }
 
 export default function ActivitiesView({ courses, workshops, schedules, filter, subFilter = "all", getInstructorPhoto, onSwitchToPlanning }: ActivitiesViewProps) {
+  const navigate = useNavigate();
   const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
   const [yogaMonthOffset, setYogaMonthOffset] = useState(0);
@@ -294,7 +296,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
       const urlParams = new URLSearchParams();
       urlParams.set("type", "workshop");
       urlParams.set("name", ws.name);
-      window.location.href = `/reserver?${urlParams.toString()}`;
+      navigate(`/reserver?${urlParams.toString()}`);
     }
   };
 

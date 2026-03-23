@@ -1,14 +1,15 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Calendar, Clock, MapPin, Users, ChevronRight, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, Users, ChevronRight, Sparkles, X, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useActivitiesData } from "@/hooks/useActivitiesData";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
-import type { Course, Workshop } from "@/hooks/useActivitiesData";
+import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 
 const PLACEHOLDER_IMG = "/placeholder.svg";
+const YOGA_WEEK_DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 
 function getCategoryStyle(category: string) {
   return CATEGORY_STYLES[category] || { block: "", dot: "", text: "text-primary-dark", bookBtn: "bg-primary hover:bg-primary/90 text-primary-foreground" };
@@ -33,7 +34,25 @@ interface TimelineItem {
   duration?: string;
 }
 
-function buildTimeline(courses: Course[], workshops: Workshop[], schedules: any[], getPhoto: (id: string | null, name?: string) => string | undefined): TimelineItem[] {
+interface ThemeDiscoveryCard {
+  id: "yoga" | "poterie" | "bien-etre";
+  title: string;
+  description: string;
+  sessions: number;
+}
+
+interface YogaWeeklyPlanDay {
+  day: string;
+  sessions: {
+    courseId: string;
+    name: string;
+    time: string;
+    endTime: string;
+    spotsLeft: number;
+  }[];
+}
+
+function buildTimeline(courses: Course[], workshops: Workshop[], schedules: Schedule[], getPhoto: (id: string | null, name?: string) => string | undefined): TimelineItem[] {
   const items: TimelineItem[] = [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -101,7 +120,7 @@ function calcDur(start: string, end: string): string {
   if (!start || !end) return "";
   const [sh, sm] = start.split(":").map(Number);
   const [eh, em] = end.split(":").map(Number);
-  let diff = (eh * 60 + em) - (sh * 60 + sm);
+  const diff = (eh * 60 + em) - (sh * 60 + sm);
   if (diff <= 0) return "";
   const h = Math.floor(diff / 60);
   const m = diff % 60;
@@ -210,7 +229,6 @@ function DetailPanel({ item, onClose }: { item: TimelineItem; onClose: () => voi
       className="fixed inset-0 z-50 bg-background"
     >
       <div className="h-full overflow-y-auto">
-        {/* Hero image */}
         <div className="relative h-64">
           <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
@@ -224,12 +242,11 @@ function DetailPanel({ item, onClose }: { item: TimelineItem; onClose: () => voi
             {item.category === "bien-etre" ? "Atelier" : item.category}
           </span>
           <h1 className={`text-2xl font-display font-bold mb-2 ${style.text}`}>{item.name}</h1>
-          
+
           {item.description && (
             <p className="text-sm text-muted-foreground mb-6 leading-relaxed">{item.description}</p>
           )}
 
-          {/* Info pills */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             <div className="rounded-xl bg-muted/50 p-3 flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -298,6 +315,7 @@ export default function TestUX() {
   const { courses, schedules, workshops, loading, getInstructorPhoto } = useActivitiesData();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
+  const timelineRef = useRef<HTMLElement | null>(null);
 
   const timeline = useMemo(() => {
     return buildTimeline(courses, workshops, schedules, getInstructorPhoto);
@@ -310,7 +328,6 @@ export default function TestUX() {
 
   const grouped = useMemo(() => groupByDay(filtered), [filtered]);
 
-  // Featured: closest upcoming items (top 5 unique names)
   const featured = useMemo(() => {
     const seen = new Set<string>();
     const result: TimelineItem[] = [];
@@ -323,6 +340,71 @@ export default function TestUX() {
     return result;
   }, [timeline]);
 
+  const themeDiscovery = useMemo<ThemeDiscoveryCard[]>(() => {
+    const count = (cat: string) => timeline.filter(t => t.category === cat).length;
+    return [
+      {
+        id: "yoga",
+        title: "Flow Yoga",
+        description: "Cours réguliers, progression par niveau et créneaux matin/soir.",
+        sessions: count("yoga"),
+      },
+      {
+        id: "poterie",
+        title: "Poterie studio",
+        description: "Sessions guidées, créations libres et formats découverte.",
+        sessions: count("poterie"),
+      },
+      {
+        id: "bien-etre",
+        title: "Ateliers bien-être",
+        description: "Formats ponctuels pour souffler, explorer et recharger.",
+        sessions: count("bien-etre"),
+      },
+    ];
+  }, [timeline]);
+
+  const yogaWeeklyPlan = useMemo<YogaWeeklyPlanDay[]>(() => {
+    const yogaCoursesMap = new Map(
+      courses
+        .filter(c => c.category === "yoga")
+        .map(c => [c.id, c] as const)
+    );
+
+    const sessionsByDay = Object.fromEntries(YOGA_WEEK_DAYS.map(day => [day, [] as YogaWeeklyPlanDay["sessions"]]));
+
+    for (const sched of schedules) {
+      const course = yogaCoursesMap.get(sched.course_id);
+      if (!course || !sessionsByDay[sched.day]) continue;
+      sessionsByDay[sched.day].push({
+        courseId: course.id,
+        name: course.name,
+        time: sched.time,
+        endTime: sched.end_time,
+        spotsLeft: sched.spots_left,
+      });
+    }
+
+    for (const day of YOGA_WEEK_DAYS) {
+      sessionsByDay[day].sort((a, b) => a.time.localeCompare(b.time));
+    }
+
+    return YOGA_WEEK_DAYS.map(day => ({ day, sessions: sessionsByDay[day] }));
+  }, [courses, schedules]);
+
+  const handleThemeSelect = (category: ThemeDiscoveryCard["id"]) => {
+    setSelectedCategory(category);
+    setTimeout(() => {
+      timelineRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  };
+
+  const openSessionFromYogaPlanning = (sessionName: string) => {
+    setSelectedCategory("yoga");
+    const nextSession = timeline.find(item => item.category === "yoga" && item.name === sessionName);
+    if (nextSession) setSelectedItem(nextSession);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -333,7 +415,6 @@ export default function TestUX() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b">
         <div className="container flex items-center justify-between h-14">
           <Link to="/" className="flex items-center gap-2">
@@ -347,7 +428,6 @@ export default function TestUX() {
         </div>
       </header>
 
-      {/* Hero greeting */}
       <section className="pt-8 pb-4 px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <p className="text-muted-foreground text-sm mb-1">Bienvenue 👋</p>
@@ -355,12 +435,38 @@ export default function TestUX() {
         </motion.div>
       </section>
 
-      {/* Category pills */}
-      <section className="px-6 mb-6">
+      <section className="px-6 mb-8">
+        <h3 className="text-sm font-display font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+          <Compass className="h-4 w-4" /> Explorer par thème
+        </h3>
+        <div className="grid grid-cols-1 gap-3">
+          {themeDiscovery.map(theme => (
+            <button
+              key={theme.id}
+              onClick={() => handleThemeSelect(theme.id)}
+              className="rounded-2xl border bg-card p-4 text-left hover:border-primary/40 hover:shadow-sm transition-all"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-base font-display font-semibold text-foreground">{theme.title}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{theme.description}</p>
+                </div>
+                <span className="text-xs font-semibold rounded-full bg-primary/10 text-primary px-2.5 py-1">
+                  {theme.sessions} séances
+                </span>
+              </div>
+              <div className="mt-3 text-xs font-medium text-primary flex items-center gap-1">
+                Découvrir ce thème <ChevronRight className="h-3.5 w-3.5" />
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="px-6 mb-8">
         <CategoryPills selected={selectedCategory} onChange={setSelectedCategory} />
       </section>
 
-      {/* Featured horizontal scroll */}
       {selectedCategory === "all" && featured.length > 0 && (
         <section className="mb-8">
           <h3 className="px-6 text-sm font-display font-semibold text-muted-foreground uppercase tracking-wide mb-3">
@@ -374,8 +480,44 @@ export default function TestUX() {
         </section>
       )}
 
-      {/* Timeline feed */}
-      <section className="px-6 pb-12">
+      <section className="px-6 mb-8">
+        <h3 className="text-sm font-display font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+          🗓️ Planning type Yoga (hebdo)
+        </h3>
+        <p className="text-xs text-muted-foreground mb-3">
+          Vue compacte des séances yoga récurrentes. Touchez un créneau pour ouvrir le détail le plus proche.
+        </p>
+        <div className="overflow-x-auto pb-2">
+          <div className="grid grid-cols-7 gap-3 min-w-[860px]">
+            {yogaWeeklyPlan.map(day => (
+              <div key={day.day} className="rounded-2xl border bg-card p-3 min-h-[168px]">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{day.day.slice(0, 3)}</p>
+                <div className="space-y-2">
+                  {day.sessions.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground">—</p>
+                  ) : (
+                    day.sessions.map((session, idx) => (
+                      <button
+                        key={`${session.courseId}-${session.time}-${idx}`}
+                        onClick={() => openSessionFromYogaPlanning(session.name)}
+                        className="w-full rounded-lg bg-muted/50 hover:bg-muted p-2 transition-colors text-left"
+                      >
+                        <p className="text-[11px] font-semibold text-foreground line-clamp-1">{session.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{session.time?.slice(0, 5).replace(":", "h")} - {session.endTime?.slice(0, 5).replace(":", "h")}</p>
+                        {session.spotsLeft <= 3 && (
+                          <p className="text-[10px] text-destructive mt-0.5">{session.spotsLeft} places</p>
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section ref={timelineRef} className="px-6 pb-12">
         <h3 className="text-sm font-display font-semibold text-muted-foreground uppercase tracking-wide mb-4">
           📅 Prochaines séances
         </h3>
@@ -429,7 +571,6 @@ export default function TestUX() {
         </div>
       </section>
 
-      {/* Detail panel */}
       <AnimatePresence>
         {selectedItem && (
           <DetailPanel item={selectedItem} onClose={() => setSelectedItem(null)} />
