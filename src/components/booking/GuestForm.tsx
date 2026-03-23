@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 interface GuestFormProps {
   onSubmit: (name: string) => void;
   onBack: () => void;
+  hideBack?: boolean;
 }
 
-export default function GuestForm({ onSubmit, onBack }: GuestFormProps) {
+export default function GuestForm({ onSubmit, onBack, hideBack }: GuestFormProps) {
   const [name, setName] = useState("");
 
   return (
@@ -36,9 +37,11 @@ export default function GuestForm({ onSubmit, onBack }: GuestFormProps) {
         </div>
         <Button type="submit" className="w-full">Continuer</Button>
       </form>
-      <button onClick={onBack} className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors text-center">
-        ← Retour
-      </button>
+      {!hideBack && (
+        <button onClick={onBack} className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors text-center">
+          ← Retour
+        </button>
+      )}
     </div>
   );
 }

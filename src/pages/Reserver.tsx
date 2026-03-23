@@ -3,7 +3,7 @@ import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Info, ShoppingCart, Gift, Eye } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -293,8 +293,15 @@ export default function Reserver() {
   const [showActivityDetails, setShowActivityDetails] = useState(false);
   const [showFormulasInline, setShowFormulasInline] = useState(false);
 
+  // Guest inline form state (visitor stays on page)
+  const [guestFormVisible, setGuestFormVisible] = useState(false);
+  const [guestSubmitted, setGuestSubmitted] = useState(false);
+
+  // Voucher inline state for guest tarifs section
+  const [showVoucherInline, setShowVoucherInline] = useState(false);
+  const [voucherCodeInline, setVoucherCodeInline] = useState("");
+
   // ─── Browser back button handling ───
-  // Push history state for each step so the phone back button navigates steps
   const goToStep = useCallback((step: BookingStep) => {
     setBookingStep(step);
     window.history.pushState({ step }, "");
@@ -303,20 +310,25 @@ export default function Reserver() {
 
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
+      // Close formula modal if open
+      if (showFormulasInline) {
+        setShowFormulasInline(false);
+        // Re-push current state so we don't lose it
+        window.history.pushState({ step: bookingStep }, "");
+        return;
+      }
       const state = e.state as { step?: BookingStep } | null;
       if (state?.step) {
         setBookingStep(state.step);
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
-        // No more booking steps — go back to discover page
         navigate("/", { replace: true });
       }
     };
     window.addEventListener("popstate", handlePopState);
-    // Push initial state
     window.history.replaceState({ step: "summary" }, "");
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [navigate]);
+  }, [navigate, showFormulasInline, bookingStep]);
 
   // Load data
   useEffect(() => {
@@ -568,9 +580,9 @@ export default function Reserver() {
     goToStep("purchase_options");
   };
 
-  const handleGuestSubmit = (name: string) => {
+  const handleGuestContinue = (name: string) => {
     setGuestName(name);
-    goToStep("purchase_options");
+    setGuestSubmitted(true);
   };
 
   const handleReserveWithCard = () => {
@@ -589,11 +601,13 @@ export default function Reserver() {
   };
 
   const handleBuyUnit = () => {
+    const totalParticipants = 1 + extraParticipants.filter(p => p.firstName.trim()).length;
     const price = activity?.type === "workshop" ? (activity.price || 35) : (unitPrice || 15);
+    const totalPrice = price * totalParticipants;
     setPaymentMode("Cours à l'unité");
-    setPaymentAmount(price);
-    setStripeAmount(price);
-    setStripeDescription(`${activity.name} — Cours à l'unité`);
+    setPaymentAmount(totalPrice);
+    setStripeAmount(totalPrice);
+    setStripeDescription(`${activity.name} — Cours à l'unité${totalParticipants > 1 ? ` (${totalParticipants} pers.)` : ""}`);
     goToStep("payment");
   };
 
@@ -735,7 +749,6 @@ export default function Reserver() {
     } else if (bookingStep === "purchase_options") {
       if (!currentProfile && !guestName) goToStep("summary");
       else {
-        // Go back to date picker
         if (availableDates.length > 0) {
           setDatePickerMode(true);
           setSelectedDate(undefined);
@@ -751,7 +764,6 @@ export default function Reserver() {
     } else if (bookingStep === "payment") {
       goToStep("purchase_options");
     } else if (bookingStep === "summary" && hasChosenDate) {
-      // Go back to date selection
       if (availableDates.length > 0) {
         setDatePickerMode(true);
         setSelectedDate(undefined);
@@ -768,7 +780,7 @@ export default function Reserver() {
     }
   };
 
-  // Activity info block (reusable)
+  // Activity info block
   const ActivityInfoBlock = () => (
     <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-sm">
       {activity?.description && (
@@ -812,7 +824,7 @@ export default function Reserver() {
     </div>
   );
 
-  // Date info block (after selection)
+  // Date info block
   const DateInfoBlock = () => {
     if (!selectedSlotData || !selectedDate) return null;
     return (
@@ -849,7 +861,34 @@ export default function Reserver() {
     );
   };
 
-  // Tarif block
+  // Tarif block for visitor guest
+  const GuestTarifBlock = () => {
+    if (!selectedSlotData) return null;
+    const totalParticipants = 1 + extraParticipants.filter(p => p.firstName.trim()).length;
+    const price = selectedSlotData.price || unitPrice || undefined;
+    return (
+      <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Prix unitaire</span>
+          <span className="font-semibold text-foreground">{price} €</span>
+        </div>
+        {totalParticipants > 1 && price && (
+          <div className="flex justify-between border-t pt-2 mt-1">
+            <span className="text-muted-foreground">Total ({totalParticipants} participants)</span>
+            <span className="font-semibold text-foreground">{(price * totalParticipants)} €</span>
+          </div>
+        )}
+        {selectedSlotData.inclusions && (
+          <div className="bg-emerald-50 rounded-md px-3 py-2 text-xs text-emerald-700 flex items-start gap-1.5">
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>{selectedSlotData.inclusions}</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Tarif block for logged-in user
   const TarifBlock = () => {
     if (!selectedSlotData) return null;
     const totalParticipants = 1 + extraParticipants.filter(p => p.firstName.trim()).length;
@@ -945,29 +984,82 @@ export default function Reserver() {
                     <DateInfoBlock />
                   </div>
 
-                  {/* Section 3: Add participant */}
-                  <AddParticipant
-                    participants={extraParticipants}
-                    onChange={setExtraParticipants}
-                  />
-
-                  {/* Section 4: Tarif */}
+                  {/* Section 3: Participant(s) */}
                   <div>
-                    <p className="text-sm font-semibold text-foreground mb-2">3. Tarif</p>
-                    <TarifBlock />
+                    <p className="text-sm font-semibold text-foreground mb-2">3. Participant(s)</p>
+                    <div className="rounded-lg bg-muted/50 p-4 space-y-4">
+                      <AddParticipant
+                        participants={extraParticipants}
+                        onChange={setExtraParticipants}
+                      />
+
+                      {/* Guest form inline OR account choice */}
+                      {!guestFormVisible && !guestSubmitted && (
+                        <AccountChoice
+                          onLogin={() => goToStep("login")}
+                          onRegister={() => goToStep("register")}
+                          onGuest={() => setGuestFormVisible(true)}
+                        />
+                      )}
+
+                      {guestFormVisible && !guestSubmitted && (
+                        <GuestForm
+                          onSubmit={handleGuestContinue}
+                          onBack={() => {}}
+                          hideBack
+                        />
+                      )}
+
+                      {guestSubmitted && (
+                        <div className="rounded-lg border bg-card p-3 text-sm text-center text-muted-foreground">
+                          Invité : <strong className="text-foreground">{guestName}</strong>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Arrow pointing down */}
-                  <div className="flex justify-center">
-                    <ChevronDown className="h-6 w-6 text-muted-foreground animate-bounce" />
-                  </div>
+                  {/* Section 4: Tarifs (only after guest submitted) */}
+                  {guestSubmitted && (
+                    <div>
+                      <p className="text-sm font-semibold text-foreground mb-2">4. Tarif</p>
+                      <GuestTarifBlock />
+
+                      <div className="grid gap-2 mt-4">
+                        <Button onClick={handleBuyUnit} className="w-full gap-2 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
+                          <ShoppingCart className="h-4 w-4" /> Procéder au paiement
+                        </Button>
+                        <Button variant="outline" className="w-full gap-2" onClick={() => setShowVoucherInline(!showVoucherInline)}>
+                          <Gift className="h-4 w-4" /> Utiliser un bon cadeau
+                        </Button>
+                        {showVoucherInline && (
+                          <div className="rounded-lg border bg-card p-4 space-y-3">
+                            <p className="text-sm font-medium text-primary-dark flex items-center gap-1.5">
+                              <Gift className="h-4 w-4" /> Saisir un code bon cadeau
+                            </p>
+                            <div className="flex gap-2">
+                              <input
+                                placeholder="IGI-XXXXXXXX"
+                                value={voucherCodeInline}
+                                onChange={e => { setVoucherCodeInline(e.target.value.toUpperCase()); setVoucherStatus("idle"); }}
+                                className="flex-1 rounded-md border px-3 py-2 text-sm font-mono"
+                              />
+                              <Button size="sm" variant="outline" disabled={!voucherCodeInline.trim() || voucherStatus === "checking"} onClick={() => handleUseVoucher(voucherCodeInline)}>
+                                {voucherStatus === "checking" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Valider"}
+                              </Button>
+                            </div>
+                            {voucherStatus === "invalid" && <p className="text-xs text-destructive">Code invalide, expiré ou déjà utilisé</p>}
+                          </div>
+                        )}
+                        {isYoga && pricingCards.length > 0 && (
+                          <Button variant="outline" className="w-full gap-2" onClick={() => setShowFormulasInline(true)}>
+                            <Eye className="h-4 w-4" /> Voir les formules carte yoga
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
-              <AccountChoice
-                onLogin={() => goToStep("login")}
-                onRegister={() => goToStep("register")}
-                onGuest={() => goToStep("guest_form")}
-              />
             </div>
           )}
 
@@ -981,12 +1073,7 @@ export default function Reserver() {
             <SignupBlock onSubmit={handleRegister} onBack={() => goToStep("summary")} registering={registering} />
           )}
 
-          {/* ═══ STEP: GUEST FORM ═══ */}
-          {bookingStep === "guest_form" && !currentProfile && (
-            <GuestForm onSubmit={handleGuestSubmit} onBack={() => goToStep("summary")} />
-          )}
-
-          {/* ═══ STEP: PURCHASE OPTIONS ═══ */}
+          {/* ═══ STEP: PURCHASE OPTIONS (logged in users) ═══ */}
           {bookingStep === "purchase_options" && (
             <div className="space-y-6">
               {selectedSlotData && selectedDate && (
@@ -998,14 +1085,19 @@ export default function Reserver() {
                   </div>
 
                   {/* Section 3: Add participant */}
-                  <AddParticipant
-                    participants={extraParticipants}
-                    onChange={setExtraParticipants}
-                  />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground mb-2">3. Participant(s)</p>
+                    <div className="rounded-lg bg-muted/50 p-4">
+                      <AddParticipant
+                        participants={extraParticipants}
+                        onChange={setExtraParticipants}
+                      />
+                    </div>
+                  </div>
 
                   {/* Section 4: Tarif */}
                   <div>
-                    <p className="text-sm font-semibold text-foreground mb-2">3. Tarif</p>
+                    <p className="text-sm font-semibold text-foreground mb-2">4. Tarif</p>
                     <TarifBlock />
                   </div>
                 </>
@@ -1059,6 +1151,18 @@ export default function Reserver() {
               existingCredits={currentProfile?.credits || 0}
               mainParticipantName={currentProfile?.name || guestName || undefined}
               extraParticipants={extraParticipants}
+            />
+          )}
+
+          {/* Formula modal for guest tarifs section */}
+          {isYoga && pricingCards.length > 0 && bookingStep === "summary" && (
+            <FormulaInfoModal
+              open={showFormulasInline}
+              onClose={() => setShowFormulasInline(false)}
+              onCreateAccount={() => { setShowFormulasInline(false); goToStep("register"); }}
+              onContinueWithout={() => setShowFormulasInline(false)}
+              pricingCards={pricingCards}
+              unitPrice={unitPrice || undefined}
             />
           )}
         </div>
