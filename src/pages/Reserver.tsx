@@ -1092,14 +1092,14 @@ export default function Reserver() {
                           </div>
 
                           <div className="grid gap-2 mt-4">
-                            {/* Has yoga cards: primary action = use card */}
-                            {isYoga && currentProfile.credits > 0 && (
+                            {/* Has yoga cards and no reload: primary action = use card */}
+                            {isYoga && currentProfile.credits > 0 && !reloadCard && (
                               <Button onClick={handleReserveWithCard} className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
                                 <ShoppingCart className="h-4 w-4" /> Utiliser 1 carte yoga
                               </Button>
                             )}
-                            {/* No cards or non-yoga: Commander */}
-                            {(!isYoga || currentProfile.credits <= 0) && (
+                            {/* Commander: show when no cards, non-yoga, or reload card selected */}
+                            {(!isYoga || currentProfile.credits <= 0 || reloadCard) && (
                               <Button onClick={() => {
                                 setShowPaymentConfirm(true);
                                 setTimeout(() => {
