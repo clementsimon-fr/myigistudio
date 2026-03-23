@@ -7,7 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { CalendarDays, CreditCard, Clock, Loader2, User, Pencil, XCircle, ArrowRight, Bell, MapPin, ShoppingCart, Star, Gift } from "lucide-react";
+import { CalendarDays, CreditCard, Clock, Loader2, User, Pencil, XCircle, ArrowRight, Bell, MapPin, ShoppingCart, Star, Gift, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoContext } from "@/contexts/DemoContext";
