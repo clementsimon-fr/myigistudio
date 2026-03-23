@@ -1316,7 +1316,7 @@ export default function Reserver() {
               onClose={() => setShowFormulasInline(false)}
               onCreateAccount={() => { setShowFormulasInline(false); goToStep("register"); }}
               onContinueWithout={() => setShowFormulasInline(false)}
-              onSelectCard={(card) => { setReloadCard(card); setShowFormulasInline(false); }}
+              onSelectCard={(card) => { setReloadCard(card as PricingCard); setShowFormulasInline(false); }}
               pricingCards={pricingCards}
               unitPrice={unitPrice || undefined}
               isConnected={!!currentProfile}
