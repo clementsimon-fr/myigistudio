@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Loader2, Megaphone } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -10,6 +10,7 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 export default function Discover() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { get: getSetting, ready: settingsReady } = useSiteSettings();
 
   const initialFilter = searchParams.get("filter") as FilterCategory | null;
@@ -63,8 +64,8 @@ export default function Discover() {
     if (params?.type) urlParams.set("type", params.type);
     if (params?.id) urlParams.set("id", params.id);
     if (params?.date) urlParams.set("date", params.date);
-    window.location.href = `/reserver?${urlParams.toString()}`;
-  }, []);
+    navigate(`/reserver?${urlParams.toString()}`);
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex flex-col">
