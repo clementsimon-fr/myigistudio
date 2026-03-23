@@ -42,7 +42,12 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
   const multiCards = pricingCards.filter(c => c.sessions > 1);
 
   // Scroll to bottom (info/create account) when a multi-card is clicked
-  const handleMultiCardClick = () => {
+  const handleMultiCardClick = (card?: PricingCard) => {
+    if (isConnected && card && onSelectCard) {
+      onSelectCard(card);
+      onClose();
+      return;
+    }
     setTimeout(() => {
       infoRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }, 100);
