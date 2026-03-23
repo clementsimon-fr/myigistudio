@@ -285,12 +285,13 @@ function RecurringGrid({ courses, schedules, onEventClick }: {
   );
 }
 
-function MonthWorkshops({ workshops, onEventClick, hideTitle, hidePriceSpots, monthDate }: {
+function MonthWorkshops({ workshops, onEventClick, hideTitle, hidePriceSpots, monthDate, hideEmptyMessage }: {
   workshops: Workshop[];
   onEventClick?: PlanningTypeViewProps["onEventClick"];
   hideTitle?: boolean;
   hidePriceSpots?: boolean;
   monthDate?: Date;
+  hideEmptyMessage?: boolean;
 }) {
   const { start, end } = getMonthBounds(monthDate);
   const today = new Date();
@@ -317,6 +318,7 @@ function MonthWorkshops({ workshops, onEventClick, hideTitle, hidePriceSpots, mo
   }, [workshops, start, end, monthDate]);
 
   if (grouped.length === 0) {
+    if (hideEmptyMessage) return null;
     return <p className="text-sm text-muted-foreground text-center py-4">Rien de prévu pour le moment</p>;
   }
 

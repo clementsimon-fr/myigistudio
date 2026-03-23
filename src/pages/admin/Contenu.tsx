@@ -164,6 +164,22 @@ export default function AdminContenu() {
     setSaving(false);
   };
 
+  // Auto-save with debounce
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialLoadDone = useRef(false);
+
+  useEffect(() => {
+    if (loading || !initialLoadDone.current) {
+      if (!loading) initialLoadDone.current = true;
+      return;
+    }
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      handleSave();
+    }, 2000);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [values]);
+
   const hasFeaturedEvent = !!(values.featured_event_activity_id?.trim() || values.featured_event_title?.trim());
 
   if (loading) {

@@ -325,7 +325,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                 if (!hasYogaWsThisMonth) return null;
                 return (
                   <div className="mt-4">
-                    <MonthWorkshops workshops={yogaWs} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots monthDate={yogaMonthDate} />
+                    <MonthWorkshops workshops={yogaWs} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots monthDate={yogaMonthDate} hideEmptyMessage />
                   </div>
                 );
               })()}
