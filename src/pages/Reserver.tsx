@@ -1053,12 +1053,12 @@ export default function Reserver() {
                       <div className="grid gap-2 mt-4">
                         <Button onClick={() => {
                           if (applicableConditions.length === 0) {
-                            handleBuyUnit();
+                            setShowPaymentConfirm(true);
                           } else {
                             setShowPaymentConfirm(true);
                           }
                         }} className="w-full gap-2 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
-                          <ShoppingCart className="h-4 w-4" /> Procéder au paiement
+                          <ShoppingCart className="h-4 w-4" /> Commander
                         </Button>
                         <Button variant="outline" className="w-full gap-2" onClick={() => setShowVoucherPopup(true)}>
                           <Gift className="h-4 w-4" /> Utiliser un bon cadeau
