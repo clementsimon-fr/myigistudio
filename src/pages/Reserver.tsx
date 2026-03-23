@@ -1104,8 +1104,6 @@ export default function Reserver() {
                         </div>
                       )}
 
-                      {/* Conditions for no-conditions case: direct payment */}
-                      {showPaymentConfirm && applicableConditions.length === 0 && (() => { handleBuyUnit(); setShowPaymentConfirm(false); return null; })()}
                     </div>
                   )}
                 </>
