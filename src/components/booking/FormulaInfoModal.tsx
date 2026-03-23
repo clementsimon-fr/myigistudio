@@ -27,12 +27,14 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
   const infoRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to the info message when modal opens
+  const dialogContentRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to top of popup when it opens
   useEffect(() => {
     if (open) {
       setTimeout(() => {
-        infoRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-      }, 300);
+        dialogContentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      }, 100);
     }
   }, [open]);
 
