@@ -46,7 +46,6 @@ export default function PurchaseOptions({
   const isYoga = category === "yoga";
   const cardGridRef = useRef<HTMLDivElement>(null);
 
-  // 1.2: Scroll to card grid when formulas are shown
   useEffect(() => {
     if (showFormulas && cardGridRef.current) {
       setTimeout(() => {
@@ -72,7 +71,6 @@ export default function PurchaseOptions({
         <p className="text-xs text-muted-foreground text-center -mt-2">1 carte sera déduite après confirmation.</p>
 
         <div className="grid gap-2">
-          {/* 1.9: "Acheter carte yoga" */}
           <Button variant="outline" className="w-full gap-2" onClick={() => setShowFormulas(!showFormulas)}>
             <ShoppingCart className="h-4 w-4" /> Acheter carte yoga
           </Button>
@@ -102,7 +100,6 @@ export default function PurchaseOptions({
           </p>
         </div>
 
-        {/* 1.5: Button to reveal formulas */}
         <Button variant="outline" className="w-full gap-2" onClick={() => setShowFormulas(!showFormulas)}>
           <ShoppingCart className="h-4 w-4" /> {showFormulas ? "Masquer les formules" : "Acheter carte yoga"}
         </Button>
@@ -194,43 +191,88 @@ function VoucherButton({ showVoucher, setShowVoucher, voucherCode, setVoucherCod
   );
 }
 
-// ─── Sub: Card grid ───
-// 1.1: Remove percentage display
+// ─── Sub: Card grid (revamped formulas) ───
 function CardGrid({ pricingCards, unitPrice, onBuyCard }: {
   pricingCards: PricingCard[]; unitPrice: number | null; onBuyCard: (card: PricingCard) => void;
 }) {
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const unitCards = pricingCards.filter(c => c.sessions === 1);
+  const multiCards = pricingCards.filter(c => c.sessions > 1);
+
+  const handleCardClick = (card: PricingCard) => {
+    onBuyCard(card);
+    // Scroll to bottom of grid after click
+    setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 100);
+  };
+
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {pricingCards.map(card => {
-        const perSession = card.sessions < 9999 ? card.price / card.sessions : null;
-        return (
-          <div
-            key={card.id}
-            className={cn(
-              "relative rounded-xl border-2 p-4 flex flex-col cursor-pointer transition-all hover:shadow-md",
-              card.popular ? "border-primary bg-primary/5" : "hover:border-primary/40"
-            )}
-            onClick={() => onBuyCard(card)}
-          >
-            {card.popular && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                <Star className="h-3 w-3" /> Populaire
-              </div>
-            )}
-            <h3 className="font-display font-semibold text-primary-dark">{card.name}</h3>
-            <span className="text-2xl font-bold mt-1">{card.price}€</span>
-            <p className="text-xs text-muted-foreground">{card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`} · {card.validity}</p>
-            {perSession && (
-              <p className="text-xs text-muted-foreground">
-                {perSession.toFixed(2)}€ / cours
-              </p>
-            )}
-            <Button size="sm" className={cn("mt-3", card.popular ? "bg-primary-dark text-primary-dark-foreground" : "")} variant={card.popular ? "default" : "outline"}>
-              <ShoppingCart className="h-3.5 w-3.5 mr-1" /> Choisir
-            </Button>
-          </div>
-        );
-      })}
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        Vous pouvez acheter un cours à l'unité ou acheter plusieurs cartes de yoga utilisables quand vous le souhaitez pendant la durée de validité.
+      </p>
+
+      {/* Unit card(s) with green background */}
+      {unitCards.map(card => (
+        <div
+          key={card.id}
+          className="relative rounded-xl border-2 p-4 flex flex-col cursor-pointer transition-all hover:shadow-md bg-emerald-50/60 border-emerald-200"
+          onClick={() => handleCardClick(card)}
+        >
+          <h3 className="font-display font-semibold text-foreground">Carte Yoga à l'unité</h3>
+          <span className="text-2xl font-bold mt-1">{card.price}€</span>
+          <p className="text-xs text-muted-foreground">1 cours · {card.validity}</p>
+          <Button size="sm" variant="outline" className="mt-3">
+            <ShoppingCart className="h-3.5 w-3.5 mr-1" /> Choisir
+          </Button>
+        </div>
+      ))}
+
+      {/* Separator */}
+      {multiCards.length > 0 && (
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-sm font-display font-semibold text-muted-foreground">Ou</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+      )}
+
+      {/* Multi-session cards */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {multiCards.map(card => {
+          const perSession = card.sessions < 9999 ? card.price / card.sessions : null;
+          return (
+            <div
+              key={card.id}
+              className={cn(
+                "relative rounded-xl border-2 p-4 flex flex-col cursor-pointer transition-all hover:shadow-md",
+                card.popular ? "border-primary bg-primary/5" : "hover:border-primary/40"
+              )}
+              onClick={() => handleCardClick(card)}
+            >
+              {card.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                  <Star className="h-3 w-3" /> Populaire
+                </div>
+              )}
+              <h3 className="font-display font-semibold text-primary-dark">Cartes Yoga "{card.name}"</h3>
+              <span className="text-2xl font-bold mt-1">{card.price}€</span>
+              <p className="text-xs text-muted-foreground">{card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`} · {card.validity}</p>
+              {perSession && (
+                <p className="text-xs text-muted-foreground">
+                  {perSession.toFixed(2)}€ / cours
+                </p>
+              )}
+              <Button size="sm" className={cn("mt-3", card.popular ? "bg-primary-dark text-primary-dark-foreground" : "")} variant={card.popular ? "default" : "outline"}>
+                <ShoppingCart className="h-3.5 w-3.5 mr-1" /> Choisir
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+      <div ref={bottomRef} />
     </div>
   );
 }

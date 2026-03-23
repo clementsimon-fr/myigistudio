@@ -1,7 +1,7 @@
 import { useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Star, Info } from "lucide-react";
+import { Sparkles, Star, Info, ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface PricingCard {
@@ -25,8 +25,9 @@ interface FormulaInfoModalProps {
 
 export default function FormulaInfoModal({ open, onClose, onCreateAccount, onContinueWithout, pricingCards, unitPrice }: FormulaInfoModalProps) {
   const infoRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  // 1.1: Auto-scroll to the info message when modal opens
+  // Auto-scroll to the info message when modal opens
   useEffect(() => {
     if (open) {
       setTimeout(() => {
@@ -34,6 +35,16 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
       }, 300);
     }
   }, [open]);
+
+  const unitCards = pricingCards.filter(c => c.sessions === 1);
+  const multiCards = pricingCards.filter(c => c.sessions > 1);
+
+  // Scroll to bottom when a card is clicked
+  const handleCardClick = () => {
+    setTimeout(() => {
+      infoRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 100);
+  };
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -46,36 +57,57 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
 
         <div className="space-y-4 pt-2">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Les cartes yoga vous permettent de réserver vos cours à un tarif avantageux.
-            Achetez une carte, ou plusieurs, et utilisez vos cours quand vous le souhaitez pendant la durée de validité.
+            Vous pouvez acheter un cours à l'unité ou acheter plusieurs cartes de yoga utilisables quand vous le souhaitez pendant la durée de validité.
           </p>
 
-          <div className="grid gap-3">
-            {pricingCards.map(card => {
-              const perSession = card.sessions < 9999 && card.sessions > 0 ? card.price / card.sessions : null;
+          {/* Unit card with green bg */}
+          {unitCards.map(card => (
+            <div key={card.id} className="rounded-lg border p-4 relative bg-emerald-50/60 border-emerald-200 cursor-pointer hover:shadow-md transition-all" onClick={handleCardClick}>
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-semibold text-foreground">Carte Yoga à l'unité</p>
+                  <p className="text-xs text-muted-foreground">{card.validity}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold">{card.price} €</p>
+                  <Badge variant="secondary" className="text-sm font-bold px-2.5 py-0.5">1 cours</Badge>
+                </div>
+              </div>
+            </div>
+          ))}
 
-              return (
-                <div key={card.id} className="rounded-lg border p-4 relative">
-                  {card.popular && (
-                    <div className="absolute -top-2.5 right-3 bg-accent text-accent-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                      <Star className="h-2.5 w-2.5" /> Populaire
-                    </div>
-                  )}
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-semibold text-primary-dark">{card.name}</p>
-                      <p className="text-xs text-muted-foreground">{card.validity}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold">{card.price} €</p>
-                      <Badge variant="secondary" className="text-sm font-bold px-2.5 py-0.5">
-                        {card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`}
-                      </Badge>
-                    </div>
+          {/* Separator */}
+          {multiCards.length > 0 && (
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-sm font-display font-semibold text-muted-foreground">Ou</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+          )}
+
+          {/* Multi cards */}
+          <div className="grid gap-3">
+            {multiCards.map(card => (
+              <div key={card.id} className="rounded-lg border p-4 relative cursor-pointer hover:shadow-md transition-all" onClick={handleCardClick}>
+                {card.popular && (
+                  <div className="absolute -top-2.5 right-3 bg-accent text-accent-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                    <Star className="h-2.5 w-2.5" /> Populaire
+                  </div>
+                )}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-semibold text-primary-dark">Cartes Yoga "{card.name}"</p>
+                    <p className="text-xs text-muted-foreground">{card.validity}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold">{card.price} €</p>
+                    <Badge variant="secondary" className="text-sm font-bold px-2.5 py-0.5">
+                      {card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`}
+                    </Badge>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
 
           <div ref={infoRef} className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-start gap-2">
@@ -91,6 +123,7 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
               Continuer sans formule
             </Button>
           </div>
+          <div ref={bottomRef} />
         </div>
       </DialogContent>
     </Dialog>
