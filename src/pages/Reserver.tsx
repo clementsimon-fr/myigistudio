@@ -1070,47 +1070,50 @@ export default function Reserver() {
                         )}
                       </div>
 
-                      {/* Inline conditions for payment confirmation */}
+                      {/* Section 5: Conditions */}
                       {showPaymentConfirm && (
-                        <div id="conditions-section" className="mt-4 space-y-3">
-                          {applicableConditions.length > 0 && (
-                            <>
-                              <Accordion type="multiple" className="w-full">
-                                {applicableConditions.map(c => (
-                                  <AccordionItem key={c.id} value={c.id} className="border rounded-lg bg-muted/30 px-3">
-                                    <AccordionTrigger className="py-2 text-xs font-semibold text-primary-dark hover:no-underline">
-                                      {c.title}
-                                    </AccordionTrigger>
-                                    <AccordionContent>
-                                      <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{c.content}</p>
-                                    </AccordionContent>
-                                  </AccordionItem>
-                                ))}
-                              </Accordion>
-                              <div className="flex items-start gap-2">
-                                <Checkbox
-                                  id="inline-conditions"
-                                  checked={conditionsAccepted}
-                                  onCheckedChange={(v) => setConditionsAccepted(!!v)}
-                                />
-                                <label htmlFor="inline-conditions" className="text-xs cursor-pointer leading-tight text-muted-foreground">
-                                  J'ai lu et j'accepte les conditions ci-dessus
-                                </label>
-                              </div>
-                            </>
-                          )}
-                          <Button
-                            onClick={() => {
-                              if (applicableConditions.length > 0 && !conditionsAccepted) {
-                                toast({ title: "Veuillez accepter les conditions pour continuer", variant: "destructive" });
-                                return;
-                              }
-                              goToStep("payment");
-                            }}
-                            className="w-full h-11 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-2 text-base font-semibold"
-                          >
-                            Continuer
-                          </Button>
+                        <div className="mt-6 space-y-4">
+                          <p id="conditions-section" className="text-sm font-semibold text-foreground">5. Valider les conditions</p>
+                          <div className="rounded-lg bg-muted/50 p-4 space-y-3">
+                            {applicableConditions.length > 0 && (
+                              <>
+                                <Accordion type="multiple" className="w-full">
+                                  {applicableConditions.map(c => (
+                                    <AccordionItem key={c.id} value={c.id} className="border rounded-lg bg-muted/30 px-3">
+                                      <AccordionTrigger className="py-2 text-xs font-semibold text-primary-dark hover:no-underline">
+                                        {c.title}
+                                      </AccordionTrigger>
+                                      <AccordionContent>
+                                        <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{c.content}</p>
+                                      </AccordionContent>
+                                    </AccordionItem>
+                                  ))}
+                                </Accordion>
+                                <div className="flex items-start gap-2">
+                                  <Checkbox
+                                    id="inline-conditions"
+                                    checked={conditionsAccepted}
+                                    onCheckedChange={(v) => setConditionsAccepted(!!v)}
+                                  />
+                                  <label htmlFor="inline-conditions" className="text-xs cursor-pointer leading-tight text-muted-foreground">
+                                    J'ai lu et j'accepte les conditions ci-dessus
+                                  </label>
+                                </div>
+                              </>
+                            )}
+                            <Button
+                              onClick={() => {
+                                if (applicableConditions.length > 0 && !conditionsAccepted) {
+                                  toast({ title: "Veuillez accepter les conditions pour continuer", variant: "destructive" });
+                                  return;
+                                }
+                                handleBuyUnit();
+                              }}
+                              className="w-full h-11 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-2 text-base font-semibold"
+                            >
+                              Continuer
+                            </Button>
+                          </div>
                         </div>
                       )}
 
