@@ -1,5 +1,5 @@
-import { useNavigate } from "react-router-dom";
-import { CalendarDays, CreditCard, User, Home, LogOut } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { CalendarDays, CreditCard, User, Home, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDemoContext } from "@/contexts/DemoContext";
 
@@ -9,7 +9,6 @@ interface ClientLayoutProps {
 }
 
 const navItems = [
-  { label: "Accueil", icon: Home, path: "/" },
   { label: "Réservations", icon: CalendarDays, section: "reservations" },
   { label: "Cartes Yoga", icon: CreditCard, section: "cartes" },
   { label: "Profil", icon: User, section: "profil" },
@@ -17,20 +16,13 @@ const navItems = [
 
 export default function ClientLayout({ children, title }: ClientLayoutProps) {
   const navigate = useNavigate();
-  const { currentProfile, setCurrentProfile } = useDemoContext();
+  const [searchParams] = useSearchParams();
+  const { currentProfile } = useDemoContext();
+  const currentSection = searchParams.get("section") || "reservations";
 
   const handleNav = (item: typeof navItems[0]) => {
     window.scrollTo({ top: 0, behavior: "smooth" });
-    if (item.path) {
-      navigate(item.path);
-    } else if (item.section) {
-      navigate(`/mon-espace?section=${item.section}`);
-    }
-  };
-
-  const handleLogout = () => {
-    setCurrentProfile(null);
-    navigate("/");
+    navigate(`/mon-espace?section=${item.section}`);
   };
 
   return (
@@ -38,20 +30,18 @@ export default function ClientLayout({ children, title }: ClientLayoutProps) {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b">
         <div className="container flex h-14 items-center justify-between">
-          <h1 className="text-lg font-display font-bold text-primary-dark">{title}</h1>
-          {currentProfile && (
-            <div className="flex items-center gap-2 text-xs">
-              <div className="flex items-center gap-1.5 bg-primary/10 text-primary-dark font-medium px-3 py-1.5 rounded-full">
-                <User className="h-3.5 w-3.5" />
-                {currentProfile.name}
-                {currentProfile.credits > 0 && (
-                  <span className="ml-1 bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full text-[10px] font-bold">
-                    {currentProfile.credits}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
+          <h1 className="text-lg font-display font-bold text-primary-dark">
+            Bonjour {currentProfile?.name || ""}
+          </h1>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs rounded-full"
+            onClick={() => navigate("/")}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Retour à l'accueil
+          </Button>
         </div>
       </header>
 
@@ -62,7 +52,7 @@ export default function ClientLayout({ children, title }: ClientLayoutProps) {
             {navItems.map(item => (
               <Button
                 key={item.label}
-                variant="outline"
+                variant={currentSection === item.section ? "default" : "outline"}
                 size="sm"
                 className="gap-1.5 text-xs rounded-full"
                 onClick={() => handleNav(item)}
@@ -71,15 +61,6 @@ export default function ClientLayout({ children, title }: ClientLayoutProps) {
                 {item.label}
               </Button>
             ))}
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 text-xs rounded-full text-destructive border-destructive/30 hover:bg-destructive/10 ml-auto"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Déconnexion
-            </Button>
           </div>
         </div>
       </div>
