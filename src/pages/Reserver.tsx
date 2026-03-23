@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoContext } from "@/contexts/DemoContext";
 import MockStripeModal from "@/components/demo/MockStripeModal";
-import BookingSummary from "@/components/booking/BookingSummary";
+
 import AccountChoice from "@/components/booking/AccountChoice";
 import SignupBlock from "@/components/booking/SignupBlock";
 import LoginBlock from "@/components/booking/LoginBlock";
