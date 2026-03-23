@@ -27,8 +27,6 @@ export default function Navbar() {
   const isAdminLike = isAdmin || currentProfile?.role === "fournisseur";
   const isClient = currentProfile?.role === "client";
 
-  const credits = currentProfile?.credits ?? 0;
-
   const handleLogout = () => {
     setCurrentProfile(null);
     navigate("/");
@@ -48,17 +46,13 @@ export default function Navbar() {
             {/* Desktop */}
             <div className="hidden md:flex items-center gap-3">
               {isClient && (
-                <div className="flex items-center gap-2 text-xs">
-                  <div className="flex items-center gap-1.5 bg-primary/10 text-primary-dark font-medium px-3 py-1.5 rounded-full">
-                    <User className="h-3.5 w-3.5" />
-                    {currentProfile.name}
-                    {credits > 0 && (
-                      <span className="ml-1 bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full text-[10px] font-bold">
-                        {credits} carte{credits > 1 ? "s" : ""}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <button
+                  onClick={() => navigate("/mon-espace?section=reservations")}
+                  className="flex items-center gap-1.5 bg-primary/15 text-primary-dark font-semibold px-4 py-2 rounded-full border-2 border-primary/30 hover:bg-primary/25 transition-colors text-sm"
+                >
+                  <User className="h-4 w-4" />
+                  {currentProfile.name}
+                </button>
               )}
 
               {isAdminLike && !location.pathname.startsWith("/admin") && (
@@ -112,18 +106,16 @@ export default function Navbar() {
               </DropdownMenu>
             </div>
 
-            {/* Mobile: show connected status + menu button */}
+            {/* Mobile: connected icon that links to mon-espace + menu */}
             <div className="md:hidden flex items-center gap-2">
               {isClient && (
-                <div className="flex items-center gap-1 text-[10px] bg-primary/10 text-primary-dark font-medium px-2 py-1 rounded-full">
-                  <User className="h-3 w-3" />
+                <button
+                  onClick={() => navigate("/mon-espace?section=reservations")}
+                  className="flex items-center gap-1 bg-primary/15 text-primary-dark font-semibold px-3 py-1.5 rounded-full border-2 border-primary/30 text-xs"
+                >
+                  <User className="h-3.5 w-3.5" />
                   {currentProfile.name}
-                  {credits > 0 && (
-                    <span className="bg-primary text-primary-foreground px-1 py-0.5 rounded-full text-[9px] font-bold">
-                      {credits}
-                    </span>
-                  )}
-                </div>
+                </button>
               )}
               <button className="flex items-center gap-1 p-2 text-sm font-medium" onClick={() => setOpen(!open)} aria-label="Menu">
                 {open ? <X className="h-5 w-5" /> : <><Menu className="h-5 w-5" /> <span className="text-xs">Menu</span></>}

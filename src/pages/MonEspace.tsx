@@ -7,7 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { CalendarDays, CreditCard, Clock, Loader2, User, Pencil, XCircle, ArrowRight, Bell, MapPin, ShoppingCart, Star, Gift } from "lucide-react";
+import { CalendarDays, CreditCard, Clock, Loader2, User, Pencil, XCircle, ArrowRight, Bell, MapPin, ShoppingCart, Star, Gift, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoContext } from "@/contexts/DemoContext";
@@ -33,7 +33,7 @@ export default function MonEspace() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { currentProfile, addCredits, addNotification } = useDemoContext();
+  const { currentProfile, setCurrentProfile, addCredits, addNotification } = useDemoContext();
   const CLIENT_NAME = currentProfile?.name || "Sophie";
   const sectionParam = searchParams.get("section") as Section | null;
   const isWelcome = searchParams.get("welcome") === "1";
@@ -230,10 +230,10 @@ export default function MonEspace() {
               {/* Summary */}
               <div className="rounded-xl border bg-card p-5">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-display font-semibold text-primary-dark">Mes crédits Yoga</h2>
+              <div>
+                    <h2 className="text-lg font-display font-semibold text-primary-dark">Mes cartes Yoga</h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Vous avez <strong className="text-primary-dark">{totalCredits}</strong> crédit{totalCredits > 1 ? "s" : ""} disponible{totalCredits > 1 ? "s" : ""}
+                      Vous avez <strong className="text-primary-dark">{totalCredits}</strong> carte{totalCredits > 1 ? "s" : ""} yoga disponible{totalCredits > 1 ? "s" : ""}
                     </p>
                   </div>
                   <div className="h-14 w-14 rounded-full bg-[hsl(210,60%,55%)]/10 flex items-center justify-center">
@@ -268,7 +268,7 @@ export default function MonEspace() {
                             </div>
                             <span className="text-xs font-medium">{card.used_sessions}/{card.total_sessions}</span>
                           </div>
-                          <p className="text-xs text-muted-foreground">{remaining} crédit{remaining > 1 ? "s" : ""} restant{remaining > 1 ? "s" : ""}</p>
+                          <p className="text-xs text-muted-foreground">{remaining} carte{remaining > 1 ? "s" : ""} yoga restante{remaining > 1 ? "s" : ""}</p>
                         </div>
                       );
                     })}
@@ -371,6 +371,16 @@ export default function MonEspace() {
                   <Button size="sm" className="text-xs mt-2" onClick={saveProfile}>Sauvegarder</Button>
                 )}
               </div>
+
+              {/* Déconnexion */}
+              <Button
+                variant="outline"
+                className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                onClick={() => { setCurrentProfile(null); navigate("/"); }}
+              >
+                <LogOut className="h-4 w-4" />
+                Se déconnecter
+              </Button>
             </div>
           )}
         </>
