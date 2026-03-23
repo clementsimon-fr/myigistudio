@@ -1061,13 +1061,21 @@ export default function Reserver() {
                       ) : <GuestTarifBlock />}
 
                       <div className="grid gap-2 mt-4">
+                        {/* Connected user with yoga cards: use a card */}
+                        {currentProfile && isYoga && currentProfile.credits > 0 && (
+                          <Button onClick={handleReserveWithCard} className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                            <ShoppingCart className="h-4 w-4" /> Utiliser 1 carte yoga
+                          </Button>
+                        )}
                         <Button onClick={() => {
                           setShowPaymentConfirm(true);
                           setTimeout(() => {
                             const el = document.getElementById("conditions-section");
                             if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
                           }, 100);
-                        }} className="w-full gap-2 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
+                        }} className={`w-full gap-2 ${currentProfile && isYoga && currentProfile.credits > 0 ? "" : "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90"}`}
+                          variant={currentProfile && isYoga && currentProfile.credits > 0 ? "outline" : "default"}
+                        >
                           <ShoppingCart className="h-4 w-4" /> Commander
                         </Button>
                         <Button variant="outline" className="w-full gap-2" onClick={() => setShowVoucherPopup(true)}>
