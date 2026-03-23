@@ -260,10 +260,7 @@ export default function AdminContenu() {
           </div>
         </div>
 
-        <Button className="gap-2" onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Enregistrer tout
-        </Button>
+{/* Auto-save: no manual save button needed */}
       </div>
     </AdminLayout>
   );
