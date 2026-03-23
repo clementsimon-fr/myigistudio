@@ -48,7 +48,6 @@ interface ActivityOption {
 }
 
 const FILTER_ICONS = [
-  { key: "filter_icon_tout", label: "Tout" },
   { key: "filter_icon_yoga", label: "Yoga" },
   { key: "filter_icon_poterie", label: "Poterie" },
   { key: "filter_icon_bien_etre", label: "Atelier" },
