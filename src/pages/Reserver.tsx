@@ -986,7 +986,7 @@ export default function Reserver() {
                     <DateInfoBlock />
                   </div>
 
-                  {/* Section 3: Participant(s) */}
+                    {/* Section 3: Participant(s) */}
                   <div>
                     <p className="text-sm font-semibold text-foreground mb-2">3. Participant(s)</p>
                     <div className="rounded-lg bg-muted/50 p-4 space-y-4">
@@ -1028,7 +1028,7 @@ export default function Reserver() {
                         </>
                       )}
 
-                      {/* === LOGGED-IN USER: show name + add participant === */}
+                      {/* === LOGGED-IN USER: show name + add participant directly === */}
                       {currentProfile && (
                         <>
                           <div className="rounded-lg border bg-card p-3 text-sm">
@@ -1048,16 +1048,34 @@ export default function Reserver() {
                   {(guestSubmitted || currentProfile) && (
                     <div>
                       <p className="text-sm font-semibold text-foreground mb-2">4. Tarif</p>
-                      {currentProfile ? <TarifBlock /> : <GuestTarifBlock />}
+                      {currentProfile ? (
+                        <>
+                          <TarifBlock />
+                          {/* Show remaining yoga cards for connected user */}
+                          {isYoga && currentProfile.credits > 0 && (
+                            <div className="mt-2 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">
+                              <strong>{currentProfile.credits}</strong> carte{currentProfile.credits > 1 ? "s" : ""} yoga restante{currentProfile.credits > 1 ? "s" : ""}
+                            </div>
+                          )}
+                        </>
+                      ) : <GuestTarifBlock />}
 
                       <div className="grid gap-2 mt-4">
+                        {/* Connected user with yoga cards: use a card */}
+                        {currentProfile && isYoga && currentProfile.credits > 0 && (
+                          <Button onClick={handleReserveWithCard} className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                            <ShoppingCart className="h-4 w-4" /> Utiliser 1 carte yoga
+                          </Button>
+                        )}
                         <Button onClick={() => {
                           setShowPaymentConfirm(true);
                           setTimeout(() => {
                             const el = document.getElementById("conditions-section");
                             if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
                           }, 100);
-                        }} className="w-full gap-2 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
+                        }} className={`w-full gap-2 ${currentProfile && isYoga && currentProfile.credits > 0 ? "" : "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90"}`}
+                          variant={currentProfile && isYoga && currentProfile.credits > 0 ? "outline" : "default"}
+                        >
                           <ShoppingCart className="h-4 w-4" /> Commander
                         </Button>
                         <Button variant="outline" className="w-full gap-2" onClick={() => setShowVoucherPopup(true)}>
@@ -1070,47 +1088,50 @@ export default function Reserver() {
                         )}
                       </div>
 
-                      {/* Inline conditions for payment confirmation */}
+                      {/* Section 5: Conditions */}
                       {showPaymentConfirm && (
-                        <div id="conditions-section" className="mt-4 space-y-3">
-                          {applicableConditions.length > 0 && (
-                            <>
-                              <Accordion type="multiple" className="w-full">
-                                {applicableConditions.map(c => (
-                                  <AccordionItem key={c.id} value={c.id} className="border rounded-lg bg-muted/30 px-3">
-                                    <AccordionTrigger className="py-2 text-xs font-semibold text-primary-dark hover:no-underline">
-                                      {c.title}
-                                    </AccordionTrigger>
-                                    <AccordionContent>
-                                      <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{c.content}</p>
-                                    </AccordionContent>
-                                  </AccordionItem>
-                                ))}
-                              </Accordion>
-                              <div className="flex items-start gap-2">
-                                <Checkbox
-                                  id="inline-conditions"
-                                  checked={conditionsAccepted}
-                                  onCheckedChange={(v) => setConditionsAccepted(!!v)}
-                                />
-                                <label htmlFor="inline-conditions" className="text-xs cursor-pointer leading-tight text-muted-foreground">
-                                  J'ai lu et j'accepte les conditions ci-dessus
-                                </label>
-                              </div>
-                            </>
-                          )}
-                          <Button
-                            onClick={() => {
-                              if (applicableConditions.length > 0 && !conditionsAccepted) {
-                                toast({ title: "Veuillez accepter les conditions pour continuer", variant: "destructive" });
-                                return;
-                              }
-                              goToStep("payment");
-                            }}
-                            className="w-full h-11 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-2 text-base font-semibold"
-                          >
-                            Continuer
-                          </Button>
+                        <div className="mt-6 space-y-4">
+                          <p id="conditions-section" className="text-sm font-semibold text-foreground">5. Valider les conditions</p>
+                          <div className="rounded-lg bg-muted/50 p-4 space-y-3">
+                            {applicableConditions.length > 0 && (
+                              <>
+                                <Accordion type="multiple" className="w-full">
+                                  {applicableConditions.map(c => (
+                                    <AccordionItem key={c.id} value={c.id} className="border rounded-lg bg-muted/30 px-3">
+                                      <AccordionTrigger className="py-2 text-xs font-semibold text-primary-dark hover:no-underline">
+                                        {c.title}
+                                      </AccordionTrigger>
+                                      <AccordionContent>
+                                        <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{c.content}</p>
+                                      </AccordionContent>
+                                    </AccordionItem>
+                                  ))}
+                                </Accordion>
+                                <div className="flex items-start gap-2">
+                                  <Checkbox
+                                    id="inline-conditions"
+                                    checked={conditionsAccepted}
+                                    onCheckedChange={(v) => setConditionsAccepted(!!v)}
+                                  />
+                                  <label htmlFor="inline-conditions" className="text-xs cursor-pointer leading-tight text-muted-foreground">
+                                    J'ai lu et j'accepte les conditions ci-dessus
+                                  </label>
+                                </div>
+                              </>
+                            )}
+                            <Button
+                              onClick={() => {
+                                if (applicableConditions.length > 0 && !conditionsAccepted) {
+                                  toast({ title: "Veuillez accepter les conditions pour continuer", variant: "destructive" });
+                                  return;
+                                }
+                                handleBuyUnit();
+                              }}
+                              className="w-full h-11 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-2 text-base font-semibold"
+                            >
+                              Continuer
+                            </Button>
+                          </div>
                         </div>
                       )}
 
@@ -1214,7 +1235,14 @@ export default function Reserver() {
               </div>
 
               <Button
-                onClick={handlePay}
+                onClick={() => {
+                  const totalP = 1 + extraParticipants.filter(p => p.firstName.trim()).length;
+                  const price = selectedSlotData.price || unitPrice || 0;
+                  const totalPrice = price * totalP;
+                  setStripeAmount(totalPrice);
+                  setStripeDescription(`${selectedSlotData.name} — ${totalP > 1 ? `${totalP} participants` : "1 participant"}`);
+                  setShowStripeModal(true);
+                }}
                 disabled={submitting}
                 className="w-full h-12 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-2 text-base font-semibold"
               >
