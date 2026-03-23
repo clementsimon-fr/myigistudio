@@ -65,6 +65,7 @@ export default function Discover() {
     if (params?.id) urlParams.set("id", params.id);
     if (params?.date) urlParams.set("date", params.date);
     navigate(`/reserver?${urlParams.toString()}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, [navigate]);
 
   return (

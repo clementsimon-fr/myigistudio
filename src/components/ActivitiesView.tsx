@@ -297,6 +297,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
       urlParams.set("type", "workshop");
       urlParams.set("name", ws.name);
       navigate(`/reserver?${urlParams.toString()}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
