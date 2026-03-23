@@ -371,6 +371,16 @@ export default function MonEspace() {
                   <Button size="sm" className="text-xs mt-2" onClick={saveProfile}>Sauvegarder</Button>
                 )}
               </div>
+
+              {/* Déconnexion */}
+              <Button
+                variant="outline"
+                className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                onClick={() => { setCurrentProfile(null); navigate("/"); }}
+              >
+                <LogOut className="h-4 w-4" />
+                Se déconnecter
+              </Button>
             </div>
           )}
         </>
