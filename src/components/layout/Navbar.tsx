@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, User, CalendarDays, CreditCard, LogOut, Settings, Home } from "lucide-react";
+import { Menu, X, User, CalendarDays, CreditCard, LogOut, Settings, Home, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -52,6 +52,8 @@ export default function Navbar() {
                 >
                   <User className="h-4 w-4" />
                   {currentProfile.name}
+                  <ChevronRight className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium">Mon espace</span>
                 </button>
               )}
 
@@ -60,53 +62,9 @@ export default function Navbar() {
                   <Settings className="h-3.5 w-3.5" /> Espace admin
                 </Button>
               )}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-1.5">
-                    <Menu className="h-4 w-4" />
-                    Menu
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
-                  <DropdownMenuItem onClick={() => navigate("/")} className="flex items-center gap-2 cursor-pointer">
-                    <Home className="h-4 w-4" />
-                    Accueil
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-
-                  {isAdminLike && (
-                    <>
-                      <DropdownMenuItem onClick={() => navigate("/admin/bonjour")} className="flex items-center gap-2 cursor-pointer">
-                        <Settings className="h-4 w-4" />
-                        Espace admin
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
-                  {isClient && (
-                    <>
-                      <p className="px-2 py-1.5 text-xs text-muted-foreground font-normal">Mon espace</p>
-                      {clientSections.map((item) => (
-                        <DropdownMenuItem key={item.to} onClick={() => navigate(item.to)} className="flex items-center gap-2 cursor-pointer">
-                          <item.icon className="h-4 w-4" />
-                          {item.label}
-                        </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
-                  <DropdownMenuItem
-                    className="flex items-center gap-2 text-destructive cursor-pointer"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Déconnexion
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
 
-            {/* Mobile: connected icon that links to mon-espace + menu */}
+            {/* Mobile: connected badge that links to mon-espace */}
             <div className="md:hidden flex items-center gap-2">
               {isClient && (
                 <button
@@ -115,11 +73,15 @@ export default function Navbar() {
                 >
                   <User className="h-3.5 w-3.5" />
                   {currentProfile.name}
+                  <ChevronRight className="h-3 w-3" />
+                  <span className="text-[10px] font-medium">Mon espace</span>
                 </button>
               )}
-              <button className="flex items-center gap-1 p-2 text-sm font-medium" onClick={() => setOpen(!open)} aria-label="Menu">
-                {open ? <X className="h-5 w-5" /> : <><Menu className="h-5 w-5" /> <span className="text-xs">Menu</span></>}
-              </button>
+              {isAdminLike && (
+                <button className="flex items-center gap-1 p-2 text-sm font-medium" onClick={() => setOpen(!open)} aria-label="Menu">
+                  {open ? <X className="h-5 w-5" /> : <><Menu className="h-5 w-5" /> <span className="text-xs">Menu</span></>}
+                </button>
+              )}
             </div>
           </>
         ) : (
@@ -133,11 +95,9 @@ export default function Navbar() {
         )}
       </div>
 
-      {/* Mobile menu */}
-      {open && isLoggedIn && (
+      {/* Mobile menu — only for admin-like users */}
+      {open && isLoggedIn && isAdminLike && (
         <div className="md:hidden border-t bg-background p-4 space-y-2">
-          <p className="text-xs text-muted-foreground px-2 mb-1">Connecté : {currentProfile.name}</p>
-
           <Link to="/" onClick={() => setOpen(false)}>
             <Button variant="ghost" className="w-full justify-start gap-2">
               <Home className="h-4 w-4" />
@@ -145,28 +105,12 @@ export default function Navbar() {
             </Button>
           </Link>
 
-          {isAdminLike && (
-            <Link to="/admin/bonjour" onClick={() => setOpen(false)}>
-              <Button variant="ghost" className="w-full justify-start gap-2">
-                <Settings className="h-4 w-4" />
-                Espace admin
-              </Button>
-            </Link>
-          )}
-
-          {isClient && (
-            <>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground px-2 pt-2 font-semibold">Mon espace</p>
-              {clientSections.map((item) => (
-                <Link key={item.to} to={item.to} onClick={() => setOpen(false)}>
-                  <Button variant="ghost" className="w-full justify-start gap-2">
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                  </Button>
-                </Link>
-              ))}
-            </>
-          )}
+          <Link to="/admin/bonjour" onClick={() => setOpen(false)}>
+            <Button variant="ghost" className="w-full justify-start gap-2">
+              <Settings className="h-4 w-4" />
+              Espace admin
+            </Button>
+          </Link>
 
           <div className="pt-2 border-t space-y-1">
             <Button variant="ghost" className="w-full justify-start gap-2 text-destructive" onClick={() => { handleLogout(); setOpen(false); }}>
