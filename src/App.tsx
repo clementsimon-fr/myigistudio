@@ -61,6 +61,7 @@ const App = () => (
             <Route path="/admin/contrat" element={<AdminContrat />} />
             <Route path="/admin/planning-type" element={<AdminPlanningType />} />
             <Route path="/admin/parametres" element={<AdminParametres />} />
+            <Route path="/test" element={<TestUX />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

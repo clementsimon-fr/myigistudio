@@ -20,6 +20,7 @@ export default function Footer() {
             <Link to="/" className="block opacity-80 hover:opacity-100 transition-opacity">Activités</Link>
             <Link to="/calendrier" className="block opacity-80 hover:opacity-100 transition-opacity">Planning & réservation</Link>
             <Link to="/login" className="block opacity-80 hover:opacity-100 transition-opacity">Mon Espace</Link>
+            <Link to="/test" className="block opacity-80 hover:opacity-100 transition-opacity">Test</Link>
           </div>
         </div>
 
