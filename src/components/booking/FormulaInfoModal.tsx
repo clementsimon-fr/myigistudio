@@ -19,8 +19,10 @@ interface FormulaInfoModalProps {
   onClose: () => void;
   onCreateAccount: () => void;
   onContinueWithout: () => void;
+  onSelectCard?: (card: PricingCard) => void;
   pricingCards: PricingCard[];
   unitPrice?: number;
+  isConnected?: boolean;
 }
 
 export default function FormulaInfoModal({ open, onClose, onCreateAccount, onContinueWithout, pricingCards, unitPrice }: FormulaInfoModalProps) {
