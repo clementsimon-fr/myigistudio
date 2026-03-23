@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { DemoProvider } from "@/contexts/DemoContext";
 import Discover from "./pages/Discover";
+import TestUX from "./pages/TestUX";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import MonEspace from "./pages/MonEspace";
