@@ -970,8 +970,8 @@ export default function Reserver() {
             </div>
           )}
 
-          {/* ═══ STEP: SUMMARY (visitor not logged in, date chosen) ═══ */}
-          {!datePickerMode && !courseDatePickerMode && bookingStep === "summary" && !currentProfile && (
+          {/* ═══ STEP: SUMMARY — unified for visitor AND logged-in user ═══ */}
+          {!datePickerMode && !courseDatePickerMode && bookingStep === "summary" && (
             <div className="space-y-6">
               {selectedSlotData && selectedDate && (
                 <>
@@ -985,74 +985,122 @@ export default function Reserver() {
                   <div>
                     <p className="text-sm font-semibold text-foreground mb-2">3. Participant(s)</p>
                     <div className="rounded-lg bg-muted/50 p-4 space-y-4">
-                      <AddParticipant
-                        participants={extraParticipants}
-                        onChange={setExtraParticipants}
-                      />
 
-                      {/* Guest form inline OR account choice */}
-                      {!guestFormVisible && !guestSubmitted && (
-                        <AccountChoice
-                          onLogin={() => goToStep("login")}
-                          onRegister={() => goToStep("register")}
-                          onGuest={() => setGuestFormVisible(true)}
-                        />
+                      {/* === VISITOR (not logged in, no guest name yet) === */}
+                      {!currentProfile && !guestSubmitted && (
+                        <>
+                          {/* Step A: Account choice first */}
+                          {!guestFormVisible && (
+                            <AccountChoice
+                              onLogin={() => goToStep("login")}
+                              onRegister={() => goToStep("register")}
+                              onGuest={() => setGuestFormVisible(true)}
+                            />
+                          )}
+
+                          {/* Step B: Guest form inline */}
+                          {guestFormVisible && (
+                            <GuestForm
+                              onSubmit={handleGuestContinue}
+                              onBack={() => {}}
+                              hideBack
+                            />
+                          )}
+                        </>
                       )}
 
-                      {guestFormVisible && !guestSubmitted && (
-                        <GuestForm
-                          onSubmit={handleGuestContinue}
-                          onBack={() => {}}
-                          hideBack
-                        />
+                      {/* === VISITOR after guest submitted: show name + add participant === */}
+                      {!currentProfile && guestSubmitted && (
+                        <>
+                          <div className="rounded-lg border bg-card p-3 text-sm">
+                            <span className="text-muted-foreground">Participant : </span>
+                            <strong className="text-foreground">{guestName}</strong>
+                          </div>
+                          <AddParticipant
+                            participants={extraParticipants}
+                            onChange={setExtraParticipants}
+                          />
+                        </>
                       )}
 
-                      {guestSubmitted && (
-                        <div className="rounded-lg border bg-card p-3 text-sm text-center text-muted-foreground">
-                          Invité : <strong className="text-foreground">{guestName}</strong>
-                        </div>
+                      {/* === LOGGED-IN USER: show name + add participant === */}
+                      {currentProfile && (
+                        <>
+                          <div className="rounded-lg border bg-card p-3 text-sm">
+                            <span className="text-muted-foreground">Participant : </span>
+                            <strong className="text-foreground">{currentProfile.name}</strong>
+                          </div>
+                          <AddParticipant
+                            participants={extraParticipants}
+                            onChange={setExtraParticipants}
+                          />
+                        </>
                       )}
                     </div>
                   </div>
 
-                  {/* Section 4: Tarifs (only after guest submitted) */}
-                  {guestSubmitted && (
+                  {/* Section 4: Tarif — only when identity is known */}
+                  {(guestSubmitted || currentProfile) && (
                     <div>
                       <p className="text-sm font-semibold text-foreground mb-2">4. Tarif</p>
-                      <GuestTarifBlock />
+                      {currentProfile ? <TarifBlock /> : <GuestTarifBlock />}
 
                       <div className="grid gap-2 mt-4">
-                        <Button onClick={handleBuyUnit} className="w-full gap-2 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
+                        <Button onClick={() => setShowPaymentConfirm(true)} className="w-full gap-2 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
                           <ShoppingCart className="h-4 w-4" /> Procéder au paiement
                         </Button>
-                        <Button variant="outline" className="w-full gap-2" onClick={() => setShowVoucherInline(!showVoucherInline)}>
+                        <Button variant="outline" className="w-full gap-2" onClick={() => setShowVoucherPopup(true)}>
                           <Gift className="h-4 w-4" /> Utiliser un bon cadeau
                         </Button>
-                        {showVoucherInline && (
-                          <div className="rounded-lg border bg-card p-4 space-y-3">
-                            <p className="text-sm font-medium text-primary-dark flex items-center gap-1.5">
-                              <Gift className="h-4 w-4" /> Saisir un code bon cadeau
-                            </p>
-                            <div className="flex gap-2">
-                              <input
-                                placeholder="IGI-XXXXXXXX"
-                                value={voucherCodeInline}
-                                onChange={e => { setVoucherCodeInline(e.target.value.toUpperCase()); setVoucherStatus("idle"); }}
-                                className="flex-1 rounded-md border px-3 py-2 text-sm font-mono"
-                              />
-                              <Button size="sm" variant="outline" disabled={!voucherCodeInline.trim() || voucherStatus === "checking"} onClick={() => handleUseVoucher(voucherCodeInline)}>
-                                {voucherStatus === "checking" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Valider"}
-                              </Button>
-                            </div>
-                            {voucherStatus === "invalid" && <p className="text-xs text-destructive">Code invalide, expiré ou déjà utilisé</p>}
-                          </div>
-                        )}
                         {isYoga && pricingCards.length > 0 && (
                           <Button variant="outline" className="w-full gap-2" onClick={() => setShowFormulasInline(true)}>
                             <Eye className="h-4 w-4" /> Voir les formules carte yoga
                           </Button>
                         )}
                       </div>
+
+                      {/* Inline conditions for payment confirmation */}
+                      {showPaymentConfirm && applicableConditions.length > 0 && (
+                        <div className="mt-4 space-y-3">
+                          <Accordion type="multiple" className="w-full">
+                            {applicableConditions.map(c => (
+                              <AccordionItem key={c.id} value={c.id} className="border rounded-lg bg-muted/30 px-3">
+                                <AccordionTrigger className="py-2 text-xs font-semibold text-primary-dark hover:no-underline">
+                                  {c.title}
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                  <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{c.content}</p>
+                                </AccordionContent>
+                              </AccordionItem>
+                            ))}
+                          </Accordion>
+                          <div className="flex items-start gap-2">
+                            <Checkbox
+                              id="inline-conditions"
+                              checked={conditionsAccepted}
+                              onCheckedChange={(v) => setConditionsAccepted(!!v)}
+                            />
+                            <label htmlFor="inline-conditions" className="text-xs cursor-pointer leading-tight text-muted-foreground">
+                              J'ai lu et j'accepte les conditions ci-dessus
+                            </label>
+                          </div>
+                          <Button
+                            onClick={() => {
+                              if (applicableConditions.length > 0 && !conditionsAccepted) {
+                                toast({ title: "Veuillez accepter les conditions pour continuer", variant: "destructive" });
+                                return;
+                              }
+                              handleBuyUnit();
+                            }}
+                            className="w-full h-11 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-2 text-base font-semibold"
+                          >
+                            <ShoppingCart className="h-4 w-4" /> Confirmer le paiement
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Conditions for no-conditions case: direct payment */}
+                      {showPaymentConfirm && applicableConditions.length === 0 && (() => { handleBuyUnit(); setShowPaymentConfirm(false); return null; })()}
                     </div>
                   )}
                 </>
@@ -1070,36 +1118,9 @@ export default function Reserver() {
             <SignupBlock onSubmit={handleRegister} onBack={() => goToStep("summary")} registering={registering} />
           )}
 
-          {/* ═══ STEP: PURCHASE OPTIONS (logged in users) ═══ */}
+          {/* ═══ STEP: PURCHASE OPTIONS (logged-in buying cards) — kept for card purchase flow ═══ */}
           {bookingStep === "purchase_options" && (
             <div className="space-y-6">
-              {selectedSlotData && selectedDate && (
-                <>
-                  {/* Section 2: Date */}
-                  <div>
-                    <p className="text-sm font-semibold text-foreground mb-2">2. Votre date</p>
-                    <DateInfoBlock />
-                  </div>
-
-                  {/* Section 3: Add participant */}
-                  <div>
-                    <p className="text-sm font-semibold text-foreground mb-2">3. Participant(s)</p>
-                    <div className="rounded-lg bg-muted/50 p-4">
-                      <AddParticipant
-                        participants={extraParticipants}
-                        onChange={setExtraParticipants}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Section 4: Tarif */}
-                  <div>
-                    <p className="text-sm font-semibold text-foreground mb-2">4. Tarif</p>
-                    <TarifBlock />
-                  </div>
-                </>
-              )}
-
               <PurchaseOptions
                 userState={userState}
                 category={category}
@@ -1115,17 +1136,6 @@ export default function Reserver() {
                 voucherStatus={voucherStatus}
                 onVoucherCodeChange={() => setVoucherStatus("idle")}
               />
-
-              {isYoga && pricingCards.length > 0 && (
-                <FormulaInfoModal
-                  open={showFormulasInline}
-                  onClose={() => setShowFormulasInline(false)}
-                  onCreateAccount={() => { setShowFormulasInline(false); goToStep("register"); }}
-                  onContinueWithout={() => setShowFormulasInline(false)}
-                  pricingCards={pricingCards}
-                  unitPrice={unitPrice || undefined}
-                />
-              )}
             </div>
           )}
 
@@ -1151,8 +1161,8 @@ export default function Reserver() {
             />
           )}
 
-          {/* Formula modal for guest tarifs section */}
-          {isYoga && pricingCards.length > 0 && bookingStep === "summary" && (
+          {/* Formula modal */}
+          {isYoga && pricingCards.length > 0 && (
             <FormulaInfoModal
               open={showFormulasInline}
               onClose={() => setShowFormulasInline(false)}
@@ -1162,6 +1172,32 @@ export default function Reserver() {
               unitPrice={unitPrice || undefined}
             />
           )}
+
+          {/* Voucher popup */}
+          <Dialog open={showVoucherPopup} onOpenChange={setShowVoucherPopup}>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 font-display text-primary-dark">
+                  <Gift className="h-5 w-5" /> Bon cadeau
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 pt-2">
+                <p className="text-sm text-muted-foreground">Saisissez votre code de bon cadeau</p>
+                <div className="flex gap-2">
+                  <input
+                    placeholder="IGI-XXXXXXXX"
+                    value={voucherCodeInline}
+                    onChange={e => { setVoucherCodeInline(e.target.value.toUpperCase()); setVoucherStatus("idle"); }}
+                    className="flex-1 rounded-md border px-3 py-2 text-sm font-mono"
+                  />
+                  <Button size="sm" variant="outline" disabled={!voucherCodeInline.trim() || voucherStatus === "checking"} onClick={() => handleUseVoucher(voucherCodeInline)}>
+                    {voucherStatus === "checking" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Valider"}
+                  </Button>
+                </div>
+                {voucherStatus === "invalid" && <p className="text-xs text-destructive">Code invalide, expiré ou déjà utilisé</p>}
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </main>
       <Footer />
