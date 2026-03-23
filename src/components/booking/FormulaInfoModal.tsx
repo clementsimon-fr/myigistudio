@@ -25,7 +25,7 @@ interface FormulaInfoModalProps {
   isConnected?: boolean;
 }
 
-export default function FormulaInfoModal({ open, onClose, onCreateAccount, onContinueWithout, pricingCards, unitPrice }: FormulaInfoModalProps) {
+export default function FormulaInfoModal({ open, onClose, onCreateAccount, onContinueWithout, onSelectCard, pricingCards, unitPrice, isConnected }: FormulaInfoModalProps) {
   const infoRef = useRef<HTMLDivElement>(null);
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
