@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +48,6 @@ interface ActivityOption {
 }
 
 const FILTER_ICONS = [
-  { key: "filter_icon_tout", label: "Tout" },
   { key: "filter_icon_yoga", label: "Yoga" },
   { key: "filter_icon_poterie", label: "Poterie" },
   { key: "filter_icon_bien_etre", label: "Atelier" },
@@ -165,6 +164,22 @@ export default function AdminContenu() {
     setSaving(false);
   };
 
+  // Auto-save with debounce
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialLoadDone = useRef(false);
+
+  useEffect(() => {
+    if (loading || !initialLoadDone.current) {
+      if (!loading) initialLoadDone.current = true;
+      return;
+    }
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      handleSave();
+    }, 2000);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [values]);
+
   const hasFeaturedEvent = !!(values.featured_event_activity_id?.trim() || values.featured_event_title?.trim());
 
   if (loading) {
@@ -261,10 +276,7 @@ export default function AdminContenu() {
           </div>
         </div>
 
-        <Button className="gap-2" onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Enregistrer tout
-        </Button>
+{/* Auto-save: no manual save button needed */}
       </div>
     </AdminLayout>
   );

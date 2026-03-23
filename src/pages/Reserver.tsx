@@ -1052,11 +1052,11 @@ export default function Reserver() {
 
                       <div className="grid gap-2 mt-4">
                         <Button onClick={() => {
-                          if (applicableConditions.length === 0) {
-                            setShowPaymentConfirm(true);
-                          } else {
-                            setShowPaymentConfirm(true);
-                          }
+                          setShowPaymentConfirm(true);
+                          setTimeout(() => {
+                            const el = document.getElementById("conditions-section");
+                            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }, 100);
                         }} className="w-full gap-2 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
                           <ShoppingCart className="h-4 w-4" /> Commander
                         </Button>
@@ -1072,7 +1072,7 @@ export default function Reserver() {
 
                       {/* Inline conditions for payment confirmation */}
                       {showPaymentConfirm && (
-                        <div className="mt-4 space-y-3">
+                        <div id="conditions-section" className="mt-4 space-y-3">
                           {applicableConditions.length > 0 && (
                             <>
                               <Accordion type="multiple" className="w-full">
@@ -1152,49 +1152,69 @@ export default function Reserver() {
             </div>
           )}
 
-          {/* ═══ STEP: PAYMENT — Recap page with confirm button ═══ */}
+          {/* ═══ STEP: PAYMENT — Full recap page with confirm button ═══ */}
           {bookingStep === "payment" && selectedSlotData && selectedDate && (
             <div className="space-y-6">
               <h2 className="text-xl font-display font-semibold text-foreground">Récapitulatif de votre commande</h2>
 
-              <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Activité</span>
-                  <span className="font-medium">{selectedSlotData.name}</span>
+              <div className="rounded-lg bg-muted/50 p-4 space-y-4 text-sm">
+                {/* Activity */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Activité</p>
+                  <p className="font-medium">{selectedSlotData.name}</p>
+                  {activity?.description && <p className="text-xs text-muted-foreground mt-0.5">{activity.description}</p>}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Date</span>
-                  <span className="font-medium">{selectedDate.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Horaire</span>
-                  <span className="font-medium">{selectedSlotData.time?.slice(0, 5).replace(":", "h")} - {selectedSlotData.end_time?.slice(0, 5).replace(":", "h")}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Participant</span>
-                  <span className="font-medium">{currentProfile?.name || guestName || "—"}</span>
-                </div>
-                {extraParticipants.filter(p => p.firstName.trim()).length > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Participants supplémentaires</span>
-                    <span className="font-medium">{extraParticipants.filter(p => p.firstName.trim()).map(p => `${p.firstName} ${p.lastName}`).join(", ")}</span>
-                  </div>
-                )}
-                {(() => {
-                  const totalP = 1 + extraParticipants.filter(p => p.firstName.trim()).length;
-                  const price = selectedSlotData.price || unitPrice || 0;
-                  const total = price * totalP;
-                  return (
-                    <div className="flex justify-between border-t pt-2 mt-1">
-                      <span className="text-muted-foreground">Montant total</span>
-                      <span className="font-bold text-lg">{total} €</span>
+
+                <div className="border-t" />
+
+                {/* Date */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Date & horaire</p>
+                  {selectedSlotData.linkedDates && selectedSlotData.linkedDates.length > 1 ? (
+                    <div>
+                      {[...new Set(selectedSlotData.linkedDates)].map(d => (
+                        <p key={d} className="font-medium capitalize">
+                          {new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                        </p>
+                      ))}
                     </div>
-                  );
-                })()}
+                  ) : (
+                    <p className="font-medium capitalize">{selectedDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</p>
+                  )}
+                  <p className="text-muted-foreground">{selectedSlotData.time?.slice(0, 5).replace(":", "h")} - {selectedSlotData.end_time?.slice(0, 5).replace(":", "h")}</p>
+                  {selectedSlotData.duration && <p className="text-muted-foreground">Durée : {selectedSlotData.duration}</p>}
+                  <p className="text-muted-foreground">Lieu : Studio MyIgi</p>
+                </div>
+
+                <div className="border-t" />
+
+                {/* Participants */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Participant(s)</p>
+                  <p className="font-medium">{currentProfile?.name || guestName || "—"}</p>
+                  {extraParticipants.filter(p => p.firstName.trim()).map((p, i) => (
+                    <p key={i} className="text-muted-foreground">{p.firstName} {p.lastName}</p>
+                  ))}
+                </div>
+
+                <div className="border-t" />
+
+                {/* Total */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Montant total</p>
+                  {(() => {
+                    const totalP = 1 + extraParticipants.filter(p => p.firstName.trim()).length;
+                    const price = selectedSlotData.price || unitPrice || 0;
+                    const total = price * totalP;
+                    return (
+                      <p className="font-bold text-lg">{total} €</p>
+                    );
+                  })()}
+                </div>
               </div>
 
               <Button
-                onClick={handleBuyUnit}
+                onClick={handlePay}
                 disabled={submitting}
                 className="w-full h-12 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-2 text-base font-semibold"
               >
