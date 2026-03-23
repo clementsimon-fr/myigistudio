@@ -317,11 +317,18 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
               </h3>
               <button onClick={() => setYogaMonthOffset(o => o + 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>
             </div>
-            <div className="mb-8 max-w-2xl mx-auto space-y-4">
+            <div className="mb-8 max-w-2xl mx-auto">
               <RecurringGrid courses={courses.filter(c => c.category === "yoga" && (subFilter === "all" || c.name === subFilter))} schedules={schedules} onEventClick={handleProgrammeEventClick} />
-              {workshops.filter(w => w.category === "yoga" && (subFilter === "all" || w.name === subFilter)).length > 0 && (
-                <MonthWorkshops workshops={workshops.filter(w => w.category === "yoga" && (subFilter === "all" || w.name === subFilter))} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots monthDate={yogaMonthDate} />
-              )}
+              {(() => {
+                const yogaWs = workshops.filter(w => w.category === "yoga" && (subFilter === "all" || w.name === subFilter));
+                const hasYogaWsThisMonth = yogaWs.length > 0;
+                if (!hasYogaWsThisMonth) return null;
+                return (
+                  <div className="mt-4">
+                    <MonthWorkshops workshops={yogaWs} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots monthDate={yogaMonthDate} />
+                  </div>
+                );
+              })()}
             </div>
             <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">

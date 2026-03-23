@@ -70,7 +70,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
       <div className="bg-emerald-50/60 backdrop-blur border-b">
         <div className="container pb-1.5 pt-1.5">
           {/* Title */}
-          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1 text-left">Catégorie</p>
+          
           <div className="flex items-center justify-center gap-1 flex-wrap">
             {VISIBLE_FILTERS.map(f => {
               const isActive = filter === f.value;

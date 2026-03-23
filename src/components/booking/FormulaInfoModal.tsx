@@ -50,7 +50,7 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+      <DialogContent ref={dialogContentRef} className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-primary-dark">
             <Sparkles className="h-5 w-5" /> Formules Cartes Yoga
