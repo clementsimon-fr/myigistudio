@@ -1152,26 +1152,56 @@ export default function Reserver() {
             </div>
           )}
 
-          {/* ═══ STEP: PAYMENT ═══ */}
+          {/* ═══ STEP: PAYMENT — Recap page with confirm button ═══ */}
           {bookingStep === "payment" && selectedSlotData && selectedDate && (
-            <PaymentSummary
-              activityName={selectedSlotData.name}
-              date={selectedDate}
-              time={selectedSlotData.time}
-              endTime={selectedSlotData.end_time}
-              mode={paymentMode}
-              amount={paymentAmount}
-              conditions={applicableConditions}
-              conditionsAccepted={conditionsAccepted}
-              onConditionsChange={setConditionsAccepted}
-              onPay={handlePay}
-              submitting={submitting}
-              cardName={pendingCard?.name}
-              cardSessions={pendingCard?.sessions}
-              existingCredits={currentProfile?.credits || 0}
-              mainParticipantName={currentProfile?.name || guestName || undefined}
-              extraParticipants={extraParticipants}
-            />
+            <div className="space-y-6">
+              <h2 className="text-xl font-display font-semibold text-foreground">Récapitulatif de votre commande</h2>
+
+              <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Activité</span>
+                  <span className="font-medium">{selectedSlotData.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Date</span>
+                  <span className="font-medium">{selectedDate.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Horaire</span>
+                  <span className="font-medium">{selectedSlotData.time?.slice(0, 5).replace(":", "h")} - {selectedSlotData.end_time?.slice(0, 5).replace(":", "h")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Participant</span>
+                  <span className="font-medium">{currentProfile?.name || guestName || "—"}</span>
+                </div>
+                {extraParticipants.filter(p => p.firstName.trim()).length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Participants supplémentaires</span>
+                    <span className="font-medium">{extraParticipants.filter(p => p.firstName.trim()).map(p => `${p.firstName} ${p.lastName}`).join(", ")}</span>
+                  </div>
+                )}
+                {(() => {
+                  const totalP = 1 + extraParticipants.filter(p => p.firstName.trim()).length;
+                  const price = selectedSlotData.price || unitPrice || 0;
+                  const total = price * totalP;
+                  return (
+                    <div className="flex justify-between border-t pt-2 mt-1">
+                      <span className="text-muted-foreground">Montant total</span>
+                      <span className="font-bold text-lg">{total} €</span>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <Button
+                onClick={handleBuyUnit}
+                disabled={submitting}
+                className="w-full h-12 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-2 text-base font-semibold"
+              >
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+                Confirmer le paiement
+              </Button>
+            </div>
           )}
 
           {/* Formula modal */}
