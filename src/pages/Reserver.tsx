@@ -3,17 +3,19 @@ import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoContext } from "@/contexts/DemoContext";
 import MockStripeModal from "@/components/demo/MockStripeModal";
-import BookingSummary from "@/components/booking/BookingSummary";
+
 import AccountChoice from "@/components/booking/AccountChoice";
 import SignupBlock from "@/components/booking/SignupBlock";
 import LoginBlock from "@/components/booking/LoginBlock";
 import GuestForm from "@/components/booking/GuestForm";
 import PurchaseOptions from "@/components/booking/PurchaseOptions";
+import FormulaInfoModal from "@/components/booking/FormulaInfoModal";
 import PaymentSummary from "@/components/booking/PaymentSummary";
 import ConfirmationPopup from "@/components/booking/ConfirmationPopup";
 import AddParticipant, { type ExtraParticipant } from "@/components/booking/AddParticipant";
@@ -288,6 +290,8 @@ export default function Reserver() {
   const [voucherStatus, setVoucherStatus] = useState<"idle" | "valid" | "invalid" | "checking">("idle");
 
   const [pendingCard, setPendingCard] = useState<PricingCard | null>(null);
+  const [showActivityDetails, setShowActivityDetails] = useState(false);
+  const [showFormulasInline, setShowFormulasInline] = useState(false);
 
   // ─── Browser back button handling ───
   // Push history state for each step so the phone back button navigates steps
@@ -764,6 +768,126 @@ export default function Reserver() {
     }
   };
 
+  // Activity info block (reusable)
+  const ActivityInfoBlock = () => (
+    <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-sm">
+      {activity?.description && (
+        <p className="text-xs text-muted-foreground">{activity.description}</p>
+      )}
+      {(activity?.long_description || instructorData?.name || activity?.instructor) && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full gap-1.5 text-xs font-medium"
+          onClick={() => setShowActivityDetails(!showActivityDetails)}
+        >
+          {showActivityDetails ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          {showActivityDetails ? "Masquer les détails" : "Afficher plus d'informations"}
+        </Button>
+      )}
+      {showActivityDetails && (
+        <div className="space-y-3 pt-2 border-t mt-2">
+          {activity?.long_description && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-1">Description détaillée</p>
+              <p className="text-xs text-muted-foreground whitespace-pre-line">{activity.long_description}</p>
+            </div>
+          )}
+          {(instructorData?.name || activity?.instructor) && (
+            <div className="flex items-center gap-2">
+              <Avatar className="h-8 w-8">
+                {instructorData?.photo_url ? <AvatarImage src={instructorData.photo_url} alt={instructorData.name} /> : null}
+                <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                  {(instructorData?.name || activity?.instructor || "I").charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-xs font-medium">{instructorData?.name || activity?.instructor}</p>
+                <p className="text-[10px] text-muted-foreground">Intervenant(e)</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // Date info block (after selection)
+  const DateInfoBlock = () => {
+    if (!selectedSlotData || !selectedDate) return null;
+    return (
+      <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Date</span>
+          {selectedSlotData.linkedDates && selectedSlotData.linkedDates.length > 1 ? (
+            <div className="text-right">
+              {[...new Set(selectedSlotData.linkedDates)].map(d => (
+                <div key={d} className="font-medium">
+                  {new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <span className="font-medium">{selectedDate.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}</span>
+          )}
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Horaire</span>
+          <span className="font-medium">{selectedSlotData.time?.slice(0, 5).replace(":", "h")} - {selectedSlotData.end_time?.slice(0, 5).replace(":", "h")}</span>
+        </div>
+        {selectedSlotData.duration && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Durée</span>
+            <span className="font-medium">{selectedSlotData.duration}</span>
+          </div>
+        )}
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Lieu</span>
+          <span className="font-medium">Studio MyIgi</span>
+        </div>
+      </div>
+    );
+  };
+
+  // Tarif block
+  const TarifBlock = () => {
+    if (!selectedSlotData) return null;
+    const totalParticipants = 1 + extraParticipants.filter(p => p.firstName.trim()).length;
+    const price = selectedSlotData.price || unitPrice || undefined;
+    return (
+      <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Prix unitaire</span>
+          <span className="font-semibold text-foreground flex items-center gap-1.5">
+            {price} €
+            {isYoga && pricingCards.length > 0 && (
+              <button
+                className="inline-flex items-center gap-1 text-xs font-normal text-primary hover:underline"
+                onClick={() => setShowFormulasInline(true)}
+              >
+                ou 1 carte <Info className="h-3 w-3" />
+              </button>
+            )}
+          </span>
+        </div>
+        {totalParticipants > 1 && price && (
+          <div className="flex justify-between border-t pt-2 mt-1">
+            <span className="text-muted-foreground">Total ({totalParticipants} participants)</span>
+            <span className="font-semibold text-foreground">
+              {(price * totalParticipants)} € {isYoga && pricingCards.length > 0 && `ou ${totalParticipants} cartes`}
+            </span>
+          </div>
+        )}
+        {selectedSlotData.inclusions && (
+          <div className="bg-emerald-50 rounded-md px-3 py-2 text-xs text-emerald-700 flex items-start gap-1.5">
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>{selectedSlotData.inclusions}</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // ─── RENDER ───
   return (
     <div className="min-h-screen flex flex-col">
@@ -777,17 +901,18 @@ export default function Reserver() {
             </Button>
             
             {/* Step 1: Activity name */}
-            <p className="text-sm font-semibold text-foreground mb-1">
+            <p className="text-sm font-semibold text-foreground mb-2">
               1. Votre activité : {activity.name}
             </p>
+            <ActivityInfoBlock />
 
             {currentProfile && (
-              <p className="text-xs text-primary-dark font-medium mt-1">
+              <p className="text-xs text-primary-dark font-medium mt-2">
                 Connecté en tant que <strong>{currentProfile.name}</strong>
               </p>
             )}
             {!currentProfile && guestName && (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-2">
                 Invité : <strong>{guestName}</strong>
               </p>
             )}
@@ -796,7 +921,7 @@ export default function Reserver() {
           {/* ═══ DATE PICKER for standalone workshops ═══ */}
           {datePickerMode && availableDates.length > 0 && (
             <div>
-              <p className="text-sm font-semibold text-foreground mb-3">2. Choisissez une date</p>
+              <p className="text-sm font-semibold text-foreground mb-3">2. Choisissez votre date</p>
               <WorkshopDatePicker dates={availableDates} onSelect={handleDateSelect} />
             </div>
           )}
@@ -804,34 +929,34 @@ export default function Reserver() {
           {/* ═══ COURSE DATE PICKER ═══ */}
           {courseDatePickerMode && upcomingCourseDates.length > 0 && (
             <div>
-              <p className="text-sm font-semibold text-foreground mb-3">2. Choisissez une date</p>
+              <p className="text-sm font-semibold text-foreground mb-3">2. Choisissez votre date</p>
               <CourseDatePicker dates={upcomingCourseDates} onSelect={handleCourseDateSelect} />
             </div>
           )}
 
-          {/* ═══ STEP: SUMMARY ═══ */}
+          {/* ═══ STEP: SUMMARY (visitor not logged in, date chosen) ═══ */}
           {!datePickerMode && !courseDatePickerMode && bookingStep === "summary" && !currentProfile && (
             <div className="space-y-6">
               {selectedSlotData && selectedDate && (
                 <>
-                  <BookingSummary
-                    activityName={selectedSlotData.name}
-                    date={selectedDate}
-                    time={selectedSlotData.time}
-                    endTime={selectedSlotData.end_time}
-                    duration={selectedSlotData.duration}
-                    price={selectedSlotData.price || unitPrice || undefined}
-                    category={category}
-                    isYoga={isYoga}
-                    pricingCards={pricingCards}
-                    inclusions={selectedSlotData.inclusions}
-                    longDescription={activity?.long_description}
-                    shortDescription={activity?.description}
-                    instructorName={instructorData?.name || activity?.instructor}
-                    instructorPhoto={instructorData?.photo_url}
-                    cardYogaCount={selectedSlotData.cardYogaCount}
-                    linkedDates={selectedSlotData.linkedDates}
+                  {/* Section 2: Date */}
+                  <div>
+                    <p className="text-sm font-semibold text-foreground mb-2">2. Votre date</p>
+                    <DateInfoBlock />
+                  </div>
+
+                  {/* Section 3: Add participant */}
+                  <AddParticipant
+                    participants={extraParticipants}
+                    onChange={setExtraParticipants}
                   />
+
+                  {/* Section 4: Tarif */}
+                  <div>
+                    <p className="text-sm font-semibold text-foreground mb-2">3. Tarif</p>
+                    <TarifBlock />
+                  </div>
+
                   {/* Arrow pointing down */}
                   <div className="flex justify-center">
                     <ChevronDown className="h-6 w-6 text-muted-foreground animate-bounce" />
@@ -866,39 +991,25 @@ export default function Reserver() {
             <div className="space-y-6">
               {selectedSlotData && selectedDate && (
                 <>
-                  <BookingSummary
-                    activityName={selectedSlotData.name}
-                    date={selectedDate}
-                    time={selectedSlotData.time}
-                    endTime={selectedSlotData.end_time}
-                    duration={selectedSlotData.duration}
-                    price={selectedSlotData.price || unitPrice || undefined}
-                    category={category}
-                    isYoga={isYoga}
-                    pricingCards={pricingCards}
-                    inclusions={selectedSlotData.inclusions}
-                    longDescription={activity?.long_description}
-                    shortDescription={activity?.description}
-                    instructorName={instructorData?.name || activity?.instructor}
-                    instructorPhoto={instructorData?.photo_url}
-                    cardYogaCount={selectedSlotData.cardYogaCount}
-                    linkedDates={selectedSlotData.linkedDates}
+                  {/* Section 2: Date */}
+                  <div>
+                    <p className="text-sm font-semibold text-foreground mb-2">2. Votre date</p>
+                    <DateInfoBlock />
+                  </div>
+
+                  {/* Section 3: Add participant */}
+                  <AddParticipant
+                    participants={extraParticipants}
+                    onChange={setExtraParticipants}
                   />
-                  {/* Arrow pointing down */}
-                  <div className="flex justify-center">
-                    <ChevronDown className="h-6 w-6 text-muted-foreground animate-bounce" />
+
+                  {/* Section 4: Tarif */}
+                  <div>
+                    <p className="text-sm font-semibold text-foreground mb-2">3. Tarif</p>
+                    <TarifBlock />
                   </div>
                 </>
               )}
-
-              <AddParticipant
-                participants={extraParticipants}
-                onChange={setExtraParticipants}
-              />
-
-              <h2 className="text-lg font-display font-semibold text-primary-dark">
-                {isYoga ? "Options de réservation" : "Paiement"}
-              </h2>
 
               <PurchaseOptions
                 userState={userState}
@@ -915,6 +1026,17 @@ export default function Reserver() {
                 voucherStatus={voucherStatus}
                 onVoucherCodeChange={() => setVoucherStatus("idle")}
               />
+
+              {isYoga && pricingCards.length > 0 && (
+                <FormulaInfoModal
+                  open={showFormulasInline}
+                  onClose={() => setShowFormulasInline(false)}
+                  onCreateAccount={() => { setShowFormulasInline(false); goToStep("register"); }}
+                  onContinueWithout={() => setShowFormulasInline(false)}
+                  pricingCards={pricingCards}
+                  unitPrice={unitPrice || undefined}
+                />
+              )}
             </div>
           )}
 
