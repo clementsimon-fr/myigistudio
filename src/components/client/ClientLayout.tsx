@@ -46,7 +46,7 @@ export default function ClientLayout({ children, title }: ClientLayoutProps) {
       </header>
 
       {/* Navigation buttons */}
-      <div className="border-b bg-background">
+      <div className="sticky top-14 z-40 border-b bg-background">
         <div className="container py-2">
           <div className="flex flex-wrap gap-1.5">
             {navItems.map(item => (

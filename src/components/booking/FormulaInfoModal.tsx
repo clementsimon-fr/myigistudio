@@ -12,6 +12,7 @@ interface PricingCard {
   validity: string;
   popular: boolean;
   payment_info: string;
+  sort_order?: number;
 }
 
 interface FormulaInfoModalProps {
@@ -19,11 +20,13 @@ interface FormulaInfoModalProps {
   onClose: () => void;
   onCreateAccount: () => void;
   onContinueWithout: () => void;
+  onSelectCard?: (card: PricingCard) => void;
   pricingCards: PricingCard[];
   unitPrice?: number;
+  isConnected?: boolean;
 }
 
-export default function FormulaInfoModal({ open, onClose, onCreateAccount, onContinueWithout, pricingCards, unitPrice }: FormulaInfoModalProps) {
+export default function FormulaInfoModal({ open, onClose, onCreateAccount, onContinueWithout, onSelectCard, pricingCards, unitPrice, isConnected }: FormulaInfoModalProps) {
   const infoRef = useRef<HTMLDivElement>(null);
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
@@ -40,7 +43,12 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
   const multiCards = pricingCards.filter(c => c.sessions > 1);
 
   // Scroll to bottom (info/create account) when a multi-card is clicked
-  const handleMultiCardClick = () => {
+  const handleMultiCardClick = (card?: PricingCard) => {
+    if (isConnected && card && onSelectCard) {
+      onSelectCard(card);
+      onClose();
+      return;
+    }
     setTimeout(() => {
       infoRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }, 100);
@@ -88,7 +96,7 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
           {/* Multi cards */}
           <div className="grid gap-3">
             {multiCards.map(card => (
-              <div key={card.id} className="rounded-lg border p-4 relative cursor-pointer hover:shadow-md transition-all" onClick={handleMultiCardClick}>
+              <div key={card.id} className="rounded-lg border p-4 relative cursor-pointer hover:shadow-md transition-all" onClick={() => handleMultiCardClick(card)}>
                 {card.popular && (
                   <div className="absolute -top-2.5 right-3 bg-accent text-accent-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
                     <Star className="h-2.5 w-2.5" /> Populaire
@@ -110,19 +118,32 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
             ))}
           </div>
 
-          <div ref={infoRef} className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-start gap-2">
-            <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-sm text-amber-800">
-              Vous devez créer un compte pour acheter ou utiliser une formule de cartes.
-            </p>
-          </div>
+          {!isConnected && (
+            <>
+              <div ref={infoRef} className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-start gap-2">
+                <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-800">
+                  Vous devez créer un compte pour acheter ou utiliser une formule de cartes.
+                </p>
+              </div>
 
-          <div className="grid gap-2">
-            <Button onClick={onCreateAccount} className="w-full">Créer un compte</Button>
-            <Button variant="ghost" onClick={onContinueWithout} className="w-full text-muted-foreground">
-              Continuer sans formule
-            </Button>
-          </div>
+              <div className="grid gap-2">
+                <Button onClick={onCreateAccount} className="w-full">Créer un compte</Button>
+                <Button variant="ghost" onClick={onContinueWithout} className="w-full text-muted-foreground">
+                  Continuer sans formule
+                </Button>
+              </div>
+            </>
+          )}
+
+          {isConnected && (
+            <div ref={infoRef} className="rounded-lg bg-primary/5 border border-primary/20 p-3 flex items-start gap-2">
+              <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <p className="text-sm text-primary-dark">
+                Cliquez sur une formule pour l'ajouter à votre commande.
+              </p>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
