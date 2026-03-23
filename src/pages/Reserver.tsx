@@ -606,11 +606,13 @@ export default function Reserver() {
   const handleBuyUnit = () => {
     const totalParticipants = 1 + extraParticipants.filter(p => p.firstName.trim()).length;
     const price = activity?.type === "workshop" ? (activity.price || 35) : (unitPrice || 15);
-    const totalPrice = price * totalParticipants;
-    setPaymentMode("Cours à l'unité");
+    const reloadPrice = reloadCard?.price || 0;
+    const totalPrice = (price * totalParticipants) + reloadPrice;
+    setPaymentMode(reloadCard ? `Cours + ${reloadCard.name}` : "Cours à l'unité");
     setPaymentAmount(totalPrice);
     setStripeAmount(totalPrice);
-    setStripeDescription(`${activity.name} — Cours à l'unité${totalParticipants > 1 ? ` (${totalParticipants} pers.)` : ""}`);
+    setStripeDescription(`${activity.name}${reloadCard ? ` + ${reloadCard.name}` : " — Cours à l'unité"}${totalParticipants > 1 ? ` (${totalParticipants} pers.)` : ""}`);
+    if (reloadCard) setPendingCard(reloadCard);
     goToStep("payment");
   };
 
