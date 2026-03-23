@@ -986,7 +986,7 @@ export default function Reserver() {
                     <DateInfoBlock />
                   </div>
 
-                  {/* Section 3: Participant(s) */}
+                    {/* Section 3: Participant(s) */}
                   <div>
                     <p className="text-sm font-semibold text-foreground mb-2">3. Participant(s)</p>
                     <div className="rounded-lg bg-muted/50 p-4 space-y-4">
@@ -1028,7 +1028,7 @@ export default function Reserver() {
                         </>
                       )}
 
-                      {/* === LOGGED-IN USER: show name + add participant === */}
+                      {/* === LOGGED-IN USER: show name + add participant directly === */}
                       {currentProfile && (
                         <>
                           <div className="rounded-lg border bg-card p-3 text-sm">
@@ -1048,7 +1048,17 @@ export default function Reserver() {
                   {(guestSubmitted || currentProfile) && (
                     <div>
                       <p className="text-sm font-semibold text-foreground mb-2">4. Tarif</p>
-                      {currentProfile ? <TarifBlock /> : <GuestTarifBlock />}
+                      {currentProfile ? (
+                        <>
+                          <TarifBlock />
+                          {/* Show remaining yoga cards for connected user */}
+                          {isYoga && currentProfile.credits > 0 && (
+                            <div className="mt-2 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">
+                              <strong>{currentProfile.credits}</strong> carte{currentProfile.credits > 1 ? "s" : ""} yoga restante{currentProfile.credits > 1 ? "s" : ""}
+                            </div>
+                          )}
+                        </>
+                      ) : <GuestTarifBlock />}
 
                       <div className="grid gap-2 mt-4">
                         <Button onClick={() => {

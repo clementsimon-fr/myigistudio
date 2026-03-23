@@ -15,7 +15,7 @@ export default function Discover() {
   const initialFilter = searchParams.get("filter") as FilterCategory | null;
 
   const [filter, setFilter] = useState<FilterCategory>(
-    initialFilter && CATEGORY_FILTERS.some(f => f.value === initialFilter) ? initialFilter : "all"
+    initialFilter && CATEGORY_FILTERS.some(f => f.value === initialFilter) ? initialFilter : "yoga"
   );
   const [subFilter, setSubFilter] = useState<string>("all");
   const planningScrolled = useRef(false);
