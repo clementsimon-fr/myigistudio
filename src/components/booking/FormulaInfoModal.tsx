@@ -25,8 +25,6 @@ interface FormulaInfoModalProps {
 
 export default function FormulaInfoModal({ open, onClose, onCreateAccount, onContinueWithout, pricingCards, unitPrice }: FormulaInfoModalProps) {
   const infoRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to top of popup when it opens
@@ -41,8 +39,8 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
   const unitCards = pricingCards.filter(c => c.sessions === 1);
   const multiCards = pricingCards.filter(c => c.sessions > 1);
 
-  // Scroll to bottom when a card is clicked
-  const handleCardClick = () => {
+  // Scroll to bottom (info/create account) when a multi-card is clicked
+  const handleMultiCardClick = () => {
     setTimeout(() => {
       infoRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }, 100);
@@ -64,7 +62,7 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
 
           {/* Unit card with green bg */}
           {unitCards.map(card => (
-            <div key={card.id} className="rounded-lg border p-4 relative bg-emerald-50/60 border-emerald-200 cursor-pointer hover:shadow-md transition-all" onClick={handleCardClick}>
+            <div key={card.id} className="rounded-lg border p-4 relative bg-emerald-50/60 border-emerald-200">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="font-semibold text-foreground">Carte Yoga à l'unité</p>
@@ -90,7 +88,7 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
           {/* Multi cards */}
           <div className="grid gap-3">
             {multiCards.map(card => (
-              <div key={card.id} className="rounded-lg border p-4 relative cursor-pointer hover:shadow-md transition-all" onClick={handleCardClick}>
+              <div key={card.id} className="rounded-lg border p-4 relative cursor-pointer hover:shadow-md transition-all" onClick={handleMultiCardClick}>
                 {card.popular && (
                   <div className="absolute -top-2.5 right-3 bg-accent text-accent-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
                     <Star className="h-2.5 w-2.5" /> Populaire
@@ -125,7 +123,6 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
               Continuer sans formule
             </Button>
           </div>
-          <div ref={bottomRef} />
         </div>
       </DialogContent>
     </Dialog>
