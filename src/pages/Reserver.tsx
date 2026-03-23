@@ -1051,43 +1051,99 @@ export default function Reserver() {
                       <p className="text-sm font-semibold text-foreground mb-2">4. Tarif</p>
                       {currentProfile ? (
                         <>
-                          <TarifBlock />
-                          {/* Show remaining yoga cards for connected user */}
-                          {isYoga && currentProfile.credits > 0 && (
-                            <div className="mt-2 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">
-                              <strong>{currentProfile.credits}</strong> carte{currentProfile.credits > 1 ? "s" : ""} yoga restante{currentProfile.credits > 1 ? "s" : ""}
-                            </div>
-                          )}
-                        </>
-                      ) : <GuestTarifBlock />}
+                          {/* Connected user tarif with optional reload formula */}
+                          <div className="rounded-lg bg-muted/50 p-4 space-y-2 text-sm">
+                            {(() => {
+                              const totalParticipants = 1 + extraParticipants.filter(p => p.firstName.trim()).length;
+                              const price = selectedSlotData.price || unitPrice || 0;
+                              return (
+                                <>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Cours de yoga</span>
+                                    <span className="font-semibold">{price} €</span>
+                                  </div>
+                                  {reloadCard && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Formule "{reloadCard.name}"</span>
+                                      <span className="font-semibold">{reloadCard.price} €</span>
+                                    </div>
+                                  )}
+                                  {isYoga && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Cartes yoga restantes</span>
+                                      <span className="font-semibold">{currentProfile.credits}{reloadCard ? ` + ${reloadCard.sessions}` : ""}</span>
+                                    </div>
+                                  )}
+                                  {totalParticipants > 1 && (
+                                    <div className="flex justify-between border-t pt-2 mt-1">
+                                      <span className="text-muted-foreground">Total ({totalParticipants} participants)</span>
+                                      <span className="font-semibold">{(price * totalParticipants) + (reloadCard?.price || 0)} €</span>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
+                            {selectedSlotData.inclusions && (
+                              <div className="bg-emerald-50 rounded-md px-3 py-2 text-xs text-emerald-700 flex items-start gap-1.5">
+                                <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                                <span>{selectedSlotData.inclusions}</span>
+                              </div>
+                            )}
+                          </div>
 
-                      <div className="grid gap-2 mt-4">
-                        {/* Connected user with yoga cards: use a card */}
-                        {currentProfile && isYoga && currentProfile.credits > 0 && (
-                          <Button onClick={handleReserveWithCard} className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-                            <ShoppingCart className="h-4 w-4" /> Utiliser 1 carte yoga
-                          </Button>
-                        )}
-                        <Button onClick={() => {
-                          setShowPaymentConfirm(true);
-                          setTimeout(() => {
-                            const el = document.getElementById("conditions-section");
-                            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                          }, 100);
-                        }} className={`w-full gap-2 ${currentProfile && isYoga && currentProfile.credits > 0 ? "" : "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90"}`}
-                          variant={currentProfile && isYoga && currentProfile.credits > 0 ? "outline" : "default"}
-                        >
-                          <ShoppingCart className="h-4 w-4" /> Commander
-                        </Button>
-                        <Button variant="outline" className="w-full gap-2" onClick={() => setShowVoucherPopup(true)}>
-                          <Gift className="h-4 w-4" /> Utiliser un bon cadeau
-                        </Button>
-                        {isYoga && pricingCards.length > 0 && (
-                          <Button variant="outline" className="w-full gap-2" onClick={() => setShowFormulasInline(true)}>
-                            <Eye className="h-4 w-4" /> Voir les formules carte yoga
-                          </Button>
-                        )}
-                      </div>
+                          <div className="grid gap-2 mt-4">
+                            {/* Has yoga cards: primary action = use card */}
+                            {isYoga && currentProfile.credits > 0 && (
+                              <Button onClick={handleReserveWithCard} className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                                <ShoppingCart className="h-4 w-4" /> Utiliser 1 carte yoga
+                              </Button>
+                            )}
+                            {/* No cards or non-yoga: Commander */}
+                            {(!isYoga || currentProfile.credits <= 0) && (
+                              <Button onClick={() => {
+                                setShowPaymentConfirm(true);
+                                setTimeout(() => {
+                                  const el = document.getElementById("conditions-section");
+                                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                                }, 100);
+                              }} className="w-full gap-2 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
+                                <ShoppingCart className="h-4 w-4" /> Commander
+                              </Button>
+                            )}
+                            <Button variant="outline" className="w-full gap-2" onClick={() => setShowVoucherPopup(true)}>
+                              <Gift className="h-4 w-4" /> Utiliser un bon cadeau
+                            </Button>
+                            {isYoga && pricingCards.length > 0 && (
+                              <Button variant="outline" className="w-full gap-2" onClick={() => setShowFormulasInline(true)}>
+                                <ShoppingCart className="h-4 w-4" /> Recharger les cartes yoga
+                              </Button>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <GuestTarifBlock />
+                          <div className="grid gap-2 mt-4">
+                            <Button onClick={() => {
+                              setShowPaymentConfirm(true);
+                              setTimeout(() => {
+                                const el = document.getElementById("conditions-section");
+                                if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                              }, 100);
+                            }} className="w-full gap-2 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
+                              <ShoppingCart className="h-4 w-4" /> Commander
+                            </Button>
+                            <Button variant="outline" className="w-full gap-2" onClick={() => setShowVoucherPopup(true)}>
+                              <Gift className="h-4 w-4" /> Utiliser un bon cadeau
+                            </Button>
+                            {isYoga && pricingCards.length > 0 && (
+                              <Button variant="outline" className="w-full gap-2" onClick={() => setShowFormulasInline(true)}>
+                                <Eye className="h-4 w-4" /> Voir les formules carte yoga
+                              </Button>
+                            )}
+                          </div>
+                        </>
+                      )}
 
                       {/* Section 5: Conditions */}
                       {showPaymentConfirm && (
