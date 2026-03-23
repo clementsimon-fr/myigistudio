@@ -15,6 +15,7 @@ import SignupBlock from "@/components/booking/SignupBlock";
 import LoginBlock from "@/components/booking/LoginBlock";
 import GuestForm from "@/components/booking/GuestForm";
 import PurchaseOptions from "@/components/booking/PurchaseOptions";
+import FormulaInfoModal from "@/components/booking/FormulaInfoModal";
 import PaymentSummary from "@/components/booking/PaymentSummary";
 import ConfirmationPopup from "@/components/booking/ConfirmationPopup";
 import AddParticipant, { type ExtraParticipant } from "@/components/booking/AddParticipant";
