@@ -28,7 +28,7 @@ export default function AddParticipant({ participants, onChange }: AddParticipan
   };
 
   return (
-    <div className="space-y-3">
+    <div className="rounded-lg bg-muted/50 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <Label className="text-sm font-medium">Participants supplémentaires</Label>
         <Button type="button" size="sm" variant="outline" className="gap-1.5 h-8 text-xs" onClick={addParticipant}>
@@ -38,7 +38,7 @@ export default function AddParticipant({ participants, onChange }: AddParticipan
       {participants.length > 0 && (
         <div className="space-y-2">
           {participants.map((p, idx) => (
-            <div key={idx} className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2">
+            <div key={idx} className="flex items-center gap-2 rounded-lg border bg-background p-2">
               <div className="flex-1 grid grid-cols-2 gap-2">
                 <Input
                   placeholder="Prénom"

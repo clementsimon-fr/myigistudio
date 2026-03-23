@@ -17,6 +17,9 @@ export const CATEGORY_FILTERS: { value: FilterCategory; label: string; dot?: str
   { value: "bien-etre", label: "Atelier", dot: "bg-[hsl(0,55%,58%)]", activeBg: "bg-[hsl(0,55%,58%)]", inactiveBg: "bg-[hsl(0,55%,90%)] text-[hsl(0,55%,35%)]", icon: filterAteliers, iconSettingKey: "filter_icon_bien_etre" },
 ];
 
+// Filters visible to visitors (excludes "Tout")
+const VISIBLE_FILTERS = CATEGORY_FILTERS.filter(f => f.value !== "all");
+
 export const CATEGORY_STYLES: Record<string, { block: string; dot: string; text: string; bookBtn: string }> = {
   yoga: {
     block: "bg-[hsl(210,60%,55%)]/10 border-[hsl(210,60%,55%)]/30 text-[hsl(210,60%,35%)]",
@@ -66,15 +69,17 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
     <div className="sticky top-16 z-30">
       <div className="bg-emerald-50/60 backdrop-blur border-b">
         <div className="container pb-1.5 pt-1.5">
+          {/* Title */}
+          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1 text-left">Catégorie</p>
           <div className="flex items-center justify-center gap-1 flex-wrap">
-            {CATEGORY_FILTERS.map(f => {
+            {VISIBLE_FILTERS.map(f => {
               const isActive = filter === f.value;
               return (
                 <Button
                   key={f.value}
                   variant={isActive ? null as any : "outline"}
                   size="sm"
-                  onClick={() => onFilterChange(f.value)}
+                  onClick={() => onFilterChange(isActive ? "all" : f.value)}
                   className={`rounded-full flex-col h-auto py-1 px-3 gap-0.5 text-xs min-w-[4.5rem] ${
                     isActive
                       ? f.activeBg

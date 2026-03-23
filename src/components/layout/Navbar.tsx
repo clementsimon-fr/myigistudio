@@ -27,7 +27,6 @@ export default function Navbar() {
   const isAdminLike = isAdmin || currentProfile?.role === "fournisseur";
   const isClient = currentProfile?.role === "client";
 
-  // Compute credits for display
   const credits = currentProfile?.credits ?? 0;
 
   const handleLogout = () => {
@@ -48,7 +47,6 @@ export default function Navbar() {
           <>
             {/* Desktop */}
             <div className="hidden md:flex items-center gap-3">
-              {/* 1.10 / 1.13: Show connected status + credits */}
               {isClient && (
                 <div className="flex items-center gap-2 text-xs">
                   <div className="flex items-center gap-1.5 bg-primary/10 text-primary-dark font-medium px-3 py-1.5 rounded-full">
@@ -76,7 +74,6 @@ export default function Navbar() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52">
-                  {/* 1.6 / 1.13: Home button */}
                   <DropdownMenuItem onClick={() => navigate("/")} className="flex items-center gap-2 cursor-pointer">
                     <Home className="h-4 w-4" />
                     Accueil
@@ -117,7 +114,6 @@ export default function Navbar() {
 
             {/* Mobile: show connected status + menu button */}
             <div className="md:hidden flex items-center gap-2">
-              {/* 1.10: Show connection status on mobile */}
               {isClient && (
                 <div className="flex items-center gap-1 text-[10px] bg-primary/10 text-primary-dark font-medium px-2 py-1 rounded-full">
                   <User className="h-3 w-3" />
@@ -129,16 +125,17 @@ export default function Navbar() {
                   )}
                 </div>
               )}
-              {/* 1.3: Label "Menu" on the hamburger button */}
               <button className="flex items-center gap-1 p-2 text-sm font-medium" onClick={() => setOpen(!open)} aria-label="Menu">
                 {open ? <X className="h-5 w-5" /> : <><Menu className="h-5 w-5" /> <span className="text-xs">Menu</span></>}
               </button>
             </div>
           </>
         ) : (
+          /* Visitor: encadré around login icon */
           <Link to="/login">
-            <Button variant="ghost" size="icon">
-              <User className="h-5 w-5" />
+            <Button variant="outline" size="sm" className="gap-1.5 rounded-full border-primary/30 text-primary-dark">
+              <User className="h-4 w-4" />
+              <span className="text-xs">Connexion</span>
             </Button>
           </Link>
         )}
@@ -149,7 +146,6 @@ export default function Navbar() {
         <div className="md:hidden border-t bg-background p-4 space-y-2">
           <p className="text-xs text-muted-foreground px-2 mb-1">Connecté : {currentProfile.name}</p>
 
-          {/* 1.6: Home button */}
           <Link to="/" onClick={() => setOpen(false)}>
             <Button variant="ghost" className="w-full justify-start gap-2">
               <Home className="h-4 w-4" />
