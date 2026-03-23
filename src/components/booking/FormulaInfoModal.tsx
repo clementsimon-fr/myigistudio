@@ -95,7 +95,7 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
           {/* Multi cards */}
           <div className="grid gap-3">
             {multiCards.map(card => (
-              <div key={card.id} className="rounded-lg border p-4 relative cursor-pointer hover:shadow-md transition-all" onClick={handleMultiCardClick}>
+              <div key={card.id} className="rounded-lg border p-4 relative cursor-pointer hover:shadow-md transition-all" onClick={() => handleMultiCardClick(card)}>
                 {card.popular && (
                   <div className="absolute -top-2.5 right-3 bg-accent text-accent-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
                     <Star className="h-2.5 w-2.5" /> Populaire
