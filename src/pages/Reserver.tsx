@@ -1051,7 +1051,13 @@ export default function Reserver() {
                       {currentProfile ? <TarifBlock /> : <GuestTarifBlock />}
 
                       <div className="grid gap-2 mt-4">
-                        <Button onClick={() => setShowPaymentConfirm(true)} className="w-full gap-2 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
+                        <Button onClick={() => {
+                          if (applicableConditions.length === 0) {
+                            handleBuyUnit();
+                          } else {
+                            setShowPaymentConfirm(true);
+                          }
+                        }} className="w-full gap-2 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
                           <ShoppingCart className="h-4 w-4" /> Procéder au paiement
                         </Button>
                         <Button variant="outline" className="w-full gap-2" onClick={() => setShowVoucherPopup(true)}>
