@@ -1052,11 +1052,11 @@ export default function Reserver() {
 
                       <div className="grid gap-2 mt-4">
                         <Button onClick={() => {
-                          if (applicableConditions.length === 0) {
-                            setShowPaymentConfirm(true);
-                          } else {
-                            setShowPaymentConfirm(true);
-                          }
+                          setShowPaymentConfirm(true);
+                          setTimeout(() => {
+                            const el = document.getElementById("conditions-section");
+                            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }, 100);
                         }} className="w-full gap-2 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
                           <ShoppingCart className="h-4 w-4" /> Commander
                         </Button>
