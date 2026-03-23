@@ -519,12 +519,9 @@ export default function Reserver() {
     : (isYoga && currentProfile.credits > 0) ? "logged_user_with_cards"
     : "logged_user_no_cards";
 
-  // Auto-advance when logged in
-  useEffect(() => {
-    if (bookingStep === "summary" && currentProfile) {
-      goToStep("purchase_options");
-    }
-  }, [bookingStep, currentProfile, goToStep]);
+  // Auto-advance when logged in — only if coming fresh (date already chosen, not guest)
+  // REMOVED: This was causing logged-in clients to be "forgotten" or disconnected
+  // The logged-in flow now stays on "summary" and shows the full sectioned view
 
   // Handle date selection from picker
   const handleDateSelect = (ws: typeof availableDates[0]) => {
