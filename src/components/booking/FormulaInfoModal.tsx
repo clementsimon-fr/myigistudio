@@ -117,19 +117,32 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
             ))}
           </div>
 
-          <div ref={infoRef} className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-start gap-2">
-            <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-sm text-amber-800">
-              Vous devez créer un compte pour acheter ou utiliser une formule de cartes.
-            </p>
-          </div>
+          {!isConnected && (
+            <>
+              <div ref={infoRef} className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-start gap-2">
+                <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-800">
+                  Vous devez créer un compte pour acheter ou utiliser une formule de cartes.
+                </p>
+              </div>
 
-          <div className="grid gap-2">
-            <Button onClick={onCreateAccount} className="w-full">Créer un compte</Button>
-            <Button variant="ghost" onClick={onContinueWithout} className="w-full text-muted-foreground">
-              Continuer sans formule
-            </Button>
-          </div>
+              <div className="grid gap-2">
+                <Button onClick={onCreateAccount} className="w-full">Créer un compte</Button>
+                <Button variant="ghost" onClick={onContinueWithout} className="w-full text-muted-foreground">
+                  Continuer sans formule
+                </Button>
+              </div>
+            </>
+          )}
+
+          {isConnected && (
+            <div ref={infoRef} className="rounded-lg bg-primary/5 border border-primary/20 p-3 flex items-start gap-2">
+              <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <p className="text-sm text-primary-dark">
+                Cliquez sur une formule pour l'ajouter à votre commande.
+              </p>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
