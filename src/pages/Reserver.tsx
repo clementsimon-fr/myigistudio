@@ -290,6 +290,8 @@ export default function Reserver() {
   const [voucherStatus, setVoucherStatus] = useState<"idle" | "valid" | "invalid" | "checking">("idle");
 
   const [pendingCard, setPendingCard] = useState<PricingCard | null>(null);
+  const [showActivityDetails, setShowActivityDetails] = useState(false);
+  const [showFormulasInline, setShowFormulasInline] = useState(false);
 
   // ─── Browser back button handling ───
   // Push history state for each step so the phone back button navigates steps
