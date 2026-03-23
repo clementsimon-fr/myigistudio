@@ -1072,7 +1072,7 @@ export default function Reserver() {
 
                       {/* Inline conditions for payment confirmation */}
                       {showPaymentConfirm && (
-                        <div className="mt-4 space-y-3">
+                        <div id="conditions-section" className="mt-4 space-y-3">
                           {applicableConditions.length > 0 && (
                             <>
                               <Accordion type="multiple" className="w-full">
