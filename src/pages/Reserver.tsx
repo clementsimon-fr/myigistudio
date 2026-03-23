@@ -303,6 +303,8 @@ export default function Reserver() {
   // Voucher inline state for guest tarifs section
   const [showVoucherInline, setShowVoucherInline] = useState(false);
   const [voucherCodeInline, setVoucherCodeInline] = useState("");
+  const [showPaymentConfirm, setShowPaymentConfirm] = useState(false);
+  const [showVoucherPopup, setShowVoucherPopup] = useState(false);
 
   // ─── Browser back button handling ───
   const goToStep = useCallback((step: BookingStep) => {
