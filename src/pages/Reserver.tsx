@@ -1285,9 +1285,24 @@ export default function Reserver() {
                   {(() => {
                     const totalP = 1 + extraParticipants.filter(p => p.firstName.trim()).length;
                     const price = selectedSlotData.price || unitPrice || 0;
-                    const total = price * totalP;
+                    const reloadPrice = reloadCard?.price || 0;
+                    const total = (price * totalP) + reloadPrice;
                     return (
-                      <p className="font-bold text-lg">{total} €</p>
+                      <>
+                        <div className="space-y-1 text-sm mb-2">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">{selectedSlotData.name}{totalP > 1 ? ` × ${totalP}` : ""}</span>
+                            <span>{price * totalP} €</span>
+                          </div>
+                          {reloadCard && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Formule "{reloadCard.name}"</span>
+                              <span>{reloadCard.price} €</span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="font-bold text-lg">{total} €</p>
+                      </>
                     );
                   })()}
                 </div>
@@ -1297,9 +1312,10 @@ export default function Reserver() {
                 onClick={() => {
                   const totalP = 1 + extraParticipants.filter(p => p.firstName.trim()).length;
                   const price = selectedSlotData.price || unitPrice || 0;
-                  const totalPrice = price * totalP;
+                  const reloadPrice = reloadCard?.price || 0;
+                  const totalPrice = (price * totalP) + reloadPrice;
                   setStripeAmount(totalPrice);
-                  setStripeDescription(`${selectedSlotData.name} — ${totalP > 1 ? `${totalP} participants` : "1 participant"}`);
+                  setStripeDescription(`${selectedSlotData.name}${reloadCard ? ` + ${reloadCard.name}` : ""} — ${totalP > 1 ? `${totalP} participants` : "1 participant"}`);
                   setShowStripeModal(true);
                 }}
                 disabled={submitting}
