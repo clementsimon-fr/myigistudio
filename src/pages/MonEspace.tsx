@@ -230,10 +230,10 @@ export default function MonEspace() {
               {/* Summary */}
               <div className="rounded-xl border bg-card p-5">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-display font-semibold text-primary-dark">Mes crédits Yoga</h2>
+              <div>
+                    <h2 className="text-lg font-display font-semibold text-primary-dark">Mes cartes Yoga</h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Vous avez <strong className="text-primary-dark">{totalCredits}</strong> crédit{totalCredits > 1 ? "s" : ""} disponible{totalCredits > 1 ? "s" : ""}
+                      Vous avez <strong className="text-primary-dark">{totalCredits}</strong> carte{totalCredits > 1 ? "s" : ""} yoga disponible{totalCredits > 1 ? "s" : ""}
                     </p>
                   </div>
                   <div className="h-14 w-14 rounded-full bg-[hsl(210,60%,55%)]/10 flex items-center justify-center">
