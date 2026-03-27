@@ -65,6 +65,9 @@ const App = () => (
             <Route path="/admin/planning-type" element={<AdminPlanningType />} />
             <Route path="/admin/parametres" element={<AdminParametres />} />
             <Route path="/test" element={<TestUX />} />
+            <Route path="/test2" element={<TestUX2 />} />
+            <Route path="/test3" element={<TestUX3 />} />
+            <Route path="/test4" element={<TestUX4 />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
