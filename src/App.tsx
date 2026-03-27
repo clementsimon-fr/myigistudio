@@ -6,6 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { DemoProvider } from "@/contexts/DemoContext";
 import Discover from "./pages/Discover";
 import TestUX from "./pages/TestUX";
+import TestUX2 from "./pages/TestUX2";
+import TestUX3 from "./pages/TestUX3";
+import TestUX4 from "./pages/TestUX4";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import MonEspace from "./pages/MonEspace";
@@ -62,6 +65,9 @@ const App = () => (
             <Route path="/admin/planning-type" element={<AdminPlanningType />} />
             <Route path="/admin/parametres" element={<AdminParametres />} />
             <Route path="/test" element={<TestUX />} />
+            <Route path="/test2" element={<TestUX2 />} />
+            <Route path="/test3" element={<TestUX3 />} />
+            <Route path="/test4" element={<TestUX4 />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
