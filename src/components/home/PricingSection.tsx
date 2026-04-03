@@ -43,7 +43,7 @@ export default function PricingSection() {
       <div className="container">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-display font-bold text-primary-dark mb-3">
-            Nos Cartes de Cours
+            Nos cartes de cours de Yoga
           </h2>
           <p className="text-muted-foreground max-w-lg mx-auto">
             Choisissez la formule qui correspond à votre rythme. Valables pour tous les cours Yoga & Pilates.
