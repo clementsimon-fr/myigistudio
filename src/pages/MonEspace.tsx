@@ -329,6 +329,33 @@ export default function MonEspace() {
                   </div>
                 )}
               </div>
+
+              {/* Purchase history */}
+              {cards.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-primary-dark mb-3">Historique des achats</h3>
+                  <div className="rounded-xl border bg-card overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/30">
+                          <th className="text-left p-3 font-medium text-muted-foreground text-xs">Carte</th>
+                          <th className="text-left p-3 font-medium text-muted-foreground text-xs">Séances</th>
+                          <th className="text-left p-3 font-medium text-muted-foreground text-xs">Expiration</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cards.map(card => (
+                          <tr key={card.id} className="border-b last:border-0">
+                            <td className="p-3 font-medium text-xs">{card.card_name}</td>
+                            <td className="p-3 text-xs text-muted-foreground">{card.used_sessions}/{card.total_sessions} utilisées</td>
+                            <td className="p-3 text-xs text-muted-foreground">{new Date(card.expires_at).toLocaleDateString("fr-FR")}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
