@@ -163,10 +163,10 @@ function WeekProgram({ courses, schedules, workshops, onEventClick }: {
             {dayEvents.map((e, i) => {
               const style = getCategoryStyle(e.category);
               return (
-                <button
+                 <button
                   key={`${dateStr}-${i}`}
                   onClick={() => handleClick(e)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md bg-card border text-xs hover:bg-muted/50 transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-md bg-card border text-xs hover:bg-muted/50 transition-colors cursor-pointer text-left min-h-[44px]"
                 >
                   <div className={`w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
                   <span className="font-medium text-foreground">{formatTime(e.time)}–{formatTime(e.endTime)}</span>
