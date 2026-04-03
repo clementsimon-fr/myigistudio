@@ -117,7 +117,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
               <Button
                 variant={subFilter === "all" ? null as any : "outline"}
                 size="sm"
-                className={`rounded-full h-6 text-[11px] px-3 italic ${subFilter === "all" ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
+                className={`rounded-full min-h-[44px] text-xs px-4 italic ${subFilter === "all" ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
                 onClick={() => onSubFilterChange("all")}
               >
                 Tout voir
@@ -127,7 +127,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
                   key={name}
                   variant={subFilter === name ? null as any : "outline"}
                   size="sm"
-                  className={`rounded-full h-6 text-[11px] px-3 italic ${subFilter === name ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
+                  className={`rounded-full min-h-[44px] text-xs px-4 italic ${subFilter === name ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
                   onClick={() => onSubFilterChange(name)}
                 >
                   {name}
