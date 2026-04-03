@@ -369,17 +369,23 @@ export default function AdminClients() {
 
         {/* Filters */}
         <div className="flex flex-wrap gap-1.5">
-          {([["all", "Tous"], ["with", "Avec compte"], ["without", "Sans compte"]] as [AccountFilter, string][]).map(([val, label]) => (
-            <Badge key={val} variant={accountFilter === val ? "default" : "outline"} className="cursor-pointer text-xs" onClick={() => setAccountFilter(val)}>
-              {label}
-            </Badge>
-          ))}
+          {([["all", "Tous"], ["with", "Avec compte"], ["without", "Sans compte"]] as [AccountFilter, string][]).map(([val, label]) => {
+            const isActive = accountFilter === val;
+            return (
+              <Badge key={val} variant={isActive ? "default" : "outline"} className={`cursor-pointer text-xs gap-1 ${isActive ? "bg-primary-dark text-primary-dark-foreground border-transparent hover:opacity-90" : ""}`} onClick={() => setAccountFilter(val)}>
+                {label}
+              </Badge>
+            );
+          })}
           <div className="w-px bg-border mx-1" />
-          {allActivities.map(a => (
-            <Badge key={a} variant={activityFilter === a ? "default" : "outline"} className="cursor-pointer text-[10px]" onClick={() => setActivityFilter(a)}>
-              {a === "all" ? "Toutes activités" : a}
-            </Badge>
-          ))}
+          {allActivities.map(a => {
+            const isActive = activityFilter === a;
+            return (
+              <Badge key={a} variant={isActive ? "default" : "outline"} className={`cursor-pointer text-[10px] gap-1 ${isActive ? "bg-primary text-primary-foreground border-transparent hover:opacity-90" : ""}`} onClick={() => setActivityFilter(a)}>
+                {a === "all" ? "Toutes activités" : a}
+              </Badge>
+            );
+          })}
         </div>
         <p className="text-sm text-muted-foreground">{filtered.length} client{filtered.length > 1 ? "s" : ""}</p>
       </div>

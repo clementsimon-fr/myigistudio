@@ -109,28 +109,34 @@ export default function AdminDashboard() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <div className="flex gap-1.5">
-            {([["all", "Générale"], ["today", "Aujourd'hui"], ["week", "Semaine"]] as [TimeFilter, string][]).map(([val, label]) => (
-              <Badge
-                key={val}
-                variant={timeFilter === val ? "default" : "outline"}
-                className="cursor-pointer text-xs"
-                onClick={() => setTimeFilter(val)}
-              >
-                {label}
-              </Badge>
-            ))}
+            {([["all", "Générale"], ["today", "Aujourd'hui"], ["week", "Semaine"]] as [TimeFilter, string][]).map(([val, label]) => {
+              const isActive = timeFilter === val;
+              return (
+                <Badge
+                  key={val}
+                  variant={isActive ? "default" : "outline"}
+                  className={`cursor-pointer text-xs ${isActive ? "bg-primary-dark text-primary-dark-foreground border-transparent hover:opacity-90" : ""}`}
+                  onClick={() => setTimeFilter(val)}
+                >
+                  {label}
+                </Badge>
+              );
+            })}
           </div>
           <div className="flex gap-1.5 flex-wrap">
-            {activityNames.map(name => (
-              <Badge
-                key={name}
-                variant={activityFilter === name ? "default" : "outline"}
-                className="cursor-pointer text-[10px]"
-                onClick={() => setActivityFilter(name)}
-              >
-                {name === "all" ? "Toutes" : name}
-              </Badge>
-            ))}
+            {activityNames.map(name => {
+              const isActive = activityFilter === name;
+              return (
+                <Badge
+                  key={name}
+                  variant={isActive ? "default" : "outline"}
+                  className={`cursor-pointer text-[10px] gap-1 ${isActive ? "bg-primary text-primary-foreground border-transparent hover:opacity-90" : ""}`}
+                  onClick={() => setActivityFilter(name)}
+                >
+                  {name === "all" ? "Toutes" : name}
+                </Badge>
+              );
+            })}
           </div>
         </div>
 

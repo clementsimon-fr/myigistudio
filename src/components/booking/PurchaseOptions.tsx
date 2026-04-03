@@ -96,12 +96,12 @@ export default function PurchaseOptions({
             Cartes yoga disponibles : <strong>0</strong>
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            {userName}, achetez une carte yoga pour réserver vos cours.
+            {userName}, les cours de yoga et pilates fonctionnent avec l'achat de cartes yoga. Achetez une carte pour réserver.
           </p>
         </div>
 
-        <Button variant="outline" className="w-full gap-2" onClick={() => setShowFormulas(!showFormulas)}>
-          <ShoppingCart className="h-4 w-4" /> {showFormulas ? "Masquer les formules" : "Acheter carte yoga"}
+        <Button className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowFormulas(!showFormulas)}>
+          <ShoppingCart className="h-4 w-4" /> {showFormulas ? "Masquer les formules" : "Acheter une carte Yoga"}
         </Button>
 
         {showFormulas && (

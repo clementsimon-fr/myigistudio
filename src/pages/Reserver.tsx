@@ -1096,7 +1096,15 @@ export default function Reserver() {
                           <div className="grid gap-2 mt-4">
                             {/* Has yoga cards and no reload: primary action = use card */}
                             {isYoga && currentProfile.credits > 0 && !reloadCard && (
-                              <Button onClick={handleReserveWithCard} className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                              <Button onClick={() => {
+                                setPaymentMode("1 carte yoga utilisée");
+                                setPaymentAmount(0);
+                                setShowPaymentConfirm(true);
+                                setTimeout(() => {
+                                  const el = document.getElementById("conditions-section");
+                                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                                }, 100);
+                              }} className={`w-full gap-2 ${showPaymentConfirm ? "bg-background text-foreground border border-input hover:bg-accent" : "bg-emerald-600 hover:bg-emerald-700 text-white"}`}>
                                 <ShoppingCart className="h-4 w-4" /> Utiliser 1 carte yoga
                               </Button>
                             )}
@@ -1108,7 +1116,7 @@ export default function Reserver() {
                                   const el = document.getElementById("conditions-section");
                                   if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
                                 }, 100);
-                              }} className="w-full gap-2 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
+                              }} className={`w-full gap-2 ${showPaymentConfirm ? "bg-background text-foreground border border-input hover:bg-accent" : "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90"}`}>
                                 <ShoppingCart className="h-4 w-4" /> Commander
                               </Button>
                             )}
@@ -1132,7 +1140,7 @@ export default function Reserver() {
                                 const el = document.getElementById("conditions-section");
                                 if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
                               }, 100);
-                            }} className="w-full gap-2 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
+                            }} className={`w-full gap-2 ${showPaymentConfirm ? "bg-background text-foreground border border-input hover:bg-accent" : "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90"}`}>
                               <ShoppingCart className="h-4 w-4" /> Commander
                             </Button>
                             <Button variant="outline" className="w-full gap-2" onClick={() => setShowVoucherPopup(true)}>
@@ -1184,7 +1192,11 @@ export default function Reserver() {
                                   toast({ title: "Veuillez accepter les conditions pour continuer", variant: "destructive" });
                                   return;
                                 }
-                                handleBuyUnit();
+                                if (paymentMode === "1 carte yoga utilisée") {
+                                  handleReserveWithCard();
+                                } else {
+                                  handleBuyUnit();
+                                }
                               }}
                               className="w-full h-11 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-2 text-base font-semibold"
                             >
