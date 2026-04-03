@@ -254,7 +254,7 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
 
       <div className="container max-w-5xl py-6">
         <div className="flex items-center justify-between mb-6">
-          <Button variant="outline" size="icon" onClick={prevWeek} disabled={isThisWeek}><ChevronLeft className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" onClick={prevWeek} disabled={isThisWeek} className="min-h-[44px] min-w-[44px]"><ChevronLeft className="h-5 w-5" /></Button>
           <div className="text-center">
             <h3 className="text-sm md:text-lg font-semibold">
               Semaine du {weekDays[0].toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
