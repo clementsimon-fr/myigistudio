@@ -100,10 +100,10 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
                 variant="outline"
                 size="sm"
                 onClick={() => setMoreFiltersOpen(!moreFiltersOpen)}
-                className={`rounded-full h-7 w-7 p-0 ${moreFiltersOpen ? "bg-muted" : ""}`}
+                className={`rounded-full h-11 w-11 p-0 ${moreFiltersOpen ? "bg-muted" : ""}`}
                 title="Plus de filtres"
               >
-                {moreFiltersOpen ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                {moreFiltersOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
               </Button>
             )}
           </div>
