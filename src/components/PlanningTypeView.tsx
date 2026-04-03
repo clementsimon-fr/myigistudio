@@ -333,7 +333,7 @@ function MonthWorkshops({ workshops, onEventClick, hideTitle, hidePriceSpots, mo
               <button
                 key={w.id}
                 onClick={() => onEventClick?.({ type: "workshop", name: w.name, id: w.id, date: w.date })}
-                className="w-full flex flex-col gap-0.5 px-3 py-2 rounded-md bg-card border text-xs hover:bg-muted/50 transition-colors cursor-pointer text-left"
+                className="w-full flex flex-col gap-0.5 px-3 py-2.5 rounded-md bg-card border text-xs hover:bg-muted/50 transition-colors cursor-pointer text-left min-h-[44px]"
               >
                 {/* Line 1: date + time */}
                 <div className="flex items-center gap-2">
