@@ -36,8 +36,8 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <span className="text-2xl font-display font-bold text-primary-dark">
-            MyIgi<span className="text-primary">Studio</span>
+          <span className="text-2xl font-display font-bold">
+            <span className="text-brand-pink">My</span><span className="text-primary-dark">IgiStudio</span>
           </span>
         </Link>
 
