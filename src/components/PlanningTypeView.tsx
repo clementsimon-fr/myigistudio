@@ -230,13 +230,13 @@ function RecurringGrid({ courses, schedules, onEventClick }: {
   if (rows.length === 0) return null;
 
   return (
-    <div className="overflow-x-auto rounded-lg border bg-card">
-      <table className="w-full border-collapse text-sm">
+    <div className="overflow-x-auto -mx-2 px-2 rounded-lg border bg-card">
+      <table className="w-full border-collapse text-sm" style={{ minWidth: "340px" }}>
         <thead>
           <tr className="border-b bg-muted/30">
-            <th className="text-left py-2 px-3 font-medium text-muted-foreground min-w-[90px]">Cours</th>
+            <th className="text-left py-2.5 px-2 font-medium text-muted-foreground text-xs min-w-[80px]">Cours</th>
             {DAYS_SHORT.map((d, i) => (
-              <th key={`${d}-${i}`} className="py-2 px-1 font-medium text-muted-foreground text-center w-8">{d}</th>
+              <th key={`${d}-${i}`} className="py-2.5 px-0.5 font-medium text-muted-foreground text-center text-xs w-9">{d}</th>
             ))}
           </tr>
         </thead>
@@ -245,25 +245,25 @@ function RecurringGrid({ courses, schedules, onEventClick }: {
             const style = getCategoryStyle(a.category);
             return (
               <tr key={a.name} className="border-b border-muted/30 last:border-0">
-                <td className="py-2.5 px-3">
+                <td className="py-3 px-2">
                   <button
-                    className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+                    className="flex items-center gap-1.5 hover:opacity-70 transition-opacity min-h-[44px]"
                     onClick={() => onEventClick?.({ type: "course", name: a.name, id: a.id })}
                   >
                     <div className={`w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
-                    <span className="font-medium text-xs">{a.name}</span>
+                    <span className="font-medium text-xs leading-tight">{a.name}</span>
                   </button>
                 </td>
                 {DAYS.map(day => {
                   const daySlots = a.slots.filter(s => s.day === day);
                   return (
-                    <td key={day} className="py-2.5 px-1 text-center">
+                    <td key={day} className="py-3 px-0.5 text-center">
                       {daySlots.length > 0 ? (
-                        <div className="flex flex-col items-center gap-0.5">
+                        <div className="flex flex-col items-center gap-1">
                           {daySlots.map((s, i) => (
                             <button
                               key={i}
-                              className={`inline-flex items-center justify-center px-1 py-0.5 rounded text-[8px] font-semibold text-white ${style.dot} hover:opacity-80 transition-opacity cursor-pointer`}
+                              className={`inline-flex items-center justify-center px-1 py-1 rounded text-[9px] font-semibold text-white ${style.dot} hover:opacity-80 transition-opacity cursor-pointer min-w-[36px] min-h-[24px]`}
                               onClick={() => onEventClick?.({ type: "course", name: a.name, id: a.id })}
                             >
                               {formatTime(s.time)}
