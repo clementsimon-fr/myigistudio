@@ -68,7 +68,7 @@ export default function Navbar() {
             <div className="md:hidden flex items-center gap-2">
               {isClient && (
                 <button
-71:                   onClick={() => navigate("/mon-espace?section=reservations")}
+onClick={() => navigate("/mon-espace?section=reservations")}
                   className="flex items-center gap-1.5 bg-primary/15 text-primary-dark font-semibold px-3 py-2 rounded-full border-2 border-primary/30 text-xs min-h-[44px]"
                 >
                   <User className="h-4 w-4" />
