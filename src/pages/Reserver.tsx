@@ -1192,7 +1192,11 @@ export default function Reserver() {
                                   toast({ title: "Veuillez accepter les conditions pour continuer", variant: "destructive" });
                                   return;
                                 }
-                                handleBuyUnit();
+                                if (paymentMode === "1 carte yoga utilisée") {
+                                  handleReserveWithCard();
+                                } else {
+                                  handleBuyUnit();
+                                }
                               }}
                               className="w-full h-11 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90 gap-2 text-base font-semibold"
                             >
