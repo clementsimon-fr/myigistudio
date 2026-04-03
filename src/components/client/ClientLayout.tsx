@@ -54,10 +54,10 @@ export default function ClientLayout({ children, title }: ClientLayoutProps) {
                 key={item.label}
                 variant={currentSection === item.section ? "default" : "outline"}
                 size="sm"
-                className="gap-1.5 text-xs rounded-full"
+                className="gap-1.5 text-xs rounded-full min-h-[44px] px-4"
                 onClick={() => handleNav(item)}
               >
-                <item.icon className="h-3.5 w-3.5" />
+                <item.icon className="h-4 w-4" />
                 {item.label}
               </Button>
             ))}

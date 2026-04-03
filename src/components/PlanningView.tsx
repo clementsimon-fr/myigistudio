@@ -262,7 +262,7 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
             </h3>
             {!isThisWeek && <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-0.5" onClick={goThisWeek}>Revenir à cette semaine</Button>}
           </div>
-          <Button variant="outline" size="icon" onClick={nextWeek}><ChevronRight className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" onClick={nextWeek} className="min-h-[44px] min-w-[44px]"><ChevronRight className="h-5 w-5" /></Button>
         </div>
 
         <div className="space-y-4">
