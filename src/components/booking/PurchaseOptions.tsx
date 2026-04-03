@@ -96,7 +96,7 @@ export default function PurchaseOptions({
             Cartes yoga disponibles : <strong>0</strong>
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            {userName}, achetez une carte yoga pour réserver vos cours.
+            {userName}, les cours de yoga et pilates fonctionnent avec l'achat de cartes yoga. Achetez une carte pour réserver.
           </p>
         </div>
 
