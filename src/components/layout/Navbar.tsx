@@ -68,13 +68,13 @@ export default function Navbar() {
             <div className="md:hidden flex items-center gap-2">
               {isClient && (
                 <button
-                  onClick={() => navigate("/mon-espace?section=reservations")}
-                  className="flex items-center gap-1 bg-primary/15 text-primary-dark font-semibold px-3 py-1.5 rounded-full border-2 border-primary/30 text-xs"
+onClick={() => navigate("/mon-espace?section=reservations")}
+                  className="flex items-center gap-1.5 bg-primary/15 text-primary-dark font-semibold px-3 py-2 rounded-full border-2 border-primary/30 text-xs min-h-[44px]"
                 >
-                  <User className="h-3.5 w-3.5" />
+                  <User className="h-4 w-4" />
                   {currentProfile.name}
-                  <ChevronRight className="h-3 w-3" />
-                  <span className="text-[10px] font-medium">Mon espace</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                  <span className="text-[11px] font-medium">Mon espace</span>
                 </button>
               )}
               {isAdminLike && (
@@ -87,7 +87,7 @@ export default function Navbar() {
         ) : (
           /* Visitor: encadré around login icon */
           <Link to="/login">
-            <Button variant="outline" size="sm" className="gap-1.5 rounded-full border-primary/30 text-primary-dark">
+            <Button variant="outline" size="sm" className="gap-1.5 rounded-full border-primary/30 text-primary-dark min-h-[44px] px-4">
               <User className="h-4 w-4" />
               <span className="text-xs">Connexion</span>
             </Button>

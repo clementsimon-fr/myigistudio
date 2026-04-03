@@ -80,7 +80,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
                   variant={isActive ? null as any : "outline"}
                   size="sm"
                   onClick={() => onFilterChange(isActive ? "all" : f.value)}
-                  className={`rounded-full flex-col h-auto py-1 px-3 gap-0.5 text-xs min-w-[4.5rem] ${
+                  className={`rounded-full flex-col h-auto min-h-[56px] py-1.5 px-4 gap-0.5 text-xs min-w-[5rem] ${
                     isActive
                       ? f.activeBg
                         ? `${f.activeBg} text-white border-transparent hover:text-white hover:opacity-90`
@@ -90,7 +90,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
                         : ""
                   }`}
                 >
-                  <img src={getIcon(f)} alt="" className="w-7 h-7 rounded-full object-cover" />
+                  <img src={getIcon(f)} alt="" className="w-8 h-8 rounded-full object-cover" />
                   <span className="leading-tight">{f.label}</span>
                 </Button>
               );
@@ -100,10 +100,10 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
                 variant="outline"
                 size="sm"
                 onClick={() => setMoreFiltersOpen(!moreFiltersOpen)}
-                className={`rounded-full h-7 w-7 p-0 ${moreFiltersOpen ? "bg-muted" : ""}`}
+                className={`rounded-full h-11 w-11 p-0 ${moreFiltersOpen ? "bg-muted" : ""}`}
                 title="Plus de filtres"
               >
-                {moreFiltersOpen ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                {moreFiltersOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
               </Button>
             )}
           </div>
@@ -117,7 +117,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
               <Button
                 variant={subFilter === "all" ? null as any : "outline"}
                 size="sm"
-                className={`rounded-full h-6 text-[11px] px-3 italic ${subFilter === "all" ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
+                className={`rounded-full min-h-[44px] text-xs px-4 italic ${subFilter === "all" ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
                 onClick={() => onSubFilterChange("all")}
               >
                 Tout voir
@@ -127,7 +127,7 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
                   key={name}
                   variant={subFilter === name ? null as any : "outline"}
                   size="sm"
-                  className={`rounded-full h-6 text-[11px] px-3 italic ${subFilter === name ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
+                  className={`rounded-full min-h-[44px] text-xs px-4 italic ${subFilter === name ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
                   onClick={() => onSubFilterChange(name)}
                 >
                   {name}
