@@ -17,7 +17,7 @@ const navItems = [
 export default function ClientLayout({ children, title }: ClientLayoutProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { currentProfile } = useDemoContext();
+  const { currentProfile, setCurrentProfile } = useDemoContext();
   const currentSection = searchParams.get("section") || "reservations";
 
   const handleNav = (item: typeof navItems[0]) => {
@@ -33,15 +33,26 @@ export default function ClientLayout({ children, title }: ClientLayoutProps) {
           <h1 className="text-lg font-display font-bold text-primary-dark">
             Bonjour {currentProfile?.name || ""}
           </h1>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 text-xs rounded-full"
-            onClick={() => navigate("/")}
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Retour à l'accueil
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs rounded-full text-destructive border-destructive/30 hover:bg-destructive/10"
+              onClick={() => { setCurrentProfile(null); navigate("/"); }}
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Déconnexion
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs rounded-full"
+              onClick={() => navigate("/")}
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Accueil
+            </Button>
+          </div>
         </div>
       </header>
 
