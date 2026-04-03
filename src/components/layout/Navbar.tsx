@@ -87,7 +87,7 @@ export default function Navbar() {
         ) : (
           /* Visitor: encadré around login icon */
           <Link to="/login">
-            <Button variant="outline" size="sm" className="gap-1.5 rounded-full border-primary/30 text-primary-dark">
+            <Button variant="outline" size="sm" className="gap-1.5 rounded-full border-primary/30 text-primary-dark min-h-[44px] px-4">
               <User className="h-4 w-4" />
               <span className="text-xs">Connexion</span>
             </Button>
