@@ -1132,7 +1132,7 @@ export default function Reserver() {
                                 const el = document.getElementById("conditions-section");
                                 if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
                               }, 100);
-                            }} className="w-full gap-2 bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90">
+                            }} className={`w-full gap-2 ${showPaymentConfirm ? "bg-background text-foreground border border-input hover:bg-accent" : "bg-primary-dark text-primary-dark-foreground hover:bg-primary-dark/90"}`}>
                               <ShoppingCart className="h-4 w-4" /> Commander
                             </Button>
                             <Button variant="outline" className="w-full gap-2" onClick={() => setShowVoucherPopup(true)}>
