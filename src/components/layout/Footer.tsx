@@ -7,7 +7,7 @@ export default function Footer() {
       <div className="container py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
         <div>
           <h3 className="text-xl font-display font-bold mb-3">
-            MyIgi<span className="text-secondary">Studio</span>
+            <span className="text-brand-pink">My</span><span className="text-primary">IgiStudio</span>
           </h3>
           <p className="text-sm opacity-80 leading-relaxed">
             Yoga, Pilates, Poterie & Bien-être. Un lieu unique pour prendre soin de soi.

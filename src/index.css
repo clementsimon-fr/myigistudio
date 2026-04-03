@@ -27,6 +27,8 @@
     --accent: 40 76% 60%;
     --accent-foreground: 0 0% 24%;
 
+    --brand-pink: 350 55% 80%;
+
     --muted: 30 30% 92%;
     --muted-foreground: 0 0% 45%;
 
@@ -70,6 +72,8 @@
 
     --accent: 40 76% 50%;
     --accent-foreground: 0 0% 12%;
+
+    --brand-pink: 350 55% 75%;
 
     --muted: 0 0% 20%;
     --muted-foreground: 30 20% 65%;

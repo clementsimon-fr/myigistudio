@@ -23,8 +23,8 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Link to="/" className="text-3xl font-display font-bold text-primary-dark">
-            MyIgi<span className="text-primary italic">Studio</span>
+          <Link to="/" className="text-3xl font-display font-bold">
+            <span className="text-brand-pink">My</span><span className="text-primary-dark">IgiStudio</span>
           </Link>
           <p className="mt-2 text-muted-foreground">Créez votre compte</p>
         </div>

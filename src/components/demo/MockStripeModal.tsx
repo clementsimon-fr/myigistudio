@@ -45,7 +45,7 @@ export default function MockStripeModal({ open, onClose, onSuccess, amount, desc
             <div className="h-8 w-8 rounded bg-[hsl(250,80%,60%)] flex items-center justify-center">
               <CreditCard className="h-4 w-4 text-white" />
             </div>
-            MyIgiStudio
+            <span className="text-brand-pink">My</span>IgiStudio
           </DialogTitle>
         </DialogHeader>
 
