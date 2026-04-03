@@ -100,7 +100,7 @@ export default function TestUX4() {
     <div className="min-h-screen bg-background pb-20">
       {/* Status bar mock */}
       <div className="bg-primary-dark text-primary-dark-foreground text-center text-xs py-1 font-medium">
-        MyIgiStudio
+        <span className="text-brand-pink">My</span>IgiStudio
       </div>
 
       {/* iOS-style modal */}

@@ -421,8 +421,8 @@ export default function TestUX() {
             <ArrowLeft className="h-4 w-4" />
             <span className="text-sm text-muted-foreground">Retour</span>
           </Link>
-          <h1 className="font-display font-bold text-primary-dark">
-            MyIgi<span className="text-secondary">Studio</span>
+          <h1 className="font-display font-bold">
+            <span className="text-brand-pink">My</span><span className="text-primary-dark">IgiStudio</span>
           </h1>
           <div className="w-16" />
         </div>
