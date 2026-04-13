@@ -1,43 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Save, Megaphone, Upload, ImageIcon } from "lucide-react";
+import { Loader2, Megaphone, ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { saveSiteSettings } from "@/hooks/useSiteSettings";
-
-interface Field {
-  key: string;
-  label: string;
-  type: "text" | "textarea" | "activity-select";
-}
-
-interface SectionDef {
-  title: string;
-  fields: Field[];
-}
-
-const SECTIONS: SectionDef[] = [
-  {
-    title: "Section Héro",
-    fields: [
-      { key: "hero_welcome", label: "Texte d'accueil (ex: BIENVENUE CHEZ)", type: "text" },
-      { key: "hero_title", label: "Titre principal (ex: MyIgiStudio)", type: "text" },
-      { key: "hero_subtitle", label: "Sous-titre", type: "textarea" },
-    ],
-  },
-  {
-    title: "Événement à la une",
-    fields: [
-      { key: "featured_event_activity_id", label: "Activité à mettre en avant", type: "activity-select" },
-      { key: "featured_event_title", label: "Titre personnalisé (optionnel — sinon le nom de l'activité)", type: "text" },
-    ],
-  },
-];
 
 interface ActivityOption {
   id: string;
@@ -64,7 +33,6 @@ function FilterIconUploader({ settingKey, label, currentUrl, onUploaded }: { set
     setUploading(true);
     const ext = file.name.split(".").pop();
     const path = `${settingKey}.${ext}`;
-    // Remove old file first
     await supabase.storage.from("filter-icons").remove([path]);
     const { error } = await supabase.storage.from("filter-icons").upload(path, file, { upsert: true });
     if (error) {
@@ -155,12 +123,12 @@ export default function AdminContenu() {
     }
     values.featured_event_link = link;
 
-    const allKeys = ["hero_welcome", "hero_title", "hero_subtitle", "featured_event_title", "featured_event_link", "featured_event_activity_id"];
+    const allKeys = ["featured_event_title", "featured_event_link", "featured_event_activity_id"];
     const entries = allKeys
       .filter(key => values[key] !== undefined)
       .map(key => ({ key, value: values[key] || "" }));
     await saveSiteSettings(entries);
-    toast({ title: "Contenu enregistré ✓" });
+    toast({ title: "Événement enregistré ✓" });
     setSaving(false);
   };
 
@@ -184,7 +152,7 @@ export default function AdminContenu() {
 
   if (loading) {
     return (
-      <AdminLayout title="Contenu du site">
+      <AdminLayout title="Événement">
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -193,66 +161,54 @@ export default function AdminContenu() {
   }
 
   return (
-    <AdminLayout title="Contenu du site">
+    <AdminLayout title="Événement">
       <div className="max-w-2xl space-y-8">
-        {SECTIONS.map((section, idx) => (
-          <div key={section.title} className="rounded-xl border bg-card p-5 space-y-4">
-            <h3 className="font-display font-semibold text-primary-dark flex items-center gap-2">
-              {idx === 1 && <Megaphone className="h-4 w-4" />}
-              {section.title}
-            </h3>
-            {idx === 1 && (
-              <p className="text-xs text-muted-foreground">
-                {hasFeaturedEvent
-                  ? "✅ Un événement à la une sera affiché sur la page d'accueil. Le visiteur pourra cliquer pour réserver directement."
-                  : "Sélectionnez une activité pour afficher un bandeau sur la page d'accueil."}
-              </p>
-            )}
-            {section.fields.map(field => (
-              <div key={field.key}>
-                <Label className="text-xs text-muted-foreground">{field.label}</Label>
-                {field.type === "textarea" ? (
-                  <Textarea
-                    value={values[field.key] || ""}
-                    onChange={e => setValues(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    rows={3}
-                    placeholder="Valeur par défaut si vide"
-                  />
-                ) : field.type === "activity-select" ? (
-                  <Select
-                    value={values[field.key] || "none"}
-                    onValueChange={v => {
-                      const newVal = v === "none" ? "" : v;
-                      setValues(prev => ({ ...prev, [field.key]: newVal }));
-                      if (newVal) {
-                        const act = activityOptions.find(a => a.id === newVal);
-                        if (act && !values.featured_event_title?.trim()) {
-                          setValues(prev => ({ ...prev, featured_event_title: act.name }));
-                        }
-                      }
-                    }}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Choisir une activité..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— Aucun événement —</SelectItem>
-                      {activityOptions.map(a => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name} {a.date ? `(${new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })})` : "(récurrent)"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    value={values[field.key] || ""}
-                    onChange={e => setValues(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    placeholder="Valeur par défaut si vide"
-                  />
-                )}
-              </div>
-            ))}
+        {/* Événement à la une */}
+        <div className="rounded-xl border bg-card p-5 space-y-4">
+          <h3 className="font-display font-semibold text-primary-dark flex items-center gap-2">
+            <Megaphone className="h-4 w-4" />
+            Événement à la une
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            {hasFeaturedEvent
+              ? "✅ Un événement à la une sera affiché sur la page d'accueil. Le visiteur pourra cliquer pour réserver directement."
+              : "Sélectionnez une activité pour afficher un bandeau sur la page d'accueil."}
+          </p>
+          <div>
+            <Label className="text-xs text-muted-foreground">Activité à mettre en avant</Label>
+            <Select
+              value={values.featured_event_activity_id || "none"}
+              onValueChange={v => {
+                const newVal = v === "none" ? "" : v;
+                setValues(prev => ({ ...prev, featured_event_activity_id: newVal }));
+                if (newVal) {
+                  const act = activityOptions.find(a => a.id === newVal);
+                  if (act && !values.featured_event_title?.trim()) {
+                    setValues(prev => ({ ...prev, featured_event_title: act.name }));
+                  }
+                }
+              }}
+            >
+              <SelectTrigger><SelectValue placeholder="Choisir une activité..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— Aucun événement —</SelectItem>
+                {activityOptions.map(a => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name} {a.date ? `(${new Date(a.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })})` : "(récurrent)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        ))}
+          <div>
+            <Label className="text-xs text-muted-foreground">Titre personnalisé (optionnel — sinon le nom de l'activité)</Label>
+            <Input
+              value={values.featured_event_title || ""}
+              onChange={e => setValues(prev => ({ ...prev, featured_event_title: e.target.value }))}
+              placeholder="Valeur par défaut si vide"
+            />
+          </div>
+        </div>
 
         {/* Filter Icons Section */}
         <div className="rounded-xl border bg-card p-5 space-y-4">
@@ -275,8 +231,6 @@ export default function AdminContenu() {
             ))}
           </div>
         </div>
-
-{/* Auto-save: no manual save button needed */}
       </div>
     </AdminLayout>
   );
