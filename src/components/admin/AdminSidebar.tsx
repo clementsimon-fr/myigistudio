@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Bell, CalendarDays, CalendarRange, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText, Lightbulb, FileSignature, Sun } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -13,8 +14,21 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/integrations/supabase/client";
 
-const sidebarGroups = [
+interface SidebarItem {
+  title: string;
+  url: string;
+  icon: any;
+  settingKey?: string;
+}
+
+interface SidebarGroup_ {
+  label: string;
+  items: SidebarItem[];
+}
+
+const sidebarGroups: SidebarGroup_[] = [
   {
     label: "",
     items: [
@@ -25,7 +39,7 @@ const sidebarGroups = [
     label: "Organisation",
     items: [
       { title: "Activités et réservations", url: "/admin/activites", icon: BookOpen },
-      { title: "Planning type", url: "/admin/planning-type", icon: CalendarRange },
+      { title: "Planning type", url: "/admin/planning-type", icon: CalendarRange, settingKey: "show_planning_type" },
       { title: "Notifications", url: "/admin", icon: Bell },
     ],
   },
@@ -58,43 +72,60 @@ const sidebarGroups = [
 export default function AdminSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    supabase.from("site_settings").select("key, value").in("key", ["show_planning_type"]).then(({ data }) => {
+      const hidden = new Set<string>();
+      if (data) {
+        for (const row of data) {
+          if (row.value === "false") hidden.add(row.key);
+        }
+      }
+      setHiddenKeys(hidden);
+    });
+  }, []);
 
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
-        {sidebarGroups.map((group, idx) => (
-          <div key={group.label}>
-            {idx > 0 && <Separator className="mx-3 my-1" />}
-            <SidebarGroup>
-              <SidebarGroupLabel>
-                {!collapsed && (
-                  <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
-                    {group.label}
-                  </span>
-                )}
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {group.items.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to={item.url}
-                          end={item.url === "/admin"}
-                          className="hover:bg-muted/50"
-                          activeClassName="bg-muted text-primary-dark font-medium"
-                        >
-                          <item.icon className="mr-2 h-4 w-4" />
-                          {!collapsed && <span>{item.title}</span>}
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </div>
-        ))}
+        {sidebarGroups.map((group, idx) => {
+          const visibleItems = group.items.filter(item => !item.settingKey || !hiddenKeys.has(item.settingKey));
+          if (visibleItems.length === 0 && group.label) return null;
+          return (
+            <div key={group.label}>
+              {idx > 0 && <Separator className="mx-3 my-1" />}
+              <SidebarGroup>
+                <SidebarGroupLabel>
+                  {!collapsed && (
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                      {group.label}
+                    </span>
+                  )}
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {visibleItems.map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild>
+                          <NavLink
+                            to={item.url}
+                            end={item.url === "/admin"}
+                            className="hover:bg-muted/50"
+                            activeClassName="bg-muted text-primary-dark font-medium"
+                          >
+                            <item.icon className="mr-2 h-4 w-4" />
+                            {!collapsed && <span>{item.title}</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </div>
+          );
+        })}
 
         <Separator className="mx-3 my-1" />
         <SidebarGroup>
