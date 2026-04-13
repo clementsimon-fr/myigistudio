@@ -28,12 +28,24 @@ interface FeatureRequest {
 }
 
 // ── Timeline phases — Analyser → Prototyper → Expérimenter → Déployer → Maintenir ──
-const timelinePhases = [
+interface TimelinePhase {
+  name: string;
+  subtitle: string;
+  icon: any;
+  status: "done" | "in_progress" | "upcoming";
+  cost: string | null;
+  costNote: string;
+  explanation: string;
+  detail: string;
+  todoList?: { label: string; done: boolean }[];
+}
+
+const timelinePhases: TimelinePhase[] = [
   {
     name: "Analyser",
     subtitle: "Compréhension du besoin",
     icon: Search,
-    status: "done" as const,
+    status: "done",
     cost: "250 €",
     costNote: "Offert",
     explanation:
@@ -45,7 +57,7 @@ const timelinePhases = [
     name: "Prototyper",
     subtitle: "Maquette interactive",
     icon: Palette,
-    status: "done" as const,
+    status: "done",
     cost: "250 €",
     costNote: "Offert",
     explanation:
@@ -57,7 +69,7 @@ const timelinePhases = [
     name: "Expérimenter",
     subtitle: "Version fonctionnelle & migration",
     icon: FlaskConical,
-    status: "in_progress" as const,
+    status: "in_progress",
     cost: "250 €",
     costNote: "Offert",
     explanation:
@@ -77,7 +89,7 @@ const timelinePhases = [
     name: "Déployer",
     subtitle: "Lancement officiel",
     icon: Send,
-    status: "upcoming" as const,
+    status: "upcoming",
     cost: null,
     costNote: "Inclus",
     explanation:
@@ -89,7 +101,7 @@ const timelinePhases = [
     name: "Maintenir",
     subtitle: "La vie de l'app",
     icon: ShieldCheck,
-    status: "upcoming" as const,
+    status: "upcoming",
     cost: null,
     costNote: "Inclus dans l'abonnement",
     explanation:
