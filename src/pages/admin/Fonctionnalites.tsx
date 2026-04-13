@@ -41,23 +41,20 @@ const URGENCY_CONFIG: Record<number, { label: string; delay: string; color: stri
   4: { label: "À discuter", delay: "à l'occasion", color: "bg-muted text-muted-foreground border-muted-foreground/20" },
 };
 
-const IMPACT_CONFIG: Record<string, { label: string; examples: string; cost: string; color: string }> = {
+const IMPACT_CONFIG: Record<string, { label: string; examples: string; color: string }> = {
   retouche: {
     label: "Retouche",
     examples: "Changer un texte, une couleur, une image, corriger une faute",
-    cost: "Inclus",
     color: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
   },
   amelioration: {
     label: "Amélioration",
     examples: "Ajouter une section, réorganiser un bloc, modifier un formulaire",
-    cost: "Inclus",
     color: "bg-sky-500/15 text-sky-700 border-sky-500/30",
   },
   fonctionnalite: {
     label: "Création",
     examples: "Système de chat, bons cadeaux multiples, nouveau module",
-    cost: "50€ / ticket",
     color: "bg-violet-500/15 text-violet-700 border-violet-500/30",
   },
 };
@@ -76,9 +73,7 @@ const STATUS_OPTIONS = [
 ];
 
 function getCostLabel(impact: string, urgency: number): { text: string; detail: string } {
-  if (impact === "fonctionnalite") return { text: "50€", detail: "Cette création sera facturée en tant que ticket." };
-  if (urgency === 1) return { text: "Inclus", detail: "Groupée avec vos autres demandes urgentes du jour." };
-  return { text: "Inclus", detail: "Inclus dans votre quota hebdomadaire." };
+  return { text: "Voir contrat", detail: "Consultez la page Contrat pour les détails tarifaires." };
 }
 
 function generateTicketGroup(urgency: number, impact: string): string | null {
@@ -201,7 +196,7 @@ export default function AdminFonctionnalites() {
                   </div>
                   {ex.description && <p className="text-xs text-muted-foreground line-clamp-2">{ex.description}</p>}
                   <div className="flex items-center gap-1.5 mt-auto">
-                    <Badge variant="outline" className={`text-[10px] ${impactCfg.color}`}>{impactCfg.label} · {cost.text}</Badge>
+                    <Badge variant="outline" className={`text-[10px] ${impactCfg.color}`}>{impactCfg.label}</Badge>
                     <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 ml-auto gap-1" onClick={() => addFromExample(ex)}>
                       <Plus className="h-3 w-3" /> Ajouter
                     </Button>
@@ -375,7 +370,7 @@ function KanbanColumn({ title, icon, items, onStatusChange, onDelete }: {
               {item.description && <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>}
               <div className="flex items-center gap-1.5 flex-wrap">
                 <Badge variant="outline" className={`text-[10px] ${urgCfg.color}`}>{urgCfg.label}</Badge>
-                <Badge variant="outline" className={`text-[10px] ${impactCfg.color}`}>{impactCfg.label} · {cost.text}</Badge>
+                <Badge variant="outline" className={`text-[10px] ${impactCfg.color}`}>{impactCfg.label}</Badge>
                 <Badge variant="secondary" className="text-[10px]">{targetLabel}</Badge>
                 <Select value={item.status} onValueChange={v => onStatusChange(item.id, v)}>
                   <SelectTrigger className="h-6 text-[10px] w-auto min-w-[80px] border-dashed"><SelectValue /></SelectTrigger>
