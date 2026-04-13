@@ -11,7 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Rocket, Server, Lightbulb, CheckCircle2, Clock, Gift, AlertTriangle, Zap,
   BarChart3, Info, Palette, Database, Upload, HeartHandshake, ShieldCheck, Calendar,
-  ChevronDown, Pencil, Save, X, FileDown
+  ChevronDown, Pencil, Save, X, FileDown, Search, Cpu, FlaskConical, Send, Wrench
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -27,11 +27,23 @@ interface FeatureRequest {
   created_at: string;
 }
 
-// ── Timeline phases ──
+// ── Timeline phases — Analyser → Prototyper → Expérimenter → Déployer → Maintenir ──
 const timelinePhases = [
   {
-    name: "Prototype Fictif",
-    subtitle: "Validation du concept",
+    name: "Analyser",
+    subtitle: "Compréhension du besoin",
+    icon: Search,
+    status: "done" as const,
+    cost: "250 €",
+    costNote: "Offert",
+    explanation:
+      "Première étape : comprendre votre activité, vos besoins, votre clientèle et vos outils actuels. C'est la phase d'écoute et de diagnostic qui permet de poser les fondations du projet.",
+    detail:
+      "Audit des outils existants (SimplyBook, Calendly), cartographie des parcours clients, définition du périmètre fonctionnel.",
+  },
+  {
+    name: "Prototyper",
+    subtitle: "Maquette interactive",
     icon: Palette,
     status: "done" as const,
     cost: "250 €",
@@ -42,52 +54,48 @@ const timelinePhases = [
       "Logiques de navigation, design visuel, sans connexion ni base de données réelle.",
   },
   {
-    name: "Développement",
-    subtitle: "Version fonctionnelle",
-    icon: Database,
+    name: "Expérimenter",
+    subtitle: "Version fonctionnelle & migration",
+    icon: FlaskConical,
     status: "in_progress" as const,
     cost: "250 €",
     costNote: "Offert",
     explanation:
-      "Nous créons le moteur de l'application. À cette étape, l'application est opérationnelle : on peut créer un compte, réserver et payer. C'est une page blanche prête à recevoir votre activité.",
+      "Nous créons le moteur de l'application et préparons la migration. L'application devient opérationnelle : on peut créer un compte, réserver et payer. En parallèle, nous récupérons vos données existantes.",
     detail:
-      "Mise en place de la base de données, sécurité des comptes, intégration du système de paiement Stripe.",
+      "Base de données, sécurité des comptes, intégration Stripe, migration SimplyBook & Calendly.",
+    todoList: [
+      { label: "Récupération BDD Calendly (historique réservations)", done: false },
+      { label: "Récupération BDD SimplyBook (clients & historique)", done: false },
+      { label: "Configuration Stripe (paiements en ligne)", done: false },
+      { label: "Algorithme de matching clients (téléphone/email)", done: false },
+      { label: "Envoi d'invitations de bienvenue (Mail/SMS)", done: false },
+      { label: "Tests de paiement et réservation end-to-end", done: false },
+    ],
   },
   {
-    name: "Déploiement",
-    subtitle: "Version complète & Migration",
-    icon: Upload,
-    status: "upcoming" as const,
-    cost: "250 €",
-    costNote: "Offert",
-    explanation:
-      "C'est le « Grand Saut ». Nous récupérons tous vos clients actuels de SimplyBook et Calendly pour les installer dans MyIgiStudio.\n\nÉtape 1 : Migration de l'historique et reconnaissance automatique par numéro de téléphone.\nÉtape 2 : Envoi d'une invitation officielle (Mail/SMS) à vos clients pour qu'ils découvrent leur nouvel espace.",
-    detail:
-      "Importation ETL, algorithme de matching, routage automatisé des notifications de bienvenue.",
-  },
-  {
-    name: "Suivi",
-    subtitle: "Garantie de lancement",
-    icon: HeartHandshake,
+    name: "Déployer",
+    subtitle: "Lancement officiel",
+    icon: Send,
     status: "upcoming" as const,
     cost: null,
-    costNote: "Inclus dans l'abonnement",
+    costNote: "Inclus",
     explanation:
-      "Une fois l'application entre les mains de vos clients, je reste à vos côtés pour corriger les éventuels petits ajustements et m'assurer que tout fonctionne avec fluidité pendant les premières semaines.",
+      "C'est le « Grand Saut ». Élodie communique le lancement de l'application à ses clients. Les clients reçoivent une invitation officielle pour découvrir leur nouvel espace MyIgiStudio.",
     detail:
-      "Correction de bugs (Maintenance Corrective) et optimisation des performances.",
+      "Communication de lancement, support de première ligne, correction des retours immédiats.",
   },
   {
-    name: "Maintien & Évolution",
+    name: "Maintenir",
     subtitle: "La vie de l'app",
     icon: ShieldCheck,
     status: "upcoming" as const,
     cost: null,
     costNote: "Inclus dans l'abonnement",
     explanation:
-      "Votre application vit et grandit. Cette phase couvre l'hébergement sécurisé et les petites évolutions de forme pour que MyIgiStudio reste toujours moderne et performant.",
+      "Votre application vit et grandit. Cette phase couvre l'hébergement sécurisé, la correction de bugs, les mises à jour de sécurité et les petites évolutions pour que MyIgiStudio reste toujours moderne et performant.",
     detail:
-      "Maintenance évolutive, mises à jour de sécurité, support prioritaire.",
+      "Maintenance corrective & évolutive, mises à jour de sécurité, support prioritaire.",
   },
 ];
 
@@ -115,9 +123,12 @@ const STATUS_CONFIG = {
   },
 };
 
-const includedItems = [
-  "Hébergement sécurisé et maintenance corrective (correction de bugs)",
+const maintenanceInclusions = [
+  "Hébergement sécurisé de l'application",
+  "Maintenance corrective (correction de bugs)",
   "Mises à jour de sécurité",
+  "Sauvegarde automatique des données",
+  "Support par email (réponse sous 48h)",
   "Quota de modifications : ajustements cosmétiques (textes, couleurs, images) dans la limite d'une session de mise à jour groupée par semaine",
 ];
 
@@ -140,21 +151,9 @@ const GRID_COLS = [
   { impact: "Création", color: "text-violet-700" },
 ];
 
-function getGridCost(_urgencyIdx: number, impactKey: string): string {
-  if (impactKey === "Création") return "50€";
-  return "Inclus";
-}
-
-function getGridCellColor(cost: string): string {
-  if (cost === "Inclus") return "bg-emerald-500/10 text-emerald-700";
-  if (cost === "50€") return "bg-violet-500/10 text-violet-700";
-  return "bg-muted text-muted-foreground";
-}
-
-// ── Timeline Step Component with Collapsible ──
-function TimelineStep({ phase, isLast, isFournisseur, onEdit, onSave }: {
+// ── Timeline Step Component ──
+function TimelineStep({ phase, isLast, isFournisseur, onSave }: {
   phase: typeof timelinePhases[0]; isLast: boolean; isFournisseur: boolean;
-  onEdit?: (phase: typeof timelinePhases[0]) => void;
   onSave?: (phaseName: string, updates: Partial<typeof timelinePhases[0]>) => void;
 }) {
   const config = STATUS_CONFIG[phase.status];
@@ -178,15 +177,15 @@ function TimelineStep({ phase, isLast, isFournisseur, onEdit, onSave }: {
     setEditing(false);
   };
 
+  const todoList = (phase as any).todoList as { label: string; done: boolean }[] | undefined;
+
   return (
     <div className="relative flex gap-4">
       <div className="flex flex-col items-center">
         <div className={`h-10 w-10 rounded-full border-2 flex items-center justify-center shrink-0 ${config.dot} bg-card`}>
           <Icon className={`h-5 w-5 ${phase.status === "done" ? "text-emerald-600" : phase.status === "in_progress" ? "text-amber-600" : "text-muted-foreground/50"}`} />
         </div>
-        {!isLast && (
-          <div className={`w-0.5 flex-1 min-h-[2rem] ${config.line}`} />
-        )}
+        {!isLast && <div className={`w-0.5 flex-1 min-h-[2rem] ${config.line}`} />}
       </div>
 
       <div className="pb-6 flex-1">
@@ -204,13 +203,8 @@ function TimelineStep({ phase, isLast, isFournisseur, onEdit, onSave }: {
                       <Badge variant="outline" className="gap-1 bg-emerald-500/10 text-emerald-700 border-emerald-500/30 text-[11px]">
                         <Gift className="h-3 w-3" />
                         {phase.costNote === "Offert" ? (
-                          <>
-                            <span className="line-through opacity-60 mr-1">{phase.cost}</span>
-                            Offert
-                          </>
-                        ) : (
-                          <span>{phase.cost}</span>
-                        )}
+                          <><span className="line-through opacity-60 mr-1">{phase.cost}</span>Offert</>
+                        ) : <span>{phase.cost}</span>}
                       </Badge>
                     )}
                     <Badge variant="outline" className={`text-[11px] ${config.badge}`}>
@@ -253,24 +247,39 @@ function TimelineStep({ phase, isLast, isFournisseur, onEdit, onSave }: {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" className="gap-1 text-xs" onClick={handleSave}>
-                        <Save className="h-3 w-3" /> Sauvegarder
-                      </Button>
-                      <Button size="sm" variant="ghost" className="text-xs" onClick={() => setEditing(false)}>
-                        <X className="h-3 w-3" /> Annuler
-                      </Button>
+                      <Button size="sm" className="gap-1 text-xs" onClick={handleSave}><Save className="h-3 w-3" /> Sauvegarder</Button>
+                      <Button size="sm" variant="ghost" className="text-xs" onClick={() => setEditing(false)}><X className="h-3 w-3" /> Annuler</Button>
                     </div>
                   </div>
                 ) : (
                   <>
                     <p className="text-sm text-foreground/80 whitespace-pre-line leading-relaxed">{phase.explanation}</p>
+                    
+                    {todoList && todoList.length > 0 && (
+                      <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 p-3 space-y-2">
+                        <p className="text-[11px] font-semibold text-amber-700 flex items-center gap-1.5">
+                          📋 Checklist de cette phase
+                        </p>
+                        <ul className="space-y-1.5">
+                          {todoList.map((item, i) => (
+                            <li key={i} className="flex items-center gap-2 text-xs">
+                              {item.done ? (
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                              ) : (
+                                <div className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/30 shrink-0" />
+                              )}
+                              <span className={item.done ? "text-muted-foreground line-through" : "text-foreground/80"}>{item.label}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
                     <div className="rounded-lg bg-muted/50 p-3">
                       <p className="text-[11px] text-muted-foreground font-medium mb-1">🔧 Détail technique</p>
                       <p className="text-xs text-muted-foreground">{phase.detail}</p>
                     </div>
-                    {!phase.cost && (
-                      <p className="text-xs text-muted-foreground italic">{phase.costNote}</p>
-                    )}
+                    {!phase.cost && <p className="text-xs text-muted-foreground italic">{phase.costNote}</p>}
                     {isFournisseur && (
                       <Button size="sm" variant="ghost" className="gap-1 text-xs text-muted-foreground" onClick={(e) => { e.stopPropagation(); setEditing(true); }}>
                         <Pencil className="h-3 w-3" /> Modifier
@@ -293,11 +302,9 @@ export default function AdminContrat() {
   const isFournisseur = currentProfile?.role === "fournisseur";
   const [tickets, setTickets] = useState<FeatureRequest[]>([]);
   const [phases, setPhases] = useState(timelinePhases);
-  
-  // Editing state for fournisseur
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState("50");
-  const [editIncluded, setEditIncluded] = useState(includedItems.join("\n"));
+  const [editIncluded, setEditIncluded] = useState(maintenanceInclusions.join("\n"));
 
   useEffect(() => {
     const now = new Date();
@@ -311,7 +318,6 @@ export default function AdminContrat() {
 
   const paidTickets = tickets.filter(t => t.impact === "fonctionnalite");
   const includedTickets = tickets.filter(t => t.impact !== "fonctionnalite");
-  const monthlyCost = paidTickets.length * 50;
 
   const handleSavePhase = (phaseName: string, updates: Partial<typeof timelinePhases[0]>) => {
     setPhases(prev => prev.map(p => p.name === phaseName ? { ...p, ...updates } : p));
@@ -348,19 +354,18 @@ export default function AdminContrat() {
     <AdminLayout title="Contrat">
       <div className="max-w-full sm:max-w-3xl mx-auto space-y-8 overflow-x-hidden px-0 sm:px-0">
 
-        {/* PDF Export Button */}
         <Button variant="outline" className="gap-2" onClick={handlePrintScreens}>
           📄 Télécharger tous les screens (PDF)
         </Button>
 
-        {/* --- Section A: Timeline Déploiement --- */}
+        {/* --- Section A: Timeline — Analyser → Prototyper → Expérimenter → Déployer → Maintenir --- */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
             <Rocket className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-display font-bold text-primary-dark">État du Déploiement</h2>
+            <h2 className="text-lg font-display font-bold text-primary-dark">Processus de Déploiement</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Les 5 étapes clés de la mise en place de MyIgiStudio, de la maquette à la vie de l'application.
+            Analyser → Prototyper → Expérimenter → Déployer → Maintenir
           </p>
 
           <div className="mt-2">
@@ -378,21 +383,21 @@ export default function AdminContrat() {
 
         <Separator />
 
-        {/* --- Section B: Abonnement --- */}
+        {/* --- Section B: Contrat de Maintenance --- */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Server className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-display font-bold text-primary-dark">Abonnement de Service</h2>
+              <Wrench className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-display font-bold text-primary-dark">Contrat de Maintenance</h2>
             </div>
-            {isFournisseur && editingSection !== "abonnement" && (
-              <Button size="sm" variant="ghost" className="gap-1 text-xs text-muted-foreground" onClick={() => setEditingSection("abonnement")}>
+            {isFournisseur && editingSection !== "maintenance" && (
+              <Button size="sm" variant="ghost" className="gap-1 text-xs text-muted-foreground" onClick={() => setEditingSection("maintenance")}>
                 <Pencil className="h-3 w-3" /> Modifier
               </Button>
             )}
           </div>
 
-          {editingSection === "abonnement" && isFournisseur ? (
+          {editingSection === "maintenance" && isFournisseur ? (
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div>
@@ -400,11 +405,11 @@ export default function AdminContrat() {
                   <Input value={editPrice} onChange={e => setEditPrice(e.target.value)} className="mt-1 w-32" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Inclus (un par ligne)</label>
-                  <Textarea value={editIncluded} onChange={e => setEditIncluded(e.target.value)} rows={4} className="mt-1" />
+                  <label className="text-sm font-medium">Inclusions (une par ligne)</label>
+                  <Textarea value={editIncluded} onChange={e => setEditIncluded(e.target.value)} rows={6} className="mt-1" />
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" className="gap-1" onClick={() => { toast({ title: "Abonnement mis à jour ✓" }); setEditingSection(null); }}>
+                  <Button size="sm" className="gap-1" onClick={() => { toast({ title: "Contrat mis à jour ✓" }); setEditingSection(null); }}>
                     <Save className="h-3 w-3" /> Sauvegarder
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditingSection(null)}>
@@ -418,7 +423,7 @@ export default function AdminContrat() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-base">Forfait MCO & Évolutions</CardTitle>
+                    <CardTitle className="text-base">Forfait Maintenance & Hébergement</CardTitle>
                     <CardDescription className="text-xs mt-1">Maintien en Condition Opérationnelle</CardDescription>
                   </div>
                   <div className="text-right">
@@ -429,7 +434,7 @@ export default function AdminContrat() {
               </CardHeader>
               <CardContent className="pt-0">
                 <ul className="space-y-2.5">
-                  {includedItems.map((item, i) => (
+                  {maintenanceInclusions.map((item, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
                       <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
                       <span>{item}</span>
@@ -479,7 +484,7 @@ export default function AdminContrat() {
                     </tr>
                   </thead>
                   <tbody>
-                    {GRID_ROWS.map((row, rIdx) => (
+                    {GRID_ROWS.map((row) => (
                       <tr key={row.urgency} className="border-b last:border-0">
                         <td className="p-3">
                           <div className={`flex items-center gap-1.5 font-medium text-xs ${row.color}`}>
@@ -487,16 +492,13 @@ export default function AdminContrat() {
                             <span className="text-muted-foreground font-normal ml-1">({row.delay})</span>
                           </div>
                         </td>
-                        {GRID_COLS.map(col => {
-                          const cost = getGridCost(rIdx, col.impact);
-                          return (
-                            <td key={col.impact} className="p-3 text-center">
-                              <Badge variant="outline" className={`text-[11px] ${getGridCellColor(cost)}`}>
-                                {cost}
-                              </Badge>
-                            </td>
-                          );
-                        })}
+                        {GRID_COLS.map(col => (
+                          <td key={col.impact} className="p-3 text-center">
+                            <Badge variant="outline" className="text-[11px] bg-primary/10 text-primary-dark border-primary/30">
+                              Voir contrat
+                            </Badge>
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>
@@ -520,15 +522,9 @@ export default function AdminContrat() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-violet-700">{paidTickets.length}</p>
-                  <p className="text-[11px] text-muted-foreground">Créations (50€)</p>
+                  <p className="text-[11px] text-muted-foreground">Créations</p>
                 </div>
               </div>
-              {monthlyCost > 0 && (
-                <div className="mt-3 pt-3 border-t text-center">
-                  <p className="text-sm text-muted-foreground">Coût estimé supplémentaire</p>
-                  <p className="text-xl font-bold text-primary-dark">{monthlyCost}€</p>
-                </div>
-              )}
             </CardContent>
           </Card>
         </section>
