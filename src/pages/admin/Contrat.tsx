@@ -318,6 +318,22 @@ export default function AdminContrat() {
   const [editPrice, setEditPrice] = useState("50");
   const [editIncluded, setEditIncluded] = useState(maintenanceInclusions.join("\n"));
 
+  // Load persisted phase overrides from site_settings
+  useEffect(() => {
+    supabase.from("site_settings").select("key, value").eq("key", "contrat_phases").maybeSingle().then(({ data }) => {
+      if (data?.value) {
+        try {
+          const saved = JSON.parse(data.value) as Record<string, { status?: string; explanation?: string; detail?: string; cost?: string | null; costNote?: string }>;
+          setPhases(prev => prev.map(p => {
+            const override = saved[p.name];
+            if (!override) return p;
+            return { ...p, ...override, status: (override.status as any) || p.status };
+          }));
+        } catch {}
+      }
+    });
+  }, []);
+
   useEffect(() => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -331,8 +347,23 @@ export default function AdminContrat() {
   const paidTickets = tickets.filter(t => t.impact === "fonctionnalite");
   const includedTickets = tickets.filter(t => t.impact !== "fonctionnalite");
 
-  const handleSavePhase = (phaseName: string, updates: Partial<typeof timelinePhases[0]>) => {
-    setPhases(prev => prev.map(p => p.name === phaseName ? { ...p, ...updates } : p));
+  const handleSavePhase = async (phaseName: string, updates: Partial<typeof timelinePhases[0]>) => {
+    const newPhases = phases.map(p => p.name === phaseName ? { ...p, ...updates } : p);
+    setPhases(newPhases);
+
+    // Persist to site_settings
+    const overrides: Record<string, any> = {};
+    for (const p of newPhases) {
+      overrides[p.name] = { status: p.status, explanation: p.explanation, detail: p.detail, cost: p.cost, costNote: p.costNote };
+    }
+    const value = JSON.stringify(overrides);
+    const { data: existing } = await supabase.from("site_settings").select("id").eq("key", "contrat_phases").maybeSingle();
+    if (existing) {
+      await supabase.from("site_settings").update({ value }).eq("id", existing.id);
+    } else {
+      await supabase.from("site_settings").insert({ key: "contrat_phases", value });
+    }
+
     toast({ title: `Phase "${phaseName}" mise à jour ✓` });
   };
 
