@@ -471,8 +471,8 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
         </div>
         {inscrits.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
-            {inscrits.slice(0, 4).map((name, i) => (
-              <span key={i} className="text-[10px] text-muted-foreground">{name}{i < Math.min(inscrits.length, 4) - 1 ? "," : ""}</span>
+            {inscrits.slice(0, 4).map((r, i) => (
+              <span key={i} className="text-[10px] text-muted-foreground">{r.client_name}{i < Math.min(inscrits.length, 4) - 1 ? "," : ""}</span>
             ))}
             {inscrits.length > 4 && <span className="text-[10px] text-muted-foreground">+{inscrits.length - 4}</span>}
           </div>
