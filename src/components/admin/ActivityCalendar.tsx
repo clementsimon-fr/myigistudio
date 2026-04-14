@@ -189,7 +189,7 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
       supabase.from("courses").select("id, name, category, instructor"),
       supabase.from("workshops").select("id, name, category, date, time, end_time, instructor_id"),
       supabase.from("planned_sessions").select("*"),
-      supabase.from("reservations").select("client_name, date, time, activity_name, course_id, workshop_id, status, participants"),
+      supabase.from("reservations").select("client_name, date, time, activity_name, course_id, workshop_id, schedule_id, status, participants"),
       supabase.from("instructors").select("id, name").eq("active", true),
     ]);
     if (schedulesRes.data) setSchedules(schedulesRes.data as Schedule[]);
