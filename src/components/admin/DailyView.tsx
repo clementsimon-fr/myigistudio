@@ -444,6 +444,79 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
                     ))}
                   </div>
                 )}
+
+                {/* Add participant form */}
+                <div className="mt-4 pt-3 border-t">
+                  <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                    <Plus className="h-3.5 w-3.5" /> Ajouter un participant
+                  </h4>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Nom du participant"
+                      value={addParticipantName}
+                      onChange={e => setAddParticipantName(e.target.value)}
+                      className="flex-1 h-8 text-xs"
+                    />
+                    <Input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={addParticipantCount}
+                      onChange={e => setAddParticipantCount(Number(e.target.value))}
+                      className="w-16 h-8 text-xs"
+                    />
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs"
+                      disabled={!addParticipantName.trim() || addingParticipant}
+                      onClick={async () => {
+                        if (!addParticipantName.trim() || !selectedBlock) return;
+                        setAddingParticipant(true);
+                        // Determine the date for this block
+                        const blockDate = viewMode === "daily" ? dateStr : (() => {
+                          for (const { date, blocks: dayBlks } of weekBlocks) {
+                            if (dayBlks.some(b => b.id === selectedBlock.id)) return formatDateStr(date);
+                          }
+                          return dateStr;
+                        })();
+                        const insertData: any = {
+                          client_name: addParticipantName.trim(),
+                          participants: addParticipantCount,
+                          activity_name: selectedBlock.title,
+                          activity_type: selectedBlock.type,
+                          date: blockDate,
+                          time: selectedBlock.time,
+                          end_time: selectedBlock.end_time,
+                          status: "confirmé",
+                        };
+                        // Link to course/workshop
+                        if (selectedBlock.type === "course") {
+                          const schedId = selectedBlock.id.split("-")[0];
+                          const sched = schedules.find(s => s.id === schedId);
+                          if (sched) {
+                            insertData.schedule_id = sched.id;
+                            insertData.course_id = sched.course_id;
+                          }
+                        } else {
+                          insertData.workshop_id = selectedBlock.id;
+                        }
+                        const { error } = await supabase.from("reservations").insert(insertData);
+                        setAddingParticipant(false);
+                        if (error) {
+                          toast({ title: "Erreur", description: error.message, variant: "destructive" });
+                        } else {
+                          toast({ title: "Participant ajouté" });
+                          setAddParticipantName("");
+                          setAddParticipantCount(1);
+                          // Refresh data
+                          fetchData();
+                        }
+                      }}
+                    >
+                      {addingParticipant ? <Loader2 className="h-3 w-3 animate-spin" /> : "Ajouter"}
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
