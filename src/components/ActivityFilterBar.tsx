@@ -41,13 +41,8 @@ interface ActivityFilterBarProps {
   onSubFilterChange?: (value: string) => void;
 }
 
-export default function ActivityFilterBar({ filter, onFilterChange, subFilterOptions, subFilter, onSubFilterChange }: ActivityFilterBarProps) {
-  const navigate = useNavigate();
-  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFilterBarProps) {
   const { get: getSetting } = useSiteSettings();
-  const catFilter = CATEGORY_FILTERS.find(f => f.value === filter);
-  const activeBg = catFilter?.activeBg || "bg-primary-dark";
-  const hasSubFilters = filter !== "all" && subFilterOptions && subFilterOptions.length > 0;
 
   const getIcon = (f: typeof CATEGORY_FILTERS[0]) => {
     if (f.iconSettingKey) {
@@ -60,73 +55,37 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
   return (
     <div className="sticky top-16 z-30">
       <div className="bg-emerald-50/60 backdrop-blur border-b">
-        <div className="container pb-1.5 pt-1.5">
-          <div className="flex items-center justify-center gap-1 flex-wrap">
+        <div className="container py-3">
+          <div className="flex items-center justify-center gap-3 flex-wrap">
             {VISIBLE_FILTERS.map(f => {
               const isActive = filter === f.value;
               return (
-                <Button
+                <button
                   key={f.value}
-                  variant={isActive ? null as any : "outline"}
-                  size="sm"
                   onClick={() => onFilterChange(isActive ? "all" : f.value)}
-                  className={`rounded-full flex-col h-auto min-h-[56px] py-1.5 px-4 gap-0.5 text-xs min-w-[5rem] ${
+                  className={`rounded-2xl flex items-center gap-3 px-6 py-3 min-w-[200px] transition-all border-2 ${
                     isActive
                       ? f.activeBg
-                        ? `${f.activeBg} text-white border-transparent hover:text-white hover:opacity-90`
-                        : "bg-primary-dark text-white border-transparent hover:text-white hover:bg-primary-dark/90"
-                      : f.inactiveBg
-                        ? `${f.inactiveBg} border-transparent`
-                        : ""
+                        ? `${f.activeBg} text-white border-transparent shadow-md`
+                        : "bg-primary-dark text-white border-transparent shadow-md"
+                      : "bg-white border-muted hover:border-muted-foreground/30 hover:shadow-sm"
                   }`}
                 >
-                  <img src={getIcon(f)} alt="" className="w-8 h-8 rounded-full object-cover" />
-                  <span className="leading-tight">{f.label}</span>
-                </Button>
+                  <img src={getIcon(f)} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                  <div className="text-left">
+                    <span className={`block font-semibold text-sm leading-tight ${isActive ? "text-white" : "text-foreground"}`}>
+                      Voir les activités {f.label}
+                    </span>
+                    <span className={`block text-xs mt-0.5 ${isActive ? "text-white/80" : "text-muted-foreground"}`}>
+                      {f.value === "yoga" ? "Cours & planning" : "Ateliers & calendrier"}
+                    </span>
+                  </div>
+                </button>
               );
             })}
-            {hasSubFilters && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setMoreFiltersOpen(!moreFiltersOpen)}
-                className={`rounded-full h-11 w-11 p-0 ${moreFiltersOpen ? "bg-muted" : ""}`}
-                title="Plus de filtres"
-              >
-                {moreFiltersOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-              </Button>
-            )}
           </div>
         </div>
       </div>
-
-      {hasSubFilters && moreFiltersOpen && onSubFilterChange && (
-        <div className="bg-emerald-50/40 backdrop-blur border-b">
-          <div className="container py-2">
-            <div className="flex flex-wrap items-center gap-1.5 justify-center">
-              <Button
-                variant={subFilter === "all" ? null as any : "outline"}
-                size="sm"
-                className={`rounded-full min-h-[44px] text-xs px-4 italic ${subFilter === "all" ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
-                onClick={() => onSubFilterChange("all")}
-              >
-                Tout voir
-              </Button>
-              {subFilterOptions.map(name => (
-                <Button
-                  key={name}
-                  variant={subFilter === name ? null as any : "outline"}
-                  size="sm"
-                  className={`rounded-full min-h-[44px] text-xs px-4 italic ${subFilter === name ? `${activeBg} text-white border-transparent hover:text-white hover:opacity-90` : ""}`}
-                  onClick={() => onSubFilterChange(name)}
-                >
-                  {name}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

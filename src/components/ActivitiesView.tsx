@@ -200,7 +200,7 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
   return (
     <motion.div id={`card-workshop-${ws.name}`} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-all">
       <div className="aspect-[4/3] overflow-hidden bg-muted relative">
-        <img src={ws.image || PLACEHOLDER_IMG} alt={ws.name} className="w-full h-full object-cover" loading="lazy" />
+        <ImageCarousel images={[ws.image, ...(ws.images || [])].filter(Boolean)} alt={ws.name} />
       </div>
       <div className="p-4 md:p-5">
         <div className="flex items-start justify-between gap-2 mb-2">
@@ -390,7 +390,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                 return (
                   <motion.div id={`card-course-${course.id}`} key={course.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-all">
                     <div className="aspect-[4/3] overflow-hidden bg-muted relative">
-                      <img src={course.image || PLACEHOLDER_IMG} alt={course.name} className="w-full h-full object-cover" loading="lazy" />
+                      <ImageCarousel images={[course.image, ...(course.images || [])].filter(Boolean)} alt={course.name} />
                     </div>
                     <div className="p-4 md:p-5">
                       <div className="flex items-start justify-between gap-2 mb-2">
