@@ -1,11 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Clock, Users, User, CalendarDays, CalendarRange } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Users, User, CalendarDays, CalendarRange, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
+import { useToast } from "@/hooks/use-toast";
 
 interface Reservation {
   id: string;

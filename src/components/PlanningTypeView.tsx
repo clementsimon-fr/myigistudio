@@ -36,7 +36,6 @@ function getCategoryStyle(category: string) {
 function getCategoryLabel(category: string): string {
   if (category === "yoga") return "Yoga";
   if (category === "poterie") return "Poterie";
-  if (category === "bien-etre") return "Atelier";
   return category;
 }
 
