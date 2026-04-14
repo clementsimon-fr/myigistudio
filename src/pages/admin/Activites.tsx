@@ -1339,6 +1339,7 @@ export default function AdminActivites() {
         return e;
       }) }));
     }
+  };
 
   const executeDelete = async () => {
     if (!deletingItem) return;
