@@ -1,10 +1,6 @@
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import filterYoga from "@/assets/filter-yoga.png";
 import filterPoterie from "@/assets/filter-poterie.png";
-import { Button } from "@/components/ui/button";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
-import filterYoga from "@/assets/filter-yoga.png";
-import filterPoterie from "@/assets/filter-poterie.png";
 import filterTout from "@/assets/filter-tout.png";
 
 export type FilterCategory = "all" | "yoga" | "poterie";
