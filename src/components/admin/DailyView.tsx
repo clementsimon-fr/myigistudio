@@ -99,6 +99,7 @@ interface DailyViewProps {
 }
 
 export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
+  const { toast } = useToast();
   const [viewMode, setViewMode] = useState<"daily" | "weekly">("daily");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -108,6 +109,9 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBlock, setSelectedBlock] = useState<ActivityBlock | null>(null);
+  const [addParticipantName, setAddParticipantName] = useState("");
+  const [addParticipantCount, setAddParticipantCount] = useState(1);
+  const [addingParticipant, setAddingParticipant] = useState(false);
 
   const dateStr = useMemo(() => formatDateStr(currentDate), [currentDate]);
   const dayName = DAY_NAMES[currentDate.getDay()];
