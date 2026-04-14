@@ -129,7 +129,9 @@ interface WorkshopEvent {
 interface UnifiedActivity {
   id: string; name: string; description: string; long_description: string; category: string;
   image: string; instructor: string; instructor_id: string | null;
+  images: string[];
   reminder_template: string; modalities: string; source: "course" | "workshop";
+  courseIds?: string[];
   frequency?: string; spots?: number; spots_left?: number; schedules?: Schedule[];
   date?: string; time?: string; end_time?: string; duration?: string; price?: number;
   intensity?: string; reminder_timing?: string;
