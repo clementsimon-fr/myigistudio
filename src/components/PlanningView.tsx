@@ -307,7 +307,7 @@ export default function PlanningView({ courses, schedules, workshops, filter, in
           {Object.entries(CATEGORY_STYLES).map(([key, val]) => (
             <div key={key} className="flex items-center gap-1.5">
               <div className={`w-3 h-3 rounded-full ${val.dot}`} />
-              {key === "yoga" ? "Yoga & Pilates" : key === "poterie" ? "Poterie" : "Bien-être"}
+              {key === "yoga" ? "Yoga & Pilates" : "Poterie"}
             </div>
           ))}
           <ContactElodieButton variant="ghost" className="text-xs" />

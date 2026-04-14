@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Info, Users, Euro, Clock, Mail, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import PricingSection from "@/components/home/PricingSection";
 import { RecurringGrid, MonthWorkshops } from "@/components/PlanningTypeView";
 import TeamSection from "@/components/home/TeamSection";
 import ContactElodieButton from "@/components/ContactElodieButton";
+import PotteryCalendar from "@/components/PotteryCalendar";
 import { CATEGORY_STYLES, type FilterCategory } from "@/components/ActivityFilterBar";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,7 +65,6 @@ function WeekDots({ activeDays, dotColor }: { activeDays: Set<string>; dotColor:
   );
 }
 
-/** Check if a workshop has a future date */
 function isFutureDate(dateStr?: string): boolean {
   if (!dateStr) return false;
   const today = new Date();
@@ -72,7 +73,6 @@ function isFutureDate(dateStr?: string): boolean {
   return d >= today;
 }
 
-/** Email interest form for past events */
 function InterestForm({ activityName }: { activityName: string }) {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -111,7 +111,6 @@ function InterestForm({ activityName }: { activityName: string }) {
   );
 }
 
-/** Format linked dates nicely */
 function formatLinkedDates(dates: string[]): string {
   if (dates.length === 0) return "";
   const formatted = dates.map(d => {
@@ -122,7 +121,6 @@ function formatLinkedDates(dates: string[]): string {
   return formatted.slice(0, -1).join(", ") + " & " + formatted[formatted.length - 1];
 }
 
-/** Group workshops: linked_group workshops shown as single card */
 interface WorkshopGroup {
   key: string;
   workshops: Workshop[];
@@ -131,45 +129,48 @@ interface WorkshopGroup {
 }
 
 function groupWorkshops(workshops: Workshop[]): WorkshopGroup[] {
-  // Group ALL workshops by name → single card per activity name
   const byName: Record<string, Workshop[]> = {};
-
   for (const ws of workshops) {
     if (!byName[ws.name]) byName[ws.name] = [];
-    // Dedupe by date
     if (!byName[ws.name].some(existing => existing.date === ws.date)) {
       byName[ws.name].push(ws);
     }
   }
-
   const groups: WorkshopGroup[] = [];
-
   for (const [, nameWs] of Object.entries(byName)) {
     const sorted = [...nameWs].sort((a, b) => a.date.localeCompare(b.date));
-    // Check if any have a linked_group
     const hasLinked = sorted.some(w => w.linked_group);
-    groups.push({
-      key: sorted[0].id,
-      workshops: sorted,
-      linkedDates: sorted.map(w => w.date),
-      isLinked: hasLinked,
-    });
+    groups.push({ key: sorted[0].id, workshops: sorted, linkedDates: sorted.map(w => w.date), isLinked: hasLinked });
   }
-
   return groups;
+}
+
+/** Spots badge component */
+function SpotsBadge({ spotsLeft }: { spotsLeft: number }) {
+  if (spotsLeft === 0) {
+    return <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Complet</Badge>;
+  }
+  if (spotsLeft <= 3) {
+    return <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-destructive/50 text-destructive">
+      {spotsLeft} place{spotsLeft > 1 ? "s" : ""} restante{spotsLeft > 1 ? "s" : ""}
+    </Badge>;
+  }
+  return <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+    {spotsLeft} places restantes
+  </Badge>;
 }
 
 function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
   group: WorkshopGroup; i: number; onDescription: (w: Workshop) => void; instructorPhoto?: string;
   onBook: (group: WorkshopGroup) => void;
 }) {
-  const ws = group.workshops[0]; // Use first workshop for metadata
+  const ws = group.workshops[0];
   const style = getCategoryStyle(ws.category);
   const futureDates = group.workshops.filter(w => isFutureDate(w.date));
   const hasFutureDate = futureDates.length > 0;
-
-  // For non-linked groups with multiple dates, show next date + count
   const nextFuture = futureDates.sort((a, b) => a.date.localeCompare(b.date))[0];
+  // Spots: use next future workshop's spots_left
+  const spotsLeft = nextFuture?.spots_left ?? ws.spots_left;
 
   return (
     <motion.div id={`card-workshop-${ws.name}`} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-all">
@@ -177,7 +178,10 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
         <img src={ws.image || PLACEHOLDER_IMG} alt={ws.name} className="w-full h-full object-cover" loading="lazy" />
       </div>
       <div className="p-4 md:p-5">
-        <h3 className={`font-display font-semibold text-base md:text-lg leading-tight mb-2 ${style.text}`}>{ws.name}</h3>
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3 className={`font-display font-semibold text-base md:text-lg leading-tight ${style.text}`}>{ws.name}</h3>
+          {hasFutureDate && <SpotsBadge spotsLeft={spotsLeft} />}
+        </div>
         <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{ws.description}</p>
         {group.isLinked && futureDates.length > 0 && (
           <p className="text-xs text-primary font-medium mb-2">
@@ -207,7 +211,9 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
                 <Info className="h-3 w-3" /> Description
               </Button>
             )}
-            <Button size="sm" className={`flex-1 text-xs ${style.bookBtn}`} onClick={() => onBook(group)}>Réserver</Button>
+            <Button size="sm" className={`flex-1 text-xs ${style.bookBtn}`} onClick={() => onBook(group)} disabled={spotsLeft === 0}>
+              {spotsLeft === 0 ? "Complet" : "Réserver"}
+            </Button>
           </div>
         ) : (
           <div className="space-y-2">
@@ -231,15 +237,10 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
   const [yogaMonthOffset, setYogaMonthOffset] = useState(0);
-  const [potteryMonthOffset, setPotteryMonthOffset] = useState(0);
-  const [atelierMonthOffset, setAtelierMonthOffset] = useState(0);
+  const [potterySubFilter, setPotterySubFilter] = useState("all");
 
   const yogaMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + yogaMonthOffset); return d; }, [yogaMonthOffset]);
-  const potteryMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + potteryMonthOffset); return d; }, [potteryMonthOffset]);
-  const atelierMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + atelierMonthOffset); return d; }, [atelierMonthOffset]);
   const yogaMonthLabel = yogaMonthDate.toLocaleDateString("fr-FR", { month: "long" });
-  const potteryMonthLabel = potteryMonthDate.toLocaleDateString("fr-FR", { month: "long" });
-  const atelierMonthLabel = atelierMonthDate.toLocaleDateString("fr-FR", { month: "long" });
 
   const handleProgrammeEventClick = useCallback((params: { type: "course" | "workshop"; name: string; id?: string; date?: string }) => {
     const cardId = params.type === "course" ? `card-course-${params.id}` : `card-workshop-${params.name}`;
@@ -273,12 +274,10 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
       }));
   }, [courses, schedules, schedulesMap, subFilter]);
 
-  const potteryGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "poterie" && (subFilter === "all" || w.name === subFilter))), [workshops, subFilter]);
-  const wellbeingGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "bien-etre" && (subFilter === "all" || w.name === subFilter))), [workshops, subFilter]);
+  const potteryGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "poterie" && (potterySubFilter === "all" || w.name === potterySubFilter))), [workshops, potterySubFilter]);
 
   const showYoga = filter === "all" || filter === "yoga";
   const showPoterie = filter === "all" || filter === "poterie";
-  const showAteliers = filter === "all" || filter === "bien-etre";
 
   const yogaStyle = getCategoryStyle("yoga");
   const potteryStyle = getCategoryStyle("poterie");
@@ -301,13 +300,21 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
     }
   };
 
+  const handleBookPotterySlot = (ws: Workshop) => {
+    onSwitchToPlanning({ type: "workshop", id: ws.id, date: ws.date });
+  };
 
   const descriptionCourseDays = descriptionCourse ? (schedulesMap[descriptionCourse.id] || new Set<string>()) : new Set<string>();
 
+  // Compute min spots_left for each yoga course from its schedules
+  const getCourseSpotsLeft = (courseId: string) => {
+    const courseSchedules = schedules.filter(s => s.course_id === courseId);
+    if (courseSchedules.length === 0) return undefined;
+    return Math.min(...courseSchedules.map(s => s.spots_left));
+  };
+
   return (
     <>
-      {/* ─── Yoga & Pilates ─── */}
-
       {/* ─── Yoga & Pilates ─── */}
       {showYoga && coursesWithSchedules.length > 0 && (
         <section className="py-12 md:py-16" data-planning-section>
@@ -324,8 +331,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
               <RecurringGrid courses={courses.filter(c => c.category === "yoga" && (subFilter === "all" || c.name === subFilter))} schedules={schedules} onEventClick={handleProgrammeEventClick} />
               {(() => {
                 const yogaWs = workshops.filter(w => w.category === "yoga" && (subFilter === "all" || w.name === subFilter));
-                const hasYogaWsThisMonth = yogaWs.length > 0;
-                if (!hasYogaWsThisMonth) return null;
+                if (yogaWs.length === 0) return null;
                 return (
                   <div className="mt-4">
                     <MonthWorkshops workshops={yogaWs} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots monthDate={yogaMonthDate} hideEmptyMessage />
@@ -337,10 +343,10 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {coursesWithSchedules.map((course, i) => {
                 const photo = getInstructorPhoto(course.instructor_id, course.instructor);
-                // Compute next session date from schedule days
+                const spotsLeft = getCourseSpotsLeft(course.id);
                 const nextDate = (() => {
                   const today = new Date();
-                  const dayIdx = today.getDay(); // 0=Sun
+                  const dayIdx = today.getDay();
                   const dayMap: Record<string, number> = { Lundi: 1, Mardi: 2, Mercredi: 3, Jeudi: 4, Vendredi: 5, Samedi: 6, Dimanche: 0 };
                   let minDiff = Infinity;
                   for (const d of course.activeDays) {
@@ -348,7 +354,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                     if (target === undefined) continue;
                     let diff = target - dayIdx;
                     if (diff < 0) diff += 7;
-                    if (diff === 0) diff = 0; // today
+                    if (diff === 0) diff = 0;
                     if (diff < minDiff) minDiff = diff;
                   }
                   if (minDiff === Infinity) return null;
@@ -362,7 +368,10 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                       <img src={course.image || PLACEHOLDER_IMG} alt={course.name} className="w-full h-full object-cover" loading="lazy" />
                     </div>
                     <div className="p-4 md:p-5">
-                      <h3 className={`font-display font-semibold text-base md:text-lg leading-tight mb-2 ${yogaStyle.text}`}>{course.name}</h3>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <h3 className={`font-display font-semibold text-base md:text-lg leading-tight ${yogaStyle.text}`}>{course.name}</h3>
+                        {spotsLeft !== undefined && <SpotsBadge spotsLeft={spotsLeft} />}
+                      </div>
                       {course.description && <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{course.description}</p>}
                       {nextDate && (
                         <p className="text-xs text-muted-foreground mb-2">
@@ -376,7 +385,9 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                         <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => setDescriptionCourse(course)}>
                           <Info className="h-3 w-3" /> Description
                         </Button>
-                        <Button size="sm" className={`flex-1 text-xs ${yogaStyle.bookBtn}`} onClick={() => handleBookCourse(course)}>Réserver</Button>
+                        <Button size="sm" className={`flex-1 text-xs ${yogaStyle.bookBtn}`} onClick={() => handleBookCourse(course)} disabled={spotsLeft === 0}>
+                          {spotsLeft === 0 ? "Complet" : "Réserver"}
+                        </Button>
                       </div>
                     </div>
                   </motion.div>
@@ -387,49 +398,22 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         </section>
       )}
 
-      {/* ─── Poterie ─── */}
-      {showPoterie && potteryGroups.length > 0 && (
+      {/* ─── Poterie (Calendly-style) ─── */}
+      {showPoterie && (
         <section className={`py-12 md:py-16 ${showYoga && coursesWithSchedules.length > 0 ? "bg-secondary/10" : ""}`}>
           <div className="container">
             <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${potteryStyle.text}`}>Poterie</h2>
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <button onClick={() => setPotteryMonthOffset(o => o - 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronLeft className="h-4 w-4 text-muted-foreground" /></button>
-              <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground">
-                Planning du mois de {potteryMonthLabel}
-              </h3>
-              <button onClick={() => setPotteryMonthOffset(o => o + 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>
-            </div>
-            <div className="mb-8 max-w-2xl mx-auto">
-              <MonthWorkshops workshops={workshops.filter(w => w.category === "poterie" && (subFilter === "all" || w.name === subFilter))} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots monthDate={potteryMonthDate} />
+            <div className="mb-8 max-w-lg mx-auto">
+              <PotteryCalendar
+                workshops={workshops}
+                subFilter={potterySubFilter}
+                onSubFilterChange={setPotterySubFilter}
+                onBook={handleBookPotterySlot}
+              />
             </div>
             <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {potteryGroups.map((group, i) => (
-                <WorkshopCard key={group.key} group={group} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(group.workshops[0].instructor_id)} onBook={handleBookGroup} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ─── Ateliers & Stages ─── */}
-      {showAteliers && wellbeingGroups.length > 0 && (
-        <section className="py-12 md:py-16">
-          <div className="container">
-            <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${getCategoryStyle("bien-etre").text}`}>Ateliers & Stages</h2>
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <button onClick={() => setAtelierMonthOffset(o => o - 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronLeft className="h-4 w-4 text-muted-foreground" /></button>
-              <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground">
-                Planning du mois de {atelierMonthLabel}
-              </h3>
-              <button onClick={() => setAtelierMonthOffset(o => o + 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>
-            </div>
-            <div className="mb-8 max-w-2xl mx-auto">
-              <MonthWorkshops workshops={workshops.filter(w => w.category === "bien-etre" && (subFilter === "all" || w.name === subFilter))} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots monthDate={atelierMonthDate} />
-            </div>
-            <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {wellbeingGroups.map((group, i) => (
                 <WorkshopCard key={group.key} group={group} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(group.workshops[0].instructor_id)} onBook={handleBookGroup} />
               ))}
             </div>
@@ -501,7 +485,6 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
           )}
         </DialogContent>
       </Dialog>
-
     </>
   );
 }

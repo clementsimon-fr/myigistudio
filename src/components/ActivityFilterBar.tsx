@@ -5,16 +5,14 @@ import { Button } from "@/components/ui/button";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import filterYoga from "@/assets/filter-yoga.png";
 import filterPoterie from "@/assets/filter-poterie.png";
-import filterAteliers from "@/assets/filter-ateliers.png";
 import filterTout from "@/assets/filter-tout.png";
 
-export type FilterCategory = "all" | "yoga" | "poterie" | "bien-etre";
+export type FilterCategory = "all" | "yoga" | "poterie";
 
 export const CATEGORY_FILTERS: { value: FilterCategory; label: string; dot?: string; activeBg?: string; inactiveBg?: string; icon?: string; iconSettingKey?: string }[] = [
   { value: "all", label: "Tout", icon: filterTout, iconSettingKey: "filter_icon_tout" },
   { value: "yoga", label: "Yoga", dot: "bg-[hsl(210,60%,55%)]", activeBg: "bg-[hsl(210,60%,55%)]", inactiveBg: "bg-[hsl(210,60%,90%)] text-[hsl(210,60%,35%)]", icon: filterYoga, iconSettingKey: "filter_icon_yoga" },
   { value: "poterie", label: "Poterie", dot: "bg-[hsl(40,76%,60%)]", activeBg: "bg-[hsl(40,76%,60%)]", inactiveBg: "bg-[hsl(40,76%,90%)] text-[hsl(40,76%,30%)]", icon: filterPoterie, iconSettingKey: "filter_icon_poterie" },
-  { value: "bien-etre", label: "Atelier", dot: "bg-[hsl(0,55%,58%)]", activeBg: "bg-[hsl(0,55%,58%)]", inactiveBg: "bg-[hsl(0,55%,90%)] text-[hsl(0,55%,35%)]", icon: filterAteliers, iconSettingKey: "filter_icon_bien_etre" },
 ];
 
 // Filters visible to visitors (excludes "Tout")
@@ -32,12 +30,6 @@ export const CATEGORY_STYLES: Record<string, { block: string; dot: string; text:
     dot: "bg-[hsl(40,76%,60%)]",
     text: "text-[hsl(40,76%,35%)]",
     bookBtn: "bg-[hsl(40,76%,60%)] hover:bg-[hsl(40,76%,50%)] text-white",
-  },
-  "bien-etre": {
-    block: "bg-[hsl(0,55%,58%)]/10 border-[hsl(0,55%,58%)]/30 text-[hsl(0,55%,38%)]",
-    dot: "bg-[hsl(0,55%,58%)]",
-    text: "text-[hsl(0,55%,38%)]",
-    bookBtn: "bg-[hsl(0,55%,58%)] hover:bg-[hsl(0,55%,48%)] text-white",
   },
 };
 
@@ -69,8 +61,6 @@ export default function ActivityFilterBar({ filter, onFilterChange, subFilterOpt
     <div className="sticky top-16 z-30">
       <div className="bg-emerald-50/60 backdrop-blur border-b">
         <div className="container pb-1.5 pt-1.5">
-          {/* Title */}
-          
           <div className="flex items-center justify-center gap-1 flex-wrap">
             {VISIBLE_FILTERS.map(f => {
               const isActive = filter === f.value;
