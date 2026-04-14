@@ -86,7 +86,7 @@ export default function Discover() {
         )}
 
         <div className="bg-secondary/30 py-3 text-center">
-          <p className="text-sm md:text-base font-display font-bold text-primary-dark">Yoga, Pilates, Poterie & Bien-être</p>
+          <p className="text-sm md:text-base font-display font-bold text-primary-dark">Yoga, Pilates & Poterie</p>
         </div>
 
         <ActivityFilterBar

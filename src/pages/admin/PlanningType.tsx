@@ -13,7 +13,6 @@ const CATEGORY_FILTERS = [
   { value: "all", label: "Toutes", dot: "", activeBg: "" },
   { value: "yoga", label: "Yoga", dot: "bg-[hsl(210,60%,55%)]", activeBg: "bg-[hsl(210,60%,55%)]" },
   { value: "poterie", label: "Poterie", dot: "bg-[hsl(40,76%,60%)]", activeBg: "bg-[hsl(40,76%,60%)]" },
-  { value: "bien-etre", label: "Ateliers", dot: "bg-[hsl(0,55%,58%)]", activeBg: "bg-[hsl(0,55%,58%)]" },
 ];
 
 function formatTime(t: string): string {
@@ -28,7 +27,6 @@ function formatDateShort(dateStr: string): string {
 const categoryLabels: Record<string, string> = {
   yoga: "Yoga & Pilates",
   poterie: "Poterie",
-  "bien-etre": "Ateliers & Stages",
 };
 
 export default function PlanningType() {
@@ -37,7 +35,7 @@ export default function PlanningType() {
 
   // Categorize data
   const categorizedData = useMemo(() => {
-    const categories = ["yoga", "poterie", "bien-etre"];
+    const categories = ["yoga", "poterie"];
     const result: Record<string, {
       recurring: { name: string; category: string; slots: { day: string; time: string; end_time: string }[] }[];
       ponctual: { name: string; category: string; date: string; time: string; end_time: string; id: string }[];
@@ -78,7 +76,7 @@ export default function PlanningType() {
   }, [courses, schedules, workshops]);
 
   const visibleCategories = useMemo(() => {
-    if (categoryFilter === "all") return ["yoga", "poterie", "bien-etre"];
+    if (categoryFilter === "all") return ["yoga", "poterie"];
     return [categoryFilter];
   }, [categoryFilter]);
 
