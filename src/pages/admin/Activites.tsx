@@ -182,7 +182,7 @@ interface EventSlot {
 
 interface ActivityForm {
   name: string; description: string; long_description: string; category: string;
-  instructor: string; image: string; spots: number;
+  instructor: string; image: string; images: string[]; spots: number;
   events: EventSlot[];
   default_reminder: string;
   default_modalities: string;
@@ -199,7 +199,7 @@ const emptyEvent = (): EventSlot => ({
 
 const emptyForm = (): ActivityForm => ({
   name: "", description: "", long_description: "", category: "yoga",
-  instructor: "", image: "", spots: 12, events: [emptyEvent()],
+  instructor: "", image: "", images: [], spots: 12, events: [emptyEvent()],
   default_reminder: "", default_modalities: "",
   intensity: "none", reminder_timing: "1j",
 });
@@ -467,7 +467,7 @@ function ActivityEditor({
                 )}
               </div>
               <div>
-                <Label className="text-emerald-700">Image</Label>
+                <Label className="text-emerald-700">Image principale</Label>
                 <div className="flex items-center gap-3 mt-1.5">
                   {form.image && <img src={form.image} alt="Preview" className="h-14 w-14 rounded-lg object-cover" />}
                   <Input type="file" accept="image/*" onChange={async (e) => {
@@ -482,6 +482,36 @@ function ActivityEditor({
                   }} className="text-xs" />
                   {form.image && (
                     <Button type="button" variant="link" size="sm" className="text-xs text-destructive p-0 h-auto" onClick={() => setForm(prev => ({ ...prev, image: "" }))}>×</Button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <Label className="text-emerald-700">Photos supplémentaires (max 5)</Label>
+                <div className="flex flex-wrap gap-2 mt-1.5">
+                  {(form.images || []).map((img, idx) => (
+                    <div key={idx} className="relative group">
+                      <img src={img} alt={`Photo ${idx + 1}`} className="h-14 w-14 rounded-lg object-cover" />
+                      <button
+                        type="button"
+                        className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full h-4 w-4 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => setForm(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }))}
+                      >×</button>
+                    </div>
+                  ))}
+                  {(form.images || []).length < 5 && (
+                    <label className="h-14 w-14 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center cursor-pointer hover:border-primary transition-colors">
+                      <Plus className="h-5 w-5 text-muted-foreground" />
+                      <Input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                        const file = e.target.files?.[0]; if (!file) return;
+                        const ext = file.name.split(".").pop();
+                        const path = `activities/${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+                        const { error } = await supabase.storage.from("activity-images").upload(path, file);
+                        if (!error) {
+                          const { data: urlData } = supabase.storage.from("activity-images").getPublicUrl(path);
+                          setForm(prev => ({ ...prev, images: [...(prev.images || []), urlData.publicUrl] }));
+                        }
+                      }} />
+                    </label>
                   )}
                 </div>
               </div>
@@ -1117,7 +1147,7 @@ export default function AdminActivites() {
     if (events.length === 0) events.push(emptyEvent());
     setForm({
       name: a.name, description: a.description, long_description: a.long_description,
-      category: a.category, instructor: a.instructor, image: a.image, spots: a.spots || 12, events,
+      category: a.category, instructor: a.instructor, image: a.image, images: (a as any).images || [], spots: a.spots || 12, events,
       default_reminder: a.reminder_template || currentDefaultReminder,
       default_modalities: a.modalities || currentDefaultModalities,
       intensity: a.intensity || "none",
@@ -1145,7 +1175,8 @@ export default function AdminActivites() {
     const sharedData = {
       name: form.name, description: form.description, long_description: form.long_description,
       category: form.category, instructor_id: instrId,
-      image: form.image, reminder_template: form.default_reminder,
+      image: form.image, images: form.images,
+      reminder_template: form.default_reminder,
       modalities: form.default_modalities,
       intensity: form.intensity === "none" ? "" : form.intensity, reminder_timing: form.reminder_timing,
     };
@@ -1323,8 +1354,22 @@ export default function AdminActivites() {
       toast({ title: editingActivity ? "Activité modifiée" : "Activité créée ✓" });
       setEditorOpen(false);
       fetchData();
+    } else {
+      // Persist _workshopId and _linkedWorkshopIds back to form state to prevent duplicate inserts on next auto-save
+      setForm(prev => ({ ...prev, events: prev.events.map((e, i) => {
+        const allEvts = [...allPonctuelEvents, ...multiSessionEvents];
+        // Match ponctuel events by index from the combined list
+        if (e.type === "ponctuel" || (e.type === "recurring" && e.frequency === "personnalise")) {
+          const matching = allPonctuelEvents.find(pe => pe.date === e.date && pe.time === e.time && pe._workshopId);
+          if (matching) return { ...e, _workshopId: matching._workshopId };
+        }
+        if (e.type === "multi-sessions") {
+          const matching = multiSessionEvents.find(me => me._linkedGroup === e._linkedGroup || (me.linkedDates.join() === e.linkedDates.join()));
+          if (matching) return { ...e, _workshopId: matching._workshopId, _linkedGroup: matching._linkedGroup, _linkedWorkshopIds: matching._linkedWorkshopIds };
+        }
+        return e;
+      }) }));
     }
-    // Don't fetchData on auto-save to avoid resetting the editor state
   };
 
   const executeDelete = async () => {
