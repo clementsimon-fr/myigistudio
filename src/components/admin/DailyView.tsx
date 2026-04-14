@@ -112,6 +112,11 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
   const [addParticipantName, setAddParticipantName] = useState("");
   const [addParticipantCount, setAddParticipantCount] = useState(1);
   const [addingParticipant, setAddingParticipant] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [knownClients, setKnownClients] = useState<string[]>([]);
+  const [clientSearch, setClientSearch] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const dateStr = useMemo(() => formatDateStr(currentDate), [currentDate]);
   const dayName = DAY_NAMES[currentDate.getDay()];
