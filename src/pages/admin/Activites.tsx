@@ -182,7 +182,7 @@ interface EventSlot {
 
 interface ActivityForm {
   name: string; description: string; long_description: string; category: string;
-  instructor: string; image: string; spots: number;
+  instructor: string; image: string; images: string[]; spots: number;
   events: EventSlot[];
   default_reminder: string;
   default_modalities: string;
@@ -199,7 +199,7 @@ const emptyEvent = (): EventSlot => ({
 
 const emptyForm = (): ActivityForm => ({
   name: "", description: "", long_description: "", category: "yoga",
-  instructor: "", image: "", spots: 12, events: [emptyEvent()],
+  instructor: "", image: "", images: [], spots: 12, events: [emptyEvent()],
   default_reminder: "", default_modalities: "",
   intensity: "none", reminder_timing: "1j",
 });
