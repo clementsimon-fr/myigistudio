@@ -1323,9 +1323,22 @@ export default function AdminActivites() {
       toast({ title: editingActivity ? "Activité modifiée" : "Activité créée ✓" });
       setEditorOpen(false);
       fetchData();
+    } else {
+      // Persist _workshopId and _linkedWorkshopIds back to form state to prevent duplicate inserts on next auto-save
+      setForm(prev => ({ ...prev, events: prev.events.map((e, i) => {
+        const allEvts = [...allPonctuelEvents, ...multiSessionEvents];
+        // Match ponctuel events by index from the combined list
+        if (e.type === "ponctuel" || (e.type === "recurring" && e.frequency === "personnalise")) {
+          const matching = allPonctuelEvents.find(pe => pe.date === e.date && pe.time === e.time && pe._workshopId);
+          if (matching) return { ...e, _workshopId: matching._workshopId };
+        }
+        if (e.type === "multi-sessions") {
+          const matching = multiSessionEvents.find(me => me._linkedGroup === e._linkedGroup || (me.linkedDates.join() === e.linkedDates.join()));
+          if (matching) return { ...e, _workshopId: matching._workshopId, _linkedGroup: matching._linkedGroup, _linkedWorkshopIds: matching._linkedWorkshopIds };
+        }
+        return e;
+      }) }));
     }
-    // Don't fetchData on auto-save to avoid resetting the editor state
-  };
 
   const executeDelete = async () => {
     if (!deletingItem) return;
