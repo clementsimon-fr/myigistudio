@@ -1145,7 +1145,8 @@ export default function AdminActivites() {
     const sharedData = {
       name: form.name, description: form.description, long_description: form.long_description,
       category: form.category, instructor_id: instrId,
-      image: form.image, reminder_template: form.default_reminder,
+      image: form.image, images: form.images,
+      reminder_template: form.default_reminder,
       modalities: form.default_modalities,
       intensity: form.intensity === "none" ? "" : form.intensity, reminder_timing: form.reminder_timing,
     };
