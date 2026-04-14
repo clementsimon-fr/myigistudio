@@ -297,6 +297,7 @@ function ActivityEditor({
   const [eventsCalMonth, setEventsCalMonth] = useState<Date>(new Date());
   const [detailDialogIdx, setDetailDialogIdx] = useState<number | null>(null);
   const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null);
+  const [pendingDeleteEventIdx, setPendingDeleteEventIdx] = useState<number | null>(null);
 
   // ── Auto-save with debounce ──
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -610,7 +611,7 @@ function ActivityEditor({
                                 onClick={() => { setDetailDialogIdx(idx); }}>
                                 <Info className="h-3 w-3" /> Détailler
                               </Button>
-                              <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeEvent(idx)}>
+                              <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => setPendingDeleteEventIdx(idx)}>
                                 <X className="h-3.5 w-3.5" />
                               </Button>
                             </div>
@@ -669,7 +670,7 @@ function ActivityEditor({
                         <Info className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Détailler</span>
                       </Button>
                       {form.events.length > 1 && (
-                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeEvent(idx)}>
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => setPendingDeleteEventIdx(idx)}>
                           <Trash2 className="h-3.5 w-3.5 sm:hidden" />
                           <X className="h-3.5 w-3.5 hidden sm:block" />
                         </Button>
@@ -952,6 +953,29 @@ function ActivityEditor({
           })()}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={pendingDeleteEventIdx !== null} onOpenChange={(open) => !open && setPendingDeleteEventIdx(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cet événement ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ce créneau sera retiré de l'activité après confirmation.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingDeleteEventIdx !== null) removeEvent(pendingDeleteEventIdx);
+                setPendingDeleteEventIdx(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -998,20 +1022,32 @@ export default function AdminActivites() {
       }
     }
 
-    const unified: UnifiedActivity[] = [];
+    const activitiesByName = new Map<string, UnifiedActivity>();
     if (coursesRes.data) {
+      const groupedCourses: Record<string, any[]> = {};
       for (const c of coursesRes.data as any[]) {
-        unified.push({
-          id: c.id, name: c.name, description: c.description || "", long_description: c.long_description || "",
-          category: c.category, image: c.image || "", instructor: c.instructor, instructor_id: c.instructor_id,
-          reminder_template: c.reminder_template || "", modalities: c.modalities || "", source: "course",
-          frequency: c.frequency, spots: c.spots, spots_left: c.spots_left,
-          schedules: schedulesMap[c.id] || [],
-          intensity: c.intensity || "none", reminder_timing: c.reminder_timing || "1j",
+        if (!groupedCourses[c.name]) groupedCourses[c.name] = [];
+        groupedCourses[c.name].push(c);
+      }
+      for (const [name, group] of Object.entries(groupedCourses)) {
+        const primary = group[0];
+        const mergedSchedules = new Map<string, Schedule>();
+        for (const course of group) {
+          for (const schedule of schedulesMap[course.id] || []) {
+            const key = `${schedule.day}-${schedule.time}-${schedule.end_time}`;
+            if (!mergedSchedules.has(key)) mergedSchedules.set(key, schedule);
+          }
+        }
+        activitiesByName.set(name, {
+          id: primary.id, name: primary.name, description: primary.description || "", long_description: primary.long_description || "",
+          category: primary.category, image: primary.image || "", images: primary.images || [], instructor: primary.instructor, instructor_id: primary.instructor_id,
+          reminder_template: primary.reminder_template || "", modalities: primary.modalities || "", source: "course", courseIds: group.map(course => course.id),
+          frequency: primary.frequency, spots: primary.spots, spots_left: primary.spots_left,
+          schedules: [...mergedSchedules.values()],
+          intensity: primary.intensity || "none", reminder_timing: primary.reminder_timing || "1j", workshopEvents: [],
         });
       }
     }
-    // Group workshops by name → one UnifiedActivity per group
     if (workshopsRes.data) {
       const wsGrouped: Record<string, any[]> = {};
       for (const w of workshopsRes.data as any[]) {
@@ -1038,19 +1074,35 @@ export default function AdminActivites() {
           inclusions: w.inclusions || "", card_yoga_count: w.card_yoga_count || 0,
           linked_group: w.linked_group || null,
         }));
-        unified.push({
-          id: first.id, name: first.name, description: first.description || "", long_description: first.long_description || "",
-          category: first.category, image: first.image || "", instructor: instrName, instructor_id: first.instructor_id,
-          reminder_template: first.reminder_template || "", modalities: first.modalities || "", source: "workshop",
+        const existing = activitiesByName.get(first.name);
+        activitiesByName.set(first.name, {
+          id: existing?.id || first.id,
+          name: first.name,
+          description: existing?.description || first.description || "",
+          long_description: existing?.long_description || first.long_description || "",
+          category: existing?.category || first.category,
+          image: existing?.image || first.image || "",
+          images: existing?.images?.length ? existing.images : (first.images || []),
+          instructor: existing?.instructor || instrName,
+          instructor_id: existing?.instructor_id ?? first.instructor_id,
+          reminder_template: existing?.reminder_template || first.reminder_template || "",
+          modalities: existing?.modalities || first.modalities || "",
+          source: existing?.source || "workshop",
+          courseIds: existing?.courseIds,
+          frequency: existing?.frequency,
+          spots: existing?.spots ?? first.spots,
+          spots_left: existing?.spots_left ?? first.spots_left,
+          schedules: existing?.schedules || [],
           date: first.date, time: first.time, end_time: first.end_time, duration: first.duration,
-          price: first.price, spots: first.spots, spots_left: first.spots_left,
-          intensity: first.intensity || "none", reminder_timing: first.reminder_timing || "1j",
+          price: first.price,
+          intensity: existing?.intensity || first.intensity || "none", reminder_timing: existing?.reminder_timing || first.reminder_timing || "1j",
           inclusions: first.inclusions || "", card_yoga_count: first.card_yoga_count || 0,
           workshopEvents,
         });
       }
     }
 
+    const unified = [...activitiesByName.values()];
     unified.sort((a, b) => a.name.localeCompare(b.name));
     setActivities(unified);
     if (instrRes.data) setInstructorsList(instrRes.data as { id: string; name: string }[]);
@@ -1078,7 +1130,7 @@ export default function AdminActivites() {
   const openEdit = (a: UnifiedActivity) => {
     setEditingActivity(a);
     const events: EventSlot[] = [];
-    if (a.source === "course" && a.schedules) {
+    if (a.schedules?.length) {
       for (const s of a.schedules) {
         events.push({
           type: "recurring", frequency: a.frequency || "hebdomadaire",
@@ -1092,7 +1144,8 @@ export default function AdminActivites() {
           _scheduleId: s.id,
         });
       }
-    } else if (a.source === "workshop" && a.workshopEvents) {
+    }
+    if (a.workshopEvents?.length) {
       // Check if there are linked groups
       const linkedGroups: Record<string, WorkshopEvent[]> = {};
       const standalone: WorkshopEvent[] = [];
@@ -1149,7 +1202,7 @@ export default function AdminActivites() {
     if (events.length === 0) events.push(emptyEvent());
     setForm({
       name: a.name, description: a.description, long_description: a.long_description,
-      category: a.category, instructor: a.instructor, image: a.image, images: (a as any).images || [], spots: a.spots || 12, events,
+      category: a.category, instructor: a.instructor, image: a.image, images: a.images || [], spots: a.spots || 12, events,
       default_reminder: a.reminder_template || currentDefaultReminder,
       default_modalities: a.modalities || currentDefaultModalities,
       intensity: a.intensity || "none",
@@ -1160,6 +1213,8 @@ export default function AdminActivites() {
 
   const save = async (closeAfter = true) => {
     const instrId = instructorsList.find(i => i.name === form.instructor)?.id || null;
+    const targetCourseIds = editingActivity?.courseIds || (editingActivity?.source === "course" ? [editingActivity.id] : []);
+    const primaryCourseId = targetCourseIds[0];
 
     const recurringEvents = form.events.filter(e => e.type === "recurring" && e.frequency !== "personnalise");
     const customDateEvents = form.events.filter(e => e.type === "recurring" && e.frequency === "personnalise");
@@ -1192,17 +1247,17 @@ export default function AdminActivites() {
       const duration = calcDuration(firstSlot.time, firstSlot.end_time);
       const days = [...new Set(recurringEvents.map(e => e.day))];
 
-      if (editingActivity?.source === "course") {
+      if (primaryCourseId) {
         await supabase.from("courses").update({
           ...courseData,
           spots: firstSlot.spots, spots_left: firstSlot.spots,
           day: firstSlot.day, time: firstSlot.time, end_time: firstSlot.end_time,
           duration, days, frequency: firstSlot.frequency,
-        } as any).eq("id", editingActivity.id);
+        } as any).eq("id", primaryCourseId);
 
-        await supabase.from("course_schedules").delete().eq("course_id", editingActivity.id);
+        await supabase.from("course_schedules").delete().eq("course_id", primaryCourseId);
         const scheduleRows = recurringEvents.map(e => ({
-          course_id: editingActivity.id, day: e.day, time: e.time, end_time: e.end_time,
+          course_id: primaryCourseId, day: e.day, time: e.time, end_time: e.end_time,
           spots: e.spots, spots_left: e.spots, price: e.price,
           inclusions: e.inclusions, card_yoga_count: e.card_yoga_count,
         }));
@@ -1226,9 +1281,9 @@ export default function AdminActivites() {
           await supabase.from("course_schedules").insert(scheduleRows);
         }
       }
-    } else if (editingActivity?.source === "course") {
-      await supabase.from("course_schedules").delete().eq("course_id", editingActivity.id);
-      await supabase.from("courses").delete().eq("id", editingActivity.id);
+    } else if (targetCourseIds.length > 0) {
+      await supabase.from("course_schedules").delete().in("course_id", targetCourseIds);
+      await supabase.from("courses").delete().in("id", targetCourseIds);
     }
 
     // ── Handle ponctuel + multi-sessions events → workshops table ──
@@ -1357,6 +1412,10 @@ export default function AdminActivites() {
       setEditorOpen(false);
       fetchData();
     } else {
+      if (targetCourseIds.length > 1) {
+        await supabase.from("course_schedules").delete().in("course_id", targetCourseIds.slice(1));
+        await supabase.from("courses").delete().in("id", targetCourseIds.slice(1));
+      }
       // Persist _workshopId and _linkedWorkshopIds back to form state to prevent duplicate inserts on next auto-save
       setForm(prev => ({ ...prev, events: prev.events.map((e, i) => {
         const allEvts = [...allPonctuelEvents, ...multiSessionEvents];
@@ -1376,19 +1435,18 @@ export default function AdminActivites() {
 
   const executeDelete = async () => {
     if (!deletingItem) return;
-    if (deletingItem.source === "course") {
+    const act = activities.find(a => a.id === deletingItem.id || a.courseIds?.includes(deletingItem.id) || a.workshopEvents?.some(we => we.id === deletingItem.id));
+    if (act?.courseIds?.length) {
+      await supabase.from("course_schedules").delete().in("course_id", act.courseIds);
+      await supabase.from("courses").delete().in("id", act.courseIds);
+    } else if (deletingItem.source === "course") {
       await supabase.from("course_schedules").delete().eq("course_id", deletingItem.id);
       await supabase.from("courses").delete().eq("id", deletingItem.id);
-    } else {
-      // Delete all workshop rows in this group
-      const act = activities.find(a => a.id === deletingItem.id && a.source === "workshop");
-      if (act?.workshopEvents) {
-        for (const we of act.workshopEvents) {
-          await supabase.from("workshops").delete().eq("id", we.id);
-        }
-      } else {
-        await supabase.from("workshops").delete().eq("id", deletingItem.id);
-      }
+    }
+    if (act?.workshopEvents?.length) {
+      await supabase.from("workshops").delete().in("id", act.workshopEvents.map(we => we.id));
+    } else if (deletingItem.source === "workshop") {
+      await supabase.from("workshops").delete().eq("id", deletingItem.id);
     }
     toast({ title: "Activité supprimée", variant: "destructive" });
     setDeletingItem(null);
@@ -1489,7 +1547,11 @@ export default function AdminActivites() {
 
       {viewMode === "calendar" ? (
         <ActivityCalendar onEditActivity={(id, source) => {
-          const act = activities.find(a => a.id === id && a.source === source);
+          const act = activities.find(a =>
+            source === "course"
+              ? a.courseIds?.includes(id) || (a.id === id && a.source === "course")
+              : a.workshopEvents?.some(we => we.id === id) || (a.id === id && a.source === "workshop")
+          );
           if (act) openEdit(act);
         }} />
       ) : (
