@@ -155,6 +155,31 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
 
   useEffect(() => { fetchData(); }, [dateStr, viewMode, currentDate]);
 
+  // Fetch known client names for smart selector
+  useEffect(() => {
+    const fetchClients = async () => {
+      const [resProfiles, resReservations] = await Promise.all([
+        supabase.from("profiles").select("first_name, last_name, user_name"),
+        supabase.from("reservations").select("client_name"),
+      ]);
+      const names = new Set<string>();
+      if (resProfiles.data) {
+        for (const p of resProfiles.data as any[]) {
+          const full = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+          if (full) names.add(full);
+          if (p.user_name) names.add(p.user_name);
+        }
+      }
+      if (resReservations.data) {
+        for (const r of resReservations.data as any[]) {
+          if (r.client_name) names.add(r.client_name);
+        }
+      }
+      setKnownClients([...names].sort());
+    };
+    fetchClients();
+  }, []);
+
   const buildBlocks = (date: Date, resas: Reservation[]): ActivityBlock[] => {
     const result: ActivityBlock[] = [];
     const dn = DAY_NAMES[date.getDay()];
