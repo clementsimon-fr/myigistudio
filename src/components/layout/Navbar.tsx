@@ -62,13 +62,17 @@ export default function Navbar() {
                   <Settings className="h-3.5 w-3.5" /> Espace admin
                 </Button>
               )}
+
+              <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-destructive hover:text-destructive" onClick={handleLogout}>
+                <LogOut className="h-3.5 w-3.5" /> Déconnexion
+              </Button>
             </div>
 
-            {/* Mobile: connected badge that links to mon-espace */}
+            {/* Mobile: connected badge + logout */}
             <div className="md:hidden flex items-center gap-2">
               {isClient && (
                 <button
-onClick={() => navigate("/mon-espace?section=reservations")}
+                  onClick={() => navigate("/mon-espace?section=reservations")}
                   className="flex items-center gap-1.5 bg-primary/15 text-primary-dark font-semibold px-3 py-2 rounded-full border-2 border-primary/30 text-xs min-h-[44px]"
                 >
                   <User className="h-4 w-4" />
@@ -82,6 +86,9 @@ onClick={() => navigate("/mon-espace?section=reservations")}
                   {open ? <X className="h-5 w-5" /> : <><Menu className="h-5 w-5" /> <span className="text-xs">Menu</span></>}
                 </button>
               )}
+              <button onClick={handleLogout} className="p-2 text-destructive" aria-label="Déconnexion">
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
           </>
         ) : (
