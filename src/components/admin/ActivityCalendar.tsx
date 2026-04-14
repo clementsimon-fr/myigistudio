@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Plus, Trash2, Clock, CalendarDays, Pencil, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Clock, CalendarDays, Pencil, Users, Search, User, UserPlus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -55,6 +55,7 @@ interface ReservationInfo {
   course_id: string | null;
   workshop_id: string | null;
   status: string;
+  participants: number;
 }
 
 interface SessionEntry {
@@ -65,6 +66,7 @@ interface SessionEntry {
   type: "recurring" | "planned" | "workshop";
   category?: string;
   instructor?: string;
+  scheduleId?: string;
   courseId?: string;
   workshopId?: string;
 }
@@ -159,6 +161,14 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [deletingSession, setDeletingSession] = useState<string | null>(null);
   const [detailSession, setDetailSession] = useState<{ session: SessionEntry; date: Date } | null>(null);
+  const [addParticipantName, setAddParticipantName] = useState("");
+  const [addParticipantCount, setAddParticipantCount] = useState(1);
+  const [addingParticipant, setAddingParticipant] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [knownClients, setKnownClients] = useState<string[]>([]);
+  const [clientSearch, setClientSearch] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [sessionForm, setSessionForm] = useState({
     source: "manual" as "course" | "workshop" | "manual",
@@ -178,7 +188,7 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
       supabase.from("courses").select("id, name, category, instructor"),
       supabase.from("workshops").select("id, name, category, date, time, end_time, instructor_id"),
       supabase.from("planned_sessions").select("*"),
-      supabase.from("reservations").select("client_name, date, time, activity_name, course_id, workshop_id, status"),
+      supabase.from("reservations").select("client_name, date, time, activity_name, course_id, workshop_id, status, participants"),
       supabase.from("instructors").select("id, name").eq("active", true),
     ]);
     if (schedulesRes.data) setSchedules(schedulesRes.data as Schedule[]);
@@ -195,6 +205,39 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
 
   useEffect(() => { fetchData(); }, []);
 
+  useEffect(() => {
+    const fetchClients = async () => {
+      const [resProfiles, resReservations] = await Promise.all([
+        supabase.from("profiles").select("first_name, last_name, user_name"),
+        supabase.from("reservations").select("client_name"),
+      ]);
+      const names = new Set<string>();
+      if (resProfiles.data) {
+        for (const p of resProfiles.data as any[]) {
+          const full = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+          if (full) names.add(full);
+          if (p.user_name) names.add(p.user_name);
+        }
+      }
+      if (resReservations.data) {
+        for (const r of resReservations.data as any[]) {
+          if (r.client_name) names.add(r.client_name);
+        }
+      }
+      setKnownClients([...names].sort());
+    };
+    fetchClients();
+  }, []);
+
+  useEffect(() => {
+    if (!detailSession) return;
+    setShowAddForm(false);
+    setAddParticipantName("");
+    setClientSearch("");
+    setAddParticipantCount(1);
+    setShowSuggestions(false);
+  }, [detailSession]);
+
   const courseMap = useMemo(() => {
     const m: Record<string, CourseInfo> = {};
     courses.forEach(c => { m[c.id] = c; });
@@ -202,17 +245,16 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
   }, [courses]);
 
   // Get reservations for a session on a date
-  const getSessionReservations = (session: SessionEntry, dateStr: string): string[] => {
-    return reservations
-      .filter(r => {
-        if (r.status === "annulé") return false;
-        if (r.date !== dateStr) return false;
-        if (session.courseId && r.course_id === session.courseId) return true;
-        if (session.workshopId && r.workshop_id === session.workshopId) return true;
-        if (r.activity_name === session.title && r.time === session.time) return true;
-        return false;
-      })
-      .map(r => r.client_name);
+  const getSessionReservations = (session: SessionEntry, dateStr: string): ReservationInfo[] => {
+    return reservations.filter(r => {
+      if (r.status === "annulé") return false;
+      if (r.date !== dateStr) return false;
+      if (session.scheduleId && r.schedule_id === session.scheduleId) return true;
+      if (session.courseId && r.course_id === session.courseId) return true;
+      if (session.workshopId && r.workshop_id === session.workshopId) return true;
+      if (r.activity_name === session.title && r.time === session.time) return true;
+      return false;
+    });
   };
 
   const getSessionsForDate = (date: Date): SessionEntry[] => {
@@ -360,13 +402,51 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
     setDetailSession({ session: s, date });
   };
 
+  const addParticipantToSession = async () => {
+    if (!detailSession || !addParticipantName.trim()) return;
+
+    const { session, date } = detailSession;
+    setAddingParticipant(true);
+
+    const insertData: Record<string, unknown> = {
+      client_name: addParticipantName.trim(),
+      participants: addParticipantCount,
+      activity_name: session.title,
+      activity_type: session.workshopId ? "workshop" : "course",
+      date: formatDateStr(date),
+      time: session.time,
+      end_time: session.end_time,
+      status: "confirmé",
+      notes: "",
+    };
+
+    if (session.scheduleId) insertData.schedule_id = session.scheduleId;
+    if (session.courseId) insertData.course_id = session.courseId;
+    if (session.workshopId) insertData.workshop_id = session.workshopId;
+
+    const { error } = await supabase.from("reservations").insert(insertData as any);
+    setAddingParticipant(false);
+
+    if (error) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    toast({ title: "Participant ajouté" });
+    setAddParticipantName("");
+    setClientSearch("");
+    setAddParticipantCount(1);
+    setShowAddForm(false);
+    fetchData();
+  };
+
   const renderSessionBlock = (s: SessionEntry, clickDate: Date) => {
     const colorClass = s.category ? (CATEGORY_COLORS[s.category] || "bg-muted text-foreground border-border") :
       s.type === "planned" ? "bg-accent/15 text-accent-foreground border-accent/25" : "bg-primary/10 text-primary-dark border-primary/20";
 
     const dateStr = formatDateStr(clickDate);
     const inscrits = getSessionReservations(s, dateStr);
-    const participantCount = inscrits.length;
+    const participantCount = inscrits.reduce((sum, reservation) => sum + reservation.participants, 0);
 
     return (
       <div
@@ -409,6 +489,7 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
     const inscrits = getSessionReservations(s, dateStr);
     const catBadgeColor = s.category ? CATEGORY_BADGE_COLORS[s.category] : "";
     const catLabel = s.category ? CATEGORY_LABELS[s.category] : "";
+    const totalParticipants = inscrits.reduce((sum, reservation) => sum + reservation.participants, 0);
 
     return (
       <Dialog open={!!detailSession} onOpenChange={(open) => !open && setDetailSession(null)}>
@@ -431,16 +512,93 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Users className="h-4 w-4" />
-                <span className="text-sm font-medium">{inscrits.length} participant{inscrits.length > 1 ? "s" : ""}</span>
+                <span className="text-sm font-medium">{totalParticipants} participant{totalParticipants > 1 ? "s" : ""}</span>
               </div>
               {inscrits.length > 0 ? (
                 <div className="space-y-1">
-                  {inscrits.map((name, i) => (
-                    <div key={i} className="text-sm text-muted-foreground">{name}</div>
+                  {inscrits.map((reservation, i) => (
+                    <div key={`${reservation.client_name}-${i}`} className="text-sm text-muted-foreground">
+                      {reservation.client_name}{reservation.participants > 1 ? ` (×${reservation.participants})` : ""}
+                    </div>
                   ))}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">Aucun inscrit</p>
+              )}
+            </div>
+            <div className="border-t pt-3">
+              {!showAddForm ? (
+                <Button size="sm" variant="outline" className="w-full gap-1.5" onClick={() => { setShowAddForm(true); setAddParticipantName(""); setClientSearch(""); setAddParticipantCount(1); }}>
+                  <UserPlus className="h-3.5 w-3.5" /> Ajouter un participant
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium flex items-center gap-1.5">
+                    <UserPlus className="h-3.5 w-3.5" /> Ajouter un participant
+                  </h4>
+                  <div className="relative">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        ref={searchInputRef}
+                        placeholder="Rechercher un client ou saisir un nom..."
+                        value={clientSearch}
+                        onChange={e => { setClientSearch(e.target.value); setShowSuggestions(true); setAddParticipantName(e.target.value); }}
+                        onFocus={() => setShowSuggestions(true)}
+                        className="pl-8 h-9 text-xs"
+                      />
+                    </div>
+                    {showSuggestions && clientSearch.length >= 1 && (() => {
+                      const filtered = knownClients.filter(client => client.toLowerCase().includes(clientSearch.toLowerCase()));
+                      const exactMatch = knownClients.some(client => client.toLowerCase() === clientSearch.toLowerCase());
+                      if (filtered.length === 0 && !clientSearch.trim()) return null;
+                      return (
+                        <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {filtered.slice(0, 8).map(name => (
+                            <button
+                              key={name}
+                              className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-muted text-left"
+                              onClick={() => { setAddParticipantName(name); setClientSearch(name); setShowSuggestions(false); }}
+                            >
+                              <User className="h-3 w-3 text-muted-foreground" />
+                              {name}
+                            </button>
+                          ))}
+                          {clientSearch.trim() && !exactMatch && (
+                            <button
+                              className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-muted text-left border-t text-primary font-medium"
+                              onClick={() => { setAddParticipantName(clientSearch.trim()); setShowSuggestions(false); }}
+                            >
+                              <Plus className="h-3 w-3" />
+                              Nouveau : « {clientSearch.trim()} »
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {addParticipantName && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs gap-1">
+                        <User className="h-3 w-3" /> {addParticipantName}
+                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">Nb :</span>
+                        <Input type="number" min={1} max={20} value={addParticipantCount} onChange={e => setAddParticipantCount(Number(e.target.value))} className="w-16 h-8 text-xs" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setShowAddForm(false); setAddParticipantName(""); setClientSearch(""); }}>
+                      Annuler
+                    </Button>
+                    <Button size="sm" className="h-8 text-xs flex-1" disabled={!addParticipantName.trim() || addingParticipant} onClick={addParticipantToSession}>
+                      {addingParticipant ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirmer l'ajout"}
+                    </Button>
+                  </div>
+                </div>
               )}
             </div>
             <div className="flex gap-2">
@@ -494,6 +652,10 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
         </div>
         <Button variant="outline" size="icon" onClick={nextNav}><ChevronRight className="h-4 w-4" /></Button>
       </div>
+
+      <p className="text-xs text-muted-foreground">
+        Cliquez sur un créneau pour voir les inscrits et ajouter un participant.
+      </p>
 
       {/* TODAY VIEW */}
       {viewMode === "today" && (
