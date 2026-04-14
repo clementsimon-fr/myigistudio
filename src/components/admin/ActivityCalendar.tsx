@@ -54,6 +54,7 @@ interface ReservationInfo {
   activity_name: string;
   course_id: string | null;
   workshop_id: string | null;
+  schedule_id: string | null;
   status: string;
   participants: number;
 }
