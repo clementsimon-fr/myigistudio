@@ -54,6 +54,7 @@ interface ReservationInfo {
   activity_name: string;
   course_id: string | null;
   workshop_id: string | null;
+  schedule_id: string | null;
   status: string;
   participants: number;
 }
@@ -188,7 +189,7 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
       supabase.from("courses").select("id, name, category, instructor"),
       supabase.from("workshops").select("id, name, category, date, time, end_time, instructor_id"),
       supabase.from("planned_sessions").select("*"),
-      supabase.from("reservations").select("client_name, date, time, activity_name, course_id, workshop_id, status, participants"),
+      supabase.from("reservations").select("client_name, date, time, activity_name, course_id, workshop_id, schedule_id, status, participants"),
       supabase.from("instructors").select("id, name").eq("active", true),
     ]);
     if (schedulesRes.data) setSchedules(schedulesRes.data as Schedule[]);
@@ -471,8 +472,8 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
         </div>
         {inscrits.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
-            {inscrits.slice(0, 4).map((name, i) => (
-              <span key={i} className="text-[10px] text-muted-foreground">{name}{i < Math.min(inscrits.length, 4) - 1 ? "," : ""}</span>
+            {inscrits.slice(0, 4).map((r, i) => (
+              <span key={i} className="text-[10px] text-muted-foreground">{r.client_name}{i < Math.min(inscrits.length, 4) - 1 ? "," : ""}</span>
             ))}
             {inscrits.length > 4 && <span className="text-[10px] text-muted-foreground">+{inscrits.length - 4}</span>}
           </div>
