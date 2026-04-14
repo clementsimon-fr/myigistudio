@@ -467,7 +467,7 @@ function ActivityEditor({
                 )}
               </div>
               <div>
-                <Label className="text-emerald-700">Image</Label>
+                <Label className="text-emerald-700">Image principale</Label>
                 <div className="flex items-center gap-3 mt-1.5">
                   {form.image && <img src={form.image} alt="Preview" className="h-14 w-14 rounded-lg object-cover" />}
                   <Input type="file" accept="image/*" onChange={async (e) => {
@@ -482,6 +482,36 @@ function ActivityEditor({
                   }} className="text-xs" />
                   {form.image && (
                     <Button type="button" variant="link" size="sm" className="text-xs text-destructive p-0 h-auto" onClick={() => setForm(prev => ({ ...prev, image: "" }))}>×</Button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <Label className="text-emerald-700">Photos supplémentaires (max 5)</Label>
+                <div className="flex flex-wrap gap-2 mt-1.5">
+                  {(form.images || []).map((img, idx) => (
+                    <div key={idx} className="relative group">
+                      <img src={img} alt={`Photo ${idx + 1}`} className="h-14 w-14 rounded-lg object-cover" />
+                      <button
+                        type="button"
+                        className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full h-4 w-4 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => setForm(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }))}
+                      >×</button>
+                    </div>
+                  ))}
+                  {(form.images || []).length < 5 && (
+                    <label className="h-14 w-14 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center cursor-pointer hover:border-primary transition-colors">
+                      <Plus className="h-5 w-5 text-muted-foreground" />
+                      <Input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                        const file = e.target.files?.[0]; if (!file) return;
+                        const ext = file.name.split(".").pop();
+                        const path = `activities/${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+                        const { error } = await supabase.storage.from("activity-images").upload(path, file);
+                        if (!error) {
+                          const { data: urlData } = supabase.storage.from("activity-images").getPublicUrl(path);
+                          setForm(prev => ({ ...prev, images: [...(prev.images || []), urlData.publicUrl] }));
+                        }
+                      }} />
+                    </label>
                   )}
                 </div>
               </div>
