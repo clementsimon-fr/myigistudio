@@ -1623,15 +1623,15 @@ function ActivityCard({ activity: a, onEdit }: { activity: UnifiedActivity; onEd
           <span className="text-xs text-muted-foreground">{a.instructor}</span>
         </div>
         <div className="space-y-1">
-          {a.source === "course" && a.schedules?.map((s, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+          {a.schedules?.map((s, i) => (
+            <div key={`s-${i}`} className="flex items-center gap-2 text-xs text-muted-foreground">
               <Repeat className="h-3 w-3 shrink-0" />
               <span>{s.day.slice(0, 3)} {s.time}-{s.end_time}</span>
               <span>· <Users className="h-3 w-3 inline" /> {s.spots - s.spots_left}/{s.spots}</span>
             </div>
           ))}
-          {a.source === "workshop" && a.workshopEvents?.map((we, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+          {a.workshopEvents?.map((we, i) => (
+            <div key={`w-${i}`} className="flex items-center gap-2 text-xs text-muted-foreground">
               <CalendarIcon className="h-3 w-3 shrink-0" />
               <span>{we.date ? new Date(we.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "—"} {we.time}-{we.end_time}</span>
               {we.price > 0 && <span className="font-medium text-foreground">{we.price}€</span>}
