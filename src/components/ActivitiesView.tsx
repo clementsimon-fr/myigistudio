@@ -21,6 +21,31 @@ const PLACEHOLDER_IMG = "/placeholder.svg";
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const DAYS_SHORT = ["L", "M", "M", "J", "V", "S", "D"];
 
+function ImageCarousel({ images, alt }: { images: string[]; alt: string }) {
+  const [idx, setIdx] = useState(0);
+  if (images.length <= 1) {
+    return <img src={images[0] || PLACEHOLDER_IMG} alt={alt} className="w-full h-full object-cover" loading="lazy" />;
+  }
+  return (
+    <div className="relative w-full h-full group">
+      <img src={images[idx]} alt={alt} className="w-full h-full object-cover" loading="lazy" />
+      <button
+        onClick={e => { e.stopPropagation(); setIdx(i => (i - 1 + images.length) % images.length); }}
+        className="absolute left-1 top-1/2 -translate-y-1/2 bg-black/40 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+      >‹</button>
+      <button
+        onClick={e => { e.stopPropagation(); setIdx(i => (i + 1) % images.length); }}
+        className="absolute right-1 top-1/2 -translate-y-1/2 bg-black/40 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+      >›</button>
+      <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1">
+        {images.map((_, i) => (
+          <div key={i} className={`w-1.5 h-1.5 rounded-full ${i === idx ? "bg-white" : "bg-white/50"}`} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface ActivitiesViewProps {
   courses: Course[];
   workshops: Workshop[];
