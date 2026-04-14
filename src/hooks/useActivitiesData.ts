@@ -30,6 +30,7 @@ export interface Course {
   spots: number;
   spots_left: number;
   image: string;
+  images?: string[];
   frequency?: string;
 }
 
@@ -48,6 +49,7 @@ export interface Workshop {
   spots: number;
   spots_left: number;
   image: string;
+  images?: string[];
   instructor_id: string | null;
   inclusions?: string;
   card_yoga_count?: number;
