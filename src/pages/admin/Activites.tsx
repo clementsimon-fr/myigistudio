@@ -1117,7 +1117,7 @@ export default function AdminActivites() {
     if (events.length === 0) events.push(emptyEvent());
     setForm({
       name: a.name, description: a.description, long_description: a.long_description,
-      category: a.category, instructor: a.instructor, image: a.image, spots: a.spots || 12, events,
+      category: a.category, instructor: a.instructor, image: a.image, images: (a as any).images || [], spots: a.spots || 12, events,
       default_reminder: a.reminder_template || currentDefaultReminder,
       default_modalities: a.modalities || currentDefaultModalities,
       intensity: a.intensity || "none",
