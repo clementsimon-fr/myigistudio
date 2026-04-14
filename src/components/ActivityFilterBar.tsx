@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Plus, X } from "lucide-react";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+import filterYoga from "@/assets/filter-yoga.png";
+import filterPoterie from "@/assets/filter-poterie.png";
 import { Button } from "@/components/ui/button";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import filterYoga from "@/assets/filter-yoga.png";
