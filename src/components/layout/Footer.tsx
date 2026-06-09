@@ -10,7 +10,7 @@ export default function Footer() {
             <span className="text-brand-pink">My</span><span className="text-primary">IgiStudio</span>
           </h3>
           <p className="text-sm opacity-80 leading-relaxed">
-            Yoga, Pilates, Poterie & Bien-être. Un lieu unique pour prendre soin de soi.
+            Yoga, Pilates & Poterie. Un lieu unique pour prendre soin de soi.
           </p>
         </div>
 
@@ -51,8 +51,9 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-primary-foreground/10">
-        <div className="container py-4 text-center text-xs opacity-60">
-          © 2026 IgiStudio. Tous droits réservés.
+        <div className="container py-4 text-center text-xs opacity-60 space-y-1">
+          <div>© 2026 IgiStudio. Tous droits réservés.</div>
+          <div>Développé avec passion par TCC</div>
         </div>
       </div>
     </footer>
