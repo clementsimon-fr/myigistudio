@@ -34,14 +34,13 @@ const CONDITION_TYPES = [
 const ACTIVITY_OPTIONS = [
   { value: "yoga", label: "Yoga & Pilates" },
   { value: "poterie", label: "Poterie" },
-  { value: "bien-etre", label: "Ateliers & Stages" },
 ];
 
 const emptyCondition: Omit<Condition, "id" | "created_at"> = {
-  type: "annulation",
+  type: "generale",
   title: "",
   content: "",
-  applies_to: ["yoga", "poterie", "bien-etre"],
+  applies_to: ["yoga", "poterie"],
   sort_order: 0,
   active: true,
 };
@@ -196,17 +195,6 @@ export default function AdminConditions() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <Label className="text-sm">Type</Label>
-              <Select value={form.type} onValueChange={(v) => setForm(prev => ({ ...prev, type: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CONDITION_TYPES.map(t => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
               <Label className="text-sm">Titre</Label>
               <Input
                 value={form.title}
@@ -264,6 +252,23 @@ export default function AdminConditions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(o) => !o && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette condition ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est définitive et ne peut être annulée.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }
