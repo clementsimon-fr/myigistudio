@@ -371,7 +371,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
     onSwitchToPlanning({ type: "workshop", id: ws.id, date: ws.date });
   };
 
-  const descriptionCourseDays = descriptionCourse ? (schedulesMap[descriptionCourse.id] || new Set<string>()) : new Set<string>();
+  // descriptionCourseDays removed — "Jours de la semaine" block dropped per #2
 
   // Compute min spots_left for each yoga course from its schedules
   const getCourseSpotsLeft = (courseId: string) => {
