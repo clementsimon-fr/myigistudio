@@ -32,6 +32,7 @@ export interface Course {
   image: string;
   images?: string[];
   frequency?: string;
+  intensity?: string;
 }
 
 export interface Workshop {
