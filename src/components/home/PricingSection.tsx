@@ -45,15 +45,18 @@ export default function PricingSection() {
           <h2 className="text-3xl md:text-4xl font-display font-bold text-primary-dark mb-3">
             Nos cartes de cours de Yoga
           </h2>
-          <p className="text-muted-foreground max-w-lg mx-auto">
+          <p className="text-muted-foreground max-w-xl mx-auto">
             Choisissez la formule qui correspond à votre rythme. Valables pour tous les cours Yoga & Pilates.
+            Achetez une carte, ou plusieurs, et utilisez vos cours quand vous le souhaitez.
           </p>
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-5xl mx-auto">
           {cards.map((card, i) => {
             const perSession = card.sessions > 0 && card.sessions < 9999 ? card.price / card.sessions : null;
-            // 1.1: Remove percentage — only show per-session price
+            const discount = unitPrice && perSession && card.sessions > 1
+              ? Math.round((1 - perSession / unitPrice) * 100)
+              : null;
             return (
               <motion.div
                 key={card.id}
