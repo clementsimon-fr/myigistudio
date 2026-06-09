@@ -178,7 +178,6 @@ export default function MonEspace() {
                   { v: "all", l: `Toutes (${confirmedRes.length})` },
                   { v: "yoga", l: `Yoga (${yogaRes.length})` },
                   { v: "poterie", l: `Poterie (${potteryRes.length})` },
-                  { v: "ateliers", l: `Ateliers (${atelierRes.length})` },
                 ].map(f => (
                   <Button key={f.v} size="sm" variant={resFilter === f.v ? "default" : "outline"} className="rounded-full text-xs" onClick={() => setResFilter(f.v)}>{f.l}</Button>
                 ))}
