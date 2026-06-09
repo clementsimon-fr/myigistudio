@@ -258,12 +258,53 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
   );
 }
 
+interface YogaPricingCard { id: string; name: string; sessions: number; price: number; validity: string; popular: boolean; sort_order: number; payment_info?: string; }
+
+function YogaPricingCardsMini({ cards }: { cards: YogaPricingCard[] }) {
+  if (!cards.length) return null;
+  const unit = cards.find(c => c.sessions === 1)?.price;
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {cards.map(c => {
+        const per = c.sessions > 0 && c.sessions < 9999 ? c.price / c.sessions : null;
+        const discount = unit && per && c.sessions > 1 ? Math.round((1 - per / unit) * 100) : null;
+        return (
+          <div key={c.id} className={`rounded-lg border p-2.5 bg-card ${c.popular ? "border-primary-dark/60" : ""}`}>
+            <p className="text-xs font-semibold text-primary-dark leading-tight">{c.name}</p>
+            <p className="text-base font-bold text-foreground mt-1">{c.price}€</p>
+            <p className="text-[10px] text-muted-foreground">
+              {c.sessions >= 9999 ? "Illimité" : `${c.sessions} cours`} · {c.validity}
+            </p>
+            {per !== null && (
+              <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                <span className="text-[10px] text-muted-foreground">{per.toFixed(2)}€/cours</span>
+                {discount && discount > 0 && (
+                  <span className="text-[9px] font-semibold px-1 py-0.5 rounded-full bg-accent/15 text-accent-foreground border border-accent/30">-{discount}%</span>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ActivitiesView({ courses, workshops, schedules, filter, subFilter = "all", getInstructorPhoto, onSwitchToPlanning }: ActivitiesViewProps) {
   const navigate = useNavigate();
   const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
   const [yogaMonthOffset, setYogaMonthOffset] = useState(0);
   const [potterySubFilter, setPotterySubFilter] = useState("all");
+  const [yogaCards, setYogaCards] = useState<YogaPricingCard[]>([]);
+
+  useEffect(() => {
+    if (descriptionCourse && yogaCards.length === 0) {
+      supabase.from("pricing_cards").select("*").order("sort_order").then(({ data }) => {
+        if (data) setYogaCards(data as unknown as YogaPricingCard[]);
+      });
+    }
+  }, [descriptionCourse, yogaCards.length]);
 
   const yogaMonthDate = useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() + yogaMonthOffset); return d; }, [yogaMonthOffset]);
   const yogaMonthLabel = yogaMonthDate.toLocaleDateString("fr-FR", { month: "long" });
