@@ -85,9 +85,16 @@ export default function PricingSection() {
                 </p>
 
                 {perSession !== null && (
-                  <p className="text-xs text-muted-foreground mb-1">
-                    {perSession.toFixed(2)}€ / cours
-                  </p>
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <p className="text-xs text-muted-foreground">
+                      {perSession.toFixed(2)}€ / cours
+                    </p>
+                    {discount && discount > 0 && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-accent/15 text-accent-foreground border border-accent/30">
+                        -{discount}%
+                      </span>
+                    )}
+                  </div>
                 )}
                 {card.sessions >= 9999 && (
                   <p className="text-xs text-muted-foreground mb-1">Accès illimité</p>
