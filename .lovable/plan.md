@@ -1,72 +1,93 @@
+# Analyse du document Classeur1.xlsx
 
-
-## Plan d'implémentation — 6 chantiers
-
-### 1. Afficher les places restantes (visiteur)
-
-**Fiches d'activité** : Sur chaque carte (cours yoga et ateliers poterie), afficher `X places restantes` ou un badge rouge `Complet` si `spots_left === 0`.
-
-**Fichiers** : `src/components/ActivitiesView.tsx` (CourseCard et WorkshopCard)
+J'ai extrait **11 demandes** classées par priorité (1 = haute, 4 = basse). Voici le plan d'implémentation regroupé.
 
 ---
 
-### 2. Planning Poterie style Calendly (visiteur)
+## 🔴 Priorité 1 — À traiter en premier
 
-Remplacer le planning actuel de la section Poterie dans `ActivitiesView.tsx` par un composant calendrier mensuel dédié :
+### 1. Supprimer "Ateliers & Stages" partout
+Retirer toute trace d'ateliers/stages de l'app (front visiteur, admin, planning, types, filtres). Le modèle devient : **Cours (yoga/pilates) + Activités poterie**, sans la notion "atelier".
+- **Fichiers** : `ActivitiesView.tsx`, `ActivityFilterBar.tsx`, `PlanningView.tsx`, `admin/Activites.tsx`, `admin/AteliersAdmin.tsx` (suppression), `Discover.tsx`, types Supabase.
+- **DB** : décider du sort de la table `workshops` (renommer en `pottery_events` ou fusionner dans `courses`).
 
-- **Sous-filtres en haut** : boutons pour filtrer par type de poterie (Atelier, Initiation, etc.) extraits dynamiquement des noms d'ateliers poterie
-- **Vue calendrier mensuel** : grille 7 colonnes (L-D), chaque jour avec un cercle vert (dispo) ou rouge (complet) si un atelier existe ce jour, gris sinon
-- **Navigation mois** : flèches gauche/droite pour changer de mois
-- **Au clic sur un jour** : afficher les créneaux de ce jour sous le calendrier (heure, nom, places)
-- **Au clic sur un créneau** : lancer le processus de réservation existant via `onSwitchToPlanning`
+### 2. Refonte fiche activité (clic DESCRIPTION) — visiteur
+Au clic sur DESCRIPTION, afficher sous la photo :
+- Titre **Description** + paragraphe
+- Champ **Intensité**
+- Titre **Planning type** + planning filtré sur l'activité
+- Titre **Les tarifs** + formules (UX identique au popup "Formules Cartes Yoga", **sans CTA**)
+- **Supprimer** le bloc "Jour de la semaine"
+- **Fichier** : `ActivitiesView.tsx` (modale description), réutiliser `PurchaseOptions/CardGrid` en mode lecture seule.
 
-**Fichier** : nouveau composant `src/components/PotteryCalendar.tsx`, intégré dans `ActivitiesView.tsx` en remplacement du planning actuel de la section Poterie
+### 3. Déplacer badge "X places restantes"
+Le badge doit être à côté de "Prochain cours" (pas en bas).
+- **Fichier** : `ActivitiesView.tsx` (CourseCard).
+
+### 4. Unifier UX "Formules cartes yoga"
+Partout où les cartes yoga sont présentées (accueil, fiche activité, modale réservation), utiliser la même UX que `CardGrid` du processus de réservation.
+- Ajouter le texte : *"... Achetez une carte, ou plusieurs, et utilisez vos cours quand vous le souhaitez."*
+- Ajouter sous le badge des cours un **badge réduction** (calcul auto : économie vs prix unitaire).
+- **Fichiers** : `home/PricingSection.tsx`, `FormulaInfoModal.tsx`, `booking/PurchaseOptions.tsx` (CardGrid commun extrait dans un composant partagé).
+
+### 5. Refonte admin "Activités et réservations"
+Restructuration majeure de l'admin :
+- Autant de filtres que d'activités (dynamique).
+- Rubrique **Activités** : édition des fiches uniquement. Clic = panneau qui glisse vers le bas (drawer). Plus de dates sur la carte.
+- Rubrique **Planning et réservations** : consultation des réservations + ajout de dates.
+- Bouton **"Ajouter un événement"** disponible uniquement dans la vue **Mois** (pas par clic sur une case vide).
+- Au clic sur "Ajouter un événement", un **META-bloc** apparaît :
+  - Bloc 1 : sélecteur d'activité (dropdown)
+  - Bloc 2 : type d'événement avec 3 boutons :
+    1. **Une date** → clic sur date → fenêtre (début, heure début/fin, places, prix €/carte, notes)
+    2. **Plusieurs dates même créneau** → clic multi-dates → paramétrage unique
+    3. **Dates connectées (stage)** → clic multi-dates → paramétrage heure par date (linked_group)
+- **Fichiers** : `admin/Activites.tsx`, `admin/PlanningType.tsx`, `admin/Reservations.tsx`, nouveau composant `EventCreatorMeta.tsx`.
+
+### 6. Simplification édition activité (admin)
+- "Détailler l'événement" passe dans la rubrique **Description** (commun à tous les events).
+- Plus de bouton "Détailler" dans **Événements**.
+- Saisie prix/carte yoga dans **Description**.
+- Bouton **"Inclusions"** à côté du prix (ex: "le goûter est compris") → affiché en **bulle info** côté visiteur.
+- **Fichier** : `admin/Activites.tsx`.
+
+### 7. Admin Conditions
+- Supprimer le champ "Type" (titre suffit).
+- Corriger le bouton **Supprimer une condition** (ne fonctionne pas).
+- **Fichier** : `admin/Conditions.tsx`.
 
 ---
 
-### 3. Multi-photos activités (admin + visiteur)
+## 🟡 Priorité 3 — Ajustements
 
-**DB** : Ajouter une colonne `images text[] DEFAULT '{}'` aux tables `courses` et `workshops` via migration.
+### 8. Accueil — texte
+- Déplacer **"Yoga, Pilates & Poterie"** sous le titre **MyIgistudio**.
+- **Fichier** : page d'accueil / Hero.
 
-**Admin (`Activites.tsx`)** : Dans l'onglet Description de l'éditeur, permettre l'upload de plusieurs photos (jusqu'à 5) stockées dans le bucket `activity-images`. Les URLs sont sauvegardées dans le champ `images[]`.
+### 9. Accueil — footer
+- Ajouter **"Développé avec passion par TCC"** en bas du site.
+- **Fichier** : `layout/Footer.tsx`.
 
-**Visiteur (`ActivitiesView.tsx`)** : Si `images.length > 1`, remplacer l'image statique par un carrousel simple (swipe/flèches) dans les cartes et les modales de description.
-
----
-
-### 4. Supprimer la catégorie "bien-être" (rouge)
-
-- **DB** : Supprimer les workshops `bien-etre` (3 entrées : Cérémonie Cacao, Wim Hof Avancé, Breathwork) et les réservations liées
-- **Code** : Retirer `"bien-etre"` de `CATEGORY_FILTERS`, `CATEGORY_STYLES`, `VISIBLE_FILTERS` dans `ActivityFilterBar.tsx`
-- Nettoyer `ActivitiesView.tsx` (supprimer section Ateliers & Stages, `wellbeingGroups`, `atelierMonthOffset`)
-- Nettoyer `PlanningView.tsx` (retirer la légende bien-être)
-- Nettoyer `PlanningTypeView.tsx`, `Discover.tsx`, `admin/PlanningType.tsx`
-- Retirer l'asset `filter-ateliers.png` et son import
+### 10. Bug duplication activité (à vérifier)
+- Lors de l'ajout d'un événement dans une activité existante puis validation, l'activité est dupliquée.
+- **À tester** : la logique de regroupement par `name` dans `Activites.tsx` devrait déjà couvrir le cas, mais à valider en conditions réelles.
 
 ---
 
-### 5. Nettoyer les intervenants (garder Élodie et Émilie)
+## 🟢 Priorité 4 — Fonctionnalité majeure
 
-- **DB** : Désactiver (mettre `active = false`) les 4 intervenants : Adeline, Gaëlle, Marc Antoine, Stéphanie
-- Dissocier les cours/ateliers liés à ces intervenants (`SET instructor_id = NULL` ou les réassigner à Élodie)
-- L'interface admin ne les affichera plus car elle filtre déjà sur `active = true`
-
----
-
-### 6. Ajouter des participants depuis le planning admin
-
-Dans `DailyView.tsx`, ajouter un bouton "Ajouter un participant" dans le dialogue de détail d'un bloc d'activité :
-
-- Formulaire inline : nom du client + nombre de participants
-- Insertion directe dans la table `reservations` avec les champs pré-remplis (date, heure, activity_name, course_id/workshop_id, status "confirmé")
-- Rafraîchir la liste des participants après ajout
+### 11. Import Excel clients (admin)
+- Page admin permettant d'uploader un fichier Excel avec colonnes clients (Simplybook, Calendly, Stripe).
+- Stockage dans une nouvelle table `client_imports` (email comme clé).
+- À la création d'un compte client : détection auto via email → proposition d'importer ses anciennes données.
+- Vue admin : voir quels clients ont réalisé leur import.
+- **Fichiers** : nouvelle page `admin/ImportClients.tsx`, migration DB (table `client_imports` + colonne `imported_from` sur `profiles`), logique dans `Register.tsx`.
+- **Note** : Élodie devra transmettre le fichier Excel exemple pour valider le mapping des colonnes.
 
 ---
 
-### Détails techniques
+## Ordre d'exécution proposé
 
-- **Migration SQL** : `ALTER TABLE courses ADD COLUMN images text[] DEFAULT '{}'; ALTER TABLE workshops ADD COLUMN images text[] DEFAULT '{}';`
-- **Data cleanup SQL** : `DELETE FROM workshops WHERE category = 'bien-etre'; UPDATE instructors SET active = false WHERE name NOT IN ('Elodie', 'Emilie');`
-- **Nouveau composant** : `PotteryCalendar.tsx` (~150 lignes)
-- **Fichiers modifiés** : `ActivitiesView.tsx`, `ActivityFilterBar.tsx`, `PlanningView.tsx`, `PlanningTypeView.tsx`, `DailyView.tsx`, `Activites.tsx`, `Discover.tsx`, `admin/PlanningType.tsx`
+Je propose de traiter d'abord toutes les **priorités 1** (chantiers 1 → 7), puis priorités 3 (8 → 10), enfin la fonctionnalité d'import (11).
 
+**Question avant de lancer** : veux-tu que je commence par **tout faire d'un bloc** ou que je traite par lots (par ex. lot A = #1, #2, #3 ; lot B = #4, #6, #7 ; lot C = #5 ; lot D = #8-10 ; lot E = #11) ? Le lot C (refonte admin réservations) et le lot E (import) sont les plus lourds.
