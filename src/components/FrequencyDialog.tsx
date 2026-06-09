@@ -110,7 +110,6 @@ export default function FrequencyDialog({ open, onOpenChange, courses, workshops
   const categoryLabels: Record<string, string> = {
     yoga: "Yoga & Pilates",
     poterie: "Poterie",
-    "bien-etre": "Ateliers & Stages",
   };
 
   const frequencyLabels: Record<string, string> = {
