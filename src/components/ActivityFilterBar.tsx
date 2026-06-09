@@ -73,7 +73,7 @@ export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFi
                       Voir les activités {f.label}
                     </span>
                     <span className={`block text-xs mt-0.5 ${isActive ? "text-white/80" : "text-muted-foreground"}`}>
-                      {f.value === "yoga" ? "Cours & planning" : "Ateliers & calendrier"}
+                      {f.value === "yoga" ? "Cours & planning" : "Activités & calendrier"}
                     </span>
                   </div>
                 </button>

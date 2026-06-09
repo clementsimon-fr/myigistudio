@@ -323,7 +323,7 @@ function MonthWorkshops({ workshops, onEventClick, hideTitle, hidePriceSpots, mo
 
   return (
     <div className="space-y-3">
-      {!hideTitle && <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ateliers & stages</h4>}
+      {!hideTitle && <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Dates ponctuelles</h4>}
       {grouped.map(({ category, items }) => {
         const style = getCategoryStyle(category);
         return (
