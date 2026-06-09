@@ -205,18 +205,19 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
       <div className="p-4 md:p-5">
         <div className="flex items-start justify-between gap-2 mb-2">
           <h3 className={`font-display font-semibold text-base md:text-lg leading-tight ${style.text}`}>{ws.name}</h3>
-          {hasFutureDate && <SpotsBadge spotsLeft={spotsLeft} />}
         </div>
         <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{ws.description}</p>
         {group.isLinked && futureDates.length > 0 && (
-          <p className="text-xs text-primary font-medium mb-2">
-            📅 {formatLinkedDates(futureDates.map(w => w.date))}
+          <p className="text-xs text-primary font-medium mb-2 flex items-center gap-2 flex-wrap">
+            <span>📅 {formatLinkedDates(futureDates.map(w => w.date))}</span>
+            {hasFutureDate && <SpotsBadge spotsLeft={spotsLeft} />}
           </p>
         )}
         {!group.isLinked && hasFutureDate && nextFuture && (
-          <p className="text-xs text-muted-foreground mb-2">
-            📅 Prochaine date : {new Date(nextFuture.date + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
-            {futureDates.length > 1 && <span className="text-primary font-medium"> · {futureDates.length} dates disponibles</span>}
+          <p className="text-xs text-muted-foreground mb-2 flex items-center gap-2 flex-wrap">
+            <span>📅 Prochaine date : {new Date(nextFuture.date + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+            {futureDates.length > 1 && <span className="text-primary font-medium"> · {futureDates.length} dates disponibles</span>}</span>
+            <SpotsBadge spotsLeft={spotsLeft} />
           </p>
         )}
         <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
@@ -395,12 +396,12 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                     <div className="p-4 md:p-5">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <h3 className={`font-display font-semibold text-base md:text-lg leading-tight ${yogaStyle.text}`}>{course.name}</h3>
-                        {spotsLeft !== undefined && <SpotsBadge spotsLeft={spotsLeft} />}
                       </div>
                       {course.description && <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{course.description}</p>}
                       {nextDate && (
-                        <p className="text-xs text-muted-foreground mb-2">
-                          📅 Prochain cours : {nextDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                        <p className="text-xs text-muted-foreground mb-2 flex items-center gap-2 flex-wrap">
+                          <span>📅 Prochain cours : {nextDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</span>
+                          {spotsLeft !== undefined && <SpotsBadge spotsLeft={spotsLeft} />}
                         </p>
                       )}
                       <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
