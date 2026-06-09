@@ -510,13 +510,39 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
           {descriptionCourse && (
             <>
               <DialogHeader><DialogTitle className="font-display">{descriptionCourse.name}</DialogTitle></DialogHeader>
-              <div className="space-y-4 pt-2">
+              <div className="space-y-5 pt-2">
                 <img src={descriptionCourse.image || PLACEHOLDER_IMG} alt={descriptionCourse.name} className="w-full rounded-lg object-cover max-h-64" />
-                <div className="text-sm text-muted-foreground whitespace-pre-line">{descriptionCourse.long_description || descriptionCourse.description}</div>
+
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Jours de la semaine</p>
-                  <WeekDots activeDays={descriptionCourseDays} dotColor={yogaStyle.dot} />
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Description</h4>
+                  <div className="text-sm text-foreground/90 whitespace-pre-line leading-relaxed">{descriptionCourse.long_description || descriptionCourse.description}</div>
                 </div>
+
+                {descriptionCourse.intensity && descriptionCourse.intensity !== "none" && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Intensité</h4>
+                    <Badge variant="secondary" className="capitalize">{descriptionCourse.intensity}</Badge>
+                  </div>
+                )}
+
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Planning type</h4>
+                  <RecurringGrid
+                    courses={courses.filter(c => c.id === descriptionCourse.id)}
+                    schedules={schedules.filter(s => s.course_id === descriptionCourse.id)}
+                  />
+                </div>
+
+                {yogaCards.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Les tarifs</h4>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Achetez une carte, ou plusieurs, et utilisez vos cours quand vous le souhaitez.
+                    </p>
+                    <YogaPricingCardsMini cards={yogaCards} />
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <InstructorBadge instructor={descriptionCourse.instructor} photo={getInstructorPhoto(descriptionCourse.instructor_id, descriptionCourse.instructor)} />
                   <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionCourse.spots} places max</div>
