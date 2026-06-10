@@ -129,6 +129,7 @@ export type Database = {
       }
       courses: {
         Row: {
+          card_yoga_count: number | null
           category: string
           created_at: string
           day: string
@@ -147,6 +148,7 @@ export type Database = {
           long_description: string
           modalities: string
           name: string
+          price: number | null
           reminder_template: string
           reminder_timing: string
           spots: number
@@ -154,6 +156,7 @@ export type Database = {
           time: string
         }
         Insert: {
+          card_yoga_count?: number | null
           category?: string
           created_at?: string
           day: string
@@ -172,6 +175,7 @@ export type Database = {
           long_description?: string
           modalities?: string
           name: string
+          price?: number | null
           reminder_template?: string
           reminder_timing?: string
           spots?: number
@@ -179,6 +183,7 @@ export type Database = {
           time: string
         }
         Update: {
+          card_yoga_count?: number | null
           category?: string
           created_at?: string
           day?: string
@@ -197,6 +202,7 @@ export type Database = {
           long_description?: string
           modalities?: string
           name?: string
+          price?: number | null
           reminder_template?: string
           reminder_timing?: string
           spots?: number
