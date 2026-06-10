@@ -1338,11 +1338,12 @@ export default function AdminActivites() {
         const wsPayload = {
           ...workshopData,
           date: evt.date, time: evt.time, end_time: evt.end_time,
-          duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
+          duration, spots: evt.spots, spots_left: evt.spots, price: dPrice,
           frequency: "ponctuel",
-          inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
+          inclusions: dInclusions, card_yoga_count: dCard,
           linked_group: null,
         };
+
 
         if (evt._workshopId) {
           keptWsIds.add(evt._workshopId);
