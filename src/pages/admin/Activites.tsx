@@ -533,12 +533,20 @@ function ActivityEditor({
             <Textarea value={form.long_description} onChange={e => setForm({ ...form, long_description: e.target.value })} rows={5} placeholder="Description détaillée affichée dans les détails de l'activité..." />
           </div>
 
-          {/* Tarif & inclusions (commun à tous les événements de cette activité) */}
+        </div>
+      )}
+
+      {/* ═══ SECTION: TARIF & INCLUSIONS ═══ */}
+      {section === "tarif" && (
+        <div className="space-y-5">
           <div className="border rounded-lg p-4 bg-card space-y-4">
             <div className="flex items-center gap-2">
               <CreditCard className="h-4 w-4 text-emerald-700" />
               <Label className="text-emerald-700 mb-0">Tarif appliqué à tous les événements</Label>
             </div>
+            <p className="text-xs text-muted-foreground -mt-2">
+              Le tarif défini ici s'applique à tous les événements de cette activité (planning, réservation). Modifier ici met à jour partout.
+            </p>
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-1.5">
                 <Input type="number" className="w-[90px] h-9 text-sm" value={form.default_price}
