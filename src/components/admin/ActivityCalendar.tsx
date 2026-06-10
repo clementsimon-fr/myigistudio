@@ -634,7 +634,7 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
   return (
     <div className="space-y-4">
       {/* View mode toggle */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Button variant={viewMode === "today" ? "default" : "outline"} size="sm" onClick={() => { setViewMode("today"); setCurrentDate(new Date()); }}>
           Aujourd'hui
         </Button>
@@ -644,7 +644,13 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
         <Button variant={viewMode === "month" ? "default" : "outline"} size="sm" onClick={() => setViewMode("month")}>
           <CalendarDays className="h-4 w-4 mr-1" /> Mois
         </Button>
+        {viewMode === "month" && (
+          <Button size="sm" className="ml-auto gap-1.5" onClick={() => setMetaDialogOpen(true)}>
+            <Plus className="h-4 w-4" /> Ajouter un événement
+          </Button>
+        )}
       </div>
+
 
       {/* Navigation */}
       <div className="flex items-center justify-between">
