@@ -840,8 +840,12 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
         </DialogContent>
       </Dialog>
 
+      {/* META-bloc Ajouter un événement */}
+      <AddEventMetaDialog open={metaDialogOpen} onOpenChange={setMetaDialogOpen} onCreated={fetchData} />
+
       {/* Delete confirmation */}
       <AlertDialog open={!!deletingSession} onOpenChange={(open) => !open && setDeletingSession(null)}>
+
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer la suppression ?</AlertDialogTitle>
