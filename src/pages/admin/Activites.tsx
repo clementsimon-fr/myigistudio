@@ -792,25 +792,8 @@ function ActivityEditor({
                     </div>
                   )}
 
-                  {/* Price + Card */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-1">
-                      <Input type="number" className="w-[70px] h-8 text-xs" value={evt.price} onChange={e => updateEvent(idx, { price: Number(e.target.value) })} placeholder="Prix" />
-                      <span className="text-xs text-muted-foreground">€</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">ou</span>
-                    <div className="flex items-center gap-1">
-                      <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
-                      <Input type="number" className="w-[50px] h-8 text-xs" value={evt.card_yoga_count} onChange={e => updateEvent(idx, { card_yoga_count: Number(e.target.value) })} min={0} />
-                      <span className="text-xs text-muted-foreground">carte{evt.card_yoga_count > 1 ? "s" : ""} yoga</span>
-                    </div>
-                     {/* Indicators - only show Inclus badge */}
-                    {evt.inclusions && (
-                      <div className="flex gap-1 ml-auto">
-                        <Badge variant="outline" className="text-[10px] gap-0.5"><Info className="h-2.5 w-2.5" /> Inclus</Badge>
-                      </div>
-                    )}
-                  </div>
+                  {/* Tarif & inclusions désormais gérés au niveau de l'activité (rubrique Description) */}
+
                 </div>
               ))}
 
