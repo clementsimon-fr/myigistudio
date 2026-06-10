@@ -190,6 +190,9 @@ interface ActivityForm {
   default_modalities: string;
   intensity: string;
   reminder_timing: string;
+  default_price: number;
+  default_card_yoga_count: number;
+  default_inclusions: string;
 }
 
 const emptyEvent = (): EventSlot => ({
@@ -204,7 +207,9 @@ const emptyForm = (): ActivityForm => ({
   instructor: "", image: "", images: [], spots: 12, events: [emptyEvent()],
   default_reminder: "", default_modalities: "",
   intensity: "none", reminder_timing: "1j",
+  default_price: 0, default_card_yoga_count: 1, default_inclusions: "",
 });
+
 
 // ── Custom Date Picker for "personnalisé" ──
 function CustomDatesPicker({ dates, onChange, time, endTime, spots, onTimeChange, onEndTimeChange, onSpotsChange }: {
@@ -525,8 +530,46 @@ function ActivityEditor({
             <Label className="text-emerald-700">Fiche produit (description longue)</Label>
             <Textarea value={form.long_description} onChange={e => setForm({ ...form, long_description: e.target.value })} rows={5} placeholder="Description détaillée affichée dans les détails de l'activité..." />
           </div>
+
+          {/* Tarif & inclusions (commun à tous les événements de cette activité) */}
+          <div className="border rounded-lg p-4 bg-card space-y-4">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-emerald-700" />
+              <Label className="text-emerald-700 mb-0">Tarif appliqué à tous les événements</Label>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <Input type="number" className="w-[90px] h-9 text-sm" value={form.default_price}
+                  onChange={e => setForm({ ...form, default_price: Number(e.target.value) })} placeholder="Prix" />
+                <span className="text-sm text-muted-foreground">€</span>
+              </div>
+              <span className="text-xs text-muted-foreground">ou</span>
+              <div className="flex items-center gap-1.5">
+                <Input type="number" className="w-[70px] h-9 text-sm" value={form.default_card_yoga_count}
+                  onChange={e => setForm({ ...form, default_card_yoga_count: Number(e.target.value) })} min={0} />
+                <span className="text-sm text-muted-foreground">carte{form.default_card_yoga_count > 1 ? "s" : ""} yoga</span>
+              </div>
+            </div>
+            <div>
+              <Label className="flex items-center gap-1.5 text-sm">
+                <Info className="h-3.5 w-3.5 text-primary" /> Ce qui est inclus
+              </Label>
+              <Textarea
+                value={form.default_inclusions}
+                onChange={e => setForm({ ...form, default_inclusions: e.target.value })}
+                rows={2}
+                placeholder="Ex : le goûter est compris, matériel fourni..."
+                className="text-sm mt-1.5"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                S'affiche à côté du prix lors de la réservation, sous forme de bulle info.
+              </p>
+            </div>
+          </div>
         </div>
       )}
+
+
 
       {/* ═══ SECTION: ÉVÉNEMENTS ═══ */}
       {section === "events" && (
@@ -607,14 +650,11 @@ function ActivityEditor({
                             <span className="text-xs text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" />{evt.spots}</span>
                             {evt.price > 0 && <span className="text-xs font-medium">{evt.price}€</span>}
                             <div className="ml-auto flex gap-1">
-                              <Button type="button" size="sm" variant="outline" className="h-7 text-xs gap-1"
-                                onClick={() => { setDetailDialogIdx(idx); }}>
-                                <Info className="h-3 w-3" /> Détailler
-                              </Button>
                               <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => setPendingDeleteEventIdx(idx)}>
                                 <X className="h-3.5 w-3.5" />
                               </Button>
                             </div>
+
                           </div>
                         ))}
                       </div>
@@ -664,12 +704,8 @@ function ActivityEditor({
                       )}
                     </div>
                     <div className="flex items-center gap-1">
-                      {/* ── DÉTAILLER button ── */}
-                      <Button type="button" size="sm" variant="outline" className="h-8 text-xs gap-1.5"
-                        onClick={() => setDetailDialogIdx(idx)}>
-                        <Info className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Détailler</span>
-                      </Button>
                       {form.events.length > 1 && (
+
                         <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => setPendingDeleteEventIdx(idx)}>
                           <Trash2 className="h-3.5 w-3.5 sm:hidden" />
                           <X className="h-3.5 w-3.5 hidden sm:block" />
@@ -756,25 +792,8 @@ function ActivityEditor({
                     </div>
                   )}
 
-                  {/* Price + Card */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-1">
-                      <Input type="number" className="w-[70px] h-8 text-xs" value={evt.price} onChange={e => updateEvent(idx, { price: Number(e.target.value) })} placeholder="Prix" />
-                      <span className="text-xs text-muted-foreground">€</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">ou</span>
-                    <div className="flex items-center gap-1">
-                      <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
-                      <Input type="number" className="w-[50px] h-8 text-xs" value={evt.card_yoga_count} onChange={e => updateEvent(idx, { card_yoga_count: Number(e.target.value) })} min={0} />
-                      <span className="text-xs text-muted-foreground">carte{evt.card_yoga_count > 1 ? "s" : ""} yoga</span>
-                    </div>
-                     {/* Indicators - only show Inclus badge */}
-                    {evt.inclusions && (
-                      <div className="flex gap-1 ml-auto">
-                        <Badge variant="outline" className="text-[10px] gap-0.5"><Info className="h-2.5 w-2.5" /> Inclus</Badge>
-                      </div>
-                    )}
-                  </div>
+                  {/* Tarif & inclusions désormais gérés au niveau de l'activité (rubrique Description) */}
+
                 </div>
               ))}
 
@@ -1200,6 +1219,11 @@ export default function AdminActivites() {
       }
     }
     if (events.length === 0) events.push(emptyEvent());
+    const firstSched = a.schedules?.[0];
+    const firstWsEvt = a.workshopEvents?.[0];
+    const defaultPriceVal = firstSched?.price ?? firstWsEvt?.price ?? 0;
+    const defaultCardVal = firstSched?.card_yoga_count ?? firstWsEvt?.card_yoga_count ?? 1;
+    const defaultInclusionsVal = firstSched?.inclusions || firstWsEvt?.inclusions || "";
     setForm({
       name: a.name, description: a.description, long_description: a.long_description,
       category: a.category, instructor: a.instructor, image: a.image, images: a.images || [], spots: a.spots || 12, events,
@@ -1207,9 +1231,13 @@ export default function AdminActivites() {
       default_modalities: a.modalities || currentDefaultModalities,
       intensity: a.intensity || "none",
       reminder_timing: a.reminder_timing || "1j",
+      default_price: defaultPriceVal,
+      default_card_yoga_count: defaultCardVal,
+      default_inclusions: defaultInclusionsVal,
     });
     setEditorOpen(true);
   };
+
 
   const save = async (closeAfter = true) => {
     const instrId = instructorsList.find(i => i.name === form.instructor)?.id || null;
@@ -1229,6 +1257,11 @@ export default function AdminActivites() {
     }
 
     // Shared fields (without 'instructor' which doesn't exist in workshops table)
+    // Defaults appliqués à tous les événements (saisis dans la rubrique Description)
+    const dPrice = form.default_price || 0;
+    const dCard = form.default_card_yoga_count || 0;
+    const dInclusions = form.default_inclusions || "";
+
     const sharedData = {
       name: form.name, description: form.description, long_description: form.long_description,
       category: form.category, instructor_id: instrId,
@@ -1236,10 +1269,12 @@ export default function AdminActivites() {
       reminder_template: form.default_reminder,
       modalities: form.default_modalities,
       intensity: form.intensity === "none" ? "" : form.intensity, reminder_timing: form.reminder_timing,
+      inclusions: dInclusions,
     };
     // courses table has 'instructor' column, workshops does not
-    const courseData = { ...sharedData, instructor: form.instructor };
+    const courseData = { ...sharedData, instructor: form.instructor, price: dPrice, card_yoga_count: dCard };
     const workshopData = sharedData;
+
 
     // ── Handle recurring events → courses table ──
     if (recurringEvents.length > 0) {
@@ -1258,9 +1293,10 @@ export default function AdminActivites() {
         await supabase.from("course_schedules").delete().eq("course_id", primaryCourseId);
         const scheduleRows = recurringEvents.map(e => ({
           course_id: primaryCourseId, day: e.day, time: e.time, end_time: e.end_time,
-          spots: e.spots, spots_left: e.spots, price: e.price,
-          inclusions: e.inclusions, card_yoga_count: e.card_yoga_count,
+          spots: e.spots, spots_left: e.spots, price: dPrice,
+          inclusions: dInclusions, card_yoga_count: dCard,
         }));
+
         await supabase.from("course_schedules").insert(scheduleRows);
       } else {
         if (editingActivity?.source === "workshop") {
@@ -1275,9 +1311,10 @@ export default function AdminActivites() {
         if (data) {
           const scheduleRows = recurringEvents.map(e => ({
             course_id: data.id, day: e.day, time: e.time, end_time: e.end_time,
-            spots: e.spots, spots_left: e.spots, price: e.price,
-            inclusions: e.inclusions, card_yoga_count: e.card_yoga_count,
+            spots: e.spots, spots_left: e.spots, price: dPrice,
+            inclusions: dInclusions, card_yoga_count: dCard,
           }));
+
           await supabase.from("course_schedules").insert(scheduleRows);
         }
       }
@@ -1301,11 +1338,12 @@ export default function AdminActivites() {
         const wsPayload = {
           ...workshopData,
           date: evt.date, time: evt.time, end_time: evt.end_time,
-          duration, spots: evt.spots, spots_left: evt.spots, price: evt.price,
+          duration, spots: evt.spots, spots_left: evt.spots, price: dPrice,
           frequency: "ponctuel",
-          inclusions: evt.inclusions, card_yoga_count: evt.card_yoga_count,
+          inclusions: dInclusions, card_yoga_count: dCard,
           linked_group: null,
         };
+
 
         if (evt._workshopId) {
           keptWsIds.add(evt._workshopId);
@@ -1352,12 +1390,13 @@ export default function AdminActivites() {
           duration,
           spots: evt.spots,
           spots_left: evt.spots,
-          price: evt.price,
+          price: dPrice,
           frequency: "multi-sessions",
-          inclusions: evt.inclusions,
-          card_yoga_count: evt.card_yoga_count,
+          inclusions: dInclusions,
+          card_yoga_count: dCard,
           linked_group: linkedGroupId,
         };
+
 
         if (existingWorkshopId) {
           const { error } = await supabase.from("workshops").update(wsPayload as any).eq("id", existingWorkshopId);
