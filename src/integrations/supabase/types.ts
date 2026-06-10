@@ -140,6 +140,7 @@ export type Database = {
           id: string
           image: string
           images: string[] | null
+          inclusions: string | null
           instructor: string
           instructor_id: string | null
           intensity: string
@@ -164,6 +165,7 @@ export type Database = {
           id?: string
           image?: string
           images?: string[] | null
+          inclusions?: string | null
           instructor?: string
           instructor_id?: string | null
           intensity?: string
@@ -188,6 +190,7 @@ export type Database = {
           id?: string
           image?: string
           images?: string[] | null
+          inclusions?: string | null
           instructor?: string
           instructor_id?: string | null
           intensity?: string
