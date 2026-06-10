@@ -1018,7 +1018,7 @@ export default function AdminActivites() {
   const [activities, setActivities] = useState<UnifiedActivity[]>([]);
   const [instructorsList, setInstructorsList] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"cards" | "calendar">("cards");
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [activityFilter, setActivityFilter] = useState<string>("all");
