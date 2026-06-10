@@ -1257,6 +1257,11 @@ export default function AdminActivites() {
     }
 
     // Shared fields (without 'instructor' which doesn't exist in workshops table)
+    // Defaults appliqués à tous les événements (saisis dans la rubrique Description)
+    const dPrice = form.default_price || 0;
+    const dCard = form.default_card_yoga_count || 0;
+    const dInclusions = form.default_inclusions || "";
+
     const sharedData = {
       name: form.name, description: form.description, long_description: form.long_description,
       category: form.category, instructor_id: instrId,
@@ -1264,10 +1269,12 @@ export default function AdminActivites() {
       reminder_template: form.default_reminder,
       modalities: form.default_modalities,
       intensity: form.intensity === "none" ? "" : form.intensity, reminder_timing: form.reminder_timing,
+      inclusions: dInclusions,
     };
     // courses table has 'instructor' column, workshops does not
-    const courseData = { ...sharedData, instructor: form.instructor };
+    const courseData = { ...sharedData, instructor: form.instructor, price: dPrice, card_yoga_count: dCard };
     const workshopData = sharedData;
+
 
     // ── Handle recurring events → courses table ──
     if (recurringEvents.length > 0) {
