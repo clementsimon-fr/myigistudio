@@ -1612,7 +1612,32 @@ export default function AdminActivites() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Drawer d'édition activité (ouverture vers le bas) */}
+      <Sheet open={editorOpen} onOpenChange={(o) => { if (!o) { setEditorOpen(false); fetchData(); } }}>
+        <SheetContent side="bottom" className="h-[92vh] overflow-y-auto p-4 sm:p-6">
+          {editorOpen && (
+            <ActivityEditor
+              form={form}
+              setForm={setForm}
+              editingActivity={editingActivity}
+              instructorsList={instructorsList}
+              onSave={save}
+              onCancel={() => { setEditorOpen(false); fetchData(); }}
+              onDelete={() => {
+                if (editingActivity) {
+                  setEditorOpen(false);
+                  setDeletingItem({ id: editingActivity.id, source: editingActivity.source });
+                }
+              }}
+              currentDefaultReminder={currentDefaultReminder}
+              currentDefaultModalities={currentDefaultModalities}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </AdminLayout>
+
   );
 }
 
