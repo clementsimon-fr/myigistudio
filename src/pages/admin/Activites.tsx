@@ -274,10 +274,11 @@ function CustomDatesPicker({ dates, onChange, time, endTime, spots, onTimeChange
 // ══════════════════════════════════════════════════════════
 // ── EDITOR SECTION TABS ──
 // ══════════════════════════════════════════════════════════
-type EditorSection = "description" | "events" | "reminders";
+type EditorSection = "description" | "tarif" | "events" | "reminders";
 
 const EDITOR_SECTIONS: { key: EditorSection; label: string; icon: React.ReactNode }[] = [
   { key: "description", label: "Description", icon: <FileText className="h-4 w-4" /> },
+  { key: "tarif", label: "Tarif & inclusions", icon: <CreditCard className="h-4 w-4" /> },
   { key: "events", label: "Événements", icon: <CalendarDays className="h-4 w-4" /> },
   { key: "reminders", label: "Rappels", icon: <Mail className="h-4 w-4" /> },
 ];
