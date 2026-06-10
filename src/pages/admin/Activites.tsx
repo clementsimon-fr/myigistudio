@@ -1205,6 +1205,11 @@ export default function AdminActivites() {
       }
     }
     if (events.length === 0) events.push(emptyEvent());
+    const firstSched = a.schedules?.[0];
+    const firstWsEvt = a.workshopEvents?.[0];
+    const defaultPriceVal = firstSched?.price ?? firstWsEvt?.price ?? 0;
+    const defaultCardVal = firstSched?.card_yoga_count ?? firstWsEvt?.card_yoga_count ?? 1;
+    const defaultInclusionsVal = firstSched?.inclusions || firstWsEvt?.inclusions || "";
     setForm({
       name: a.name, description: a.description, long_description: a.long_description,
       category: a.category, instructor: a.instructor, image: a.image, images: a.images || [], spots: a.spots || 12, events,
@@ -1212,9 +1217,13 @@ export default function AdminActivites() {
       default_modalities: a.modalities || currentDefaultModalities,
       intensity: a.intensity || "none",
       reminder_timing: a.reminder_timing || "1j",
+      default_price: defaultPriceVal,
+      default_card_yoga_count: defaultCardVal,
+      default_inclusions: defaultInclusionsVal,
     });
     setEditorOpen(true);
   };
+
 
   const save = async (closeAfter = true) => {
     const instrId = instructorsList.find(i => i.name === form.instructor)?.id || null;
