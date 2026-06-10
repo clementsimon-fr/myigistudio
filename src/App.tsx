@@ -26,6 +26,7 @@ import AdminConditions from "./pages/admin/Conditions";
 import AdminFonctionnalites from "./pages/admin/Fonctionnalites";
 import AdminContrat from "./pages/admin/Contrat";
 import AdminPlanningType from "./pages/admin/PlanningType";
+import AdminPlanning from "./pages/admin/Planning";
 import AdminParametres from "./pages/admin/Parametres";
 import NotFound from "./pages/NotFound";
 
@@ -52,8 +53,9 @@ const App = () => (
             <Route path="/reserver" element={<Reserver />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/bonjour" element={<AdminBonjour />} />
-            <Route path="/admin/reservations" element={<Navigate to="/admin/activites" replace />} />
+            <Route path="/admin/reservations" element={<Navigate to="/admin/planning" replace />} />
             <Route path="/admin/activites" element={<AdminActivites />} />
+            <Route path="/admin/planning" element={<AdminPlanning />} />
             <Route path="/admin/clients" element={<AdminClients />} />
             <Route path="/admin/intervenants" element={<AdminIntervenants />} />
             <Route path="/admin/tarifs" element={<AdminTarifs />} />

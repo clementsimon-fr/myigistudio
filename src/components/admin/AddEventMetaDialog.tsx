@@ -329,18 +329,15 @@ export function AddEventMetaDialog({ open, onOpenChange, onCreated }: AddEventMe
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Places</Label>
                   <Input type="number" value={spots} onChange={e => setSpots(Number(e.target.value))} className="h-8 text-xs" />
                 </div>
-                <div>
-                  <Label className="text-xs">Prix (€)</Label>
-                  <Input type="number" value={price} onChange={e => setPrice(Number(e.target.value))} className="h-8 text-xs" />
-                </div>
-                <div>
-                  <Label className="text-xs">Carte(s) yoga</Label>
-                  <Input type="number" value={cardYogaCount} onChange={e => setCardYogaCount(Number(e.target.value))} className="h-8 text-xs" />
+                <div className="flex items-end">
+                  <p className="text-[11px] text-muted-foreground italic">
+                    Le tarif et les cartes yoga sont définis sur la <span className="font-medium">fiche activité</span>.
+                  </p>
                 </div>
               </div>
 

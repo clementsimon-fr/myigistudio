@@ -87,19 +87,16 @@ const MONTH_NAMES = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Jui
 const CATEGORY_COLORS: Record<string, string> = {
   yoga: "bg-primary/10 text-primary-dark border-primary/20",
   poterie: "bg-secondary/20 text-secondary-foreground border-secondary/30",
-  "bien-etre": "bg-accent/15 text-accent-foreground border-accent/25",
 };
 
 const CATEGORY_BADGE_COLORS: Record<string, string> = {
   yoga: "bg-[hsl(210,60%,55%)] text-white",
   poterie: "bg-[hsl(40,76%,60%)] text-white",
-  "bien-etre": "bg-[hsl(0,55%,58%)] text-white",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
   yoga: "Yoga",
   poterie: "Poterie",
-  "bien-etre": "Bien-être",
 };
 
 function getDayName(date: Date): string {
@@ -763,9 +760,6 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded bg-secondary/20 border border-secondary/30" /> Poterie
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-accent/15 border border-accent/25" /> Bien-être
             </div>
           </div>
         </>

@@ -274,11 +274,11 @@ function CustomDatesPicker({ dates, onChange, time, endTime, spots, onTimeChange
 // ══════════════════════════════════════════════════════════
 // ── EDITOR SECTION TABS ──
 // ══════════════════════════════════════════════════════════
-type EditorSection = "description" | "events" | "reminders";
+type EditorSection = "description" | "tarif" | "events" | "reminders";
 
 const EDITOR_SECTIONS: { key: EditorSection; label: string; icon: React.ReactNode }[] = [
   { key: "description", label: "Description", icon: <FileText className="h-4 w-4" /> },
-  { key: "events", label: "Événements", icon: <CalendarDays className="h-4 w-4" /> },
+  { key: "tarif", label: "Tarif & inclusions", icon: <CreditCard className="h-4 w-4" /> },
   { key: "reminders", label: "Rappels", icon: <Mail className="h-4 w-4" /> },
 ];
 
@@ -533,12 +533,20 @@ function ActivityEditor({
             <Textarea value={form.long_description} onChange={e => setForm({ ...form, long_description: e.target.value })} rows={5} placeholder="Description détaillée affichée dans les détails de l'activité..." />
           </div>
 
-          {/* Tarif & inclusions (commun à tous les événements de cette activité) */}
+        </div>
+      )}
+
+      {/* ═══ SECTION: TARIF & INCLUSIONS ═══ */}
+      {section === "tarif" && (
+        <div className="space-y-5">
           <div className="border rounded-lg p-4 bg-card space-y-4">
             <div className="flex items-center gap-2">
               <CreditCard className="h-4 w-4 text-emerald-700" />
               <Label className="text-emerald-700 mb-0">Tarif appliqué à tous les événements</Label>
             </div>
+            <p className="text-xs text-muted-foreground -mt-2">
+              Le tarif défini ici s'applique à tous les événements de cette activité (planning, réservation). Modifier ici met à jour partout.
+            </p>
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-1.5">
                 <Input type="number" className="w-[90px] h-9 text-sm" value={form.default_price}
@@ -1010,7 +1018,7 @@ export default function AdminActivites() {
   const [activities, setActivities] = useState<UnifiedActivity[]>([]);
   const [instructorsList, setInstructorsList] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"cards" | "calendar">("cards");
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [activityFilter, setActivityFilter] = useState<string>("all");
@@ -1500,7 +1508,7 @@ export default function AdminActivites() {
 
   if (loading) {
     return (
-      <AdminLayout title="Activités et réservations">
+      <AdminLayout title="Fiches activités">
         <div className="flex items-center justify-center h-64"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       </AdminLayout>
     );
@@ -1510,17 +1518,12 @@ export default function AdminActivites() {
 
 
   return (
-    <AdminLayout title="Activités et réservations">
+    <AdminLayout title="Fiches activités">
       {/* Toolbar */}
       <div className="flex flex-col gap-3 mb-6">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button variant={viewMode === "cards" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("cards")}>
-            <LayoutGrid className="h-4 w-4" /> Activités
-          </Button>
-          <Button variant={viewMode === "calendar" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("calendar")}>
-            <CalendarDays className="h-4 w-4" /> Planning et réservations
-          </Button>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Gérez les fiches descriptives (description, tarif, intervenant, rappels). Pour le planning et les réservations, rendez-vous sur <span className="font-medium">Planning</span>.
+        </p>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <div className="flex gap-1.5 flex-wrap">
             <Badge
@@ -1569,34 +1572,19 @@ export default function AdminActivites() {
           </div>
         )}
 
-        {viewMode === "cards" && (
-          <Button size="sm" className="gap-1.5 bg-foreground text-background hover:bg-foreground/90 self-start" onClick={openNew}>
-            <Plus className="h-4 w-4" /> Nouvelle activité
-          </Button>
-        )}
+        <Button size="sm" className="gap-1.5 bg-foreground text-background hover:bg-foreground/90 self-start" onClick={openNew}>
+          <Plus className="h-4 w-4" /> Nouvelle activité
+        </Button>
       </div>
 
-      {viewMode === "calendar" ? (
-        <ActivityCalendar onEditActivity={(id, source) => {
-          const act = activities.find(a =>
-            source === "course"
-              ? a.courseIds?.includes(id) || (a.id === id && a.source === "course")
-              : a.workshopEvents?.some(we => we.id === id) || (a.id === id && a.source === "workshop")
-          );
-          if (act) openEdit(act);
-        }} />
-      ) : (
-        <>
-          <p className="text-sm text-muted-foreground mb-4">{filtered.length} activité{filtered.length > 1 ? "s" : ""}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map(a => (
-              <ActivityCard key={`${a.source}-${a.id}`} activity={a} onEdit={() => openEdit(a)} />
-            ))}
-          </div>
-          {filtered.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground text-sm">Aucune activité trouvée.</div>
-          )}
-        </>
+      <p className="text-sm text-muted-foreground mb-4">{filtered.length} activité{filtered.length > 1 ? "s" : ""}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.map(a => (
+          <ActivityCard key={`${a.source}-${a.id}`} activity={a} onEdit={() => openEdit(a)} />
+        ))}
+      </div>
+      {filtered.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground text-sm">Aucune activité trouvée.</div>
       )}
 
       {/* Delete confirmation */}
@@ -1650,7 +1638,6 @@ function ActivityCard({ activity: a, onEdit }: { activity: UnifiedActivity; onEd
   const CATEGORY_TEXT: Record<string, string> = {
     yoga: "text-[hsl(210,60%,40%)]",
     poterie: "text-[hsl(40,76%,35%)]",
-    "bien-etre": "text-[hsl(0,55%,38%)]",
   };
   const titleColor = CATEGORY_TEXT[a.category] || "text-primary-dark";
   return (
