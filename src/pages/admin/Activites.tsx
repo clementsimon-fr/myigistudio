@@ -1011,6 +1011,8 @@ export default function AdminActivites() {
   const [viewMode, setViewMode] = useState<"cards" | "calendar">("cards");
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [activityFilter, setActivityFilter] = useState<string>("all");
+
 
   // Editor state: when editorOpen, show full-page editor instead of list
   const [editorOpen, setEditorOpen] = useState(false);
