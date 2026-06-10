@@ -650,14 +650,11 @@ function ActivityEditor({
                             <span className="text-xs text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" />{evt.spots}</span>
                             {evt.price > 0 && <span className="text-xs font-medium">{evt.price}€</span>}
                             <div className="ml-auto flex gap-1">
-                              <Button type="button" size="sm" variant="outline" className="h-7 text-xs gap-1"
-                                onClick={() => { setDetailDialogIdx(idx); }}>
-                                <Info className="h-3 w-3" /> Détailler
-                              </Button>
                               <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => setPendingDeleteEventIdx(idx)}>
                                 <X className="h-3.5 w-3.5" />
                               </Button>
                             </div>
+
                           </div>
                         ))}
                       </div>
