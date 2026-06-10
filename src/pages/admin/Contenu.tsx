@@ -19,7 +19,6 @@ interface ActivityOption {
 const FILTER_ICONS = [
   { key: "filter_icon_yoga", label: "Yoga" },
   { key: "filter_icon_poterie", label: "Poterie" },
-  { key: "filter_icon_bien_etre", label: "Atelier" },
 ];
 
 function FilterIconUploader({ settingKey, label, currentUrl, onUploaded }: { settingKey: string; label: string; currentUrl: string; onUploaded: (url: string) => void }) {
