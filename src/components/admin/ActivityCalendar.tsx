@@ -724,11 +724,11 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
               {calendarDays.map((day, i) => (
                 <div
                   key={i}
-                  className={`min-h-[100px] border-b border-r p-1.5 cursor-pointer transition-colors hover:bg-muted/20 ${
+                  className={`min-h-[100px] border-b border-r p-1.5 transition-colors ${
                     !day.isCurrentMonth ? "bg-muted/5 text-muted-foreground/40" : ""
                   } ${day.isToday ? "bg-accent/10" : ""}`}
-                  onClick={() => openAddSession(day.date)}
                 >
+
                   <div className={`text-xs font-medium mb-1 ${day.isToday ? "text-primary font-bold" : ""}`}>
                     {day.date.getDate()}
                   </div>
