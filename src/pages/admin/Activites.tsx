@@ -1518,17 +1518,12 @@ export default function AdminActivites() {
 
 
   return (
-    <AdminLayout title="Activités et réservations">
+    <AdminLayout title="Fiches activités">
       {/* Toolbar */}
       <div className="flex flex-col gap-3 mb-6">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button variant={viewMode === "cards" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("cards")}>
-            <LayoutGrid className="h-4 w-4" /> Activités
-          </Button>
-          <Button variant={viewMode === "calendar" ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setViewMode("calendar")}>
-            <CalendarDays className="h-4 w-4" /> Planning et réservations
-          </Button>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Gérez les fiches descriptives (description, tarif, intervenant, rappels). Pour le planning et les réservations, rendez-vous sur <span className="font-medium">Planning</span>.
+        </p>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <div className="flex gap-1.5 flex-wrap">
             <Badge
