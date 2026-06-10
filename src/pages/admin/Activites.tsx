@@ -1508,7 +1508,7 @@ export default function AdminActivites() {
 
   if (loading) {
     return (
-      <AdminLayout title="Activités et réservations">
+      <AdminLayout title="Fiches activités">
         <div className="flex items-center justify-center h-64"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       </AdminLayout>
     );
@@ -1572,34 +1572,19 @@ export default function AdminActivites() {
           </div>
         )}
 
-        {viewMode === "cards" && (
-          <Button size="sm" className="gap-1.5 bg-foreground text-background hover:bg-foreground/90 self-start" onClick={openNew}>
-            <Plus className="h-4 w-4" /> Nouvelle activité
-          </Button>
-        )}
+        <Button size="sm" className="gap-1.5 bg-foreground text-background hover:bg-foreground/90 self-start" onClick={openNew}>
+          <Plus className="h-4 w-4" /> Nouvelle activité
+        </Button>
       </div>
 
-      {viewMode === "calendar" ? (
-        <ActivityCalendar onEditActivity={(id, source) => {
-          const act = activities.find(a =>
-            source === "course"
-              ? a.courseIds?.includes(id) || (a.id === id && a.source === "course")
-              : a.workshopEvents?.some(we => we.id === id) || (a.id === id && a.source === "workshop")
-          );
-          if (act) openEdit(act);
-        }} />
-      ) : (
-        <>
-          <p className="text-sm text-muted-foreground mb-4">{filtered.length} activité{filtered.length > 1 ? "s" : ""}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map(a => (
-              <ActivityCard key={`${a.source}-${a.id}`} activity={a} onEdit={() => openEdit(a)} />
-            ))}
-          </div>
-          {filtered.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground text-sm">Aucune activité trouvée.</div>
-          )}
-        </>
+      <p className="text-sm text-muted-foreground mb-4">{filtered.length} activité{filtered.length > 1 ? "s" : ""}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.map(a => (
+          <ActivityCard key={`${a.source}-${a.id}`} activity={a} onEdit={() => openEdit(a)} />
+        ))}
+      </div>
+      {filtered.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground text-sm">Aucune activité trouvée.</div>
       )}
 
       {/* Delete confirmation */}
