@@ -1311,9 +1311,10 @@ export default function AdminActivites() {
         if (data) {
           const scheduleRows = recurringEvents.map(e => ({
             course_id: data.id, day: e.day, time: e.time, end_time: e.end_time,
-            spots: e.spots, spots_left: e.spots, price: e.price,
-            inclusions: e.inclusions, card_yoga_count: e.card_yoga_count,
+            spots: e.spots, spots_left: e.spots, price: dPrice,
+            inclusions: dInclusions, card_yoga_count: dCard,
           }));
+
           await supabase.from("course_schedules").insert(scheduleRows);
         }
       }
