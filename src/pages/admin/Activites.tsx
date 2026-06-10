@@ -704,12 +704,8 @@ function ActivityEditor({
                       )}
                     </div>
                     <div className="flex items-center gap-1">
-                      {/* ── DÉTAILLER button ── */}
-                      <Button type="button" size="sm" variant="outline" className="h-8 text-xs gap-1.5"
-                        onClick={() => setDetailDialogIdx(idx)}>
-                        <Info className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Détailler</span>
-                      </Button>
                       {form.events.length > 1 && (
+
                         <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => setPendingDeleteEventIdx(idx)}>
                           <Trash2 className="h-3.5 w-3.5 sm:hidden" />
                           <X className="h-3.5 w-3.5 hidden sm:block" />
