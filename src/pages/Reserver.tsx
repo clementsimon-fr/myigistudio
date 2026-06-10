@@ -291,6 +291,7 @@ export default function Reserver() {
   const [submitting, setSubmitting] = useState(false);
 
   const [voucherStatus, setVoucherStatus] = useState<"idle" | "valid" | "invalid" | "checking">("idle");
+  const [appliedVoucherId, setAppliedVoucherId] = useState<string | null>(null);
 
   const [pendingCard, setPendingCard] = useState<PricingCard | null>(null);
   const [reloadCard, setReloadCard] = useState<PricingCard | null>(null);
@@ -624,6 +625,7 @@ export default function Reserver() {
     const voucher = data as any;
     if (voucher.used || new Date(voucher.expires_at) < new Date()) { setVoucherStatus("invalid"); return; }
     setVoucherStatus("valid");
+    setAppliedVoucherId(voucher.id);
 
     if (currentProfile) {
       const sessions = voucher.sessions || 1;
@@ -724,6 +726,10 @@ export default function Reserver() {
           await supabase.from("client_cards").update({ used_sessions: card.used_sessions + 1 } as any).eq("id", card.id);
         }
       }
+    }
+
+    if (appliedVoucherId) {
+      await supabase.from("gift_vouchers").update({ used: true, used_at: new Date().toISOString() } as any).eq("id", appliedVoucherId);
     }
 
     addReservation(selectedSlotData.name, datesToBook[0].dateStr, selectedSlotData.time);
