@@ -161,6 +161,8 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
   const [reservations, setReservations] = useState<ReservationInfo[]>([]);
   const [instructorsMap, setInstructorsMap] = useState<Record<string, string>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [metaDialogOpen, setMetaDialogOpen] = useState(false);
+
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [deletingSession, setDeletingSession] = useState<string | null>(null);
   const [detailSession, setDetailSession] = useState<{ session: SessionEntry; date: Date } | null>(null);
