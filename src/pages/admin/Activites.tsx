@@ -1661,23 +1661,8 @@ function ActivityCard({ activity: a, onEdit }: { activity: UnifiedActivity; onEd
           {intensityLabel && <Badge variant="secondary" className="text-[10px]">{intensityLabel}</Badge>}
           <span className="text-xs text-muted-foreground">{a.instructor}</span>
         </div>
-        <div className="space-y-1">
-          {a.schedules?.map((s, i) => (
-            <div key={`s-${i}`} className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Repeat className="h-3 w-3 shrink-0" />
-              <span>{s.day.slice(0, 3)} {s.time}-{s.end_time}</span>
-              <span>· <Users className="h-3 w-3 inline" /> {s.spots - s.spots_left}/{s.spots}</span>
-            </div>
-          ))}
-          {a.workshopEvents?.map((we, i) => (
-            <div key={`w-${i}`} className="flex items-center gap-2 text-xs text-muted-foreground">
-              <CalendarIcon className="h-3 w-3 shrink-0" />
-              <span>{we.date ? new Date(we.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "—"} {we.time}-{we.end_time}</span>
-              {we.price > 0 && <span className="font-medium text-foreground">{we.price}€</span>}
-              <span>· <Users className="h-3 w-3 inline" /> {we.spots - we.spots_left}/{we.spots}</span>
-            </div>
-          ))}
-        </div>
+        {/* Les dates ne sont plus affichées sur la carte : édition via le drawer */}
+
       </div>
     </div>
   );
