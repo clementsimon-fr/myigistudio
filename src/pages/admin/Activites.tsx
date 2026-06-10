@@ -1135,12 +1135,14 @@ export default function AdminActivites() {
   const filtered = useMemo(() => {
     let list = activities;
     if (categoryFilter !== "all") list = list.filter(a => a.category === categoryFilter);
+    if (activityFilter !== "all") list = list.filter(a => a.name === activityFilter);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(a => a.name.toLowerCase().includes(q) || a.description.toLowerCase().includes(q));
     }
     return list;
-  }, [activities, categoryFilter, searchQuery]);
+  }, [activities, categoryFilter, activityFilter, searchQuery]);
+
 
   const openNew = () => {
     setEditingActivity(null);
