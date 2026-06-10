@@ -10,6 +10,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ChevronLeft, ChevronRight, Plus, Trash2, Clock, CalendarDays, Pencil, Users, Search, User, UserPlus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { AddEventMetaDialog } from "./AddEventMetaDialog";
+
 
 interface Schedule {
   id?: string;
@@ -159,6 +161,8 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
   const [reservations, setReservations] = useState<ReservationInfo[]>([]);
   const [instructorsMap, setInstructorsMap] = useState<Record<string, string>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [metaDialogOpen, setMetaDialogOpen] = useState(false);
+
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [deletingSession, setDeletingSession] = useState<string | null>(null);
   const [detailSession, setDetailSession] = useState<{ session: SessionEntry; date: Date } | null>(null);
@@ -630,7 +634,7 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
   return (
     <div className="space-y-4">
       {/* View mode toggle */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Button variant={viewMode === "today" ? "default" : "outline"} size="sm" onClick={() => { setViewMode("today"); setCurrentDate(new Date()); }}>
           Aujourd'hui
         </Button>
@@ -640,7 +644,13 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
         <Button variant={viewMode === "month" ? "default" : "outline"} size="sm" onClick={() => setViewMode("month")}>
           <CalendarDays className="h-4 w-4 mr-1" /> Mois
         </Button>
+        {viewMode === "month" && (
+          <Button size="sm" className="ml-auto gap-1.5" onClick={() => setMetaDialogOpen(true)}>
+            <Plus className="h-4 w-4" /> Ajouter un événement
+          </Button>
+        )}
       </div>
+
 
       {/* Navigation */}
       <div className="flex items-center justify-between">
@@ -658,29 +668,22 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
         Cliquez sur un créneau pour voir les inscrits et ajouter un participant.
       </p>
 
-      {/* TODAY VIEW */}
+      {/* TODAY VIEW (consultation uniquement) */}
       {viewMode === "today" && (
         <div className="space-y-2">
           {todaySessions.length === 0 ? (
             <div className="rounded-xl border border-dashed bg-muted/10 p-8 text-center text-muted-foreground">
               Aucune activité programmée.
-              <br />
-              <Button variant="link" size="sm" className="mt-2" onClick={() => openAddSession(currentDate)}>
-                <Plus className="h-3 w-3 mr-1" /> Ajouter une séance
-              </Button>
             </div>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
               {todaySessions.map(s => renderSessionBlock(s, currentDate))}
             </div>
           )}
-          <Button variant="outline" size="sm" className="gap-1" onClick={() => openAddSession(currentDate)}>
-            <Plus className="h-3 w-3" /> Ajouter une séance
-          </Button>
         </div>
       )}
 
-      {/* WEEK VIEW */}
+      {/* WEEK VIEW (consultation uniquement) */}
       {viewMode === "week" && (
         <div className="space-y-4">
           {weekData.map(({ date, sessions }) => {
@@ -691,9 +694,6 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
                   <span className={`text-sm font-semibold capitalize ${isT ? "bg-primary-dark text-primary-dark-foreground px-3 py-1 rounded-full" : ""}`}>
                     {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "short" })}
                   </span>
-                  <Button variant="ghost" size="sm" className="h-6 text-xs ml-auto gap-1" onClick={() => openAddSession(date)}>
-                    <Plus className="h-3 w-3" /> Ajouter
-                  </Button>
                 </div>
                 {sessions.length === 0 ? (
                   <div className="rounded-lg border border-dashed bg-muted/10 p-3 text-center text-xs text-muted-foreground">
@@ -710,6 +710,7 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
         </div>
       )}
 
+
       {/* MONTH VIEW */}
       {viewMode === "month" && (
         <>
@@ -723,11 +724,11 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
               {calendarDays.map((day, i) => (
                 <div
                   key={i}
-                  className={`min-h-[100px] border-b border-r p-1.5 cursor-pointer transition-colors hover:bg-muted/20 ${
+                  className={`min-h-[100px] border-b border-r p-1.5 transition-colors ${
                     !day.isCurrentMonth ? "bg-muted/5 text-muted-foreground/40" : ""
                   } ${day.isToday ? "bg-accent/10" : ""}`}
-                  onClick={() => openAddSession(day.date)}
                 >
+
                   <div className={`text-xs font-medium mb-1 ${day.isToday ? "text-primary font-bold" : ""}`}>
                     {day.date.getDate()}
                   </div>
@@ -839,8 +840,12 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
         </DialogContent>
       </Dialog>
 
+      {/* META-bloc Ajouter un événement */}
+      <AddEventMetaDialog open={metaDialogOpen} onOpenChange={setMetaDialogOpen} onCreated={fetchData} />
+
       {/* Delete confirmation */}
       <AlertDialog open={!!deletingSession} onOpenChange={(open) => !open && setDeletingSession(null)}>
+
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer la suppression ?</AlertDialogTitle>

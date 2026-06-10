@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
@@ -1011,6 +1013,8 @@ export default function AdminActivites() {
   const [viewMode, setViewMode] = useState<"cards" | "calendar">("cards");
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [activityFilter, setActivityFilter] = useState<string>("all");
+
 
   // Editor state: when editorOpen, show full-page editor instead of list
   const [editorOpen, setEditorOpen] = useState(false);
@@ -1133,12 +1137,14 @@ export default function AdminActivites() {
   const filtered = useMemo(() => {
     let list = activities;
     if (categoryFilter !== "all") list = list.filter(a => a.category === categoryFilter);
+    if (activityFilter !== "all") list = list.filter(a => a.name === activityFilter);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(a => a.name.toLowerCase().includes(q) || a.description.toLowerCase().includes(q));
     }
     return list;
-  }, [activities, categoryFilter, searchQuery]);
+  }, [activities, categoryFilter, activityFilter, searchQuery]);
+
 
   const openNew = () => {
     setEditingActivity(null);
@@ -1500,43 +1506,8 @@ export default function AdminActivites() {
     );
   }
 
-  // ── Full-page editor mode ──
-  if (editorOpen) {
-    return (
-      <AdminLayout title="Activités et réservations">
-        <ActivityEditor
-          form={form}
-          setForm={setForm}
-          editingActivity={editingActivity}
-          instructorsList={instructorsList}
-          onSave={save}
-          onCancel={() => { setEditorOpen(false); fetchData(); }}
-          onDelete={() => {
-            if (editingActivity) {
-              setEditorOpen(false);
-              setDeletingItem({ id: editingActivity.id, source: editingActivity.source });
-            }
-          }}
-          currentDefaultReminder={currentDefaultReminder}
-          currentDefaultModalities={currentDefaultModalities}
-        />
+  // L'édition s'ouvre désormais dans un drawer qui s'ouvre vers le bas (Sheet bottom)
 
-        {/* Delete confirmation */}
-        <AlertDialog open={!!deletingItem} onOpenChange={(open) => !open && setDeletingItem(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Supprimer cette activité ?</AlertDialogTitle>
-              <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Annuler</AlertDialogCancel>
-              <AlertDialogAction onClick={executeDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </AdminLayout>
-    );
-  }
 
   return (
     <AdminLayout title="Activités et réservations">
@@ -1577,6 +1548,27 @@ export default function AdminActivites() {
             <Input placeholder="Rechercher..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9 text-sm" />
           </div>
         </div>
+        {/* Filtres par activité (un chip par activité existante) */}
+        {activities.length > 0 && (
+          <div className="flex gap-1.5 flex-wrap">
+            <Badge
+              variant={activityFilter === "all" ? "default" : "outline"}
+              className="cursor-pointer text-xs h-7 px-2.5"
+              onClick={() => setActivityFilter("all")}
+            >Toutes les activités</Badge>
+            {activities
+              .filter(a => categoryFilter === "all" || a.category === categoryFilter)
+              .map(a => (
+                <Badge
+                  key={a.name}
+                  variant={activityFilter === a.name ? "default" : "outline"}
+                  className="cursor-pointer text-xs h-7 px-2.5"
+                  onClick={() => setActivityFilter(a.name)}
+                >{a.name}</Badge>
+              ))}
+          </div>
+        )}
+
         {viewMode === "cards" && (
           <Button size="sm" className="gap-1.5 bg-foreground text-background hover:bg-foreground/90 self-start" onClick={openNew}>
             <Plus className="h-4 w-4" /> Nouvelle activité
@@ -1620,7 +1612,32 @@ export default function AdminActivites() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Drawer d'édition activité (ouverture vers le bas) */}
+      <Sheet open={editorOpen} onOpenChange={(o) => { if (!o) { setEditorOpen(false); fetchData(); } }}>
+        <SheetContent side="bottom" className="h-[92vh] overflow-y-auto p-4 sm:p-6">
+          {editorOpen && (
+            <ActivityEditor
+              form={form}
+              setForm={setForm}
+              editingActivity={editingActivity}
+              instructorsList={instructorsList}
+              onSave={save}
+              onCancel={() => { setEditorOpen(false); fetchData(); }}
+              onDelete={() => {
+                if (editingActivity) {
+                  setEditorOpen(false);
+                  setDeletingItem({ id: editingActivity.id, source: editingActivity.source });
+                }
+              }}
+              currentDefaultReminder={currentDefaultReminder}
+              currentDefaultModalities={currentDefaultModalities}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </AdminLayout>
+
   );
 }
 
@@ -1661,23 +1678,8 @@ function ActivityCard({ activity: a, onEdit }: { activity: UnifiedActivity; onEd
           {intensityLabel && <Badge variant="secondary" className="text-[10px]">{intensityLabel}</Badge>}
           <span className="text-xs text-muted-foreground">{a.instructor}</span>
         </div>
-        <div className="space-y-1">
-          {a.schedules?.map((s, i) => (
-            <div key={`s-${i}`} className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Repeat className="h-3 w-3 shrink-0" />
-              <span>{s.day.slice(0, 3)} {s.time}-{s.end_time}</span>
-              <span>· <Users className="h-3 w-3 inline" /> {s.spots - s.spots_left}/{s.spots}</span>
-            </div>
-          ))}
-          {a.workshopEvents?.map((we, i) => (
-            <div key={`w-${i}`} className="flex items-center gap-2 text-xs text-muted-foreground">
-              <CalendarIcon className="h-3 w-3 shrink-0" />
-              <span>{we.date ? new Date(we.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "—"} {we.time}-{we.end_time}</span>
-              {we.price > 0 && <span className="font-medium text-foreground">{we.price}€</span>}
-              <span>· <Users className="h-3 w-3 inline" /> {we.spots - we.spots_left}/{we.spots}</span>
-            </div>
-          ))}
-        </div>
+        {/* Les dates ne sont plus affichées sur la carte : édition via le drawer */}
+
       </div>
     </div>
   );
