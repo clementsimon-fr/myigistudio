@@ -190,6 +190,9 @@ interface ActivityForm {
   default_modalities: string;
   intensity: string;
   reminder_timing: string;
+  default_price: number;
+  default_card_yoga_count: number;
+  default_inclusions: string;
 }
 
 const emptyEvent = (): EventSlot => ({
@@ -204,7 +207,9 @@ const emptyForm = (): ActivityForm => ({
   instructor: "", image: "", images: [], spots: 12, events: [emptyEvent()],
   default_reminder: "", default_modalities: "",
   intensity: "none", reminder_timing: "1j",
+  default_price: 0, default_card_yoga_count: 1, default_inclusions: "",
 });
+
 
 // ── Custom Date Picker for "personnalisé" ──
 function CustomDatesPicker({ dates, onChange, time, endTime, spots, onTimeChange, onEndTimeChange, onSpotsChange }: {
