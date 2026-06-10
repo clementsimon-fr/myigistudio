@@ -1,93 +1,92 @@
-# Analyse du document Classeur1.xlsx
+# Plan — 3 chantiers Excel restants
 
-J'ai extrait **11 demandes** classées par priorité (1 = haute, 4 = basse). Voici le plan d'implémentation regroupé.
-
----
-
-## 🔴 Priorité 1 — À traiter en premier
-
-### 1. Supprimer "Ateliers & Stages" partout
-Retirer toute trace d'ateliers/stages de l'app (front visiteur, admin, planning, types, filtres). Le modèle devient : **Cours (yoga/pilates) + Activités poterie**, sans la notion "atelier".
-- **Fichiers** : `ActivitiesView.tsx`, `ActivityFilterBar.tsx`, `PlanningView.tsx`, `admin/Activites.tsx`, `admin/AteliersAdmin.tsx` (suppression), `Discover.tsx`, types Supabase.
-- **DB** : décider du sort de la table `workshops` (renommer en `pottery_events` ou fusionner dans `courses`).
-
-### 2. Refonte fiche activité (clic DESCRIPTION) — visiteur
-Au clic sur DESCRIPTION, afficher sous la photo :
-- Titre **Description** + paragraphe
-- Champ **Intensité**
-- Titre **Planning type** + planning filtré sur l'activité
-- Titre **Les tarifs** + formules (UX identique au popup "Formules Cartes Yoga", **sans CTA**)
-- **Supprimer** le bloc "Jour de la semaine"
-- **Fichier** : `ActivitiesView.tsx` (modale description), réutiliser `PurchaseOptions/CardGrid` en mode lecture seule.
-
-### 3. Déplacer badge "X places restantes"
-Le badge doit être à côté de "Prochain cours" (pas en bas).
-- **Fichier** : `ActivitiesView.tsx` (CourseCard).
-
-### 4. Unifier UX "Formules cartes yoga"
-Partout où les cartes yoga sont présentées (accueil, fiche activité, modale réservation), utiliser la même UX que `CardGrid` du processus de réservation.
-- Ajouter le texte : *"... Achetez une carte, ou plusieurs, et utilisez vos cours quand vous le souhaitez."*
-- Ajouter sous le badge des cours un **badge réduction** (calcul auto : économie vs prix unitaire).
-- **Fichiers** : `home/PricingSection.tsx`, `FormulaInfoModal.tsx`, `booking/PurchaseOptions.tsx` (CardGrid commun extrait dans un composant partagé).
-
-### 5. Refonte admin "Activités et réservations"
-Restructuration majeure de l'admin :
-- Autant de filtres que d'activités (dynamique).
-- Rubrique **Activités** : édition des fiches uniquement. Clic = panneau qui glisse vers le bas (drawer). Plus de dates sur la carte.
-- Rubrique **Planning et réservations** : consultation des réservations + ajout de dates.
-- Bouton **"Ajouter un événement"** disponible uniquement dans la vue **Mois** (pas par clic sur une case vide).
-- Au clic sur "Ajouter un événement", un **META-bloc** apparaît :
-  - Bloc 1 : sélecteur d'activité (dropdown)
-  - Bloc 2 : type d'événement avec 3 boutons :
-    1. **Une date** → clic sur date → fenêtre (début, heure début/fin, places, prix €/carte, notes)
-    2. **Plusieurs dates même créneau** → clic multi-dates → paramétrage unique
-    3. **Dates connectées (stage)** → clic multi-dates → paramétrage heure par date (linked_group)
-- **Fichiers** : `admin/Activites.tsx`, `admin/PlanningType.tsx`, `admin/Reservations.tsx`, nouveau composant `EventCreatorMeta.tsx`.
-
-### 6. Simplification édition activité (admin)
-- "Détailler l'événement" passe dans la rubrique **Description** (commun à tous les events).
-- Plus de bouton "Détailler" dans **Événements**.
-- Saisie prix/carte yoga dans **Description**.
-- Bouton **"Inclusions"** à côté du prix (ex: "le goûter est compris") → affiché en **bulle info** côté visiteur.
-- **Fichier** : `admin/Activites.tsx`.
-
-### 7. Admin Conditions
-- Supprimer le champ "Type" (titre suffit).
-- Corriger le bouton **Supprimer une condition** (ne fonctionne pas).
-- **Fichier** : `admin/Conditions.tsx`.
+Ces 3 sujets sont volumineux. Je propose de les enchaîner dans cet ordre (du plus impactant côté démo au moins risqué) et de te livrer chacun comme un lot validable avant de passer au suivant.
 
 ---
 
-## 🟡 Priorité 3 — Ajustements
+## Lot A — Refonte "Activités et Réservations" (ligne 12, priorité 1)
 
-### 8. Accueil — texte
-- Déplacer **"Yoga, Pilates & Poterie"** sous le titre **MyIgistudio**.
-- **Fichier** : page d'accueil / Hero.
+C'est le plus gros chantier. Refonte complète de l'admin `/admin/activites`.
 
-### 9. Accueil — footer
-- Ajouter **"Développé avec passion par TCC"** en bas du site.
-- **Fichier** : `layout/Footer.tsx`.
+### Structure cible
+- **Onglet "Activités"** : grille des fiches activités uniquement.
+  - Plus de dates affichées sur la carte (on retire les badges date/heure).
+  - Clic sur une carte → **drawer qui s'ouvre par le bas** (composant `Sheet` shadcn side=bottom) avec l'édition complète de la fiche.
+  - Pas de bouton "Ajouter un événement" ici.
+- **Onglet "Planning et réservations"** : consultation des réservations + ajout de dates.
+  - Vues Semaine / Mois (conservées).
+  - Bouton **"Ajouter un événement"** visible **uniquement en vue Mois**.
+  - Clic sur case vide du calendrier = aucune action (désactivé).
+- **Filtres** : afficher un filtre par activité existante (autant de chips que d'activités en base).
 
-### 10. Bug duplication activité (à vérifier)
-- Lors de l'ajout d'un événement dans une activité existante puis validation, l'activité est dupliquée.
-- **À tester** : la logique de regroupement par `name` dans `Activites.tsx` devrait déjà couvrir le cas, mais à valider en conditions réelles.
+### Création d'événement (META-bloc)
+Au clic sur "Ajouter un événement", un dialog s'ouvre avec :
+
+**Bloc 1 — Activité** : dropdown listant toutes les activités.
+
+**Bloc 2 — Type d'événement** (3 boutons radio) :
+1. **Date unique** → sélection 1 date + 1 formulaire (date début, h début, h fin, places, prix €, prix carte, notes).
+2. **Plusieurs dates même créneau** → sélection multi-dates dans le calendrier, puis 1 seul formulaire appliqué à toutes.
+3. **Dates connectées (stage)** → sélection multi-dates, puis formulaire **par date** (h début/fin propres à chacune), partageant places/prix/notes.
+
+### Fichiers principaux
+- `src/pages/admin/Activites.tsx` (split en onglets)
+- nouveau `src/components/admin/ActivityEditDrawer.tsx`
+- nouveau `src/components/admin/AddEventDialog.tsx` (META-bloc)
+- `src/components/admin/PlanningView.tsx` (filtres + Mois/Semaine)
+
+### Modèle de données
+- Bouton 1 & 2 → insertions dans `course_schedules` (1 ligne par date).
+- Bouton 3 (stage) → 1 ligne `workshops` + N lignes `planned_sessions` liées.
+- Aucune migration nécessaire a priori (tables existantes suffisent).
 
 ---
 
-## 🟢 Priorité 4 — Fonctionnalité majeure
+## Lot B — Refonte édition activité admin (ligne 9, priorité 1)
 
-### 11. Import Excel clients (admin)
-- Page admin permettant d'uploader un fichier Excel avec colonnes clients (Simplybook, Calendly, Stripe).
-- Stockage dans une nouvelle table `client_imports` (email comme clé).
-- À la création d'un compte client : détection auto via email → proposition d'importer ses anciennes données.
-- Vue admin : voir quels clients ont réalisé leur import.
-- **Fichiers** : nouvelle page `admin/ImportClients.tsx`, migration DB (table `client_imports` + colonne `imported_from` sur `profiles`), logique dans `Register.tsx`.
-- **Note** : Élodie devra transmettre le fichier Excel exemple pour valider le mapping des colonnes.
+Simplifie la fiche d'édition d'une activité (depuis le drawer du Lot A, ou la page actuelle si on commence par B).
+
+### Changements
+1. La rubrique **"Description"** absorbe :
+   - le contenu actuel "Détailler l'événement" (déplacé ici, car commun à tous les événements d'une même activité),
+   - la saisie des **prix € et cartes yoga** + **inclusions** (champ libre type "Le goûter est compris").
+2. La rubrique **"Événements"** : suppression du bouton "Détailler" sur chaque ligne (info déjà dans Description).
+3. Côté **visiteur** (tunnel réservation) : à côté du prix € ou prix carte, un bouton/icône **bulle info** qui affiche les inclusions saisies.
+
+### Fichiers principaux
+- `src/components/admin/ActivityEditor.tsx` (réorganisation des sections)
+- `src/components/admin/EventsSection.tsx` (retrait bouton Détailler)
+- schéma `courses` / `workshops` : ajouter colonne `inclusions text` si absente
+- tunnel réservation : `BookingFlow.tsx` (ou équivalent) → tooltip à côté du prix
+
+### Migration
+Ajout colonne `inclusions text` sur `courses` (et `workshops` si besoin), nullable.
 
 ---
 
-## Ordre d'exécution proposé
+## Lot C — Import clients Excel (ligne 4, priorité 4)
 
-Je propose de traiter d'abord toutes les **priorités 1** (chantiers 1 → 7), puis priorités 3 (8 → 10), enfin la fonctionnalité d'import (11).
+Outil admin pour importer un .xlsx de fiches clients (issues de SimplyBook/Calendly/Stripe).
 
-**Question avant de lancer** : veux-tu que je commence par **tout faire d'un bloc** ou que je traite par lots (par ex. lot A = #1, #2, #3 ; lot B = #4, #6, #7 ; lot C = #5 ; lot D = #8-10 ; lot E = #11) ? Le lot C (refonte admin réservations) et le lot E (import) sont les plus lourds.
+### Fonctionnement
+- Nouvelle page `/admin/import-clients` (ou section dans Bonjour).
+- Upload `.xlsx` → parsing côté client avec `xlsx` (sheetjs).
+- Mapping colonnes : email (obligatoire), prénom, nom, téléphone, cartes restantes, notes.
+- Preview tableau avec lignes valides / erreurs.
+- Bouton "Importer" → insertion en masse dans `profiles` (avec flag `imported=true`, sans `user_id` car pas encore d'auth).
+- À la création d'un compte avec un email correspondant, le profil est automatiquement rattaché (logique déjà demandée par Élodie).
+
+### Fichiers
+- nouveau `src/pages/admin/ImportClients.tsx`
+- dépendance `xlsx` (déjà présente ? sinon `bun add xlsx`)
+- migration : ajouter `imported boolean default false` + `imported_email text` sur `profiles` si pas déjà géré.
+
+---
+
+## Ordre proposé et validation
+
+1. **Lot B** d'abord (1-2 itérations) — plus rapide, et débloque la logique "inclusions" affichée côté visiteur.
+2. **Lot A** ensuite (2-3 itérations) — le plus gros, mais auto-contenu une fois B fait.
+3. **Lot C** en dernier (1 itération) — peut être livré après la démo si nécessaire.
+
+**Question** : on démarre par **Lot B** comme proposé, ou tu préfères attaquer directement le **Lot A** (le plus visible en démo) ?
