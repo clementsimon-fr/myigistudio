@@ -1390,12 +1390,13 @@ export default function AdminActivites() {
           duration,
           spots: evt.spots,
           spots_left: evt.spots,
-          price: evt.price,
+          price: dPrice,
           frequency: "multi-sessions",
-          inclusions: evt.inclusions,
-          card_yoga_count: evt.card_yoga_count,
+          inclusions: dInclusions,
+          card_yoga_count: dCard,
           linked_group: linkedGroupId,
         };
+
 
         if (existingWorkshopId) {
           const { error } = await supabase.from("workshops").update(wsPayload as any).eq("id", existingWorkshopId);
