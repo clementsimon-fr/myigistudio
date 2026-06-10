@@ -1581,6 +1581,27 @@ export default function AdminActivites() {
             <Input placeholder="Rechercher..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9 text-sm" />
           </div>
         </div>
+        {/* Filtres par activité (un chip par activité existante) */}
+        {activities.length > 0 && (
+          <div className="flex gap-1.5 flex-wrap">
+            <Badge
+              variant={activityFilter === "all" ? "default" : "outline"}
+              className="cursor-pointer text-xs h-7 px-2.5"
+              onClick={() => setActivityFilter("all")}
+            >Toutes les activités</Badge>
+            {activities
+              .filter(a => categoryFilter === "all" || a.category === categoryFilter)
+              .map(a => (
+                <Badge
+                  key={a.name}
+                  variant={activityFilter === a.name ? "default" : "outline"}
+                  className="cursor-pointer text-xs h-7 px-2.5"
+                  onClick={() => setActivityFilter(a.name)}
+                >{a.name}</Badge>
+              ))}
+          </div>
+        )}
+
         {viewMode === "cards" && (
           <Button size="sm" className="gap-1.5 bg-foreground text-background hover:bg-foreground/90 self-start" onClick={openNew}>
             <Plus className="h-4 w-4" /> Nouvelle activité
