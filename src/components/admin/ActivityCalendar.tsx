@@ -10,6 +10,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ChevronLeft, ChevronRight, Plus, Trash2, Clock, CalendarDays, Pencil, Users, Search, User, UserPlus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { AddEventMetaDialog } from "./AddEventMetaDialog";
+
 
 interface Schedule {
   id?: string;
