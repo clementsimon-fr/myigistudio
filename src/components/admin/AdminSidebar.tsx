@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, CalendarDays, CalendarRange, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText, Lightbulb, FileSignature, Sun } from "lucide-react";
+import { Bell, CalendarDays, CalendarRange, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText, Lightbulb, FileSignature, Sun, ClipboardList } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -21,6 +21,7 @@ interface SidebarItem {
   url: string;
   icon: any;
   settingKey?: string;
+  disabled?: boolean;
 }
 
 interface SidebarGroup_ {
@@ -38,7 +39,8 @@ const sidebarGroups: SidebarGroup_[] = [
   {
     label: "Organisation",
     items: [
-      { title: "Activités et réservations", url: "/admin/activites", icon: BookOpen },
+      { title: "Fiches activités", url: "/admin/activites", icon: ClipboardList },
+      { title: "Planning", url: "/admin/planning", icon: BookOpen },
       { title: "Planning type", url: "/admin/planning-type", icon: CalendarRange, settingKey: "show_planning_type" },
       { title: "Notifications", url: "/admin", icon: Bell },
     ],
@@ -62,9 +64,9 @@ const sidebarGroups: SidebarGroup_[] = [
     label: "Mon application",
     items: [
       { title: "Événement", url: "/admin/contenu", icon: FileText },
-      { title: "Contrat", url: "/admin/contrat", icon: FileSignature },
-      { title: "Fonctionnalités", url: "/admin/fonctionnalites", icon: Lightbulb },
-      { title: "Paramètres", url: "/admin/parametres", icon: UserCircle },
+      { title: "Contrat", url: "/admin/contrat", icon: FileSignature, disabled: true },
+      { title: "Fonctionnalités", url: "/admin/fonctionnalites", icon: Lightbulb, disabled: true },
+      { title: "Paramètres", url: "/admin/parametres", icon: UserCircle, disabled: true },
     ],
   },
 ];
@@ -108,15 +110,26 @@ export default function AdminSidebar() {
                     {visibleItems.map((item) => (
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton asChild>
-                          <NavLink
-                            to={item.url}
-                            end={item.url === "/admin"}
-                            className="hover:bg-muted/50"
-                            activeClassName="bg-muted text-primary-dark font-medium"
-                          >
-                            <item.icon className="mr-2 h-4 w-4" />
-                            {!collapsed && <span>{item.title}</span>}
-                          </NavLink>
+                          {item.disabled ? (
+                            <div
+                              aria-disabled="true"
+                              className="flex items-center w-full text-muted-foreground/50 cursor-not-allowed select-none opacity-60"
+                              title="Bientôt disponible"
+                            >
+                              <item.icon className="mr-2 h-4 w-4" />
+                              {!collapsed && <span>{item.title}</span>}
+                            </div>
+                          ) : (
+                            <NavLink
+                              to={item.url}
+                              end={item.url === "/admin"}
+                              className="hover:bg-muted/50"
+                              activeClassName="bg-muted text-primary-dark font-medium"
+                            >
+                              <item.icon className="mr-2 h-4 w-4" />
+                              {!collapsed && <span>{item.title}</span>}
+                            </NavLink>
+                          )}
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     ))}
