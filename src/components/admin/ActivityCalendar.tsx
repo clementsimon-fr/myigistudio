@@ -658,29 +658,22 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
         Cliquez sur un créneau pour voir les inscrits et ajouter un participant.
       </p>
 
-      {/* TODAY VIEW */}
+      {/* TODAY VIEW (consultation uniquement) */}
       {viewMode === "today" && (
         <div className="space-y-2">
           {todaySessions.length === 0 ? (
             <div className="rounded-xl border border-dashed bg-muted/10 p-8 text-center text-muted-foreground">
               Aucune activité programmée.
-              <br />
-              <Button variant="link" size="sm" className="mt-2" onClick={() => openAddSession(currentDate)}>
-                <Plus className="h-3 w-3 mr-1" /> Ajouter une séance
-              </Button>
             </div>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
               {todaySessions.map(s => renderSessionBlock(s, currentDate))}
             </div>
           )}
-          <Button variant="outline" size="sm" className="gap-1" onClick={() => openAddSession(currentDate)}>
-            <Plus className="h-3 w-3" /> Ajouter une séance
-          </Button>
         </div>
       )}
 
-      {/* WEEK VIEW */}
+      {/* WEEK VIEW (consultation uniquement) */}
       {viewMode === "week" && (
         <div className="space-y-4">
           {weekData.map(({ date, sessions }) => {
@@ -691,9 +684,6 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
                   <span className={`text-sm font-semibold capitalize ${isT ? "bg-primary-dark text-primary-dark-foreground px-3 py-1 rounded-full" : ""}`}>
                     {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "short" })}
                   </span>
-                  <Button variant="ghost" size="sm" className="h-6 text-xs ml-auto gap-1" onClick={() => openAddSession(date)}>
-                    <Plus className="h-3 w-3" /> Ajouter
-                  </Button>
                 </div>
                 {sessions.length === 0 ? (
                   <div className="rounded-lg border border-dashed bg-muted/10 p-3 text-center text-xs text-muted-foreground">
@@ -709,6 +699,7 @@ export default function ActivityCalendar({ onEditActivity }: ActivityCalendarPro
           })}
         </div>
       )}
+
 
       {/* MONTH VIEW */}
       {viewMode === "month" && (
