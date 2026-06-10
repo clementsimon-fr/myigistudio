@@ -1506,43 +1506,8 @@ export default function AdminActivites() {
     );
   }
 
-  // ── Full-page editor mode ──
-  if (editorOpen) {
-    return (
-      <AdminLayout title="Activités et réservations">
-        <ActivityEditor
-          form={form}
-          setForm={setForm}
-          editingActivity={editingActivity}
-          instructorsList={instructorsList}
-          onSave={save}
-          onCancel={() => { setEditorOpen(false); fetchData(); }}
-          onDelete={() => {
-            if (editingActivity) {
-              setEditorOpen(false);
-              setDeletingItem({ id: editingActivity.id, source: editingActivity.source });
-            }
-          }}
-          currentDefaultReminder={currentDefaultReminder}
-          currentDefaultModalities={currentDefaultModalities}
-        />
+  // L'édition s'ouvre désormais dans un drawer qui s'ouvre vers le bas (Sheet bottom)
 
-        {/* Delete confirmation */}
-        <AlertDialog open={!!deletingItem} onOpenChange={(open) => !open && setDeletingItem(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Supprimer cette activité ?</AlertDialogTitle>
-              <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Annuler</AlertDialogCancel>
-              <AlertDialogAction onClick={executeDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </AdminLayout>
-    );
-  }
 
   return (
     <AdminLayout title="Activités et réservations">
