@@ -515,7 +515,7 @@ export default function Reserver() {
 
   const applicableConditions = useMemo(() => {
     if (!activity) return [];
-    const cat = activity.category || (activity.type === "course" ? "yoga" : "bien-etre");
+    const cat = activity.category || (activity.type === "course" ? "yoga" : "poterie");
     return conditions.filter(c => c.applies_to.includes(cat));
   }, [conditions, activity]);
 

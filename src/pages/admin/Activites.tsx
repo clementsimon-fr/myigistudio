@@ -1638,7 +1638,6 @@ function ActivityCard({ activity: a, onEdit }: { activity: UnifiedActivity; onEd
   const CATEGORY_TEXT: Record<string, string> = {
     yoga: "text-[hsl(210,60%,40%)]",
     poterie: "text-[hsl(40,76%,35%)]",
-    "bien-etre": "text-[hsl(0,55%,38%)]",
   };
   const titleColor = CATEGORY_TEXT[a.category] || "text-primary-dark";
   return (

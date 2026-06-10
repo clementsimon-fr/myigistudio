@@ -49,7 +49,7 @@ function buildSpecialtiesFromActivities(courses: any[], workshops: any[]): Recor
     map[cat].add(c.name);
   }
   for (const w of workshops) {
-    const cat = w.category === "poterie" ? "Poterie" : w.category === "bien-etre" ? "Bien-être" : w.category;
+    const cat = w.category === "poterie" ? "Poterie" : w.category === "yoga" ? "Yoga" : w.category;
     if (!map[cat]) map[cat] = new Set();
     map[cat].add(w.name);
   }
