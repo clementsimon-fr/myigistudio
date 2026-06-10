@@ -570,8 +570,6 @@ function ActivityEditor({
       )}
 
 
-        </div>
-      )}
 
       {/* ═══ SECTION: ÉVÉNEMENTS ═══ */}
       {section === "events" && (
