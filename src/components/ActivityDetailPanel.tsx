@@ -284,10 +284,3 @@ export default function ActivityDetailPanel({
     </AnimatePresence>
   );
 }
-
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
