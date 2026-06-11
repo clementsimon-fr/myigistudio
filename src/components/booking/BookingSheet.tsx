@@ -82,7 +82,7 @@ export default function BookingSheet({
   const [attributions, setAttributions] = useState<Record<number, AttributionMethod | null>>({});
   const [conditionsAccepted, setConditionsAccepted] = useState(false);
   const [pricingCards, setPricingCards] = useState<YogaFormulasPricingCard[]>([]);
-  const [snap, setSnap] = useState<number | string | null>(0.95);
+  const [guestMode, setGuestMode] = useState(false);
 
   // modals
   const [pickerOpen, setPickerOpen] = useState(false);
