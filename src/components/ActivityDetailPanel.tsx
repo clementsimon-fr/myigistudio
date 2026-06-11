@@ -72,12 +72,13 @@ export default function ActivityDetailPanel({
     if (!open || !course) return;
     supabase
       .from("pricing_cards")
-      .select("price, sessions")
-      .eq("sessions", 1)
-      .limit(1)
-      .maybeSingle()
+      .select("id, name, sessions, price, validity, popular, payment_info, sort_order")
+      .order("sort_order")
       .then(({ data }) => {
-        if (data) setYogaUnitPrice((data as any).price);
+        if (!data) return;
+        setYogaCards(data as unknown as YogaFormulasPricingCard[]);
+        const unit = (data as any[]).find((d) => d.sessions === 1);
+        if (unit) setYogaUnitPrice(unit.price);
       });
   }, [open, course]);
 
