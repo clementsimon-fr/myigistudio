@@ -74,7 +74,7 @@ type AccountFilter = "all" | "with" | "without";
 
 export default function AdminClients() {
   const { toast } = useToast();
-  const { clearTempProfiles } = useDemoContext();
+  const { clearTempProfiles, tempProfiles } = useDemoContext();
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
