@@ -1604,7 +1604,7 @@ export default function AdminActivites() {
       <p className="text-sm text-muted-foreground mb-4">{filtered.length} activité{filtered.length > 1 ? "s" : ""}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map(a => (
-          <ActivityCard key={`${a.source}-${a.id}`} activity={a} onEdit={() => openEdit(a)} />
+          <ActivityCard key={`${a.source}-${a.id}`} activity={a} onEdit={() => openEdit(a)} onDuplicate={() => duplicateActivity(a)} />
         ))}
       </div>
       {filtered.length === 0 && (
