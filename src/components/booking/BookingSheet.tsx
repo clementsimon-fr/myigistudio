@@ -99,7 +99,7 @@ export default function BookingSheet({
     setSelectedIdx(0);
     setConditionsAccepted(false);
     setAttributions({});
-    setSnap(0.95);
+    setGuestMode(false);
     setParticipants([{ name: currentProfile?.name || "", isMe: !!currentProfile }]);
   }, [open, currentProfile?.id, currentProfile?.name]);
 
