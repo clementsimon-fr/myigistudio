@@ -488,14 +488,9 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                       <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
                         <InstructorBadge instructor={course.instructor} photo={photo} />
                       </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => setDescriptionCourse(course)}>
-                          <Info className="h-3 w-3" /> Description
-                        </Button>
-                        <Button size="sm" className={`flex-1 text-xs ${yogaStyle.bookBtn}`} onClick={() => handleBookCourse(course)} disabled={spotsLeft === 0}>
-                          {spotsLeft === 0 ? "Complet" : "Réserver"}
-                        </Button>
-                      </div>
+                      <Button size="sm" className={`w-full text-xs ${yogaStyle.bookBtn}`} onClick={() => setDescriptionCourse(course)} disabled={spotsLeft === 0}>
+                        {spotsLeft === 0 ? "Complet" : "Découvrir et réserver"}
+                      </Button>
                     </div>
                   </motion.div>
                 );
