@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, Euro, MapPin, Users, Sparkles, CalendarDays, ClipboardList } from "lucide-react";
+import { X, User, Euro, MapPin, Users, Sparkles, CalendarDays, ClipboardList, Clock, ChevronDown } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RecurringGrid, MonthWorkshops } from "@/components/PlanningTypeView";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
