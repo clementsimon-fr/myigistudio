@@ -378,6 +378,36 @@ export type Database = {
         }
         Relationships: []
       }
+      home_buttons: {
+        Row: {
+          created_at: string
+          icon_url: string | null
+          id: string
+          key: string
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          key: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          key?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       instructors: {
         Row: {
           active: boolean
