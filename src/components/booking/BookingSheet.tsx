@@ -226,7 +226,7 @@ export default function BookingSheet({
     if (step === 1) return !!selected;
     if (step === 2) return identityChosen && (participants[0]?.name.trim().length > 0);
     if (step === 3) return participants.length > 0 && participants.every((p) => p.name.trim().length > 0);
-    if (step === 4) return cartCapacity >= participants.length;
+    if (step === 4) return cart.length > 0;
     if (step === 5) return allAssigned;
     return true;
   };
