@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Minus, Plus, ShoppingCart, Gift, Info, CalendarDays, Users, Euro, CreditCard } from "lucide-react";
