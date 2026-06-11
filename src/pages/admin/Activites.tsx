@@ -1160,6 +1160,30 @@ export default function AdminActivites() {
     setEditorOpen(true);
   };
 
+  const duplicateActivity = async (a: UnifiedActivity) => {
+    const newName = `${a.name} (copie)`;
+    if (a.source === "course" && a.courseIds && a.courseIds.length > 0) {
+      const { data: srcCourse, error: fetchErr } = await supabase.from("courses").select("*").eq("id", a.courseIds[0]).single();
+      if (fetchErr || !srcCourse) { toast({ title: "Erreur duplication", description: fetchErr?.message, variant: "destructive" }); return; }
+      const { id: _id, created_at: _ca, ...rest } = srcCourse as any;
+      const { error } = await supabase.from("courses").insert({ ...rest, name: newName } as any);
+      if (error) { toast({ title: "Erreur duplication", description: error.message, variant: "destructive" }); return; }
+    } else if (a.source === "workshop" && a.workshopEvents && a.workshopEvents.length > 0) {
+      const srcId = a.workshopEvents[0].id;
+      const { data: srcWs, error: fetchErr } = await supabase.from("workshops").select("*").eq("id", srcId).single();
+      if (fetchErr || !srcWs) { toast({ title: "Erreur duplication", description: fetchErr?.message, variant: "destructive" }); return; }
+      const { id: _id, created_at: _ca, linked_group: _lg, ...rest } = srcWs as any;
+      const { error } = await supabase.from("workshops").insert({ ...rest, name: newName, linked_group: null } as any);
+      if (error) { toast({ title: "Erreur duplication", description: error.message, variant: "destructive" }); return; }
+    } else {
+      toast({ title: "Impossible de dupliquer cette activité", variant: "destructive" });
+      return;
+    }
+    toast({ title: `"${newName}" créée ✓`, description: "Vous pouvez maintenant l'éditer." });
+    await fetchData();
+  };
+
+
   const openEdit = (a: UnifiedActivity) => {
     setEditingActivity(a);
     const events: EventSlot[] = [];
