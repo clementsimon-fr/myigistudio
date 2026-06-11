@@ -8,13 +8,8 @@ interface LoginBlockProps {
   onBack: () => void;
 }
 
-const CLIENT_DEFAULTS = [
-  { id: "marion", name: "Marion", subtitle: "Nouvelle cliente" },
-  { id: "sophie", name: "Sophie", subtitle: "Cliente existante (4 crédits)" },
-];
-
 export default function LoginBlock({ onSelect, onBack }: LoginBlockProps) {
-  const { getDefaultProfile, tempProfiles } = useDemoContext();
+  const { tempProfiles } = useDemoContext();
 
   return (
     <div className="space-y-5">
