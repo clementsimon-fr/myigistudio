@@ -11,7 +11,7 @@ import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 import { useDemoContext } from "@/contexts/DemoContext";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 import YogaFormulasBlock, { YogaFormulasPricingCard } from "@/components/YogaFormulasBlock";
-import InlineBookingFlow from "@/components/booking/InlineBookingFlow";
+import BookingSheet from "@/components/booking/BookingSheet";
 
 const PLACEHOLDER_IMG = "/placeholder.svg";
 
@@ -242,30 +242,14 @@ export default function ActivityDetailPanel({
 
 
 
-                {/* Inline booking flow */}
-                {showBooking && (
-                  <div className="mb-6">
-                    <InlineBookingFlow
-                      course={course}
-                      workshop={workshop}
-                      schedules={filteredSchedules}
-                      workshopsList={workshopsList.filter((w) => !workshop || w.name === workshop.name)}
-                      unitPrice={yogaUnitPrice}
-                      onDone={() => { setShowBooking(false); onClose(); }}
-                    />
-                  </div>
-                )}
-
                 {/* CTAs */}
                 <div className="space-y-2 sticky bottom-0 bg-background pt-2">
-                  {!showBooking && (
-                    <Button
-                      className={`w-full h-12 text-base font-semibold rounded-xl ${style.bookBtn}`}
-                      onClick={() => setShowBooking(true)}
-                    >
-                      Réserver <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
-                  )}
+                  <Button
+                    className={`w-full h-12 text-base font-semibold rounded-xl ${style.bookBtn}`}
+                    onClick={() => setShowBooking(true)}
+                  >
+                    Réserver <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
                   {!isLoggedIn && (
                     <Button
                       variant="outline"
@@ -281,6 +265,17 @@ export default function ActivityDetailPanel({
                 </div>
               </div>
             </div>
+
+            {/* Booking sheet — overlays this panel */}
+            <BookingSheet
+              open={showBooking}
+              onClose={() => setShowBooking(false)}
+              course={course}
+              workshop={workshop}
+              schedules={filteredSchedules}
+              workshopsList={workshopsList.filter((w) => !workshop || w.name === workshop.name)}
+              unitPrice={yogaUnitPrice}
+            />
           </motion.div>
         </motion.div>
       )}
