@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, CalendarDays, CalendarRange, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText, Lightbulb, FileSignature, Sun, ClipboardList, Sparkles } from "lucide-react";
+import { Bell, CalendarDays, CalendarRange, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText, Lightbulb, FileSignature, Sun, ClipboardList, Sparkles, MousePointerClick } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -64,12 +64,13 @@ const sidebarGroups: SidebarGroup_[] = [
     label: "Contenu",
     items: [
       { title: "Découvrir", url: "/admin/decouvrir", icon: Sparkles },
+      { title: "Boutons", url: "/admin/boutons", icon: MousePointerClick },
+      { title: "Événement", url: "/admin/contenu", icon: FileText },
     ],
   },
   {
     label: "Mon application",
     items: [
-      { title: "Événement", url: "/admin/contenu", icon: FileText },
       { title: "Contrat", url: "/admin/contrat", icon: FileSignature, disabled: true },
       { title: "Fonctionnalités", url: "/admin/fonctionnalites", icon: Lightbulb, disabled: true },
       { title: "Paramètres", url: "/admin/parametres", icon: UserCircle, disabled: true },

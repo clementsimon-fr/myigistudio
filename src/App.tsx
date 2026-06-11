@@ -22,6 +22,7 @@ import AdminIntervenants from "./pages/admin/Intervenants";
 import AdminTarifs from "./pages/admin/Tarifs";
 import AdminContenu from "./pages/admin/Contenu";
 import AdminDecouvrir from "./pages/admin/Decouvrir";
+import AdminBoutons from "./pages/admin/Boutons";
 import AdminBonsCadeaux from "./pages/admin/BonsCadeaux";
 import AdminConditions from "./pages/admin/Conditions";
 import AdminFonctionnalites from "./pages/admin/Fonctionnalites";
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="/admin/tarifs" element={<AdminTarifs />} />
             <Route path="/admin/contenu" element={<AdminContenu />} />
             <Route path="/admin/decouvrir" element={<AdminDecouvrir />} />
+            <Route path="/admin/boutons" element={<AdminBoutons />} />
             <Route path="/admin/bons-cadeaux" element={<AdminBonsCadeaux />} />
             <Route path="/admin/conditions" element={<AdminConditions />} />
             <Route path="/admin/fonctionnalites" element={<AdminFonctionnalites />} />

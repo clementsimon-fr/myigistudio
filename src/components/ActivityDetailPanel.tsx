@@ -9,6 +9,7 @@ import { RecurringGrid, MonthWorkshops } from "@/components/PlanningTypeView";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
+import YogaFormulasBlock, { YogaFormulasPricingCard } from "@/components/YogaFormulasBlock";
 
 const PLACEHOLDER_IMG = "/placeholder.svg";
 
@@ -52,6 +53,7 @@ export default function ActivityDetailPanel({
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [readMore, setReadMore] = useState(false);
   const [yogaUnitPrice, setYogaUnitPrice] = useState<number | null>(null);
+  const [yogaCards, setYogaCards] = useState<YogaFormulasPricingCard[]>([]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setIsLoggedIn(!!data.user));
@@ -70,12 +72,13 @@ export default function ActivityDetailPanel({
     if (!open || !course) return;
     supabase
       .from("pricing_cards")
-      .select("price, sessions")
-      .eq("sessions", 1)
-      .limit(1)
-      .maybeSingle()
+      .select("id, name, sessions, price, validity, popular, payment_info, sort_order")
+      .order("sort_order")
       .then(({ data }) => {
-        if (data) setYogaUnitPrice((data as any).price);
+        if (!data) return;
+        setYogaCards(data as unknown as YogaFormulasPricingCard[]);
+        const unit = (data as any[]).find((d) => d.sessions === 1);
+        if (unit) setYogaUnitPrice(unit.price);
       });
   }, [open, course]);
 
@@ -97,9 +100,9 @@ export default function ActivityDetailPanel({
     tarifLabel = workshop.price ? `${workshop.price} €` : "Gratuit";
   } else if (course) {
     if (yogaUnitPrice !== null) {
-      tarifLabel = `1 carte (${yogaUnitPrice} €)`;
+      tarifLabel = `${yogaUnitPrice} € ou 1 carte Yoga`;
     } else {
-      tarifLabel = "1 carte";
+      tarifLabel = "1 carte Yoga";
     }
   }
 
@@ -232,6 +235,15 @@ export default function ActivityDetailPanel({
                     />
                   </div>
                 )}
+
+                {/* Yoga formulas */}
+                {course && yogaCards.length > 0 && (
+                  <div className="mb-6">
+                    <YogaFormulasBlock pricingCards={yogaCards} />
+                  </div>
+                )}
+
+
 
                 {/* CTAs */}
                 <div className="space-y-2 sticky bottom-0 bg-background pt-2">

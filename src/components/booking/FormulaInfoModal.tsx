@@ -1,18 +1,12 @@
 import { useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Star, Info, ShoppingCart } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Sparkles, Info } from "lucide-react";
+import YogaFormulasBlock, { YogaFormulasPricingCard } from "@/components/YogaFormulasBlock";
 
-interface PricingCard {
-  id: string;
-  name: string;
-  sessions: number;
-  price: number;
-  validity: string;
+interface PricingCard extends YogaFormulasPricingCard {
   popular: boolean;
   payment_info: string;
-  sort_order?: number;
 }
 
 interface FormulaInfoModalProps {
@@ -26,11 +20,10 @@ interface FormulaInfoModalProps {
   isConnected?: boolean;
 }
 
-export default function FormulaInfoModal({ open, onClose, onCreateAccount, onContinueWithout, onSelectCard, pricingCards, unitPrice, isConnected }: FormulaInfoModalProps) {
+export default function FormulaInfoModal({ open, onClose, onCreateAccount, onContinueWithout, onSelectCard, pricingCards, isConnected }: FormulaInfoModalProps) {
   const infoRef = useRef<HTMLDivElement>(null);
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to top of popup when it opens
   useEffect(() => {
     if (open) {
       setTimeout(() => {
@@ -39,19 +32,17 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
     }
   }, [open]);
 
-  const unitCards = pricingCards.filter(c => c.sessions === 1);
-  const multiCards = pricingCards.filter(c => c.sessions > 1);
-
-  // Scroll to bottom (info/create account) when a multi-card is clicked
-  const handleMultiCardClick = (card?: PricingCard) => {
-    if (isConnected && card && onSelectCard) {
-      onSelectCard(card);
+  const handleSelect = (card: YogaFormulasPricingCard) => {
+    const full = pricingCards.find((c) => c.id === card.id);
+    if (!full) return;
+    if (isConnected && onSelectCard) {
+      onSelectCard(full);
       onClose();
       return;
     }
-    setTimeout(() => {
-      infoRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-    }, 100);
+    if (full.sessions > 1) {
+      setTimeout(() => infoRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 100);
+    }
   };
 
   return (
@@ -63,81 +54,26 @@ export default function FormulaInfoModal({ open, onClose, onCreateAccount, onCon
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 pt-2">
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Vous pouvez acheter un cours à l'unité ou acheter plusieurs cartes de yoga utilisables quand vous le souhaitez pendant la durée de validité.
-          </p>
+        <div className="pt-2">
+          <YogaFormulasBlock pricingCards={pricingCards} onSelectCard={handleSelect} showHeader={false} />
 
-          {/* Unit card with green bg */}
-          {unitCards.map(card => (
-            <div key={card.id} className="rounded-lg border p-4 relative bg-emerald-50/60 border-emerald-200">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-semibold text-foreground">Carte Yoga à l'unité</p>
-                  <p className="text-xs text-muted-foreground">{card.validity}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold">{card.price} €</p>
-                  <Badge variant="secondary" className="text-sm font-bold px-2.5 py-0.5">1 cours</Badge>
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {/* Separator */}
-          {multiCards.length > 0 && (
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-sm font-display font-semibold text-muted-foreground">Ou</span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-          )}
-
-          {/* Multi cards */}
-          <div className="grid gap-3">
-            {multiCards.map(card => (
-              <div key={card.id} className="rounded-lg border p-4 relative cursor-pointer hover:shadow-md transition-all" onClick={() => handleMultiCardClick(card)}>
-                {card.popular && (
-                  <div className="absolute -top-2.5 right-3 bg-accent text-accent-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                    <Star className="h-2.5 w-2.5" /> Populaire
-                  </div>
-                )}
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-semibold text-primary-dark">Cartes Yoga "{card.name}"</p>
-                    <p className="text-xs text-muted-foreground">{card.validity}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold">{card.price} €</p>
-                    <Badge variant="secondary" className="text-sm font-bold px-2.5 py-0.5">
-                      {card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {!isConnected && (
-            <>
+          {!isConnected ? (
+            <div className="space-y-4 mt-5">
               <div ref={infoRef} className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-start gap-2">
                 <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                 <p className="text-sm text-amber-800">
                   Vous devez créer un compte pour acheter ou utiliser une formule de cartes.
                 </p>
               </div>
-
               <div className="grid gap-2">
                 <Button onClick={onCreateAccount} className="w-full">Créer un compte</Button>
                 <Button variant="ghost" onClick={onContinueWithout} className="w-full text-muted-foreground">
                   Continuer sans formule
                 </Button>
               </div>
-            </>
-          )}
-
-          {isConnected && (
-            <div ref={infoRef} className="rounded-lg bg-primary/5 border border-primary/20 p-3 flex items-start gap-2">
+            </div>
+          ) : (
+            <div ref={infoRef} className="rounded-lg bg-primary/5 border border-primary/20 p-3 flex items-start gap-2 mt-5">
               <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
               <p className="text-sm text-primary-dark">
                 Cliquez sur une formule pour l'ajouter à votre commande.
