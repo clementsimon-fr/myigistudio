@@ -551,8 +551,8 @@ export default function BookingSheet({
                     </div>
                   )}
 
-                  {/* STEP 5 — Récap */}
-                  {step === 5 && (
+                  {/* STEP 6 — Récap */}
+                  {step === 6 && (
                     <div className="space-y-3 pt-2">
                       <h3 className="text-sm font-semibold">Récapitulatif</h3>
                       <div className="rounded-xl border bg-card p-4 space-y-3">
