@@ -361,11 +361,66 @@ export default function BookingSheet({
                     </div>
                   )}
 
-                  {/* STEP 2 — Participants */}
+                  {/* STEP 2 — Qui réserve ? (uniquement le réservant) */}
                   {step === 2 && (
                     <div className="space-y-4 pt-2">
+                      <h3 className="text-sm font-semibold">Qui réserve ?</h3>
+                      {(() => {
+                        const p = participants[0];
+                        if (!p) return null;
+                        return (
+                          <div className="rounded-lg border bg-card p-3">
+                            <Label className="text-[11px] text-muted-foreground">Réservant</Label>
+                            {p.isMe ? (
+                              <div className="mt-1 flex items-center justify-between">
+                                <span className="text-sm font-medium">Moi — {p.name}</span>
+                                <Badge variant="secondary" className="text-[10px]">Connecté</Badge>
+                              </div>
+                            ) : (
+                              <div className="mt-1 space-y-2">
+                                <Input
+                                  placeholder="Votre prénom"
+                                  value={p.name}
+                                  onChange={(e) => updateParticipantName(0, e.target.value)}
+                                />
+                                {!guestMode ? (
+                                  <>
+                                    <p className="text-[11px] text-muted-foreground">
+                                      Choisissez une option pour continuer :
+                                    </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                      <Button size="sm" variant="outline" onClick={() => setAuthMode("login")}>
+                                        Se connecter
+                                      </Button>
+                                      <Button size="sm" variant="outline" onClick={() => setAuthMode("signup")}>
+                                        Créer un compte
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="border border-dashed" onClick={() => setGuestMode(true)}>
+                                        Continuer sans compte
+                                      </Button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <Badge variant="secondary" className="text-[10px]">Mode invité</Badge>
+                                    <button onClick={() => setGuestMode(false)} className="underline hover:text-foreground">
+                                      Changer
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* STEP 3 — Participants supplémentaires */}
+                  {step === 3 && (
+                    <div className="space-y-4 pt-2">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold">Combien êtes-vous ?</h3>
+                        <h3 className="text-sm font-semibold">Ajouter des participants</h3>
                         <div className="inline-flex items-center gap-2 rounded-lg border bg-background p-1">
                           <Button size="icon" variant="ghost" className="h-7 w-7"
                             onClick={() => setParticipantCount(Math.max(1, participants.length - 1))}
@@ -384,38 +439,13 @@ export default function BookingSheet({
                         {participants.map((p, i) => (
                           <div key={i} className="rounded-lg border bg-card p-3">
                             <Label className="text-[11px] text-muted-foreground">Participant {i + 1}</Label>
-                            {i === 0 && p.isMe ? (
+                            {i === 0 ? (
                               <div className="mt-1 flex items-center justify-between">
-                                <span className="text-sm font-medium">Moi — {p.name}</span>
-                                <Badge variant="secondary" className="text-[10px]">Connecté</Badge>
-                              </div>
-                            ) : i === 0 && !p.isMe ? (
-                              <div className="mt-1 space-y-2">
-                                <Input
-                                  placeholder="Votre prénom"
-                                  value={p.name}
-                                  onChange={(e) => updateParticipantName(i, e.target.value)}
-                                />
-                                {!guestMode ? (
-                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                    <Button size="sm" variant="outline" onClick={() => setAuthMode("login")}>
-                                      Se connecter
-                                    </Button>
-                                    <Button size="sm" variant="outline" onClick={() => setAuthMode("signup")}>
-                                      Créer un compte
-                                    </Button>
-                                    <Button size="sm" variant="ghost" className="border border-dashed" onClick={() => setGuestMode(true)}>
-                                      Continuer sans compte
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                    <Badge variant="secondary" className="text-[10px]">Mode invité</Badge>
-                                    <button onClick={() => setGuestMode(false)} className="underline hover:text-foreground">
-                                      Changer
-                                    </button>
-                                  </div>
-                                )}
+                                <span className="text-sm font-medium">
+                                  {p.isMe ? `Moi — ${p.name}` : p.name || "—"}
+                                </span>
+                                {p.isMe && <Badge variant="secondary" className="text-[10px]">Connecté</Badge>}
+                                {!p.isMe && guestMode && <Badge variant="secondary" className="text-[10px]">Invité</Badge>}
                               </div>
                             ) : (
                               <Input
@@ -427,16 +457,22 @@ export default function BookingSheet({
                             )}
                           </div>
                         ))}
+                        {participants.length === 1 && (
+                          <p className="text-[11px] text-muted-foreground">
+                            Vous pouvez continuer seul·e ou cliquer sur + pour ajouter des participants.
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
 
-                  {/* STEP 3 — Tarif */}
-                  {step === 3 && (
+                  {/* STEP 4 — Tarif */}
+                  {step === 4 && (
                     <div className="space-y-4 pt-2">
                       <h3 className="text-sm font-semibold">
                         {isYoga ? "Choisissez votre tarif" : "Mode de paiement"}
                       </h3>
+
 
                       <Button
                         onClick={() => { setPickerForParticipant(null); setPickerOpen(true); }}
