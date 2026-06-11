@@ -1043,6 +1043,7 @@ export default function Reserver() {
                           <div className="rounded-lg border bg-card p-3 text-sm">
                             <span className="text-muted-foreground">Participant : </span>
                             <strong className="text-foreground">{currentProfile.name}</strong>
+                            <span className="ml-2 text-xs text-muted-foreground italic">(connecté en tant que {currentProfile.name})</span>
                           </div>
                           <AddParticipant
                             participants={extraParticipants}
