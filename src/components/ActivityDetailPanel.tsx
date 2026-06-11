@@ -55,6 +55,7 @@ export default function ActivityDetailPanel({
   const { currentProfile } = useDemoContext();
   const isLoggedIn = !!currentProfile;
   const [readMore, setReadMore] = useState(false);
+  const [showBooking, setShowBooking] = useState(false);
   const [yogaUnitPrice, setYogaUnitPrice] = useState<number | null>(null);
   const [yogaCards, setYogaCards] = useState<YogaFormulasPricingCard[]>([]);
 
