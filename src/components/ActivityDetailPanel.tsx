@@ -62,6 +62,7 @@ export default function ActivityDetailPanel({
   useEffect(() => {
     if (!open) return;
     setReadMore(false);
+    setShowBooking(false);
   }, [open, course?.id, workshop?.id]);
 
   useEffect(() => {
