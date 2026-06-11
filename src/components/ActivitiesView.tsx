@@ -343,25 +343,15 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const potteryStyle = getCategoryStyle("poterie");
 
   const handleBookCourse = (course: Course) => {
-    onSwitchToPlanning({ type: "course", id: course.id });
+    setDescriptionCourse(course);
   };
 
   const handleBookGroup = (group: WorkshopGroup) => {
-    if (group.isLinked) {
-      const ws = group.workshops[0];
-      onSwitchToPlanning({ type: "workshop", id: ws.id, date: ws.date });
-    } else {
-      const ws = group.workshops[0];
-      const urlParams = new URLSearchParams();
-      urlParams.set("type", "workshop");
-      urlParams.set("name", ws.name);
-      navigate(`/reserver?${urlParams.toString()}`);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    setDescriptionWs(group.workshops[0]);
   };
 
   const handleBookPotterySlot = (ws: Workshop) => {
-    onSwitchToPlanning({ type: "workshop", id: ws.id, date: ws.date });
+    setDescriptionWs(ws);
   };
 
   // descriptionCourseDays removed — "Jours de la semaine" block dropped per #2
