@@ -314,11 +314,11 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
     const el = document.getElementById(cardId);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("ring-2", "ring-primary", "ring-offset-2");
+      el.classList.add("ring-2", "ring-primary", "ring-offset-2", "transition-all");
       setTimeout(() => {
-        el.classList.remove("ring-2", "ring-primary", "ring-offset-2");
+        el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "transition-all");
         if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-      }, 500);
+      }, 1800);
     }
   }, []);
 
