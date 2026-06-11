@@ -236,6 +236,15 @@ export default function ActivityDetailPanel({
                   </div>
                 )}
 
+                {/* Yoga formulas */}
+                {course && yogaCards.length > 0 && (
+                  <div className="mb-6">
+                    <YogaFormulasBlock pricingCards={yogaCards} />
+                  </div>
+                )}
+
+
+
                 {/* CTAs */}
                 <div className="space-y-2 sticky bottom-0 bg-background pt-2">
                   <Button
