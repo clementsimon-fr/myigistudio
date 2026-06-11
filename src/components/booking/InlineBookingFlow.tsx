@@ -222,7 +222,15 @@ export default function InlineBookingFlow({ course, workshop, schedules = [], wo
         description={`${course?.name || workshop?.name} — MyIgiStudio`}
       />
 
-      <FormulaInfoModal open={showFormulas} onClose={() => setShowFormulas(false)} />
+      <FormulaInfoModal
+        open={showFormulas}
+        onClose={() => setShowFormulas(false)}
+        onCreateAccount={() => { setShowFormulas(false); navigate("/register"); }}
+        onContinueWithout={() => setShowFormulas(false)}
+        pricingCards={pricingCards as any}
+        unitPrice={unitPrice ?? undefined}
+        isConnected={!!currentProfile}
+      />
     </div>
   );
 }
