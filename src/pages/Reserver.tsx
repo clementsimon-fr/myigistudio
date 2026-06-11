@@ -574,7 +574,8 @@ export default function Reserver() {
       createTempProfile(name);
       setIsNewUser(true);
       setRegistering(false);
-      goToStep("purchase_options");
+      setNewUserName(name);
+      setShowPostSignup(true);
     }, 2000);
   };
 
