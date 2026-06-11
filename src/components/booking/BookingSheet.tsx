@@ -94,7 +94,7 @@ export default function BookingSheet({
   const [registering, setRegistering] = useState(false);
   const [showStripe, setShowStripe] = useState(false);
 
-  // Init participants on open
+  // Init participants on open (do NOT reset on profile change to preserve attributions after inline signup)
   useEffect(() => {
     if (!open) return;
     setStep(1);
@@ -103,7 +103,17 @@ export default function BookingSheet({
     setAttributions({});
     setGuestMode(false);
     setParticipants([{ name: currentProfile?.name || "", isMe: !!currentProfile }]);
-  }, [open, currentProfile?.id, currentProfile?.name]);
+  }, [open]);
+
+  // Sync participant 0 if profile changes mid-session (signup/login inside the flow)
+  useEffect(() => {
+    if (!open) return;
+    setParticipants((prev) => {
+      if (prev.length === 0) return prev;
+      const [first, ...rest] = prev;
+      return [{ name: currentProfile?.name || first.name, isMe: !!currentProfile }, ...rest];
+    });
+  }, [currentProfile?.id, currentProfile?.name, open]);
 
   // Load pricing cards (yoga only)
   useEffect(() => {
