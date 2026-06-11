@@ -494,27 +494,25 @@ export default function BookingSheet({
               </AnimatePresence>
             </div>
 
-            {/* Footer CTAs */}
-            <div className="absolute bottom-0 inset-x-0 bg-background/95 backdrop-blur-md border-t px-5 py-3 flex items-center justify-between gap-2">
-              {step > 1 ? (
-                <Button variant="ghost" onClick={() => setStep((s) => s - 1)}>
-                  <ChevronLeft className="h-4 w-4 mr-1" /> Précédent
-                </Button>
-              ) : <span />}
-              {step < 5 ? (
-                <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext()}>
-                  Continuer <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              ) : (
-                <Button onClick={handleConfirmPayment} className="gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  {totalToPay > 0 ? `Confirmer le paiement (${totalToPay} €)` : "Confirmer la réservation"}
-                </Button>
-              )}
-            </div>
-          </DrawerPrimitive.Content>
-        </DrawerPrimitive.Portal>
-      </DrawerPrimitive.Root>
+        {/* Footer CTAs */}
+        <div className="border-t bg-muted/30 px-5 py-3 flex items-center justify-between gap-2">
+          {step > 1 ? (
+            <Button variant="ghost" onClick={() => setStep((s) => s - 1)}>
+              <ChevronLeft className="h-4 w-4 mr-1" /> Précédent
+            </Button>
+          ) : <span />}
+          {step < 5 ? (
+            <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext()}>
+              Continuer <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          ) : (
+            <Button onClick={handleConfirmPayment} className="gap-2">
+              <CreditCard className="h-4 w-4" />
+              {totalToPay > 0 ? `Confirmer le paiement (${totalToPay} €)` : "Confirmer la réservation"}
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* Picker modal */}
       <FormulasPickerModal
