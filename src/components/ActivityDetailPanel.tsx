@@ -117,6 +117,26 @@ export default function ActivityDetailPanel({
       ? `${spotsLeft} disponible${spotsLeft > 1 ? "s" : ""}`
       : `${(item as any).spots ?? "—"} max`;
 
+  // Compute duration from first available schedule (course) or the workshop itself
+  const computeDuration = (start?: string, end?: string) => {
+    if (!start || !end) return null;
+    const [sh, sm] = start.split(":").map(Number);
+    const [eh, em] = end.split(":").map(Number);
+    if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return null;
+    let mins = eh * 60 + em - (sh * 60 + sm);
+    if (mins <= 0) return null;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h && m) return `${h}h${m.toString().padStart(2, "0")}`;
+    if (h) return `${h}h`;
+    return `${m} min`;
+  };
+  const durationLabel = workshop
+    ? computeDuration(workshop.time, workshop.end_time)
+    : schedules[0]
+    ? computeDuration(schedules[0].time, schedules[0].end_time)
+    : null;
+
   const filteredCourses = course ? allCourses.filter((c) => c.id === course.id) : [];
   const filteredSchedules = course ? schedules.filter((s) => s.course_id === course.id) : [];
 
