@@ -235,7 +235,7 @@ export default function BookingSheet({
     { n: 1, label: "Date", icon: CalendarDays },
     { n: 2, label: "Qui réserve ?", icon: Users },
     { n: 3, label: "Participants", icon: Users },
-    { n: 4, label: "Tarifs", icon: ShoppingBag },
+    { n: 4, label: "Vos achats", icon: ShoppingBag },
     { n: 5, label: "Attribution", icon: Euro },
     { n: 6, label: "Paiement", icon: CreditCard },
   ];
