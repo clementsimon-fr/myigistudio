@@ -235,6 +235,12 @@ export default function ActivityDetailPanel({
                       </div>
                       <div className="text-sm font-medium">{places}</div>
                     </div>
+                    <div className="rounded-xl bg-muted/50 p-3 col-span-2">
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5">
+                        <Clock className="h-3 w-3" /> Durée
+                      </div>
+                      <div className="text-sm font-medium">{durationLabel || "—"}</div>
+                    </div>
                   </div>
 
                   {course && filteredSchedules.length > 0 && (
