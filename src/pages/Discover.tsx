@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Loader2, Megaphone } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import ActivityFilterBar, { type FilterCategory, CATEGORY_FILTERS } from "@/components/ActivityFilterBar";
