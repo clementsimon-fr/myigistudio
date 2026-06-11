@@ -236,8 +236,11 @@ export default function BookingSheet({
       createTempProfile(name);
       setRegistering(false);
       setAuthMode(null);
-      // user is now logged in — they need to re-pick a formula
       toast({ title: "Compte créé ✓", description: "Vous pouvez maintenant choisir une formule." });
+      // Re-open the picker so the user finishes on the tarif step
+      if (pendingFormula) {
+        setPickerOpen(true);
+      }
     }, 1200);
   };
 
