@@ -115,6 +115,24 @@ export default function BookingSheet({
       .then(({ data }) => { if (data) setPricingCards(data as any); });
   }, [open, isYoga]);
 
+  // Load conditions
+  useEffect(() => {
+    if (!open) return;
+    supabase
+      .from("conditions")
+      .select("id,title,content,sort_order,active,applies_to")
+      .eq("active", true)
+      .order("sort_order")
+      .then(({ data }) => {
+        if (!data) return;
+        const applies = isYoga ? "yoga" : "poterie";
+        const filtered = (data as any[]).filter(
+          (c) => !c.applies_to || c.applies_to.length === 0 || c.applies_to.includes(applies) || c.applies_to.includes("all")
+        );
+        setConditionsList(filtered as any);
+      });
+  }, [open, isYoga]);
+
   const selected = dates[selectedIdx];
   const pricePerUnit = isYoga ? unitPrice ?? 0 : (workshop?.price ?? 0);
 
