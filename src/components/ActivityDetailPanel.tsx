@@ -11,6 +11,7 @@ import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 import { useDemoContext } from "@/contexts/DemoContext";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 import YogaFormulasBlock, { YogaFormulasPricingCard } from "@/components/YogaFormulasBlock";
+import InlineBookingFlow from "@/components/booking/InlineBookingFlow";
 
 const PLACEHOLDER_IMG = "/placeholder.svg";
 
