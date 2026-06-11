@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, CalendarDays, CalendarRange, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText, Lightbulb, FileSignature, Sun, ClipboardList, Sparkles } from "lucide-react";
+import { Bell, CalendarDays, CalendarRange, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText, Lightbulb, FileSignature, Sun, ClipboardList, Sparkles, MousePointerClick } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
