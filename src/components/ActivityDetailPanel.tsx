@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { RecurringGrid, MonthWorkshops } from "@/components/PlanningTypeView";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
+import { useDemoContext } from "@/contexts/DemoContext";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 import YogaFormulasBlock, { YogaFormulasPricingCard } from "@/components/YogaFormulasBlock";
 
