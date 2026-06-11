@@ -1,9 +1,8 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
-import { Drawer as DrawerPrimitive } from "vaul";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CalendarDays, Users, Euro, FileCheck, CreditCard, Minus, Plus, X,
-  ChevronRight, ChevronLeft, Sparkles, Gift, Ticket, Info, Check, Pencil, ArrowLeft,
+  ChevronRight, ChevronLeft, Sparkles, Gift, Ticket, Info, Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
