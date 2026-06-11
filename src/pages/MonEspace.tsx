@@ -167,6 +167,57 @@ export default function MonEspace() {
         <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
       ) : (
         <>
+          {/* ─── HEADER DE BIENVENUE (toutes sections) ─── */}
+          <div className="max-w-3xl mb-6">
+            <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-accent/10 border p-5 md:p-6">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className="h-14 w-14 rounded-full bg-white/70 backdrop-blur flex items-center justify-center">
+                    <User className="h-7 w-7 text-primary-dark" />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Bonjour</p>
+                    <h2 className="text-xl font-display font-semibold text-primary-dark">{CLIENT_NAME}</h2>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="default" className="gap-1.5" onClick={() => navigate("/?view=planning")}>
+                    <CalendarDays className="h-4 w-4" /> Réserver
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setSection("cartes"); setShowBuyCards(true); }}>
+                    <ShoppingCart className="h-4 w-4" /> Acheter une carte
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate("/bons-cadeaux")}>
+                    <Gift className="h-4 w-4" /> Bon cadeau
+                  </Button>
+                </div>
+              </div>
+
+              {/* 3 stats */}
+              <div className="grid grid-cols-3 gap-2 md:gap-3 mt-5">
+                <div className="rounded-xl bg-white/70 backdrop-blur p-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Cartes Yoga</p>
+                  <p className="text-2xl font-bold text-primary-dark mt-0.5">{totalCredits}</p>
+                  <p className="text-[10px] text-muted-foreground">restante{totalCredits > 1 ? "s" : ""}</p>
+                </div>
+                <div className="rounded-xl bg-white/70 backdrop-blur p-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">À venir</p>
+                  <p className="text-2xl font-bold text-primary-dark mt-0.5">
+                    {confirmedRes.filter(r => r.date >= new Date().toISOString().split("T")[0]).length}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">réservation(s)</p>
+                </div>
+                <div className="rounded-xl bg-white/70 backdrop-blur p-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Historique</p>
+                  <p className="text-2xl font-bold text-primary-dark mt-0.5">
+                    {confirmedRes.filter(r => r.date < new Date().toISOString().split("T")[0]).length}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">séance(s)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* ─── RÉSERVATIONS ─── */}
           {section === "reservations" && (
             <div className="max-w-3xl space-y-4">
