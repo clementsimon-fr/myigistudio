@@ -22,6 +22,7 @@ import AdminIntervenants from "./pages/admin/Intervenants";
 import AdminTarifs from "./pages/admin/Tarifs";
 import AdminContenu from "./pages/admin/Contenu";
 import AdminDecouvrir from "./pages/admin/Decouvrir";
+import AdminBoutons from "./pages/admin/Boutons";
 import AdminBonsCadeaux from "./pages/admin/BonsCadeaux";
 import AdminConditions from "./pages/admin/Conditions";
 import AdminFonctionnalites from "./pages/admin/Fonctionnalites";
