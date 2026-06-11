@@ -239,17 +239,30 @@ export default function ActivityDetailPanel({
 
 
 
+                {/* Inline booking flow */}
+                {showBooking && (
+                  <div className="mb-6">
+                    <InlineBookingFlow
+                      course={course}
+                      workshop={workshop}
+                      schedules={filteredSchedules}
+                      workshopsList={workshopsList.filter((w) => !workshop || w.name === workshop.name)}
+                      unitPrice={yogaUnitPrice}
+                      onDone={() => { setShowBooking(false); onClose(); }}
+                    />
+                  </div>
+                )}
+
                 {/* CTAs */}
                 <div className="space-y-2 sticky bottom-0 bg-background pt-2">
-                  <Button
-                    className={`w-full h-12 text-base font-semibold rounded-xl ${style.bookBtn}`}
-                    onClick={() => {
-                      onClose();
-                      onBook();
-                    }}
-                  >
-                    Réserver <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
+                  {!showBooking && (
+                    <Button
+                      className={`w-full h-12 text-base font-semibold rounded-xl ${style.bookBtn}`}
+                      onClick={() => setShowBooking(true)}
+                    >
+                      Réserver <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  )}
                   {!isLoggedIn && (
                     <Button
                       variant="outline"
