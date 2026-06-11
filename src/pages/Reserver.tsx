@@ -1413,6 +1413,15 @@ export default function Reserver() {
         amount={stripeAmount}
         description={stripeDescription}
       />
+
+      {/* Post-signup choice */}
+      <PostSignupChoice
+        open={showPostSignup}
+        name={newUserName}
+        hasBookingInProgress={true}
+        onContinueBooking={() => { setShowPostSignup(false); goToStep("purchase_options"); }}
+        onGoToSpace={() => { setShowPostSignup(false); navigate("/mon-espace?welcome=1"); }}
+      />
     </div>
   );
 }
