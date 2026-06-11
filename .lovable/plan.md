@@ -1,93 +1,62 @@
-## Objectif
+# Plan — Améliorations bloc Activité & Réservation
 
-Transformer le flux de réservation actuel (`InlineBookingFlow` intégré sous la fiche) en une **sheet de Réservation semi-transparente glissable** qui s'affiche par-dessus la fiche activité. L'utilisateur peut la faire glisser vers le bas à tout moment pour relire la fiche.
+## 1. Méta-bloc « Formules Cartes Yoga » repliable
+Dans `ActivityDetailPanel.tsx`, transformer le contenu du bloc Formules en pattern repliable :
+- Afficher uniquement la phrase descriptive (« Vous pouvez acheter un cours à l'unité ou plusieurs cartes… »).
+- Sous le texte, un bouton avec chevron (« Voir les formules ▾ ») qui déplie la liste complète des `YogaFormulasBlock` (cartes unité + multi).
+- Repli par défaut, animation `Collapsible` (déjà dispo : `src/components/ui/collapsible.tsx`).
 
-## 1. Sheet "Réservation" glissable
+Petit ajustement dans `YogaFormulasBlock` : extraire ou rendre le `showHeader=false` pour ne montrer que la liste — déjà supporté.
 
-- Remplace l'affichage inline actuel par une **Sheet Radix** (ou drawer) ancrée en bas, par-dessus `ActivityDetailPanel`.
-- Comportement :
-  - Ouverture au clic sur "Réserver" → sheet à 90% de hauteur.
-  - Drag handle visible en haut (barre horizontale).
-  - Glissable verticalement : 3 snap points → plein écran / mi-hauteur (peek) / fermée.
-  - Fond semi-transparent (backdrop blur léger, pas d'overlay opaque) pour laisser deviner la fiche dessous.
-  - Bouton "×" pour fermer + chevron pour réduire en peek.
+## 2. Méta-bloc « En détail » — ajout du tile « Durée »
+Dans la grille (`grid-cols-2`) de `ActivityDetailPanel.tsx`, ajouter une 5e tuile :
+- Icône `Clock`, label « Durée ».
+- Valeur calculée depuis `selected schedule/workshop time → end_time` (ex. « 1h15 ») ou repli sur `duration` si présent dans le course.
+- Passer la grille à `grid-cols-2` avec une 5e cellule en pleine largeur (`col-span-2`) **ou** passer en `grid-cols-2` avec 5 items où le dernier prend `col-span-2`.
 
-## 2. Étapes dans la sheet
+## 3. Étape « Qui réserve ? » + nouvelle étape Participants
+Refonte de l'étape 2 dans `BookingSheet.tsx` :
+- Renommer le titre/label stepper de « Participants » → « Qui réserve ? ».
+- N'afficher que le premier participant (le réservant) à cette étape.
+- Bouton « Continuer » désactivé tant que **l'une** des trois actions n'est pas validée : connecté, compte créé (`currentProfile` set), ou `guestMode === true`.
+- Insérer une **nouvelle étape 3** « Participants » :
+  - Compteur +/- et champs prénoms des participants additionnels (extraits de l'écran actuel).
+  - Title : « Ajouter des participants ».
+- Décaler les étapes suivantes : Tarif → 4, Conditions → 5, Paiement → 6. Mettre à jour `STEPS`, `canNext`, le footer (`step < 6`), les conditions de skip et la stepper bar.
 
-### Étape 1 — Date
-- Sélecteur horizontal des prochaines dates (déjà existant).
+## 4. Popup « Choisir votre mode de paiement » — retirer le séparateur
+Dans `FormulasPickerModal` (`BookingSheet.tsx`), supprimer le bloc `<div className="flex items-center gap-3">…ou choisir une formule…</div>` situé **avant** la liste des formules multi (et également celui « ou choisir un cours à l'unité » si demandé — à confirmer si seul celui « formule » doit partir). Selon la demande : retirer celui sous lequel apparaît « Carte Yoga à l'unité » n'est PAS demandé — seul celui « ou choisir une formule » doit disparaître.
 
-### Étape 2 — Participants
-- Compteur +/− identique à aujourd'hui.
-- Pour chaque participant une **ligne** :
-  - **Participant 1** : si utilisateur connecté → libellé "Moi — {prénom}" (non éditable). Sinon → bouton "Se connecter" + champ "Prénom" en fallback.
-  - **Participants 2..n** : champ texte "Prénom" obligatoire.
+## 5. Bouton « Retour » navigateur fonctionnel
+Synchroniser les étapes du `BookingSheet` avec l'historique du navigateur :
+- À chaque `setStep(n)`, faire `history.pushState({ bookingStep: n }, "")`.
+- Écouter `popstate` : si `event.state?.bookingStep` existe, revenir à cette étape (sans push). Sinon (ex. retour avant ouverture), fermer le panel.
+- Push initial à l'ouverture du panel/sheet, cleanup à la fermeture.
 
-### Étape 3 — Tarif / Moyens de paiement
-- **Pour Yoga** : libellé "Choisissez votre tarif" + bouton **"Choisir"** ouvrant le popup `FormulasModal` (voir §3).
-- **Pour Poterie** : même bouton "Choisir" ouvrant un popup simplifié (bon cadeau OU paiement direct).
-- Sous le bouton, affichage des **attributions par participant** :
-  ```text
-  Marie  → Carte Yoga x10 (formule)
-  Léa    → Bon cadeau #ABCD
-  Paul   → Carte à l'unité (17 €)
-  ```
-  Chaque ligne a un bouton "Modifier" qui rouvre le popup positionné sur ce participant.
-- L'étape n'est validée que si **chaque participant a un moyen de paiement attribué**.
+Couvre aussi le retour depuis le panel d'activité (déjà géré par `onClose`, à confirmer).
 
-### Étape 4 — Conditions
-- Checkbox "J'accepte les conditions" (lien vers page conditions).
-- Bouton "Continuer" désactivé tant que non cochée.
+## 6. Audit du bug « 17 € au lieu de la formule »
+Cas reproduit : utilisateur non connecté → clic sur une formule → popup « Compte requis » → crée un compte → revient au picker, mais l'attribution finale est « unité 17 € ».
 
-### Étape 5 — Récapitulatif + Paiement
-- Récap : activité, date/heure, lignes participants avec leur moyen de paiement, total à régler en € (somme des cartes unitaires + différentiel formules à acheter), 0 € si tout couvert par cartes existantes/bons.
-- Bouton **"Confirmer le paiement"** → mock Stripe si montant > 0, sinon confirmation directe.
+Diagnostic prévu :
+- `handleSignupSubmit` rouvre `pickerOpen` mais ne **ré-attribue pas** la formule (correct — pas d'auto-pick).
+- Pourtant l'utilisateur voit 17 €. Hypothèse : à la réouverture, `pickerForParticipant` peut être `null` et `remainingIdxs` part sur unit par défaut, ou le `pendingFormula` n'est pas reproposé visuellement → l'utilisateur clique « Continuer » sans repicker et tombe sur unité auto.
+- Plan d'action :
+  1. Supprimer toute logique implicite : après signup, **rouvrir le picker en mode "choose"** sans pré-sélection ; afficher un bandeau d'info « Vous étiez en train de choisir la formule {pendingFormula.name} — sélectionnez-la pour confirmer ».
+  2. Ne **jamais** auto-appliquer `pendingFormula` ; l'utilisateur doit recliquer explicitement.
+  3. Vérifier qu'aucune attribution « unit » n'est posée par défaut au passage à l'étape Tarif (l'attribution doit rester `null` jusqu'au choix utilisateur — déjà le cas, à valider).
+  4. Vérifier `setParticipantCount` / re-init après signup : l'effet `useEffect([open, currentProfile?.id])` reset `participants` et `attributions` → **c'est probablement la cause**. Le signup change `currentProfile.id`, ce qui re-déclenche l'init et **efface l'attribution** + remet à zéro. Correctif : ne ré-init que sur ouverture (`open` flip), pas sur changement de profil ; mettre à jour uniquement le participant 0 (nom + isMe) lors d'un changement de profil intra-session.
 
-## 3. Popup "Formules cartes yoga" (refondu)
+## Détails techniques
 
-Ordre vertical des options dans le popup :
+Fichiers modifiés :
+- `src/components/ActivityDetailPanel.tsx` — bloc Formules repliable, tuile Durée.
+- `src/components/booking/BookingSheet.tsx` — split étape Qui réserve / Participants, gating, suppression divider, history API, fix init.
+- (éventuel) `src/components/YogaFormulasBlock.tsx` — exposer juste la liste sans le header descriptif.
 
-1. **Bloc "Bon cadeau"** (nouveau, tout en haut) — champ code + bouton "Appliquer".
-2. **Bloc "Carte yoga à l'unité"** — prix = `unitPrice × nbParticipantsNonAttribués` (ex. 51 € pour 3 inscrits restants). Bouton "Utiliser" → attribue automatiquement aux participants restants.
-3. **Formules multi-cartes** (10 cartes, 20 cartes…) avec badge économie.
+Aucune migration DB. Aucun changement de logique tarifaire au-delà du fix d'init.
 
-### Sélection d'une formule
-- Au clic sur une formule, si non connecté → message "Vous devez créer un compte ou vous connecter" + 2 boutons (Se connecter / Créer un compte). À la fin du flux d'auth, l'utilisateur revient sur la sheet de réservation **dans l'état où il l'a laissée** (état persisté en `sessionStorage`).
-- Si connecté → ouverture d'un mini-sélecteur **"Qui utilise cette formule ?"** listant les participants non encore attribués. L'utilisateur coche un ou plusieurs participants.
-- Une formule peut couvrir plusieurs participants (consomme N cartes du solde).
-
-### Bon cadeau
-- Idem yoga + poterie. Une fois validé → attribué à un participant choisi. Plusieurs bons cadeaux possibles (un par participant max).
-
-## 4. Persistance d'état pour auth round-trip
-
-- Sauvegarder dans `sessionStorage` (clé `pendingBooking`) : `{courseId|workshopId, date, participants[], attributions[]}` avant redirection auth.
-- Au montage de la page d'accueil, si `pendingBooking` présent ET user connecté → restaurer la sheet et réouvrir l'étape "Tarif".
-
-## 5. Fichiers concernés
-
-**Nouveaux**
-- `src/components/booking/BookingSheet.tsx` — sheet glissable + steppers internes.
-- `src/components/booking/ParticipantsStep.tsx` — saisie prénoms + "Moi".
-- `src/components/booking/PaymentAttributionStep.tsx` — bouton "Choisir" + table d'attributions.
-- `src/components/booking/FormulasPickerModal.tsx` — popup refondu (bon cadeau + unité + formules + sélecteur participants).
-- `src/components/booking/BookingRecap.tsx` — récap final.
-- `src/hooks/usePendingBooking.ts` — sauvegarde / restauration sessionStorage.
-
-**Modifiés**
-- `src/components/ActivityDetailPanel.tsx` — retirer `InlineBookingFlow` inline, ouvrir `BookingSheet` au clic "Réserver". La sheet est positionnée par-dessus le panel (`z-60`).
-- `src/components/booking/FormulaInfoModal.tsx` — remplacé / réutilisé par `FormulasPickerModal` (compat ascendante conservée).
-- `src/pages/Reserver.tsx` — déprécié (le `/reserver` route reste mais redirige vers la home avec sheet ouverte si possible).
-
-**Pas de migration DB** — toutes les tables nécessaires existent déjà (`pricing_cards`, `gift_vouchers`, `client_cards`, `reservations`).
-
-## 6. Points techniques
-
-- Sheet glissable : utiliser `vaul` (déjà dans l'écosystème shadcn `drawer.tsx`) — supporte snap points + drag natif.
-- Fond semi-transparent : `bg-background/85 backdrop-blur-sm` sur le content, **pas d'overlay opaque** (override `DrawerOverlay` avec `bg-transparent`).
-- Validation step-by-step : `currentStep` state local + désactivation du bouton "Continuer" si conditions non remplies.
-- L'attribution est un tableau : `[{ participantIndex, method: 'unit'|'formula'|'voucher'|'existing_cards', payload }]`.
-
-## Non-inclus / à confirmer plus tard
-
-- Le mode "carte yoga existante du compte" (solde > 0) sera proposé en haut du popup si l'utilisateur connecté a déjà des cartes — confirmera l'UX exacte après première itération.
+## Validation
+- Parcourir manuellement le tunnel : non-connecté → formule → signup → vérifier que la formule reste à choisir et que le total reflète bien le prix de la formule.
+- Tester le bouton retour navigateur à chaque étape (desktop + mobile).
+- Vérifier que « Continuer » de l'étape 2 reste désactivé tant qu'aucune option d'identité n'est choisie.

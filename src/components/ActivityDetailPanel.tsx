@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, Euro, MapPin, Users, Sparkles, CalendarDays, ClipboardList } from "lucide-react";
+import { X, User, Euro, MapPin, Users, Sparkles, CalendarDays, ClipboardList, Clock, ChevronDown } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RecurringGrid, MonthWorkshops } from "@/components/PlanningTypeView";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
@@ -116,6 +117,26 @@ export default function ActivityDetailPanel({
       ? `${spotsLeft} disponible${spotsLeft > 1 ? "s" : ""}`
       : `${(item as any).spots ?? "—"} max`;
 
+  // Compute duration from first available schedule (course) or the workshop itself
+  const computeDuration = (start?: string, end?: string) => {
+    if (!start || !end) return null;
+    const [sh, sm] = start.split(":").map(Number);
+    const [eh, em] = end.split(":").map(Number);
+    if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return null;
+    let mins = eh * 60 + em - (sh * 60 + sm);
+    if (mins <= 0) return null;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h && m) return `${h}h${m.toString().padStart(2, "0")}`;
+    if (h) return `${h}h`;
+    return `${m} min`;
+  };
+  const durationLabel = workshop
+    ? computeDuration(workshop.time, workshop.end_time)
+    : schedules[0]
+    ? computeDuration(schedules[0].time, schedules[0].end_time)
+    : null;
+
   const filteredCourses = course ? allCourses.filter((c) => c.id === course.id) : [];
   const filteredSchedules = course ? schedules.filter((s) => s.course_id === course.id) : [];
 
@@ -214,6 +235,12 @@ export default function ActivityDetailPanel({
                       </div>
                       <div className="text-sm font-medium">{places}</div>
                     </div>
+                    <div className="rounded-xl bg-muted/50 p-3 col-span-2">
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5">
+                        <Clock className="h-3 w-3" /> Durée
+                      </div>
+                      <div className="text-sm font-medium">{durationLabel || "—"}</div>
+                    </div>
                   </div>
 
                   {course && filteredSchedules.length > 0 && (
@@ -234,10 +261,27 @@ export default function ActivityDetailPanel({
                   )}
                 </MetaBlock>
 
-                {/* META-BLOC : Formules (yoga only) */}
+                {/* META-BLOC : Formules (yoga only) — repliable */}
                 {course && yogaCards.length > 0 && (
                   <MetaBlock icon={Sparkles} title="Formules Cartes Yoga">
-                    <YogaFormulasBlock pricingCards={yogaCards} showHeader={false} />
+                    <Collapsible>
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                        Vous pouvez acheter un cours à l'unité ou plusieurs cartes de yoga
+                        utilisables quand vous le souhaitez pendant la durée de validité.
+                      </p>
+                      <CollapsibleTrigger asChild>
+                        <button
+                          type="button"
+                          className="group inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                        >
+                          Voir les formules
+                          <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180" />
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-4">
+                        <YogaFormulasBlock pricingCards={yogaCards} showHeader={false} />
+                      </CollapsibleContent>
+                    </Collapsible>
                   </MetaBlock>
                 )}
 

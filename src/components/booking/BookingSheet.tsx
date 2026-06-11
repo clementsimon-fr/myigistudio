@@ -94,7 +94,7 @@ export default function BookingSheet({
   const [registering, setRegistering] = useState(false);
   const [showStripe, setShowStripe] = useState(false);
 
-  // Init participants on open
+  // Init participants on open (do NOT reset on profile change to preserve attributions after inline signup)
   useEffect(() => {
     if (!open) return;
     setStep(1);
@@ -103,7 +103,17 @@ export default function BookingSheet({
     setAttributions({});
     setGuestMode(false);
     setParticipants([{ name: currentProfile?.name || "", isMe: !!currentProfile }]);
-  }, [open, currentProfile?.id, currentProfile?.name]);
+  }, [open]);
+
+  // Sync participant 0 if profile changes mid-session (signup/login inside the flow)
+  useEffect(() => {
+    if (!open) return;
+    setParticipants((prev) => {
+      if (prev.length === 0) return prev;
+      const [first, ...rest] = prev;
+      return [{ name: currentProfile?.name || first.name, isMe: !!currentProfile }, ...rest];
+    });
+  }, [currentProfile?.id, currentProfile?.name, open]);
 
   // Load pricing cards (yoga only)
   useEffect(() => {
@@ -213,20 +223,23 @@ export default function BookingSheet({
   };
 
   // ----- Step gating -----
+  const identityChosen = !!currentProfile || guestMode;
   const canNext = () => {
     if (step === 1) return !!selected;
-    if (step === 2) return participants.length > 0 && participants.every((p) => p.name.trim().length > 0);
-    if (step === 3) return allAttributed;
-    if (step === 4) return conditionsAccepted;
+    if (step === 2) return identityChosen && (participants[0]?.name.trim().length > 0);
+    if (step === 3) return participants.length > 0 && participants.every((p) => p.name.trim().length > 0);
+    if (step === 4) return allAttributed;
+    if (step === 5) return conditionsAccepted;
     return true;
   };
 
   const STEPS = [
     { n: 1, label: "Date", icon: CalendarDays },
-    { n: 2, label: "Participants", icon: Users },
-    { n: 3, label: "Tarif", icon: Euro },
-    { n: 4, label: "Conditions", icon: FileCheck },
-    { n: 5, label: "Paiement", icon: CreditCard },
+    { n: 2, label: "Qui réserve ?", icon: Users },
+    { n: 3, label: "Participants", icon: Users },
+    { n: 4, label: "Tarif", icon: Euro },
+    { n: 5, label: "Conditions", icon: FileCheck },
+    { n: 6, label: "Paiement", icon: CreditCard },
   ];
 
   // ----- Auth handlers (from picker) -----
@@ -237,9 +250,11 @@ export default function BookingSheet({
       setRegistering(false);
       setAuthMode(null);
       toast({ title: "Compte créé ✓", description: "Vous pouvez maintenant choisir une formule." });
-      // Re-open the picker so the user finishes on the tarif step
+      // Return user to the Tarif step (4) and re-open the picker so they explicitly re-select.
+      // No auto-attribution of pendingFormula — the user must click it again.
+      setStep(4);
       if (pendingFormula) {
-        setPickerOpen(true);
+        setTimeout(() => setPickerOpen(true), 50);
       }
     }, 1200);
   };
@@ -253,6 +268,36 @@ export default function BookingSheet({
   useEffect(() => {
     if (open && rootRef.current) {
       rootRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [step, open]);
+
+  // Browser back: sync booking step with browser history
+  useEffect(() => {
+    if (!open) return;
+    window.history.pushState({ bookingStep: step }, "");
+    const handler = (e: PopStateEvent) => {
+      const target = (e.state && (e.state as any).bookingStep) as number | undefined;
+      if (typeof target === "number" && target >= 1 && target <= 6) {
+        setStep(target);
+      } else {
+        setStep((s) => {
+          const next = Math.max(1, s - 1);
+          window.history.pushState({ bookingStep: next }, "");
+          return next;
+        });
+      }
+    };
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const prevStepRef = useRef(step);
+  useEffect(() => {
+    if (!open) return;
+    if (prevStepRef.current !== step) {
+      window.history.pushState({ bookingStep: step }, "");
+      prevStepRef.current = step;
     }
   }, [step, open]);
 
@@ -348,11 +393,66 @@ export default function BookingSheet({
                     </div>
                   )}
 
-                  {/* STEP 2 — Participants */}
+                  {/* STEP 2 — Qui réserve ? (uniquement le réservant) */}
                   {step === 2 && (
                     <div className="space-y-4 pt-2">
+                      <h3 className="text-sm font-semibold">Qui réserve ?</h3>
+                      {(() => {
+                        const p = participants[0];
+                        if (!p) return null;
+                        return (
+                          <div className="rounded-lg border bg-card p-3">
+                            <Label className="text-[11px] text-muted-foreground">Réservant</Label>
+                            {p.isMe ? (
+                              <div className="mt-1 flex items-center justify-between">
+                                <span className="text-sm font-medium">Moi — {p.name}</span>
+                                <Badge variant="secondary" className="text-[10px]">Connecté</Badge>
+                              </div>
+                            ) : (
+                              <div className="mt-1 space-y-2">
+                                <Input
+                                  placeholder="Votre prénom"
+                                  value={p.name}
+                                  onChange={(e) => updateParticipantName(0, e.target.value)}
+                                />
+                                {!guestMode ? (
+                                  <>
+                                    <p className="text-[11px] text-muted-foreground">
+                                      Choisissez une option pour continuer :
+                                    </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                      <Button size="sm" variant="outline" onClick={() => setAuthMode("login")}>
+                                        Se connecter
+                                      </Button>
+                                      <Button size="sm" variant="outline" onClick={() => setAuthMode("signup")}>
+                                        Créer un compte
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="border border-dashed" onClick={() => setGuestMode(true)}>
+                                        Continuer sans compte
+                                      </Button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <Badge variant="secondary" className="text-[10px]">Mode invité</Badge>
+                                    <button onClick={() => setGuestMode(false)} className="underline hover:text-foreground">
+                                      Changer
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* STEP 3 — Participants supplémentaires */}
+                  {step === 3 && (
+                    <div className="space-y-4 pt-2">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold">Combien êtes-vous ?</h3>
+                        <h3 className="text-sm font-semibold">Ajouter des participants</h3>
                         <div className="inline-flex items-center gap-2 rounded-lg border bg-background p-1">
                           <Button size="icon" variant="ghost" className="h-7 w-7"
                             onClick={() => setParticipantCount(Math.max(1, participants.length - 1))}
@@ -371,38 +471,13 @@ export default function BookingSheet({
                         {participants.map((p, i) => (
                           <div key={i} className="rounded-lg border bg-card p-3">
                             <Label className="text-[11px] text-muted-foreground">Participant {i + 1}</Label>
-                            {i === 0 && p.isMe ? (
+                            {i === 0 ? (
                               <div className="mt-1 flex items-center justify-between">
-                                <span className="text-sm font-medium">Moi — {p.name}</span>
-                                <Badge variant="secondary" className="text-[10px]">Connecté</Badge>
-                              </div>
-                            ) : i === 0 && !p.isMe ? (
-                              <div className="mt-1 space-y-2">
-                                <Input
-                                  placeholder="Votre prénom"
-                                  value={p.name}
-                                  onChange={(e) => updateParticipantName(i, e.target.value)}
-                                />
-                                {!guestMode ? (
-                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                    <Button size="sm" variant="outline" onClick={() => setAuthMode("login")}>
-                                      Se connecter
-                                    </Button>
-                                    <Button size="sm" variant="outline" onClick={() => setAuthMode("signup")}>
-                                      Créer un compte
-                                    </Button>
-                                    <Button size="sm" variant="ghost" className="border border-dashed" onClick={() => setGuestMode(true)}>
-                                      Continuer sans compte
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                    <Badge variant="secondary" className="text-[10px]">Mode invité</Badge>
-                                    <button onClick={() => setGuestMode(false)} className="underline hover:text-foreground">
-                                      Changer
-                                    </button>
-                                  </div>
-                                )}
+                                <span className="text-sm font-medium">
+                                  {p.isMe ? `Moi — ${p.name}` : p.name || "—"}
+                                </span>
+                                {p.isMe && <Badge variant="secondary" className="text-[10px]">Connecté</Badge>}
+                                {!p.isMe && guestMode && <Badge variant="secondary" className="text-[10px]">Invité</Badge>}
                               </div>
                             ) : (
                               <Input
@@ -414,16 +489,22 @@ export default function BookingSheet({
                             )}
                           </div>
                         ))}
+                        {participants.length === 1 && (
+                          <p className="text-[11px] text-muted-foreground">
+                            Vous pouvez continuer seul·e ou cliquer sur + pour ajouter des participants.
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
 
-                  {/* STEP 3 — Tarif */}
-                  {step === 3 && (
+                  {/* STEP 4 — Tarif */}
+                  {step === 4 && (
                     <div className="space-y-4 pt-2">
                       <h3 className="text-sm font-semibold">
                         {isYoga ? "Choisissez votre tarif" : "Mode de paiement"}
                       </h3>
+
 
                       <Button
                         onClick={() => { setPickerForParticipant(null); setPickerOpen(true); }}
@@ -468,8 +549,8 @@ export default function BookingSheet({
                     </div>
                   )}
 
-                  {/* STEP 4 — Conditions */}
-                  {step === 4 && (
+                  {/* STEP 5 — Conditions */}
+                  {step === 5 && (
                     <div className="space-y-3 pt-2">
                       <h3 className="text-sm font-semibold">Conditions</h3>
                       <div className="rounded-lg border bg-muted/30 max-h-72 overflow-y-auto divide-y">
@@ -502,8 +583,8 @@ export default function BookingSheet({
                     </div>
                   )}
 
-                  {/* STEP 5 — Récap */}
-                  {step === 5 && (
+                  {/* STEP 6 — Récap */}
+                  {step === 6 && (
                     <div className="space-y-3 pt-2">
                       <h3 className="text-sm font-semibold">Récapitulatif</h3>
                       <div className="rounded-xl border bg-card p-4 space-y-3">
@@ -552,7 +633,7 @@ export default function BookingSheet({
               <ChevronLeft className="h-4 w-4 mr-1" /> Précédent
             </Button>
           ) : <span />}
-          {step < 5 ? (
+          {step < 6 ? (
             <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext()}>
               Continuer <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
@@ -818,11 +899,6 @@ function FormulasPickerModal({
             {/* 4. Formules (yoga only) */}
             {isYoga && pricingCards.filter((c) => c.sessions > 1).length > 0 && (
               <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-px bg-border" />
-                  <span className="text-[11px] font-display font-semibold text-muted-foreground uppercase tracking-wide">ou choisir une formule</span>
-                  <div className="flex-1 h-px bg-border" />
-                </div>
                 <YogaFormulasBlock
                   pricingCards={pricingCards.filter((c) => c.sessions > 1)}
                   onSelectCard={handleFormula}
