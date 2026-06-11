@@ -224,52 +224,38 @@ export default function BookingSheet({
   // ----- Render -----
   const activityName = course?.name || workshop?.name || "";
 
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (open && rootRef.current) {
+      setTimeout(() => rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    }
+  }, [open]);
+
+  if (!open) return null;
+
   return (
     <>
-      <DrawerPrimitive.Root
-        open={open}
-        onOpenChange={(v) => !v && onClose()}
-        snapPoints={[0.25, 0.95]}
-        activeSnapPoint={snap}
-        setActiveSnapPoint={setSnap}
-        shouldScaleBackground={false}
+      <div
+        ref={rootRef}
+        className="mt-6 rounded-2xl border-2 border-primary/30 bg-background shadow-lg overflow-hidden"
       >
-        <DrawerPrimitive.Portal>
-          {/* Semi-transparent overlay (lets activity panel show through) */}
-          <DrawerPrimitive.Overlay className="fixed inset-0 z-[60] bg-foreground/20 backdrop-blur-[2px]" />
-          <DrawerPrimitive.Content
-            className="fixed inset-x-0 bottom-0 z-[60] flex flex-col rounded-t-3xl border bg-background/95 backdrop-blur-md shadow-2xl outline-none"
-            style={{ height: "95vh" }}
-          >
-            {/* Drag handle */}
-            <div className="mx-auto mt-2 mb-1 h-1.5 w-12 rounded-full bg-muted-foreground/30 shrink-0" />
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b bg-primary/5">
+          <div className="min-w-0">
+            <h2 className="font-display text-base font-semibold text-primary-dark truncate">
+              Réservation — {activityName}
+            </h2>
+            {selected && (
+              <p className="text-[11px] text-muted-foreground capitalize">
+                {new Date(selected.date + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} · {selected.time?.slice(0, 5)}
+              </p>
+            )}
+          </div>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-muted" aria-label="Fermer">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-2 border-b shrink-0">
-              <div className="min-w-0">
-                <DrawerPrimitive.Title className="font-display text-base font-semibold text-primary-dark truncate">
-                  Réservation — {activityName}
-                </DrawerPrimitive.Title>
-                {selected && (
-                  <p className="text-[11px] text-muted-foreground capitalize">
-                    {new Date(selected.date + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} · {selected.time?.slice(0, 5)}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setSnap(0.25)}
-                  className="p-2 rounded-full hover:bg-muted text-muted-foreground"
-                  title="Réduire"
-                  aria-label="Réduire"
-                >
-                  <ChevronRight className="h-4 w-4 rotate-90" />
-                </button>
-                <button onClick={onClose} className="p-2 rounded-full hover:bg-muted" aria-label="Fermer">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
 
             {/* Stepper */}
             <div className="px-5 pt-3 pb-2 shrink-0">
