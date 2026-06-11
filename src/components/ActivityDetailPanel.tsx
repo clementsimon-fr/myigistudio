@@ -9,6 +9,7 @@ import { RecurringGrid, MonthWorkshops } from "@/components/PlanningTypeView";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
+import YogaFormulasBlock, { YogaFormulasPricingCard } from "@/components/YogaFormulasBlock";
 
 const PLACEHOLDER_IMG = "/placeholder.svg";
 
