@@ -544,80 +544,28 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         </div>
       </section>
 
-      {/* Course description dialog */}
-      <Dialog open={!!descriptionCourse} onOpenChange={(open) => !open && setDescriptionCourse(null)}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          {descriptionCourse && (
-            <>
-              <DialogHeader><DialogTitle className="font-display">{descriptionCourse.name}</DialogTitle></DialogHeader>
-              <div className="space-y-5 pt-2">
-                <img src={descriptionCourse.image || PLACEHOLDER_IMG} alt={descriptionCourse.name} className="w-full rounded-lg object-cover max-h-64" />
+      {/* Activity detail slide-up panel — courses */}
+      <ActivityDetailPanel
+        open={!!descriptionCourse}
+        onClose={() => setDescriptionCourse(null)}
+        course={descriptionCourse}
+        schedules={schedules}
+        allCourses={courses}
+        instructorPhoto={descriptionCourse ? getInstructorPhoto(descriptionCourse.instructor_id, descriptionCourse.instructor) : undefined}
+        spotsLeft={descriptionCourse ? getCourseSpotsLeft(descriptionCourse.id) : undefined}
+        onBook={() => descriptionCourse && handleBookCourse(descriptionCourse)}
+      />
 
-                <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Description</h4>
-                  <div className="text-sm text-foreground/90 whitespace-pre-line leading-relaxed">{descriptionCourse.long_description || descriptionCourse.description}</div>
-                </div>
-
-                {descriptionCourse.intensity && descriptionCourse.intensity !== "none" && (
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Intensité</h4>
-                    <Badge variant="secondary" className="capitalize">{descriptionCourse.intensity}</Badge>
-                  </div>
-                )}
-
-                <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Planning type</h4>
-                  <RecurringGrid
-                    courses={courses.filter(c => c.id === descriptionCourse.id)}
-                    schedules={schedules.filter(s => s.course_id === descriptionCourse.id)}
-                  />
-                </div>
-
-                {yogaCards.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Les tarifs</h4>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Achetez une carte, ou plusieurs, et utilisez vos cours quand vous le souhaitez.
-                    </p>
-                    <YogaPricingCardsMini cards={yogaCards} />
-                  </div>
-                )}
-
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <InstructorBadge instructor={descriptionCourse.instructor} photo={getInstructorPhoto(descriptionCourse.instructor_id, descriptionCourse.instructor)} />
-                  <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionCourse.spots} places max</div>
-                </div>
-                <Button className={`w-full ${yogaStyle.bookBtn}`} onClick={() => { setDescriptionCourse(null); handleBookCourse(descriptionCourse); }}>Réserver</Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Workshop description dialog */}
-      <Dialog open={!!descriptionWs} onOpenChange={(open) => !open && setDescriptionWs(null)}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          {descriptionWs && (
-            <>
-              <DialogHeader><DialogTitle className="font-display">{descriptionWs.name}</DialogTitle></DialogHeader>
-              <div className="space-y-4 pt-2">
-                <img src={descriptionWs.image || PLACEHOLDER_IMG} alt={descriptionWs.name} className="w-full rounded-lg object-cover max-h-64" />
-                <div className="text-sm text-muted-foreground whitespace-pre-line">{descriptionWs.long_description || descriptionWs.description}</div>
-                <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1.5"><Euro className="h-3.5 w-3.5" /> {descriptionWs.price}€</div>
-                  <div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {descriptionWs.duration}</div>
-                  <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {descriptionWs.spots} places max</div>
-                </div>
-                {isFutureDate(descriptionWs.date) ? (
-                  <Button className={`w-full ${getCategoryStyle(descriptionWs.category).bookBtn}`} onClick={() => { const ws = descriptionWs; setDescriptionWs(null); handleBookGroup({ key: ws.id, workshops: [ws], linkedDates: [ws.date], isLinked: false }); }}>Réserver</Button>
-                ) : (
-                  <InterestForm activityName={descriptionWs.name} />
-                )}
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Activity detail slide-up panel — workshops */}
+      <ActivityDetailPanel
+        open={!!descriptionWs}
+        onClose={() => setDescriptionWs(null)}
+        workshop={descriptionWs}
+        workshopsList={workshops}
+        instructorPhoto={descriptionWs ? getInstructorPhoto(descriptionWs.instructor_id) : undefined}
+        spotsLeft={descriptionWs?.spots_left}
+        onBook={() => descriptionWs && isFutureDate(descriptionWs.date) && handleBookGroup({ key: descriptionWs.id, workshops: [descriptionWs], linkedDates: [descriptionWs.date], isLinked: false })}
+      />
     </>
   );
 }
