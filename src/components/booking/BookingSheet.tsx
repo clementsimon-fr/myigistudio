@@ -223,20 +223,23 @@ export default function BookingSheet({
   };
 
   // ----- Step gating -----
+  const identityChosen = !!currentProfile || guestMode;
   const canNext = () => {
     if (step === 1) return !!selected;
-    if (step === 2) return participants.length > 0 && participants.every((p) => p.name.trim().length > 0);
-    if (step === 3) return allAttributed;
-    if (step === 4) return conditionsAccepted;
+    if (step === 2) return identityChosen && (participants[0]?.name.trim().length > 0);
+    if (step === 3) return participants.length > 0 && participants.every((p) => p.name.trim().length > 0);
+    if (step === 4) return allAttributed;
+    if (step === 5) return conditionsAccepted;
     return true;
   };
 
   const STEPS = [
     { n: 1, label: "Date", icon: CalendarDays },
-    { n: 2, label: "Participants", icon: Users },
-    { n: 3, label: "Tarif", icon: Euro },
-    { n: 4, label: "Conditions", icon: FileCheck },
-    { n: 5, label: "Paiement", icon: CreditCard },
+    { n: 2, label: "Qui réserve ?", icon: Users },
+    { n: 3, label: "Participants", icon: Users },
+    { n: 4, label: "Tarif", icon: Euro },
+    { n: 5, label: "Conditions", icon: FileCheck },
+    { n: 6, label: "Paiement", icon: CreditCard },
   ];
 
   // ----- Auth handlers (from picker) -----
