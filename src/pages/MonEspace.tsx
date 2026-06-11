@@ -181,14 +181,11 @@ export default function MonEspace() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="default" className="gap-1.5" onClick={() => navigate("/?view=planning")}>
-                    <CalendarDays className="h-4 w-4" /> Réserver
+                  <Button size="sm" variant="default" className="gap-1.5" onClick={() => setSection("reservations")}>
+                    <CalendarDays className="h-4 w-4" /> Voir mes réservations
                   </Button>
-                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setSection("cartes"); setShowBuyCards(true); }}>
-                    <ShoppingCart className="h-4 w-4" /> Acheter une carte
-                  </Button>
-                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate("/bons-cadeaux")}>
-                    <Gift className="h-4 w-4" /> Bon cadeau
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setSection("profil")}>
+                    <User className="h-4 w-4" /> Mon profil
                   </Button>
                 </div>
               </div>

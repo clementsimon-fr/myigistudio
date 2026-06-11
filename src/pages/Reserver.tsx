@@ -21,6 +21,7 @@ import PurchaseOptions from "@/components/booking/PurchaseOptions";
 import FormulaInfoModal from "@/components/booking/FormulaInfoModal";
 import PaymentSummary from "@/components/booking/PaymentSummary";
 import ConfirmationPopup from "@/components/booking/ConfirmationPopup";
+import PostSignupChoice from "@/components/PostSignupChoice";
 import AddParticipant, { type ExtraParticipant } from "@/components/booking/AddParticipant";
 import type { DemoProfile } from "@/contexts/DemoContext";
 
@@ -281,6 +282,8 @@ export default function Reserver() {
 
   const [bookingStep, setBookingStep] = useState<BookingStep>("summary");
   const [registering, setRegistering] = useState(false);
+  const [showPostSignup, setShowPostSignup] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
 
   const [showStripeModal, setShowStripeModal] = useState(false);
   const [stripeAmount, setStripeAmount] = useState(0);
@@ -574,7 +577,8 @@ export default function Reserver() {
       createTempProfile(name);
       setIsNewUser(true);
       setRegistering(false);
-      goToStep("purchase_options");
+      setNewUserName(name);
+      setShowPostSignup(true);
     }, 2000);
   };
 
@@ -1408,6 +1412,15 @@ export default function Reserver() {
         onSuccess={handleStripeSuccess}
         amount={stripeAmount}
         description={stripeDescription}
+      />
+
+      {/* Post-signup choice */}
+      <PostSignupChoice
+        open={showPostSignup}
+        name={newUserName}
+        hasBookingInProgress={true}
+        onContinueBooking={() => { setShowPostSignup(false); goToStep("purchase_options"); }}
+        onGoToSpace={() => { setShowPostSignup(false); navigate("/mon-espace?welcome=1"); }}
       />
     </div>
   );

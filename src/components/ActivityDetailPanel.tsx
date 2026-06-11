@@ -8,8 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { RecurringGrid, MonthWorkshops } from "@/components/PlanningTypeView";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
+import { useDemoContext } from "@/contexts/DemoContext";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 import YogaFormulasBlock, { YogaFormulasPricingCard } from "@/components/YogaFormulasBlock";
+import InlineBookingFlow from "@/components/booking/InlineBookingFlow";
 
 const PLACEHOLDER_IMG = "/placeholder.svg";
 
@@ -50,22 +52,17 @@ export default function ActivityDetailPanel({
   onBook,
 }: ActivityDetailPanelProps) {
   const navigate = useNavigate();
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const { currentProfile } = useDemoContext();
+  const isLoggedIn = !!currentProfile;
   const [readMore, setReadMore] = useState(false);
+  const [showBooking, setShowBooking] = useState(false);
   const [yogaUnitPrice, setYogaUnitPrice] = useState<number | null>(null);
   const [yogaCards, setYogaCards] = useState<YogaFormulasPricingCard[]>([]);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setIsLoggedIn(!!data.user));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setIsLoggedIn(!!session?.user);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
     if (!open) return;
     setReadMore(false);
+    setShowBooking(false);
   }, [open, course?.id, workshop?.id]);
 
   useEffect(() => {
@@ -245,17 +242,30 @@ export default function ActivityDetailPanel({
 
 
 
+                {/* Inline booking flow */}
+                {showBooking && (
+                  <div className="mb-6">
+                    <InlineBookingFlow
+                      course={course}
+                      workshop={workshop}
+                      schedules={filteredSchedules}
+                      workshopsList={workshopsList.filter((w) => !workshop || w.name === workshop.name)}
+                      unitPrice={yogaUnitPrice}
+                      onDone={() => { setShowBooking(false); onClose(); }}
+                    />
+                  </div>
+                )}
+
                 {/* CTAs */}
                 <div className="space-y-2 sticky bottom-0 bg-background pt-2">
-                  <Button
-                    className={`w-full h-12 text-base font-semibold rounded-xl ${style.bookBtn}`}
-                    onClick={() => {
-                      onClose();
-                      onBook();
-                    }}
-                  >
-                    Réserver <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
+                  {!showBooking && (
+                    <Button
+                      className={`w-full h-12 text-base font-semibold rounded-xl ${style.bookBtn}`}
+                      onClick={() => setShowBooking(true)}
+                    >
+                      Réserver <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  )}
                   {!isLoggedIn && (
                     <Button
                       variant="outline"

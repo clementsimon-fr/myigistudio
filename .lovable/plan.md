@@ -1,61 +1,73 @@
-# Plan — Améliorations cohérence & UX
+# Plan — 7 corrections cohérence & UX
 
-## 1) Tarif activité + Formules Cartes Yoga centralisé
+## 1) Admin Boutons : modifications sans effet
+Cause probable : pas de `useDemo`/auth synchronisée + pas de retour visuel + cache local non rafraichi sur la home.
 
-- Dans `ActivityDetailPanel`, mettre à jour le bloc Tarif pour afficher exactement : **`X € ou 1 carte Yoga`** (au lieu de `1 carte (X€)`).
-- Extraire le contenu de `FormulaInfoModal` dans un composant réutilisable `YogaFormulasBlock` (présentation seule, basée sur `pricing_cards`) :
-  - Titre `✨ Formules Cartes Yoga` + intro
-  - Carte unitaire (fond vert) + séparateur "Ou" + cartes multiples
-  - **Ajout** : badge « -X% » calculé vs prix unitaire (`(1 - (price/sessions)/unitPrice) * 100`, arrondi)
-- `FormulaInfoModal` consomme ce composant (zéro régression).
-- Brancher `YogaFormulasBlock` dans `ActivityDetailPanel` pour les cours yoga : section visible juste sous le bloc Tarif/grille (replie l'ancien lien "Découvrir formules" s'il existe).
-- Tout futur usage du libellé "Formules Cartes Yoga" passera par ce composant.
+Actions :
+- `admin/Boutons.tsx` : après `update`, recharger la liste (`load()`), conserver le toast existant, ajouter un état `dirty` pour activer le bouton Enregistrer uniquement si changement.
+- `ActivityFilterBar.tsx` : exposer un canal de refresh — utiliser une `queryKey` react-query (`["home_buttons"]`) au lieu d'un `useEffect`+state. Idem dans la page admin → `invalidateQueries(["home_buttons"])` après sauvegarde, pour que la home se mette à jour sans rechargement.
+- Vérifier que les RLS autorisent bien l'écriture (déjà OK : policy `authenticated`). Si l'utilisateur admin de démo n'est pas authentifié Supabase, ajouter une policy lecture/écriture publique sur `home_buttons` (mode démo).
 
-## 2) Admin Contenu → page "Boutons"
+## 2) Clic sur événement ponctuel en accueil
+Aujourd'hui `handleProgrammeEventClick` scrolle vers une carte. Demande : ouvrir la fiche activité.
 
-- Nouvelle table `home_buttons` :
-  - `key` (yoga | poterie | decouvrir) unique
-  - `title` (texte affiché)
-  - `icon_url` (image dans bucket `activity-images`)
-  - `sort_order`
-- Seed des 3 lignes par défaut.
-- Page admin `/admin/boutons` (CRUD : modifier titre + uploader logo) sous le menu Contenu de la sidebar.
-- `ActivityFilterBar` lit les titres/icônes depuis cette table (fallback sur les valeurs actuelles).
+Actions :
+- Dans `ActivitiesView.tsx`, remplacer le scroll par : `setDescriptionWs(workshop)` (ou `setDescriptionCourse`) selon le type, ce qui ouvre l'`ActivityDetailPanel` directement.
 
-## 3) Déplacement "Évènements" dans Contenu
+## 3) Espace client (`MonEspace.tsx`)
+Refonte demandée :
+- Supprimer la rangée de raccourcis du haut (Réserver / Acheter carte / Bon cadeau).
+- Bloc "Bonjour {Prénom}" : intégrer un bouton **Mon profil** + un bouton **Voir mes réservations** (scroll vers l'onglet Réservations).
+- Conserver : 3 cartes synthèse, onglets, activité récente, bandeau Contacter Élodie.
+- Nettoyer les sections redondantes / espace vide.
 
-- Dans `AdminSidebar`, déplacer l'entrée Évènements dans le groupe Contenu (à côté de Découvrir / Boutons / Tarifs / etc.). Route inchangée.
+## 4) Page admin Clients : afficher les comptes créés en démo
+Aujourd'hui la page lit `profiles` (Supabase). Les comptes démo vivent dans `DemoContext` (localStorage).
 
-## 4) Comptes démo : masquer Marion & Sophie par défaut
+Actions :
+- `admin/Clients.tsx` : fusionner la liste Supabase avec `useDemoContext().userCreatedProfiles` (badge "Démo" sur ces lignes). Tri par date de création, dédoublonnage par id/prénom.
 
-- Dans `DemoContext`, distinguer les profils « seed » des profils créés via `signup`.
-- Sur l'écran Login (`Choisir un compte pour la démo`), n'afficher que les profils créés par l'utilisateur (stockés dans `LS_TEMP_PROFILES_KEY`).
-- Si la liste est vide → masquer le bloc + message "Aucun compte créé pour la démo".
+## 5) Popup post-création de compte invisible
+La popup existe dans `pages/Register.tsx`, mais le tunnel `/reserver` utilise `SignupBlock.tsx` qui ne l'affiche pas.
 
-## 5) Popup post-création de compte
+Actions :
+- Ajouter le même Dialog (Continuer la réservation / Découvrir l'espace client) dans le flux du tunnel : après `createTempProfile` côté `Reserver.tsx`, afficher `<PostSignupChoice />` (composant partagé extrait depuis Register).
+- Extraire le Dialog dans `src/components/PostSignupChoice.tsx` et le réutiliser dans Register + Reserver.
 
-- Après `signup` réussi (page Register / bloc Signup du tunnel), afficher un Dialog avec 2 boutons :
-  - **Continuer votre réservation** → revient au tunnel si une réservation est en cours, sinon vers `/reserver`.
-  - **Découvrir votre espace client** → `/mon-espace`.
-- Détection « réservation en cours » : présence d'un brouillon dans le state du tunnel ou query param `from=reserver`.
+## 6) Masquer "Se connecter ou créer un compte" si connecté
+`ActivityDetailPanel` teste `supabase.auth.getUser()` mais la démo utilise `DemoContext`. Donc toujours `false`.
 
-## 6) Amélioration espace client
+Action :
+- Remplacer la détection par `useDemoContext()` : `isLoggedIn = !!currentProfile`. Le CTA "Se connecter" disparaît dès qu'un compte est actif.
 
-Refonte de `MonEspace` pour densifier :
-- **Header de bienvenue** compact (avatar + prénom + raccourcis : Réserver / Acheter carte / Bon cadeau).
-- **3 cartes synthèse** en haut : Cartes Yoga restantes, Prochaine réservation, Bon cadeau actif.
-- **Onglets** : Réservations (à venir / historique), Mes cartes & achats, Bons cadeaux, Profil.
-- Section **Activité récente** (5 derniers événements : réservations, achats).
-- Bandeau **Contacter Elodie** en bas (réutilise `ContactElodieButton`).
+## 7) Refonte processus de réservation — Méta-bloc inline
+Aujourd'hui : clic Réserver → navigation vers `/reserver` (changement d'écran).
+
+Proposition : sous les boutons CTA de l'`ActivityDetailPanel`, dérouler un **méta-bloc de réservation inline** (sans navigation), avec 4 sections :
+
+```text
+[ Description / 4 blocs / Planning … ]
+─────────────────────────────────────
+ ▼  Réservation (déroulant)
+ 1. Choisissez votre date     → liste des prochaines dates (récurrent ou ponctuel)
+ 2. Participants              → +/- et ajout d'invités
+ 3. Tarif                     → "X cartes soit X €" (yoga) / "X €" (poterie)
+ 4. Mode de paiement
+   • Yoga :   [Commander] [Utiliser un bon cadeau] [Découvrir les formules]
+   • Poterie :[Commander] [Utiliser un bon cadeau]
+─────────────────────────────────────
+```
+
+Actions :
+- Nouveau composant `src/components/booking/InlineBookingFlow.tsx` réutilisant les briques existantes (`AddParticipant`, `PurchaseOptions`, `BookingSummary`, `FormulaInfoModal`, `MockStripeModal`).
+- Dans `ActivityDetailPanel`, le bouton **Réserver** déplie le bloc (au lieu de `navigate('/reserver')`).
+- Si l'utilisateur n'est pas connecté, l'étape 4 affiche d'abord `LoginBlock`/`SignupBlock` inline (mêmes composants que le tunnel actuel).
+- À la confirmation : appel des mêmes mutations qu'aujourd'hui + `ConfirmationPopup`.
+- La route `/reserver` est conservée (legacy / lien direct) mais n'est plus la cible par défaut depuis l'accueil.
 
 ## Détails techniques
 
-- Nouveau composant : `src/components/YogaFormulasBlock.tsx` consommé par `FormulaInfoModal` et `ActivityDetailPanel`.
-- Migration SQL : table `home_buttons` (key text PK, title text, icon_url text, sort_order int, timestamps) + GRANT authenticated/service_role + GRANT SELECT anon (lecture publique) + RLS (admin write via `has_role`).
-- Nouvelle page `src/pages/admin/Boutons.tsx` + route `/admin/boutons` + lien sidebar dans le groupe Contenu.
-- `AdminSidebar` : déplacer `Événements` sous Contenu.
-- `DemoContext` : exposer `userCreatedProfiles` distinct des seeds.
-- `Register.tsx` + `SignupBlock.tsx` : Dialog `PostSignupChoice`.
-- `MonEspace.tsx` : restructuration UI uniquement.
-
-Aucun changement de logique métier sur réservations, paiements, ou auth.
+- Aucun changement de schéma DB.
+- Nouveaux fichiers : `src/components/PostSignupChoice.tsx`, `src/components/booking/InlineBookingFlow.tsx`.
+- Fichiers modifiés : `ActivityFilterBar.tsx`, `admin/Boutons.tsx`, `ActivitiesView.tsx`, `MonEspace.tsx`, `admin/Clients.tsx`, `Reserver.tsx`, `ActivityDetailPanel.tsx`, `pages/Register.tsx`.
+- Réutilisation maximale des composants existants pour le booking inline (pas de duplication logique).
