@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Star } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { supabase } from "@/integrations/supabase/client";
 import StoryPanel from "@/components/StoryPanel";
 import filterYoga from "@/assets/filter-yoga.png";
 import filterPoterie from "@/assets/filter-poterie.png";
@@ -39,17 +40,39 @@ interface ActivityFilterBarProps {
   onSubFilterChange?: (value: string) => void;
 }
 
+interface HomeButtonRow {
+  key: string;
+  title: string;
+  icon_url: string | null;
+}
+
 export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFilterBarProps) {
   const { get: getSetting } = useSiteSettings();
   const [storyOpen, setStoryOpen] = useState(false);
+  const [overrides, setOverrides] = useState<Record<string, HomeButtonRow>>({});
+
+  useEffect(() => {
+    supabase.from("home_buttons").select("key, title, icon_url").then(({ data }) => {
+      if (!data) return;
+      const map: Record<string, HomeButtonRow> = {};
+      (data as any[]).forEach((r) => (map[r.key] = r));
+      setOverrides(map);
+    });
+  }, []);
 
   const getIcon = (f: typeof CATEGORY_FILTERS[0]) => {
+    const ov = overrides[f.value]?.icon_url;
+    if (ov) return ov;
     if (f.iconSettingKey) {
       const customUrl = getSetting(f.iconSettingKey, "");
       if (customUrl) return customUrl;
     }
     return f.icon || "";
   };
+
+  const getLabel = (key: string, fallback: string) => overrides[key]?.title || fallback;
+  const storyLabel = getLabel("decouvrir", "Histoire");
+  const storyIcon = overrides["decouvrir"]?.icon_url;
 
   return (
     <>
@@ -59,6 +82,7 @@ export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFi
             <div className="flex items-center justify-center gap-4 md:gap-8">
               {VISIBLE_FILTERS.map(f => {
                 const isActive = filter === f.value;
+                const label = getLabel(f.value, f.label);
                 return (
                   <button
                     key={f.value}
@@ -70,24 +94,27 @@ export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFi
                         isActive ? `${f.ringColor} shadow-md scale-105` : "ring-transparent hover:ring-muted-foreground/20"
                       }`}
                     >
-                      <img src={getIcon(f)} alt={f.label} className="w-full h-full object-cover" />
+                      <img src={getIcon(f)} alt={label} className="w-full h-full object-cover" />
                     </div>
                     <span className={`text-xs md:text-sm font-medium ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
-                      {f.label}
+                      {label}
                     </span>
                   </button>
                 );
               })}
 
-              {/* Story button */}
               <button
                 onClick={() => setStoryOpen(true)}
                 className="flex flex-col items-center gap-1.5"
               >
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center bg-gradient-to-br from-accent/30 to-primary/20 ring-2 ring-offset-2 ring-offset-emerald-50 ring-transparent hover:ring-accent transition-all hover:scale-105">
-                  <Star className="h-7 w-7 md:h-8 md:w-8 text-accent-foreground fill-accent" />
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden flex items-center justify-center bg-gradient-to-br from-accent/30 to-primary/20 ring-2 ring-offset-2 ring-offset-emerald-50 ring-transparent hover:ring-accent transition-all hover:scale-105">
+                  {storyIcon ? (
+                    <img src={storyIcon} alt={storyLabel} className="w-full h-full object-cover" />
+                  ) : (
+                    <Star className="h-7 w-7 md:h-8 md:w-8 text-accent-foreground fill-accent" />
+                  )}
                 </div>
-                <span className="text-xs md:text-sm font-medium text-muted-foreground">Histoire</span>
+                <span className="text-xs md:text-sm font-medium text-muted-foreground">{storyLabel}</span>
               </button>
             </div>
           </div>
