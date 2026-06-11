@@ -61,6 +61,12 @@ const sidebarGroups: SidebarGroup_[] = [
     ],
   },
   {
+    label: "Contenu",
+    items: [
+      { title: "Découvrir", url: "/admin/decouvrir", icon: Sparkles },
+    ],
+  },
+  {
     label: "Mon application",
     items: [
       { title: "Événement", url: "/admin/contenu", icon: FileText },
