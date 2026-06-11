@@ -604,12 +604,6 @@ export default function BookingSheet({
                     </div>
                   )}
 
-                  {cartCapacity < participants.length && cart.length > 0 && (
-                    <p className="text-xs text-amber-700">
-                      Il manque {participants.length - cartCapacity} place{participants.length - cartCapacity > 1 ? "s" : ""}.
-                      Ajoutez un tarif pour continuer.
-                    </p>
-                  )}
                 </div>
               )}
 
