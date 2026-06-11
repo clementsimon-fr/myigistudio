@@ -51,18 +51,11 @@ export default function ActivityDetailPanel({
   onBook,
 }: ActivityDetailPanelProps) {
   const navigate = useNavigate();
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const { currentProfile } = useDemoContext();
+  const isLoggedIn = !!currentProfile;
   const [readMore, setReadMore] = useState(false);
   const [yogaUnitPrice, setYogaUnitPrice] = useState<number | null>(null);
   const [yogaCards, setYogaCards] = useState<YogaFormulasPricingCard[]>([]);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setIsLoggedIn(!!data.user));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setIsLoggedIn(!!session?.user);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
 
   useEffect(() => {
     if (!open) return;
