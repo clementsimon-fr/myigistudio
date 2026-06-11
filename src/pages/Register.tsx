@@ -3,8 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CalendarCheck, LayoutDashboard, CheckCircle2 } from "lucide-react";
+import PostSignupChoice from "@/components/PostSignupChoice";
 import { useDemoContext } from "@/contexts/DemoContext";
 
 export default function Register() {
@@ -20,16 +19,6 @@ export default function Register() {
     if (!name.trim()) return;
     createTempProfile(name.trim());
     setShowChoice(true);
-  };
-
-  const handleContinueBooking = () => {
-    setShowChoice(false);
-    navigate(returnTo || "/reserver");
-  };
-
-  const handleGoToSpace = () => {
-    setShowChoice(false);
-    navigate("/mon-espace?welcome=1");
   };
 
   return (
@@ -62,27 +51,14 @@ export default function Register() {
         </div>
       </div>
 
-      <Dialog open={showChoice} onOpenChange={(o) => !o && handleGoToSpace()}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 font-display text-primary-dark">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              Compte créé !
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Bienvenue {name}. Que souhaitez-vous faire maintenant ?
-          </p>
-          <div className="grid gap-2 pt-2">
-            <Button className="w-full gap-2" onClick={handleContinueBooking}>
-              <CalendarCheck className="h-4 w-4" /> Continuer votre réservation
-            </Button>
-            <Button variant="outline" className="w-full gap-2" onClick={handleGoToSpace}>
-              <LayoutDashboard className="h-4 w-4" /> Découvrir votre espace client
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PostSignupChoice
+        open={showChoice}
+        name={name}
+        hasBookingInProgress={!!returnTo}
+        onContinueBooking={() => { setShowChoice(false); navigate(returnTo || "/reserver"); }}
+        onGoToSpace={() => { setShowChoice(false); navigate("/mon-espace?welcome=1"); }}
+      />
     </div>
   );
 }
+
