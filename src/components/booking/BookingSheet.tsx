@@ -744,6 +744,14 @@ function FormulasPickerModal({
               </p>
             </div>
 
+            {isYoga && (
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-[11px] font-display font-semibold text-muted-foreground uppercase tracking-wide">ou choisir un cours à l'unité</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+            )}
+
             {/* 2. Carte du compte (si connecté + cartes dispo) */}
             {isYoga && isConnected && existingCards > 0 && (
               <button
