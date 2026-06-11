@@ -1068,7 +1068,7 @@ export default function Reserver() {
                               return (
                                 <>
                                   <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Cours de yoga</span>
+                                    <span className="text-muted-foreground">{isYoga ? "1 carte" : "Cours"}</span>
                                     <span className="font-semibold">{price} €</span>
                                   </div>
                                   {reloadCard && (
