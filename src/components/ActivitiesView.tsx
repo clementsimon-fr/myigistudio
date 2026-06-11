@@ -232,25 +232,16 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
           )}
         </div>
         {hasFutureDate ? (
-          <div className="flex gap-2">
-            {(ws.long_description || ws.description) && (
-              <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => onDescription(ws)}>
-                <Info className="h-3 w-3" /> Description
-              </Button>
-            )}
-            <Button size="sm" className={`flex-1 text-xs ${style.bookBtn}`} onClick={() => onBook(group)} disabled={spotsLeft === 0}>
-              {spotsLeft === 0 ? "Complet" : "Réserver"}
-            </Button>
-          </div>
+          <Button size="sm" className={`w-full text-xs ${style.bookBtn}`} onClick={() => onDescription(ws)} disabled={spotsLeft === 0}>
+            {spotsLeft === 0 ? "Complet" : "Découvrir et réserver"}
+          </Button>
         ) : (
           <div className="space-y-2">
-            <div className="flex gap-2">
-              {(ws.long_description || ws.description) && (
-                <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => onDescription(ws)}>
-                  <Info className="h-3 w-3" /> Description
-                </Button>
-              )}
-            </div>
+            {(ws.long_description || ws.description) && (
+              <Button size="sm" variant="outline" className="w-full gap-1 text-xs" onClick={() => onDescription(ws)}>
+                <Info className="h-3 w-3" /> Découvrir
+              </Button>
+            )}
             <InterestForm activityName={ws.name} />
           </div>
         )}
