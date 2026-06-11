@@ -248,11 +248,13 @@ export default function BookingSheet({
   const activityName = course?.name || workshop?.name || "";
 
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll between steps for fluidity
   useEffect(() => {
     if (open && rootRef.current) {
-      setTimeout(() => rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      rootRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
-  }, [open]);
+  }, [step, open]);
 
   if (!open) return null;
 
