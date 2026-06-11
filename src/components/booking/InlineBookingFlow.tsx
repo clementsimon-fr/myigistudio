@@ -65,6 +65,14 @@ export default function InlineBookingFlow({ course, workshop, schedules = [], wo
   }, [course, workshop, schedules, workshopsList]);
 
   const [selectedIdx, setSelectedIdx] = useState(0);
+  const [pricingCards, setPricingCards] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isYoga) return;
+    supabase.from("pricing_cards").select("*").order("sort_order").then(({ data }) => {
+      if (data) setPricingCards(data as any[]);
+    });
+  }, [isYoga]);
   const selected = dates[selectedIdx];
   const [participants, setParticipants] = useState(1);
   const [showStripe, setShowStripe] = useState(false);
