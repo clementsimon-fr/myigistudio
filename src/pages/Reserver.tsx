@@ -21,6 +21,7 @@ import PurchaseOptions from "@/components/booking/PurchaseOptions";
 import FormulaInfoModal from "@/components/booking/FormulaInfoModal";
 import PaymentSummary from "@/components/booking/PaymentSummary";
 import ConfirmationPopup from "@/components/booking/ConfirmationPopup";
+import PostSignupChoice from "@/components/PostSignupChoice";
 import AddParticipant, { type ExtraParticipant } from "@/components/booking/AddParticipant";
 import type { DemoProfile } from "@/contexts/DemoContext";
 
