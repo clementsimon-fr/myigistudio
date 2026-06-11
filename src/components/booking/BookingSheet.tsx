@@ -818,11 +818,6 @@ function FormulasPickerModal({
             {/* 4. Formules (yoga only) */}
             {isYoga && pricingCards.filter((c) => c.sessions > 1).length > 0 && (
               <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-px bg-border" />
-                  <span className="text-[11px] font-display font-semibold text-muted-foreground uppercase tracking-wide">ou choisir une formule</span>
-                  <div className="flex-1 h-px bg-border" />
-                </div>
                 <YogaFormulasBlock
                   pricingCards={pricingCards.filter((c) => c.sessions > 1)}
                   onSelectCard={handleFormula}
