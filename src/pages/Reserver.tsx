@@ -1155,7 +1155,7 @@ export default function Reserver() {
                             </Button>
                             {isYoga && pricingCards.length > 0 && (
                               <Button variant="outline" className="w-full gap-2" onClick={() => setShowFormulasInline(true)}>
-                                <Eye className="h-4 w-4" /> Voir les formules carte yoga
+                                <ShoppingCart className="h-4 w-4" /> Acheter une carte ou une formule
                               </Button>
                             )}
                           </div>
