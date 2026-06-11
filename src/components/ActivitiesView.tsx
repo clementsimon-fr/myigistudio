@@ -503,7 +503,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         </section>
       )}
 
-      {(filter === "all" || filter === "yoga") && <PricingSection />}
+      
       <TeamSection />
 
       <section className="py-12 md:py-16">
