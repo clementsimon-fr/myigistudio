@@ -54,25 +54,11 @@ export default function LoginBlock({ onSelect, onBack }: LoginBlockProps) {
       {/* Demo account selector */}
       <div className="space-y-2">
         <p className="text-xs text-muted-foreground text-center">Choisir un compte pour la démo</p>
-        {CLIENT_DEFAULTS.map(card => {
-          const profile = getDefaultProfile(card.id);
-          return (
-            <button
-              key={card.id}
-              onClick={() => profile && onSelect(profile)}
-              className="w-full flex items-center gap-3 rounded-lg border bg-card p-3 text-left hover:border-primary/40 hover:bg-accent/50 transition-colors"
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
-                <User className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium text-sm text-foreground">{card.name}</p>
-                <p className="text-xs text-muted-foreground">{card.subtitle}</p>
-              </div>
-            </button>
-          );
-        })}
-
+        {tempProfiles.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center italic py-3">
+            Aucun compte créé pour la démo. Créez-en un depuis l'inscription.
+          </p>
+        )}
         {tempProfiles.map(p => (
           <button
             key={p.id}
@@ -89,6 +75,7 @@ export default function LoginBlock({ onSelect, onBack }: LoginBlockProps) {
           </button>
         ))}
       </div>
+
 
       <button onClick={onBack} className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors text-center py-2">
         ← Retour
