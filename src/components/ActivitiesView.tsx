@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import PricingSection from "@/components/home/PricingSection";
 import { RecurringGrid, MonthWorkshops } from "@/components/PlanningTypeView";
+import ActivityDetailPanel from "@/components/ActivityDetailPanel";
 import TeamSection from "@/components/home/TeamSection";
 import ContactElodieButton from "@/components/ContactElodieButton";
 import PotteryCalendar from "@/components/PotteryCalendar";
