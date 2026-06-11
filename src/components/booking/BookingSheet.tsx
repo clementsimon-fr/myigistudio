@@ -250,9 +250,11 @@ export default function BookingSheet({
       setRegistering(false);
       setAuthMode(null);
       toast({ title: "Compte créé ✓", description: "Vous pouvez maintenant choisir une formule." });
-      // Re-open the picker so the user finishes on the tarif step
+      // Return user to the Tarif step (4) and re-open the picker so they explicitly re-select.
+      // No auto-attribution of pendingFormula — the user must click it again.
+      setStep(4);
       if (pendingFormula) {
-        setPickerOpen(true);
+        setTimeout(() => setPickerOpen(true), 50);
       }
     }, 1200);
   };
@@ -266,6 +268,36 @@ export default function BookingSheet({
   useEffect(() => {
     if (open && rootRef.current) {
       rootRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [step, open]);
+
+  // Browser back: sync booking step with browser history
+  useEffect(() => {
+    if (!open) return;
+    window.history.pushState({ bookingStep: step }, "");
+    const handler = (e: PopStateEvent) => {
+      const target = (e.state && (e.state as any).bookingStep) as number | undefined;
+      if (typeof target === "number" && target >= 1 && target <= 6) {
+        setStep(target);
+      } else {
+        setStep((s) => {
+          const next = Math.max(1, s - 1);
+          window.history.pushState({ bookingStep: next }, "");
+          return next;
+        });
+      }
+    };
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const prevStepRef = useRef(step);
+  useEffect(() => {
+    if (!open) return;
+    if (prevStepRef.current !== step) {
+      window.history.pushState({ bookingStep: step }, "");
+      prevStepRef.current = step;
     }
   }, [step, open]);
 
