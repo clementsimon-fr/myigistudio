@@ -282,7 +282,6 @@ function YogaPricingCardsMini({ cards }: { cards: YogaPricingCard[] }) {
 }
 
 export default function ActivitiesView({ courses, workshops, schedules, filter, subFilter = "all", getInstructorPhoto, onSwitchToPlanning }: ActivitiesViewProps) {
-  const navigate = useNavigate();
   const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
   const [yogaMonthOffset, setYogaMonthOffset] = useState(0);
