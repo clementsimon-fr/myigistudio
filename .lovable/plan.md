@@ -1,73 +1,93 @@
-# Plan — 7 corrections cohérence & UX
+## Objectif
 
-## 1) Admin Boutons : modifications sans effet
-Cause probable : pas de `useDemo`/auth synchronisée + pas de retour visuel + cache local non rafraichi sur la home.
+Transformer le flux de réservation actuel (`InlineBookingFlow` intégré sous la fiche) en une **sheet de Réservation semi-transparente glissable** qui s'affiche par-dessus la fiche activité. L'utilisateur peut la faire glisser vers le bas à tout moment pour relire la fiche.
 
-Actions :
-- `admin/Boutons.tsx` : après `update`, recharger la liste (`load()`), conserver le toast existant, ajouter un état `dirty` pour activer le bouton Enregistrer uniquement si changement.
-- `ActivityFilterBar.tsx` : exposer un canal de refresh — utiliser une `queryKey` react-query (`["home_buttons"]`) au lieu d'un `useEffect`+state. Idem dans la page admin → `invalidateQueries(["home_buttons"])` après sauvegarde, pour que la home se mette à jour sans rechargement.
-- Vérifier que les RLS autorisent bien l'écriture (déjà OK : policy `authenticated`). Si l'utilisateur admin de démo n'est pas authentifié Supabase, ajouter une policy lecture/écriture publique sur `home_buttons` (mode démo).
+## 1. Sheet "Réservation" glissable
 
-## 2) Clic sur événement ponctuel en accueil
-Aujourd'hui `handleProgrammeEventClick` scrolle vers une carte. Demande : ouvrir la fiche activité.
+- Remplace l'affichage inline actuel par une **Sheet Radix** (ou drawer) ancrée en bas, par-dessus `ActivityDetailPanel`.
+- Comportement :
+  - Ouverture au clic sur "Réserver" → sheet à 90% de hauteur.
+  - Drag handle visible en haut (barre horizontale).
+  - Glissable verticalement : 3 snap points → plein écran / mi-hauteur (peek) / fermée.
+  - Fond semi-transparent (backdrop blur léger, pas d'overlay opaque) pour laisser deviner la fiche dessous.
+  - Bouton "×" pour fermer + chevron pour réduire en peek.
 
-Actions :
-- Dans `ActivitiesView.tsx`, remplacer le scroll par : `setDescriptionWs(workshop)` (ou `setDescriptionCourse`) selon le type, ce qui ouvre l'`ActivityDetailPanel` directement.
+## 2. Étapes dans la sheet
 
-## 3) Espace client (`MonEspace.tsx`)
-Refonte demandée :
-- Supprimer la rangée de raccourcis du haut (Réserver / Acheter carte / Bon cadeau).
-- Bloc "Bonjour {Prénom}" : intégrer un bouton **Mon profil** + un bouton **Voir mes réservations** (scroll vers l'onglet Réservations).
-- Conserver : 3 cartes synthèse, onglets, activité récente, bandeau Contacter Élodie.
-- Nettoyer les sections redondantes / espace vide.
+### Étape 1 — Date
+- Sélecteur horizontal des prochaines dates (déjà existant).
 
-## 4) Page admin Clients : afficher les comptes créés en démo
-Aujourd'hui la page lit `profiles` (Supabase). Les comptes démo vivent dans `DemoContext` (localStorage).
+### Étape 2 — Participants
+- Compteur +/− identique à aujourd'hui.
+- Pour chaque participant une **ligne** :
+  - **Participant 1** : si utilisateur connecté → libellé "Moi — {prénom}" (non éditable). Sinon → bouton "Se connecter" + champ "Prénom" en fallback.
+  - **Participants 2..n** : champ texte "Prénom" obligatoire.
 
-Actions :
-- `admin/Clients.tsx` : fusionner la liste Supabase avec `useDemoContext().userCreatedProfiles` (badge "Démo" sur ces lignes). Tri par date de création, dédoublonnage par id/prénom.
+### Étape 3 — Tarif / Moyens de paiement
+- **Pour Yoga** : libellé "Choisissez votre tarif" + bouton **"Choisir"** ouvrant le popup `FormulasModal` (voir §3).
+- **Pour Poterie** : même bouton "Choisir" ouvrant un popup simplifié (bon cadeau OU paiement direct).
+- Sous le bouton, affichage des **attributions par participant** :
+  ```text
+  Marie  → Carte Yoga x10 (formule)
+  Léa    → Bon cadeau #ABCD
+  Paul   → Carte à l'unité (17 €)
+  ```
+  Chaque ligne a un bouton "Modifier" qui rouvre le popup positionné sur ce participant.
+- L'étape n'est validée que si **chaque participant a un moyen de paiement attribué**.
 
-## 5) Popup post-création de compte invisible
-La popup existe dans `pages/Register.tsx`, mais le tunnel `/reserver` utilise `SignupBlock.tsx` qui ne l'affiche pas.
+### Étape 4 — Conditions
+- Checkbox "J'accepte les conditions" (lien vers page conditions).
+- Bouton "Continuer" désactivé tant que non cochée.
 
-Actions :
-- Ajouter le même Dialog (Continuer la réservation / Découvrir l'espace client) dans le flux du tunnel : après `createTempProfile` côté `Reserver.tsx`, afficher `<PostSignupChoice />` (composant partagé extrait depuis Register).
-- Extraire le Dialog dans `src/components/PostSignupChoice.tsx` et le réutiliser dans Register + Reserver.
+### Étape 5 — Récapitulatif + Paiement
+- Récap : activité, date/heure, lignes participants avec leur moyen de paiement, total à régler en € (somme des cartes unitaires + différentiel formules à acheter), 0 € si tout couvert par cartes existantes/bons.
+- Bouton **"Confirmer le paiement"** → mock Stripe si montant > 0, sinon confirmation directe.
 
-## 6) Masquer "Se connecter ou créer un compte" si connecté
-`ActivityDetailPanel` teste `supabase.auth.getUser()` mais la démo utilise `DemoContext`. Donc toujours `false`.
+## 3. Popup "Formules cartes yoga" (refondu)
 
-Action :
-- Remplacer la détection par `useDemoContext()` : `isLoggedIn = !!currentProfile`. Le CTA "Se connecter" disparaît dès qu'un compte est actif.
+Ordre vertical des options dans le popup :
 
-## 7) Refonte processus de réservation — Méta-bloc inline
-Aujourd'hui : clic Réserver → navigation vers `/reserver` (changement d'écran).
+1. **Bloc "Bon cadeau"** (nouveau, tout en haut) — champ code + bouton "Appliquer".
+2. **Bloc "Carte yoga à l'unité"** — prix = `unitPrice × nbParticipantsNonAttribués` (ex. 51 € pour 3 inscrits restants). Bouton "Utiliser" → attribue automatiquement aux participants restants.
+3. **Formules multi-cartes** (10 cartes, 20 cartes…) avec badge économie.
 
-Proposition : sous les boutons CTA de l'`ActivityDetailPanel`, dérouler un **méta-bloc de réservation inline** (sans navigation), avec 4 sections :
+### Sélection d'une formule
+- Au clic sur une formule, si non connecté → message "Vous devez créer un compte ou vous connecter" + 2 boutons (Se connecter / Créer un compte). À la fin du flux d'auth, l'utilisateur revient sur la sheet de réservation **dans l'état où il l'a laissée** (état persisté en `sessionStorage`).
+- Si connecté → ouverture d'un mini-sélecteur **"Qui utilise cette formule ?"** listant les participants non encore attribués. L'utilisateur coche un ou plusieurs participants.
+- Une formule peut couvrir plusieurs participants (consomme N cartes du solde).
 
-```text
-[ Description / 4 blocs / Planning … ]
-─────────────────────────────────────
- ▼  Réservation (déroulant)
- 1. Choisissez votre date     → liste des prochaines dates (récurrent ou ponctuel)
- 2. Participants              → +/- et ajout d'invités
- 3. Tarif                     → "X cartes soit X €" (yoga) / "X €" (poterie)
- 4. Mode de paiement
-   • Yoga :   [Commander] [Utiliser un bon cadeau] [Découvrir les formules]
-   • Poterie :[Commander] [Utiliser un bon cadeau]
-─────────────────────────────────────
-```
+### Bon cadeau
+- Idem yoga + poterie. Une fois validé → attribué à un participant choisi. Plusieurs bons cadeaux possibles (un par participant max).
 
-Actions :
-- Nouveau composant `src/components/booking/InlineBookingFlow.tsx` réutilisant les briques existantes (`AddParticipant`, `PurchaseOptions`, `BookingSummary`, `FormulaInfoModal`, `MockStripeModal`).
-- Dans `ActivityDetailPanel`, le bouton **Réserver** déplie le bloc (au lieu de `navigate('/reserver')`).
-- Si l'utilisateur n'est pas connecté, l'étape 4 affiche d'abord `LoginBlock`/`SignupBlock` inline (mêmes composants que le tunnel actuel).
-- À la confirmation : appel des mêmes mutations qu'aujourd'hui + `ConfirmationPopup`.
-- La route `/reserver` est conservée (legacy / lien direct) mais n'est plus la cible par défaut depuis l'accueil.
+## 4. Persistance d'état pour auth round-trip
 
-## Détails techniques
+- Sauvegarder dans `sessionStorage` (clé `pendingBooking`) : `{courseId|workshopId, date, participants[], attributions[]}` avant redirection auth.
+- Au montage de la page d'accueil, si `pendingBooking` présent ET user connecté → restaurer la sheet et réouvrir l'étape "Tarif".
 
-- Aucun changement de schéma DB.
-- Nouveaux fichiers : `src/components/PostSignupChoice.tsx`, `src/components/booking/InlineBookingFlow.tsx`.
-- Fichiers modifiés : `ActivityFilterBar.tsx`, `admin/Boutons.tsx`, `ActivitiesView.tsx`, `MonEspace.tsx`, `admin/Clients.tsx`, `Reserver.tsx`, `ActivityDetailPanel.tsx`, `pages/Register.tsx`.
-- Réutilisation maximale des composants existants pour le booking inline (pas de duplication logique).
+## 5. Fichiers concernés
+
+**Nouveaux**
+- `src/components/booking/BookingSheet.tsx` — sheet glissable + steppers internes.
+- `src/components/booking/ParticipantsStep.tsx` — saisie prénoms + "Moi".
+- `src/components/booking/PaymentAttributionStep.tsx` — bouton "Choisir" + table d'attributions.
+- `src/components/booking/FormulasPickerModal.tsx` — popup refondu (bon cadeau + unité + formules + sélecteur participants).
+- `src/components/booking/BookingRecap.tsx` — récap final.
+- `src/hooks/usePendingBooking.ts` — sauvegarde / restauration sessionStorage.
+
+**Modifiés**
+- `src/components/ActivityDetailPanel.tsx` — retirer `InlineBookingFlow` inline, ouvrir `BookingSheet` au clic "Réserver". La sheet est positionnée par-dessus le panel (`z-60`).
+- `src/components/booking/FormulaInfoModal.tsx` — remplacé / réutilisé par `FormulasPickerModal` (compat ascendante conservée).
+- `src/pages/Reserver.tsx` — déprécié (le `/reserver` route reste mais redirige vers la home avec sheet ouverte si possible).
+
+**Pas de migration DB** — toutes les tables nécessaires existent déjà (`pricing_cards`, `gift_vouchers`, `client_cards`, `reservations`).
+
+## 6. Points techniques
+
+- Sheet glissable : utiliser `vaul` (déjà dans l'écosystème shadcn `drawer.tsx`) — supporte snap points + drag natif.
+- Fond semi-transparent : `bg-background/85 backdrop-blur-sm` sur le content, **pas d'overlay opaque** (override `DrawerOverlay` avec `bg-transparent`).
+- Validation step-by-step : `currentStep` state local + désactivation du bouton "Continuer" si conditions non remplies.
+- L'attribution est un tableau : `[{ participantIndex, method: 'unit'|'formula'|'voucher'|'existing_cards', payload }]`.
+
+## Non-inclus / à confirmer plus tard
+
+- Le mode "carte yoga existante du compte" (solde > 0) sera proposé en haut du popup si l'utilisateur connecté a déjà des cartes — confirmera l'UX exacte après première itération.
