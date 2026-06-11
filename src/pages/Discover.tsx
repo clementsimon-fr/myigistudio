@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Loader2, Megaphone } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import ActivityFilterBar, { type FilterCategory, CATEGORY_FILTERS } from "@/components/ActivityFilterBar";
@@ -35,8 +36,9 @@ export default function Discover() {
   }, [searchParams, loading]);
 
   const featuredEventTitle = settingsReady ? getSetting("featured_event_title", "") : "";
-  const featuredEventLink = settingsReady ? getSetting("featured_event_link", "") : "";
+  const featuredEventDescription = settingsReady ? getSetting("featured_event_description", "") : "";
   const hasFeaturedEvent = !!featuredEventTitle;
+  const [eventOpen, setEventOpen] = useState(false);
 
   const subFilterOptions = useMemo(() => {
     if (filter === "all") return [];
@@ -73,17 +75,36 @@ export default function Discover() {
       <Navbar />
       <main className="flex-1">
         {hasFeaturedEvent && (
-          <Link
-            to={featuredEventLink || "/"}
-            className="block bg-[hsl(0,55%,58%)] text-white text-center py-2 px-3 text-xs md:text-sm font-medium hover:bg-[hsl(0,55%,50%)] transition-colors"
+          <button
+            type="button"
+            onClick={() => setEventOpen(true)}
+            className="w-full block bg-[hsl(0,55%,58%)] text-white text-center py-2 px-3 text-xs md:text-sm font-medium hover:bg-[hsl(0,55%,50%)] transition-colors"
           >
             <div className="container flex items-center justify-center gap-2 whitespace-nowrap overflow-hidden">
               <Megaphone className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
               <span className="truncate">{featuredEventTitle}</span>
-              <span className="hidden sm:inline text-white/70 flex-shrink-0">— Cliquez ici pour en savoir plus</span>
+              <span className="hidden sm:inline text-white/70 flex-shrink-0">— Cliquez pour en savoir plus</span>
             </div>
-          </Link>
+          </button>
         )}
+
+        <Dialog open={eventOpen} onOpenChange={setEventOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-display flex items-center gap-2">
+                <Megaphone className="h-5 w-5 text-primary" />
+                {featuredEventTitle}
+              </DialogTitle>
+            </DialogHeader>
+            {featuredEventDescription ? (
+              <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                {featuredEventDescription}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">Aucune description renseignée.</p>
+            )}
+          </DialogContent>
+        </Dialog>
 
 
         <ActivityFilterBar

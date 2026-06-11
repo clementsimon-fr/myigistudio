@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import PricingSection from "@/components/home/PricingSection";
+
 import { RecurringGrid, MonthWorkshops } from "@/components/PlanningTypeView";
 import ActivityDetailPanel from "@/components/ActivityDetailPanel";
 import TeamSection from "@/components/home/TeamSection";
@@ -503,7 +503,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         </section>
       )}
 
-      {(filter === "all" || filter === "yoga") && <PricingSection />}
+      
       <TeamSection />
 
       <section className="py-12 md:py-16">
