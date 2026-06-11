@@ -260,13 +260,16 @@ export default function BookingSheet({
     <>
       <div
         ref={rootRef}
-        className="mt-6 rounded-2xl border-2 border-primary/30 bg-background shadow-lg overflow-hidden"
+        className="mb-4 rounded-2xl border bg-card shadow-sm overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b bg-primary/5">
-          <div className="min-w-0">
-            <h2 className="font-display text-base font-semibold text-primary-dark truncate">
-              Réservation — {activityName}
+        <div className="flex items-center gap-2 px-5 py-3 border-b bg-muted/30">
+          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary">
+            <CreditCard className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-sm font-semibold text-primary-dark">
+              Réservation
             </h2>
             {selected && (
               <p className="text-[11px] text-muted-foreground capitalize">
@@ -274,9 +277,6 @@ export default function BookingSheet({
               </p>
             )}
           </div>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-muted" aria-label="Fermer">
-            <X className="h-4 w-4" />
-          </button>
         </div>
 
 
