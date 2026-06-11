@@ -242,40 +242,42 @@ export default function ActivityDetailPanel({
 
 
 
+                {/* Booking flow — inline under CTAs */}
+                <BookingSheet
+                  open={showBooking}
+                  onClose={() => setShowBooking(false)}
+                  course={course}
+                  workshop={workshop}
+                  schedules={filteredSchedules}
+                  workshopsList={workshopsList.filter((w) => !workshop || w.name === workshop.name)}
+                  unitPrice={yogaUnitPrice}
+                />
+
                 {/* CTAs */}
-                <div className="space-y-2 sticky bottom-0 bg-background pt-2">
-                  <Button
-                    className={`w-full h-12 text-base font-semibold rounded-xl ${style.bookBtn}`}
-                    onClick={() => setShowBooking(true)}
-                  >
-                    Réserver <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                  {!isLoggedIn && (
+                {!showBooking && (
+                  <div className="space-y-2 sticky bottom-0 bg-background pt-2">
                     <Button
-                      variant="outline"
-                      className="w-full h-11 rounded-xl"
-                      onClick={() => {
-                        onClose();
-                        navigate("/login");
-                      }}
+                      className={`w-full h-12 text-base font-semibold rounded-xl ${style.bookBtn}`}
+                      onClick={() => setShowBooking(true)}
                     >
-                      Se connecter ou créer un compte
+                      Réserver <ChevronRight className="h-4 w-4 ml-1" />
                     </Button>
-                  )}
-                </div>
+                    {!isLoggedIn && (
+                      <Button
+                        variant="outline"
+                        className="w-full h-11 rounded-xl"
+                        onClick={() => {
+                          onClose();
+                          navigate("/login");
+                        }}
+                      >
+                        Se connecter ou créer un compte
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* Booking sheet — overlays this panel */}
-            <BookingSheet
-              open={showBooking}
-              onClose={() => setShowBooking(false)}
-              course={course}
-              workshop={workshop}
-              schedules={filteredSchedules}
-              workshopsList={workshopsList.filter((w) => !workshop || w.name === workshop.name)}
-              unitPrice={yogaUnitPrice}
-            />
           </motion.div>
         </motion.div>
       )}

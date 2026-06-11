@@ -1,5 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
-import { Drawer as DrawerPrimitive } from "vaul";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CalendarDays, Users, Euro, FileCheck, CreditCard, Minus, Plus, X,
@@ -83,7 +82,7 @@ export default function BookingSheet({
   const [attributions, setAttributions] = useState<Record<number, AttributionMethod | null>>({});
   const [conditionsAccepted, setConditionsAccepted] = useState(false);
   const [pricingCards, setPricingCards] = useState<YogaFormulasPricingCard[]>([]);
-  const [snap, setSnap] = useState<number | string | null>(0.95);
+  const [guestMode, setGuestMode] = useState(false);
 
   // modals
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -100,7 +99,7 @@ export default function BookingSheet({
     setSelectedIdx(0);
     setConditionsAccepted(false);
     setAttributions({});
-    setSnap(0.95);
+    setGuestMode(false);
     setParticipants([{ name: currentProfile?.name || "", isMe: !!currentProfile }]);
   }, [open, currentProfile?.id, currentProfile?.name]);
 
@@ -225,52 +224,38 @@ export default function BookingSheet({
   // ----- Render -----
   const activityName = course?.name || workshop?.name || "";
 
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (open && rootRef.current) {
+      setTimeout(() => rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    }
+  }, [open]);
+
+  if (!open) return null;
+
   return (
     <>
-      <DrawerPrimitive.Root
-        open={open}
-        onOpenChange={(v) => !v && onClose()}
-        snapPoints={[0.25, 0.95]}
-        activeSnapPoint={snap}
-        setActiveSnapPoint={setSnap}
-        shouldScaleBackground={false}
+      <div
+        ref={rootRef}
+        className="mt-6 rounded-2xl border-2 border-primary/30 bg-background shadow-lg overflow-hidden"
       >
-        <DrawerPrimitive.Portal>
-          {/* Semi-transparent overlay (lets activity panel show through) */}
-          <DrawerPrimitive.Overlay className="fixed inset-0 z-[60] bg-foreground/20 backdrop-blur-[2px]" />
-          <DrawerPrimitive.Content
-            className="fixed inset-x-0 bottom-0 z-[60] flex flex-col rounded-t-3xl border bg-background/95 backdrop-blur-md shadow-2xl outline-none"
-            style={{ height: "95vh" }}
-          >
-            {/* Drag handle */}
-            <div className="mx-auto mt-2 mb-1 h-1.5 w-12 rounded-full bg-muted-foreground/30 shrink-0" />
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b bg-primary/5">
+          <div className="min-w-0">
+            <h2 className="font-display text-base font-semibold text-primary-dark truncate">
+              Réservation — {activityName}
+            </h2>
+            {selected && (
+              <p className="text-[11px] text-muted-foreground capitalize">
+                {new Date(selected.date + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} · {selected.time?.slice(0, 5)}
+              </p>
+            )}
+          </div>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-muted" aria-label="Fermer">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-2 border-b shrink-0">
-              <div className="min-w-0">
-                <DrawerPrimitive.Title className="font-display text-base font-semibold text-primary-dark truncate">
-                  Réservation — {activityName}
-                </DrawerPrimitive.Title>
-                {selected && (
-                  <p className="text-[11px] text-muted-foreground capitalize">
-                    {new Date(selected.date + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} · {selected.time?.slice(0, 5)}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setSnap(0.25)}
-                  className="p-2 rounded-full hover:bg-muted text-muted-foreground"
-                  title="Réduire"
-                  aria-label="Réduire"
-                >
-                  <ChevronRight className="h-4 w-4 rotate-90" />
-                </button>
-                <button onClick={onClose} className="p-2 rounded-full hover:bg-muted" aria-label="Fermer">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
 
             {/* Stepper */}
             <div className="px-5 pt-3 pb-2 shrink-0">
@@ -298,7 +283,8 @@ export default function BookingSheet({
             </div>
 
             {/* Body */}
-            <div className="flex-1 overflow-y-auto px-5 pb-32">
+            <div className="px-5 pb-4">
+
               <AnimatePresence mode="wait">
                 <motion.div
                   key={step}
@@ -372,14 +358,26 @@ export default function BookingSheet({
                                   value={p.name}
                                   onChange={(e) => updateParticipantName(i, e.target.value)}
                                 />
-                                <div className="flex gap-2">
-                                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setAuthMode("login")}>
-                                    Se connecter
-                                  </Button>
-                                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setAuthMode("signup")}>
-                                    Créer un compte
-                                  </Button>
-                                </div>
+                                {!guestMode ? (
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                    <Button size="sm" variant="outline" onClick={() => setAuthMode("login")}>
+                                      Se connecter
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => setAuthMode("signup")}>
+                                      Créer un compte
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="border border-dashed" onClick={() => setGuestMode(true)}>
+                                      Continuer sans compte
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <Badge variant="secondary" className="text-[10px]">Mode invité</Badge>
+                                    <button onClick={() => setGuestMode(false)} className="underline hover:text-foreground">
+                                      Changer
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <Input
@@ -509,27 +507,25 @@ export default function BookingSheet({
               </AnimatePresence>
             </div>
 
-            {/* Footer CTAs */}
-            <div className="absolute bottom-0 inset-x-0 bg-background/95 backdrop-blur-md border-t px-5 py-3 flex items-center justify-between gap-2">
-              {step > 1 ? (
-                <Button variant="ghost" onClick={() => setStep((s) => s - 1)}>
-                  <ChevronLeft className="h-4 w-4 mr-1" /> Précédent
-                </Button>
-              ) : <span />}
-              {step < 5 ? (
-                <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext()}>
-                  Continuer <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              ) : (
-                <Button onClick={handleConfirmPayment} className="gap-2">
-                  <CreditCard className="h-4 w-4" />
-                  {totalToPay > 0 ? `Confirmer le paiement (${totalToPay} €)` : "Confirmer la réservation"}
-                </Button>
-              )}
-            </div>
-          </DrawerPrimitive.Content>
-        </DrawerPrimitive.Portal>
-      </DrawerPrimitive.Root>
+        {/* Footer CTAs */}
+        <div className="border-t bg-muted/30 px-5 py-3 flex items-center justify-between gap-2">
+          {step > 1 ? (
+            <Button variant="ghost" onClick={() => setStep((s) => s - 1)}>
+              <ChevronLeft className="h-4 w-4 mr-1" /> Précédent
+            </Button>
+          ) : <span />}
+          {step < 5 ? (
+            <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext()}>
+              Continuer <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          ) : (
+            <Button onClick={handleConfirmPayment} className="gap-2">
+              <CreditCard className="h-4 w-4" />
+              {totalToPay > 0 ? `Confirmer le paiement (${totalToPay} €)` : "Confirmer la réservation"}
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* Picker modal */}
       <FormulasPickerModal
