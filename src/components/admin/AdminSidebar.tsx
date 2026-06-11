@@ -64,12 +64,13 @@ const sidebarGroups: SidebarGroup_[] = [
     label: "Contenu",
     items: [
       { title: "Découvrir", url: "/admin/decouvrir", icon: Sparkles },
+      { title: "Boutons", url: "/admin/boutons", icon: MousePointerClick },
+      { title: "Événement", url: "/admin/contenu", icon: FileText },
     ],
   },
   {
     label: "Mon application",
     items: [
-      { title: "Événement", url: "/admin/contenu", icon: FileText },
       { title: "Contrat", url: "/admin/contrat", icon: FileSignature, disabled: true },
       { title: "Fonctionnalités", url: "/admin/fonctionnalites", icon: Lightbulb, disabled: true },
       { title: "Paramètres", url: "/admin/parametres", icon: UserCircle, disabled: true },
