@@ -472,11 +472,24 @@ export default function BookingSheet({
                   {step === 4 && (
                     <div className="space-y-3 pt-2">
                       <h3 className="text-sm font-semibold">Conditions</h3>
-                      <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground max-h-56 overflow-y-auto leading-relaxed">
-                        En réservant, vous acceptez les conditions de réservation et d'annulation
-                        de MyIgiStudio. Les annulations sont possibles jusqu'à 12h avant le début
-                        du cours. Les cartes sont nominatives et valables pendant leur période
-                        de validité. Les bons cadeaux ne sont ni remboursables ni échangeables.
+                      <div className="rounded-lg border bg-muted/30 max-h-72 overflow-y-auto divide-y">
+                        {conditionsList.length === 0 ? (
+                          <p className="p-3 text-xs text-muted-foreground">
+                            En réservant, vous acceptez les conditions de réservation et d'annulation de MyIgiStudio.
+                          </p>
+                        ) : (
+                          conditionsList.map((c) => (
+                            <details key={c.id} className="group" open>
+                              <summary className="cursor-pointer list-none px-3 py-2 text-xs font-semibold text-primary-dark flex items-center justify-between hover:bg-muted/50">
+                                <span>{c.title}</span>
+                                <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
+                              </summary>
+                              <p className="px-3 pb-3 text-xs text-muted-foreground whitespace-pre-line leading-relaxed">
+                                {c.content}
+                              </p>
+                            </details>
+                          ))
+                        )}
                       </div>
                       <label className="flex items-start gap-2 cursor-pointer">
                         <Checkbox
@@ -484,7 +497,7 @@ export default function BookingSheet({
                           onCheckedChange={(c) => setConditionsAccepted(!!c)}
                           className="mt-0.5"
                         />
-                        <span className="text-sm">J'accepte les conditions de réservation</span>
+                        <span className="text-sm">J'ai lu et j'accepte l'ensemble des conditions</span>
                       </label>
                     </div>
                   )}
