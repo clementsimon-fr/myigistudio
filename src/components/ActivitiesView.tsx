@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Info, Users, Euro, Clock, Mail, ChevronLeft, ChevronRight, Repeat, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -232,25 +231,16 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
           )}
         </div>
         {hasFutureDate ? (
-          <div className="flex gap-2">
-            {(ws.long_description || ws.description) && (
-              <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => onDescription(ws)}>
-                <Info className="h-3 w-3" /> Description
-              </Button>
-            )}
-            <Button size="sm" className={`flex-1 text-xs ${style.bookBtn}`} onClick={() => onBook(group)} disabled={spotsLeft === 0}>
-              {spotsLeft === 0 ? "Complet" : "Réserver"}
-            </Button>
-          </div>
+          <Button size="sm" className={`w-full text-xs ${style.bookBtn}`} onClick={() => onDescription(ws)} disabled={spotsLeft === 0}>
+            {spotsLeft === 0 ? "Complet" : "Découvrir et réserver"}
+          </Button>
         ) : (
           <div className="space-y-2">
-            <div className="flex gap-2">
-              {(ws.long_description || ws.description) && (
-                <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => onDescription(ws)}>
-                  <Info className="h-3 w-3" /> Description
-                </Button>
-              )}
-            </div>
+            {(ws.long_description || ws.description) && (
+              <Button size="sm" variant="outline" className="w-full gap-1 text-xs" onClick={() => onDescription(ws)}>
+                <Info className="h-3 w-3" /> Découvrir
+              </Button>
+            )}
             <InterestForm activityName={ws.name} />
           </div>
         )}
@@ -292,7 +282,6 @@ function YogaPricingCardsMini({ cards }: { cards: YogaPricingCard[] }) {
 }
 
 export default function ActivitiesView({ courses, workshops, schedules, filter, subFilter = "all", getInstructorPhoto, onSwitchToPlanning }: ActivitiesViewProps) {
-  const navigate = useNavigate();
   const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
   const [yogaMonthOffset, setYogaMonthOffset] = useState(0);
@@ -352,25 +341,15 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const potteryStyle = getCategoryStyle("poterie");
 
   const handleBookCourse = (course: Course) => {
-    onSwitchToPlanning({ type: "course", id: course.id });
+    setDescriptionCourse(course);
   };
 
   const handleBookGroup = (group: WorkshopGroup) => {
-    if (group.isLinked) {
-      const ws = group.workshops[0];
-      onSwitchToPlanning({ type: "workshop", id: ws.id, date: ws.date });
-    } else {
-      const ws = group.workshops[0];
-      const urlParams = new URLSearchParams();
-      urlParams.set("type", "workshop");
-      urlParams.set("name", ws.name);
-      navigate(`/reserver?${urlParams.toString()}`);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    setDescriptionWs(group.workshops[0]);
   };
 
   const handleBookPotterySlot = (ws: Workshop) => {
-    onSwitchToPlanning({ type: "workshop", id: ws.id, date: ws.date });
+    setDescriptionWs(ws);
   };
 
   // descriptionCourseDays removed — "Jours de la semaine" block dropped per #2
@@ -497,14 +476,9 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
                       <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
                         <InstructorBadge instructor={course.instructor} photo={photo} />
                       </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="flex-1 gap-1 text-xs" onClick={() => setDescriptionCourse(course)}>
-                          <Info className="h-3 w-3" /> Description
-                        </Button>
-                        <Button size="sm" className={`flex-1 text-xs ${yogaStyle.bookBtn}`} onClick={() => handleBookCourse(course)} disabled={spotsLeft === 0}>
-                          {spotsLeft === 0 ? "Complet" : "Réserver"}
-                        </Button>
-                      </div>
+                      <Button size="sm" className={`w-full text-xs ${yogaStyle.bookBtn}`} onClick={() => setDescriptionCourse(course)} disabled={spotsLeft === 0}>
+                        {spotsLeft === 0 ? "Complet" : "Découvrir et réserver"}
+                      </Button>
                     </div>
                   </motion.div>
                 );

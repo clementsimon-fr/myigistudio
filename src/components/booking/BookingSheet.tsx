@@ -83,11 +83,13 @@ export default function BookingSheet({
   const [conditionsAccepted, setConditionsAccepted] = useState(false);
   const [pricingCards, setPricingCards] = useState<YogaFormulasPricingCard[]>([]);
   const [guestMode, setGuestMode] = useState(false);
+  const [conditionsList, setConditionsList] = useState<{ id: string; title: string; content: string }[]>([]);
 
   // modals
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerForParticipant, setPickerForParticipant] = useState<number | null>(null);
   const [pendingFormula, setPendingFormula] = useState<YogaFormulasPricingCard | null>(null);
+  const [formulaAuthConfirm, setFormulaAuthConfirm] = useState<YogaFormulasPricingCard | null>(null);
   const [authMode, setAuthMode] = useState<null | "login" | "signup">(null);
   const [registering, setRegistering] = useState(false);
   const [showStripe, setShowStripe] = useState(false);
@@ -111,6 +113,24 @@ export default function BookingSheet({
       .select("id,name,sessions,price,validity,popular,payment_info,sort_order")
       .order("sort_order")
       .then(({ data }) => { if (data) setPricingCards(data as any); });
+  }, [open, isYoga]);
+
+  // Load conditions
+  useEffect(() => {
+    if (!open) return;
+    supabase
+      .from("conditions")
+      .select("id,title,content,sort_order,active,applies_to")
+      .eq("active", true)
+      .order("sort_order")
+      .then(({ data }) => {
+        if (!data) return;
+        const applies = isYoga ? "yoga" : "poterie";
+        const filtered = (data as any[]).filter(
+          (c) => !c.applies_to || c.applies_to.length === 0 || c.applies_to.includes(applies) || c.applies_to.includes("all")
+        );
+        setConditionsList(filtered as any);
+      });
   }, [open, isYoga]);
 
   const selected = dates[selectedIdx];
@@ -216,8 +236,11 @@ export default function BookingSheet({
       createTempProfile(name);
       setRegistering(false);
       setAuthMode(null);
-      // user is now logged in — they need to re-pick a formula
       toast({ title: "Compte créé ✓", description: "Vous pouvez maintenant choisir une formule." });
+      // Re-open the picker so the user finishes on the tarif step
+      if (pendingFormula) {
+        setPickerOpen(true);
+      }
     }, 1200);
   };
 
@@ -225,11 +248,13 @@ export default function BookingSheet({
   const activityName = course?.name || workshop?.name || "";
 
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll between steps for fluidity
   useEffect(() => {
     if (open && rootRef.current) {
-      setTimeout(() => rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      rootRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
-  }, [open]);
+  }, [step, open]);
 
   if (!open) return null;
 
@@ -237,13 +262,16 @@ export default function BookingSheet({
     <>
       <div
         ref={rootRef}
-        className="mt-6 rounded-2xl border-2 border-primary/30 bg-background shadow-lg overflow-hidden"
+        className="mb-4 rounded-2xl border bg-card shadow-sm overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b bg-primary/5">
-          <div className="min-w-0">
-            <h2 className="font-display text-base font-semibold text-primary-dark truncate">
-              Réservation — {activityName}
+        <div className="flex items-center gap-2 px-5 py-3 border-b bg-muted/30">
+          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary">
+            <CreditCard className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-sm font-semibold text-primary-dark">
+              Réservation
             </h2>
             {selected && (
               <p className="text-[11px] text-muted-foreground capitalize">
@@ -251,9 +279,6 @@ export default function BookingSheet({
               </p>
             )}
           </div>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-muted" aria-label="Fermer">
-            <X className="h-4 w-4" />
-          </button>
         </div>
 
 
@@ -447,11 +472,24 @@ export default function BookingSheet({
                   {step === 4 && (
                     <div className="space-y-3 pt-2">
                       <h3 className="text-sm font-semibold">Conditions</h3>
-                      <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground max-h-56 overflow-y-auto leading-relaxed">
-                        En réservant, vous acceptez les conditions de réservation et d'annulation
-                        de MyIgiStudio. Les annulations sont possibles jusqu'à 12h avant le début
-                        du cours. Les cartes sont nominatives et valables pendant leur période
-                        de validité. Les bons cadeaux ne sont ni remboursables ni échangeables.
+                      <div className="rounded-lg border bg-muted/30 max-h-72 overflow-y-auto divide-y">
+                        {conditionsList.length === 0 ? (
+                          <p className="p-3 text-xs text-muted-foreground">
+                            En réservant, vous acceptez les conditions de réservation et d'annulation de MyIgiStudio.
+                          </p>
+                        ) : (
+                          conditionsList.map((c) => (
+                            <details key={c.id} className="group" open>
+                              <summary className="cursor-pointer list-none px-3 py-2 text-xs font-semibold text-primary-dark flex items-center justify-between hover:bg-muted/50">
+                                <span>{c.title}</span>
+                                <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
+                              </summary>
+                              <p className="px-3 pb-3 text-xs text-muted-foreground whitespace-pre-line leading-relaxed">
+                                {c.content}
+                              </p>
+                            </details>
+                          ))
+                        )}
                       </div>
                       <label className="flex items-start gap-2 cursor-pointer">
                         <Checkbox
@@ -459,7 +497,7 @@ export default function BookingSheet({
                           onCheckedChange={(c) => setConditionsAccepted(!!c)}
                           className="mt-0.5"
                         />
-                        <span className="text-sm">J'accepte les conditions de réservation</span>
+                        <span className="text-sm">J'ai lu et j'accepte l'ensemble des conditions</span>
                       </label>
                     </div>
                   )}
@@ -546,9 +584,33 @@ export default function BookingSheet({
         }}
         onRequireAuth={(formula) => {
           setPendingFormula(formula);
-          setAuthMode("signup");
+          setPickerOpen(false);
+          setFormulaAuthConfirm(formula);
         }}
       />
+
+      {/* Confirm-auth popup before formula signup */}
+      <Dialog open={!!formulaAuthConfirm} onOpenChange={(v) => !v && setFormulaAuthConfirm(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" /> Compte requis
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Les formules nécessitent de créer un compte (pour conserver vos cartes et votre historique).
+            Voulez-vous créer un compte&nbsp;?
+          </p>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="outline" onClick={() => { setFormulaAuthConfirm(null); setPendingFormula(null); setPickerOpen(true); }}>
+              Retour
+            </Button>
+            <Button onClick={() => { setFormulaAuthConfirm(null); setAuthMode("signup"); }}>
+              Créer un compte
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Auth dialog (inline) */}
       <Dialog open={!!authMode} onOpenChange={(v) => !v && setAuthMode(null)}>
@@ -681,7 +743,7 @@ function FormulasPickerModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-primary-dark">
             <Sparkles className="h-5 w-5" />
-            {step === "choose" ? "Choisir un moyen de paiement" : "À qui attribuer ?"}
+            {step === "choose" ? "Choisir votre mode de paiement" : "À qui attribuer ?"}
           </DialogTitle>
         </DialogHeader>
 
@@ -705,6 +767,14 @@ function FormulasPickerModal({
                 Vous pouvez saisir un bon cadeau pour chaque participant en répétant l'opération.
               </p>
             </div>
+
+            {isYoga && (
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-[11px] font-display font-semibold text-muted-foreground uppercase tracking-wide">ou choisir un cours à l'unité</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+            )}
 
             {/* 2. Carte du compte (si connecté + cartes dispo) */}
             {isYoga && isConnected && existingCards > 0 && (
@@ -750,7 +820,7 @@ function FormulasPickerModal({
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-px bg-border" />
-                  <span className="text-xs font-display font-semibold text-muted-foreground">Ou une formule</span>
+                  <span className="text-[11px] font-display font-semibold text-muted-foreground uppercase tracking-wide">ou choisir une formule</span>
                   <div className="flex-1 h-px bg-border" />
                 </div>
                 <YogaFormulasBlock
