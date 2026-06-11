@@ -1,77 +1,61 @@
-# Plan — Ajustements UX (6 points)
+# Plan — Améliorations cohérence & UX
 
-## 1. Meta-blocs sur l'accueil
-Sur `/` (Index) et `/discover`, encadrer le contenu en **deux sections globales en haut de page**, au-dessus de la liste actuelle :
-- **🔁 Événements récurrents** → contient le calendrier mensuel (cours hebdo Yoga/Pilates/Poterie)
-- **📅 Événements ponctuels** → contient les cartes de dates d'ateliers/stages
+## 1) Tarif activité + Formules Cartes Yoga centralisé
 
-Conteneurs visuels : titre + sous-titre + bordure légère + fond `muted/30`. Pas de changement de logique, seulement un wrapper qui groupe l'existant.
+- Dans `ActivityDetailPanel`, mettre à jour le bloc Tarif pour afficher exactement : **`X € ou 1 carte Yoga`** (au lieu de `1 carte (X€)`).
+- Extraire le contenu de `FormulaInfoModal` dans un composant réutilisable `YogaFormulasBlock` (présentation seule, basée sur `pricing_cards`) :
+  - Titre `✨ Formules Cartes Yoga` + intro
+  - Carte unitaire (fond vert) + séparateur "Ou" + cartes multiples
+  - **Ajout** : badge « -X% » calculé vs prix unitaire (`(1 - (price/sessions)/unitPrice) * 100`, arrondi)
+- `FormulaInfoModal` consomme ce composant (zéro régression).
+- Brancher `YogaFormulasBlock` dans `ActivityDetailPanel` pour les cours yoga : section visible juste sous le bloc Tarif/grille (replie l'ancien lien "Découvrir formules" s'il existe).
+- Tout futur usage du libellé "Formules Cartes Yoga" passera par ce composant.
 
-## 2. Refonte densité desktop (option b)
-Pas de zoom CSS. Au lieu de ça, sur `≥ lg` :
-- Réduire paddings sections : `py-16` → `py-10`, `py-12` → `py-8`
-- Réduire tailles titres : `text-5xl` → `text-4xl`, `text-4xl` → `text-3xl`
-- Réduire gaps grilles : `gap-8` → `gap-6`
-- Cartes activités : réduire image height (`h-64` → `h-52`) et padding interne
-- Navbar : `h-20` → `h-16` desktop
-- Container : passer `max-w-7xl` → `max-w-6xl` pour densifier la lecture
+## 2) Admin Contenu → page "Boutons"
 
-Cible : `src/index.css` (overrides utilitaires) + `Navbar.tsx`, `PricingSection.tsx`, `TeamSection.tsx`, `ActivitiesView.tsx`, `Discover.tsx`, page Index.
+- Nouvelle table `home_buttons` :
+  - `key` (yoga | poterie | decouvrir) unique
+  - `title` (texte affiché)
+  - `icon_url` (image dans bucket `activity-images`)
+  - `sort_order`
+- Seed des 3 lignes par défaut.
+- Page admin `/admin/boutons` (CRUD : modifier titre + uploader logo) sous le menu Contenu de la sidebar.
+- `ActivityFilterBar` lit les titres/icônes depuis cette table (fallback sur les valeurs actuelles).
 
-## 3. Mobile accueil
-- Boutons Poterie / Yoga **côte à côte** : `grid grid-cols-2 gap-3` au lieu de `flex-col`
-- Bande rouge événement : `whitespace-nowrap overflow-hidden text-ellipsis` + sur mobile, masquer le texte annexe "— Cliquez ici pour en savoir plus" (`hidden sm:inline`), réduire taille police (`text-xs` mobile)
+## 3) Déplacement "Évènements" dans Contenu
 
-## 4. Clic sur créneau → bonne carte
-Dans la vue accueil/Discover, quand l'utilisateur clique un créneau dans le bloc sous le calendrier, l'app doit :
-- Identifier l'`activityId` du créneau
-- Scroller jusqu'à la carte d'activité correspondante (`document.getElementById('activity-{id}')`)
-- Highlight visuel temporaire (ring 2s)
+- Dans `AdminSidebar`, déplacer l'entrée Évènements dans le groupe Contenu (à côté de Découvrir / Boutons / Tarifs / etc.). Route inchangée.
 
-Ajouter `id="activity-{id}"` sur chaque carte dans `ActivitiesView`, et brancher le `onClick` du créneau pour scroll smooth.
+## 4) Comptes démo : masquer Marion & Sophie par défaut
 
-## 5. Tunnel invité → création compte → retour propre
-**Persistance du contexte** :
-- Quand un invité clique "Créer un compte" depuis le tunnel, persister `{ activityType, activityId, date, time }` dans `localStorage` sous la clé `pendingBooking`.
-- Au retour sur `/reserver` (après login/register), repeupler l'état et **sauter** aux étapes activité+date déjà choisies.
+- Dans `DemoContext`, distinguer les profils « seed » des profils créés via `signup`.
+- Sur l'écran Login (`Choisir un compte pour la démo`), n'afficher que les profils créés par l'utilisateur (stockés dans `LS_TEMP_PROFILES_KEY`).
+- Si la liste est vide → masquer le bloc + message "Aucun compte créé pour la démo".
 
-**Affichage tunnel connecté (étape paiement)** :
-- Blocs séquentiels : **Votre activité** / **Votre date** / **Participants** (avec mention "connecté en tant que Prénom.X") / **Tarif**
-- Section **Tarif** :
-  - Ligne principale : "1 carte (X €)" — où X = prix unitaire de la séance
-  - Bouton primaire : **"Acheter une carte ou une formule"**
-  - Bouton secondaire : **"J'ai un bon cadeau"**
-- Au clic "Acheter une carte" → modal/section formule (déjà existante : `PurchaseOptions`)
-- Après choix formule → nouvelle section **Commande** affichée :
-  - Votre formule (nom + nb cours)
-  - Carte utilisée : 1
-  - Cartes restantes après réservation
-  - **Prix total = prix de la formule** (pas la séance unitaire)
+## 5) Popup post-création de compte
 
-Cible : `Reserver.tsx`, `PaymentSummary.tsx`, ajout d'un nouveau composant `OrderSummary.tsx`.
+- Après `signup` réussi (page Register / bloc Signup du tunnel), afficher un Dialog avec 2 boutons :
+  - **Continuer votre réservation** → revient au tunnel si une réservation est en cours, sinon vers `/reserver`.
+  - **Découvrir votre espace client** → `/mon-espace`.
+- Détection « réservation en cours » : présence d'un brouillon dans le state du tunnel ou query param `from=reserver`.
 
-## 6. Dupliquer une activité (admin)
-Sur `/admin/activites`, ajouter un bouton **"Dupliquer"** (icône Copy) sur chaque carte activité, à côté de "Modifier" / "Supprimer".
+## 6) Amélioration espace client
 
-Action : insert dans `courses` (ou `workshops` selon le type) avec :
-- `name` = `{original}.name + " (copie)"`
-- Tous les champs (description, prix, intervenant, inclusions, images, default_*) copiés
-- Sessions planifiées **non copiées** (planning vide)
-- `id` nouveau auto-généré
-
-Toast de confirmation + ouverture du drawer sur la copie pour édition immédiate.
+Refonte de `MonEspace` pour densifier :
+- **Header de bienvenue** compact (avatar + prénom + raccourcis : Réserver / Acheter carte / Bon cadeau).
+- **3 cartes synthèse** en haut : Cartes Yoga restantes, Prochaine réservation, Bon cadeau actif.
+- **Onglets** : Réservations (à venir / historique), Mes cartes & achats, Bons cadeaux, Profil.
+- Section **Activité récente** (5 derniers événements : réservations, achats).
+- Bandeau **Contacter Elodie** en bas (réutilise `ContactElodieButton`).
 
 ## Détails techniques
 
-- Pas de migration DB.
-- Composants nouveaux : `OrderSummary.tsx` (point 5).
-- Fichiers modifiés : `Index.tsx`, `Discover.tsx`, `ActivitiesView.tsx`, `Navbar.tsx`, `PricingSection.tsx`, `TeamSection.tsx`, `Reserver.tsx`, `PaymentSummary.tsx`, `LoginBlock.tsx`/`SignupBlock.tsx` (pour persister `pendingBooking`), `Activites.tsx` (admin, bouton duplicate), `index.css` (densité desktop).
-- `pendingBooking` en localStorage expire après 1h.
+- Nouveau composant : `src/components/YogaFormulasBlock.tsx` consommé par `FormulaInfoModal` et `ActivityDetailPanel`.
+- Migration SQL : table `home_buttons` (key text PK, title text, icon_url text, sort_order int, timestamps) + GRANT authenticated/service_role + GRANT SELECT anon (lecture publique) + RLS (admin write via `has_role`).
+- Nouvelle page `src/pages/admin/Boutons.tsx` + route `/admin/boutons` + lien sidebar dans le groupe Contenu.
+- `AdminSidebar` : déplacer `Événements` sous Contenu.
+- `DemoContext` : exposer `userCreatedProfiles` distinct des seeds.
+- `Register.tsx` + `SignupBlock.tsx` : Dialog `PostSignupChoice`.
+- `MonEspace.tsx` : restructuration UI uniquement.
 
-## Ordre d'exécution suggéré
-1. Point 6 (dupliquer) — isolé, rapide
-2. Point 3 (mobile accueil) — visuel rapide
-3. Point 1 (meta-blocs) — wrapper visuel
-4. Point 4 (scroll vers carte) — scroll + ids
-5. Point 2 (densité desktop) — passe globale
-6. Point 5 (tunnel invité→compte) — le plus gros, en dernier
+Aucun changement de logique métier sur réservations, paiements, ou auth.
