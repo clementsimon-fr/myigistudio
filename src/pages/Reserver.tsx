@@ -281,6 +281,8 @@ export default function Reserver() {
 
   const [bookingStep, setBookingStep] = useState<BookingStep>("summary");
   const [registering, setRegistering] = useState(false);
+  const [showPostSignup, setShowPostSignup] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
 
   const [showStripeModal, setShowStripeModal] = useState(false);
   const [stripeAmount, setStripeAmount] = useState(0);
