@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Info, Users, Euro, Clock, Mail, ChevronLeft, ChevronRight } from "lucide-react";
+import { Info, Users, Euro, Clock, Mail, ChevronLeft, ChevronRight, Repeat, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
