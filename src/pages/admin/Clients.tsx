@@ -175,11 +175,23 @@ export default function AdminClients() {
       phone: v.phone, email: v.email, address: v.address,
       prestations: Array.from(v.prestas), yogaCredits: v.yogaCredits,
     }));
+    // Inject demo temp profiles (créés via /register ou tunnel) si pas déjà présents
+    for (const tp of tempProfiles) {
+      if (!list.some(c => c.name.toLowerCase() === tp.name.toLowerCase())) {
+        list.push({
+          name: tp.name,
+          totalReservations: 0,
+          firstReservation: new Date().toISOString().split("T")[0],
+          prestations: ["Compte démo"],
+          yogaCredits: tp.credits || 0,
+        });
+      }
+    }
     setClients(list);
     setLoading(false);
   };
 
-  useEffect(() => { loadClients(); }, []);
+  useEffect(() => { loadClients(); }, [tempProfiles]);
 
   const allActivities = useMemo(() => {
     const set = new Set<string>();
