@@ -326,7 +326,7 @@ function TodayStats() {
             </div>
           </div>
         )}
-        <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => navigate("/admin/activites?tab=planning")}>
+        <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => navigate("/admin/planning")}>
           <ArrowRight className="h-3 w-3" /> Planning et réservations
         </Button>
       </CardContent>
