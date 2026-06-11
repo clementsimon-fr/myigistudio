@@ -83,11 +83,13 @@ export default function BookingSheet({
   const [conditionsAccepted, setConditionsAccepted] = useState(false);
   const [pricingCards, setPricingCards] = useState<YogaFormulasPricingCard[]>([]);
   const [guestMode, setGuestMode] = useState(false);
+  const [conditionsList, setConditionsList] = useState<{ id: string; title: string; content: string }[]>([]);
 
   // modals
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerForParticipant, setPickerForParticipant] = useState<number | null>(null);
   const [pendingFormula, setPendingFormula] = useState<YogaFormulasPricingCard | null>(null);
+  const [formulaAuthConfirm, setFormulaAuthConfirm] = useState<YogaFormulasPricingCard | null>(null);
   const [authMode, setAuthMode] = useState<null | "login" | "signup">(null);
   const [registering, setRegistering] = useState(false);
   const [showStripe, setShowStripe] = useState(false);
