@@ -53,6 +53,7 @@ export default function ActivityDetailPanel({
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [readMore, setReadMore] = useState(false);
   const [yogaUnitPrice, setYogaUnitPrice] = useState<number | null>(null);
+  const [yogaCards, setYogaCards] = useState<YogaFormulasPricingCard[]>([]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setIsLoggedIn(!!data.user));
