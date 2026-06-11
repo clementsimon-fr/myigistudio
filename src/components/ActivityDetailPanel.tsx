@@ -100,9 +100,9 @@ export default function ActivityDetailPanel({
     tarifLabel = workshop.price ? `${workshop.price} €` : "Gratuit";
   } else if (course) {
     if (yogaUnitPrice !== null) {
-      tarifLabel = `1 carte (${yogaUnitPrice} €)`;
+      tarifLabel = `${yogaUnitPrice} € ou 1 carte Yoga`;
     } else {
-      tarifLabel = "1 carte";
+      tarifLabel = "1 carte Yoga";
     }
   }
 
