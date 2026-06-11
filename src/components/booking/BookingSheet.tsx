@@ -358,14 +358,26 @@ export default function BookingSheet({
                                   value={p.name}
                                   onChange={(e) => updateParticipantName(i, e.target.value)}
                                 />
-                                <div className="flex gap-2">
-                                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setAuthMode("login")}>
-                                    Se connecter
-                                  </Button>
-                                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setAuthMode("signup")}>
-                                    Créer un compte
-                                  </Button>
-                                </div>
+                                {!guestMode ? (
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                    <Button size="sm" variant="outline" onClick={() => setAuthMode("login")}>
+                                      Se connecter
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => setAuthMode("signup")}>
+                                      Créer un compte
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="border border-dashed" onClick={() => setGuestMode(true)}>
+                                      Continuer sans compte
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <Badge variant="secondary" className="text-[10px]">Mode invité</Badge>
+                                    <button onClick={() => setGuestMode(false)} className="underline hover:text-foreground">
+                                      Changer
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <Input
