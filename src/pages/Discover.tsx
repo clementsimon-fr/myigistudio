@@ -75,12 +75,12 @@ export default function Discover() {
         {hasFeaturedEvent && (
           <Link
             to={featuredEventLink || "/"}
-            className="block bg-[hsl(0,55%,58%)] text-white text-center py-2.5 px-4 text-sm font-medium hover:bg-[hsl(0,55%,50%)] transition-colors"
+            className="block bg-[hsl(0,55%,58%)] text-white text-center py-2 px-3 text-xs md:text-sm font-medium hover:bg-[hsl(0,55%,50%)] transition-colors"
           >
-            <div className="container flex items-center justify-center gap-2">
-              <Megaphone className="h-4 w-4" />
-              <span>{featuredEventTitle}</span>
-              <span className="text-white/70">— Cliquez ici pour en savoir plus</span>
+            <div className="container flex items-center justify-center gap-2 whitespace-nowrap overflow-hidden">
+              <Megaphone className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
+              <span className="truncate">{featuredEventTitle}</span>
+              <span className="hidden sm:inline text-white/70 flex-shrink-0">— Cliquez ici pour en savoir plus</span>
             </div>
           </Link>
         )}

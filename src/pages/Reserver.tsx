@@ -1043,6 +1043,7 @@ export default function Reserver() {
                           <div className="rounded-lg border bg-card p-3 text-sm">
                             <span className="text-muted-foreground">Participant : </span>
                             <strong className="text-foreground">{currentProfile.name}</strong>
+                            <span className="ml-2 text-xs text-muted-foreground italic">(connecté en tant que {currentProfile.name})</span>
                           </div>
                           <AddParticipant
                             participants={extraParticipants}
@@ -1067,7 +1068,7 @@ export default function Reserver() {
                               return (
                                 <>
                                   <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Cours de yoga</span>
+                                    <span className="text-muted-foreground">{isYoga ? "1 carte" : "Cours"}</span>
                                     <span className="font-semibold">{price} €</span>
                                   </div>
                                   {reloadCard && (
@@ -1131,7 +1132,7 @@ export default function Reserver() {
                             </Button>
                             {isYoga && pricingCards.length > 0 && (
                               <Button variant="outline" className="w-full gap-2" onClick={() => setShowFormulasInline(true)}>
-                                <ShoppingCart className="h-4 w-4" /> Recharger les cartes yoga
+                                <ShoppingCart className="h-4 w-4" /> Acheter une carte ou une formule
                               </Button>
                             )}
                           </div>
@@ -1154,7 +1155,7 @@ export default function Reserver() {
                             </Button>
                             {isYoga && pricingCards.length > 0 && (
                               <Button variant="outline" className="w-full gap-2" onClick={() => setShowFormulasInline(true)}>
-                                <Eye className="h-4 w-4" /> Voir les formules carte yoga
+                                <ShoppingCart className="h-4 w-4" /> Acheter une carte ou une formule
                               </Button>
                             )}
                           </div>

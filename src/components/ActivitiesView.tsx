@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Info, Users, Euro, Clock, Mail, ChevronLeft, ChevronRight } from "lucide-react";
+import { Info, Users, Euro, Clock, Mail, ChevronLeft, ChevronRight, Repeat, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -314,11 +314,11 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
     const el = document.getElementById(cardId);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("ring-2", "ring-primary", "ring-offset-2");
+      el.classList.add("ring-2", "ring-primary", "ring-offset-2", "transition-all");
       setTimeout(() => {
-        el.classList.remove("ring-2", "ring-primary", "ring-offset-2");
+        el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "transition-all");
         if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-      }, 500);
+      }, 1800);
     }
   }, []);
 
@@ -380,32 +380,79 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
     return Math.min(...courseSchedules.map(s => s.spots_left));
   };
 
+  const yogaWorkshopsForMonth = useMemo(
+    () => workshops.filter(w => w.category === "yoga" && (subFilter === "all" || w.name === subFilter)),
+    [workshops, subFilter]
+  );
+  const hasRecurring = showYoga && coursesWithSchedules.length > 0;
+  const hasPonctuelYoga = showYoga && yogaWorkshopsForMonth.length > 0;
+
   return (
     <>
-      {/* ─── Yoga & Pilates ─── */}
-      {showYoga && coursesWithSchedules.length > 0 && (
-        <section className="py-12 md:py-16" data-planning-section>
-          <div className="container">
-            <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${yogaStyle.text}`}>Yoga & Pilates</h2>
+      {/* ─── Meta-bloc : Événements récurrents ─── */}
+      {hasRecurring && (
+        <section className="py-6 md:py-8 border-b bg-muted/20" data-planning-section>
+          <div className="container max-w-5xl">
+            <div className="flex items-center gap-2 mb-4 md:mb-5">
+              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 text-primary">
+                <Repeat className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 className="font-display text-lg md:text-xl font-bold text-primary-dark leading-tight">Événements récurrents</h2>
+                <p className="text-xs text-muted-foreground">Les cours hebdomadaires de Yoga & Pilates</p>
+              </div>
+            </div>
             <div className="flex items-center justify-center gap-2 mb-3">
               <button onClick={() => setYogaMonthOffset(o => o - 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronLeft className="h-4 w-4 text-muted-foreground" /></button>
-              <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground">
-                Planning du mois de {yogaMonthLabel}
+              <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground capitalize">
+                Planning de {yogaMonthLabel}
               </h3>
               <button onClick={() => setYogaMonthOffset(o => o + 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>
             </div>
-            <div className="mb-8 max-w-2xl mx-auto">
+            <div className="max-w-2xl mx-auto">
               <RecurringGrid courses={courses.filter(c => c.category === "yoga" && (subFilter === "all" || c.name === subFilter))} schedules={schedules} onEventClick={handleProgrammeEventClick} />
-              {(() => {
-                const yogaWs = workshops.filter(w => w.category === "yoga" && (subFilter === "all" || w.name === subFilter));
-                if (yogaWs.length === 0) return null;
-                return (
-                  <div className="mt-4">
-                    <MonthWorkshops workshops={yogaWs} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots monthDate={yogaMonthDate} hideEmptyMessage />
-                  </div>
-                );
-              })()}
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* ─── Meta-bloc : Événements ponctuels ─── */}
+      {(hasPonctuelYoga || showPoterie) && (
+        <section className="py-6 md:py-8 border-b bg-card">
+          <div className="container max-w-5xl">
+            <div className="flex items-center gap-2 mb-4 md:mb-5">
+              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-accent/15 text-accent-foreground">
+                <CalendarDays className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 className="font-display text-lg md:text-xl font-bold text-primary-dark leading-tight">Événements ponctuels</h2>
+                <p className="text-xs text-muted-foreground">Ateliers, stages et dates uniques</p>
+              </div>
+            </div>
+            {hasPonctuelYoga && (
+              <div className="max-w-2xl mx-auto mb-6">
+                <MonthWorkshops workshops={yogaWorkshopsForMonth} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots monthDate={yogaMonthDate} hideEmptyMessage />
+              </div>
+            )}
+            {showPoterie && (
+              <div className="max-w-lg mx-auto">
+                <PotteryCalendar
+                  workshops={workshops}
+                  subFilter={potterySubFilter}
+                  onSubFilterChange={setPotterySubFilter}
+                  onBook={handleBookPotterySlot}
+                />
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ─── Découvrir Yoga & Pilates ─── */}
+      {showYoga && coursesWithSchedules.length > 0 && (
+        <section className="py-8 md:py-10">
+          <div className="container">
+            <h2 className={`text-xl md:text-2xl font-display font-bold mb-5 md:mb-6 text-center ${yogaStyle.text}`}>Yoga & Pilates</h2>
             <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {coursesWithSchedules.map((course, i) => {
@@ -465,19 +512,11 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         </section>
       )}
 
-      {/* ─── Poterie (Calendly-style) ─── */}
+      {/* ─── Découvrir Poterie ─── */}
       {showPoterie && (
-        <section className={`py-12 md:py-16 ${showYoga && coursesWithSchedules.length > 0 ? "bg-secondary/10" : ""}`}>
+        <section className={`py-8 md:py-10 ${showYoga && coursesWithSchedules.length > 0 ? "bg-secondary/10" : ""}`}>
           <div className="container">
-            <h2 className={`text-xl md:text-3xl font-display font-bold mb-6 md:mb-8 text-center ${potteryStyle.text}`}>Poterie</h2>
-            <div className="mb-8 max-w-lg mx-auto">
-              <PotteryCalendar
-                workshops={workshops}
-                subFilter={potterySubFilter}
-                onSubFilterChange={setPotterySubFilter}
-                onBook={handleBookPotterySlot}
-              />
-            </div>
+            <h2 className={`text-xl md:text-2xl font-display font-bold mb-5 md:mb-6 text-center ${potteryStyle.text}`}>Poterie</h2>
             <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {potteryGroups.map((group, i) => (

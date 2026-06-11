@@ -51,15 +51,15 @@ export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFi
   return (
     <div className="sticky top-16 z-30">
       <div className="bg-emerald-50/60 backdrop-blur border-b">
-        <div className="container py-3">
-          <div className="flex items-center justify-center gap-3 flex-wrap">
+        <div className="container py-2 md:py-3">
+          <div className="grid grid-cols-2 gap-2 md:flex md:items-center md:justify-center md:gap-3 md:flex-wrap">
             {VISIBLE_FILTERS.map(f => {
               const isActive = filter === f.value;
               return (
                 <button
                   key={f.value}
                   onClick={() => onFilterChange(isActive ? "all" : f.value)}
-                  className={`rounded-2xl flex items-center gap-3 px-6 py-3 min-w-[200px] transition-all border-2 ${
+                  className={`rounded-2xl flex items-center gap-2 md:gap-3 px-3 md:px-6 py-2 md:py-3 md:min-w-[200px] transition-all border-2 ${
                     isActive
                       ? f.activeBg
                         ? `${f.activeBg} text-white border-transparent shadow-md`
@@ -67,12 +67,12 @@ export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFi
                       : "bg-white border-muted hover:border-muted-foreground/30 hover:shadow-sm"
                   }`}
                 >
-                  <img src={getIcon(f)} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-                  <div className="text-left">
-                    <span className={`block font-semibold text-sm leading-tight ${isActive ? "text-white" : "text-foreground"}`}>
-                      Voir les activités {f.label}
+                  <img src={getIcon(f)} alt="" className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover flex-shrink-0" />
+                  <div className="text-left min-w-0">
+                    <span className={`block font-semibold text-xs md:text-sm leading-tight truncate ${isActive ? "text-white" : "text-foreground"}`}>
+                      <span className="hidden md:inline">Voir les activités </span>{f.label}
                     </span>
-                    <span className={`block text-xs mt-0.5 ${isActive ? "text-white/80" : "text-muted-foreground"}`}>
+                    <span className={`hidden md:block text-xs mt-0.5 ${isActive ? "text-white/80" : "text-muted-foreground"}`}>
                       {f.value === "yoga" ? "Cours & planning" : "Activités & calendrier"}
                     </span>
                   </div>

@@ -1,59 +1,77 @@
-# Plan — Refonte admin (Partie 1) + Vérif bons cadeaux (Partie 2)
+# Plan — Ajustements UX (6 points)
 
-## Partie 1 — Admin
+## 1. Meta-blocs sur l'accueil
+Sur `/` (Index) et `/discover`, encadrer le contenu en **deux sections globales en haut de page**, au-dessus de la liste actuelle :
+- **🔁 Événements récurrents** → contient le calendrier mensuel (cours hebdo Yoga/Pilates/Poterie)
+- **📅 Événements ponctuels** → contient les cartes de dates d'ateliers/stages
 
-### 1. Menu ORGANISATION renommé et scindé
-`AdminSidebar.tsx` : remplacer l'unique entrée "Activités et réservations" par deux entrées :
-- **Fiches activités** → `/admin/activites` (édition des fiches d'activité uniquement : description, tarif, intervenant, inclusions…)
-- **Planning** → `/admin/planning` (vues Jour / Semaine / Mois + bouton "Ajouter un événement")
+Conteneurs visuels : titre + sous-titre + bordure légère + fond `muted/30`. Pas de changement de logique, seulement un wrapper qui groupe l'existant.
 
-Techniquement, `Activites.tsx` aujourd'hui mélange les deux. Je vais :
-- Conserver `/admin/activites` mais **n'y garder que la liste des fiches activités** (cards + drawer d'édition).
-- Créer une nouvelle page `Planning.tsx` montée sur `/admin/planning` qui contient le calendrier (Jour/Semaine/Mois) + le bouton "Ajouter un événement". Tout le code calendrier déjà présent y est déplacé tel quel.
+## 2. Refonte densité desktop (option b)
+Pas de zoom CSS. Au lieu de ça, sur `≥ lg` :
+- Réduire paddings sections : `py-16` → `py-10`, `py-12` → `py-8`
+- Réduire tailles titres : `text-5xl` → `text-4xl`, `text-4xl` → `text-3xl`
+- Réduire gaps grilles : `gap-8` → `gap-6`
+- Cartes activités : réduire image height (`h-64` → `h-52`) et padding interne
+- Navbar : `h-20` → `h-16` desktop
+- Container : passer `max-w-7xl` → `max-w-6xl` pour densifier la lecture
 
-### 2. Dialog "Ajouter un événement"
-`AddEventMetaDialog.tsx` : retirer la saisie **Prix (€)** et **Carte(s) yoga** du bloc Configuration. Ces valeurs viennent automatiquement de la fiche activité (`default_price`, `default_card_yoga_count`) — déjà préchargées, mais on rend les champs invisibles et on garde la valeur en state. Le commentaire d'aide précise "Le tarif est défini sur la fiche activité".
+Cible : `src/index.css` (overrides utilitaires) + `Navbar.tsx`, `PricingSection.tsx`, `TeamSection.tsx`, `ActivitiesView.tsx`, `Discover.tsx`, page Index.
 
-### 3. Fiche activité (drawer d'édition)
-Dans `Activites.tsx`, à l'ouverture d'une fiche :
-- **Supprimer la rubrique "Événement / Détailler l'événement"** (déjà nettoyée en Lot B mais il reste des vestiges, je passe une dernière passe).
-- **Déplacer le bloc "Tarif & inclusions"** hors de la rubrique Description, dans une **nouvelle rubrique dédiée "Tarif & inclusions"** affichée juste après Description.
+## 3. Mobile accueil
+- Boutons Poterie / Yoga **côte à côte** : `grid grid-cols-2 gap-3` au lieu de `flex-col`
+- Bande rouge événement : `whitespace-nowrap overflow-hidden text-ellipsis` + sur mobile, masquer le texte annexe "— Cliquez ici pour en savoir plus" (`hidden sm:inline`), réduire taille police (`text-xs` mobile)
 
-### 4. Suppression définitive de "Bien-être"
-Dans tous les fichiers listés (`src/pages/Reserver.tsx`, `src/data/mockData.ts`, `Reservations.tsx`, `Intervenants.tsx`, `Bonjour.tsx`, `Contenu.tsx`, `Activites.tsx`, `AteliersAdmin.tsx`, `ActivityCalendar.tsx`, `TestUX*.tsx`) :
-- Retirer toute entrée de catégorie/filtre `bien-etre` / `Bien-être` / `bien_etre`.
-- Remplacer toute donnée mock catégorisée Bien-être par Yoga, Pilates ou Poterie (selon le contexte).
-- Les pages `TestUX*` sont des bacs à sable expérimentaux — je nettoie aussi pour éviter la confusion en démo.
+## 4. Clic sur créneau → bonne carte
+Dans la vue accueil/Discover, quand l'utilisateur clique un créneau dans le bloc sous le calendrier, l'app doit :
+- Identifier l'`activityId` du créneau
+- Scroller jusqu'à la carte d'activité correspondante (`document.getElementById('activity-{id}')`)
+- Highlight visuel temporaire (ring 2s)
 
-### 5. Sync tarifs Yoga
-Sur `/admin/tarifs`, la modification d'une carte ne se propage pas. Investigation :
-- Vérifier que `pricing_cards` est la source de vérité.
-- Repérer les composants qui affichent les tarifs (page d'accueil `PricingSection`, tunnel de réservation `PurchaseOptions`, espace client `Cartes Yoga`).
-- S'assurer qu'ils lisent bien `pricing_cards` (et pas du data en dur). Si du data en dur subsiste, brancher sur le hook approprié.
+Ajouter `id="activity-{id}"` sur chaque carte dans `ActivitiesView`, et brancher le `onClick` du créneau pour scroll smooth.
 
-### 6. Grisé : Contrat / Fonctionnalités / Paramètres
-`AdminSidebar.tsx` — rubrique "Mon application" : afficher ces trois liens en `text-muted-foreground/50`, `cursor-not-allowed`, `pointer-events-none`, et retirer le `NavLink` (remplacé par un `div` non cliquable). Le label reste visible mais inactif.
+## 5. Tunnel invité → création compte → retour propre
+**Persistance du contexte** :
+- Quand un invité clique "Créer un compte" depuis le tunnel, persister `{ activityType, activityId, date, time }` dans `localStorage` sous la clé `pendingBooking`.
+- Au retour sur `/reserver` (après login/register), repeupler l'état et **sauter** aux étapes activité+date déjà choisies.
 
-## Partie 2 — Vérif bons cadeaux
+**Affichage tunnel connecté (étape paiement)** :
+- Blocs séquentiels : **Votre activité** / **Votre date** / **Participants** (avec mention "connecté en tant que Prénom.X") / **Tarif**
+- Section **Tarif** :
+  - Ligne principale : "1 carte (X €)" — où X = prix unitaire de la séance
+  - Bouton primaire : **"Acheter une carte ou une formule"**
+  - Bouton secondaire : **"J'ai un bon cadeau"**
+- Au clic "Acheter une carte" → modal/section formule (déjà existante : `PurchaseOptions`)
+- Après choix formule → nouvelle section **Commande** affichée :
+  - Votre formule (nom + nb cours)
+  - Carte utilisée : 1
+  - Cartes restantes après réservation
+  - **Prix total = prix de la formule** (pas la séance unitaire)
 
-Lecture seule + correctifs ponctuels si nécessaire. Je vérifie ces 3 chaînes :
+Cible : `Reserver.tsx`, `PaymentSummary.tsx`, ajout d'un nouveau composant `OrderSummary.tsx`.
 
-**Côté admin (`/admin/bons-cadeaux`)** : Elodie peut créer/supprimer/désactiver un bon cadeau (montant, code, bénéficiaire, validité).
+## 6. Dupliquer une activité (admin)
+Sur `/admin/activites`, ajouter un bouton **"Dupliquer"** (icône Copy) sur chaque carte activité, à côté de "Modifier" / "Supprimer".
 
-**Côté tunnel de réservation (`Reserver.tsx` + `PaymentSummary.tsx`)** : un client peut saisir un code bon cadeau, le montant est défalqué du total, le bon est marqué consommé.
+Action : insert dans `courses` (ou `workshops` selon le type) avec :
+- `name` = `{original}.name + " (copie)"`
+- Tous les champs (description, prix, intervenant, inclusions, images, default_*) copiés
+- Sessions planifiées **non copiées** (planning vide)
+- `id` nouveau auto-généré
 
-**Côté espace client (`MonEspace.tsx`)** : si le client est destinataire d'un bon, il le voit dans son espace ("Mes bons cadeaux") avec son solde restant.
-
-Pour chaque maillon je liste : ✅ fonctionne, ⚠️ à corriger (avec patch minimal), ❌ manquant (à signaler — pas implémenté dans ce lot sauf demande explicite).
+Toast de confirmation + ouverture du drawer sur la copie pour édition immédiate.
 
 ## Détails techniques
 
-- Routes : ajouter `<Route path="/admin/planning" element={<Planning />} />` dans `App.tsx`. Garder `/admin/activites` pour la page Fiches.
-- `Planning.tsx` réutilise `ActivityCalendar` + `DailyView` + `AddEventMetaDialog` (déjà extraits). Aucune migration DB.
-- Pas de migration SQL nécessaire pour cette itération.
-- Sidebar : 3 items grisés = non navigables, mais visibles pour rappeler qu'ils existent (selon ton wording "grisé et impossible à cliquer").
+- Pas de migration DB.
+- Composants nouveaux : `OrderSummary.tsx` (point 5).
+- Fichiers modifiés : `Index.tsx`, `Discover.tsx`, `ActivitiesView.tsx`, `Navbar.tsx`, `PricingSection.tsx`, `TeamSection.tsx`, `Reserver.tsx`, `PaymentSummary.tsx`, `LoginBlock.tsx`/`SignupBlock.tsx` (pour persister `pendingBooking`), `Activites.tsx` (admin, bouton duplicate), `index.css` (densité desktop).
+- `pendingBooking` en localStorage expire après 1h.
 
-## Hors scope (à confirmer si tu veux qu'on les fasse aussi)
-
-- Import Excel clients (Lot C) — toujours en attente.
-- Refonte complète des pages `TestUX*` au-delà du nettoyage Bien-être.
+## Ordre d'exécution suggéré
+1. Point 6 (dupliquer) — isolé, rapide
+2. Point 3 (mobile accueil) — visuel rapide
+3. Point 1 (meta-blocs) — wrapper visuel
+4. Point 4 (scroll vers carte) — scroll + ids
+5. Point 2 (densité desktop) — passe globale
+6. Point 5 (tunnel invité→compte) — le plus gros, en dernier
