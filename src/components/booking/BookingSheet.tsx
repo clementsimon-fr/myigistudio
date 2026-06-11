@@ -283,7 +283,8 @@ export default function BookingSheet({
             </div>
 
             {/* Body */}
-            <div className="flex-1 overflow-y-auto px-5 pb-32">
+            <div className="px-5 pb-4">
+
               <AnimatePresence mode="wait">
                 <motion.div
                   key={step}
