@@ -1654,7 +1654,7 @@ export default function AdminActivites() {
 }
 
 // ── Activity Card ──
-function ActivityCard({ activity: a, onEdit }: { activity: UnifiedActivity; onEdit: () => void }) {
+function ActivityCard({ activity: a, onEdit, onDuplicate }: { activity: UnifiedActivity; onEdit: () => void; onDuplicate: () => void }) {
   const cat = CATEGORIES.find(c => c.value === a.category);
   const catLabel = cat?.label || a.category;
   const catDot = cat?.dot || "";
@@ -1678,7 +1678,8 @@ function ActivityCard({ activity: a, onEdit }: { activity: UnifiedActivity; onEd
             {a.description && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{a.description}</p>}
           </div>
           <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEdit(); }}><Pencil className="h-3 w-3" /></Button>
+            <Button size="icon" variant="ghost" className="h-7 w-7" title="Dupliquer" onClick={(e) => { e.stopPropagation(); onDuplicate(); }}><Copy className="h-3 w-3" /></Button>
+            <Button size="icon" variant="ghost" className="h-7 w-7" title="Modifier" onClick={(e) => { e.stopPropagation(); onEdit(); }}><Pencil className="h-3 w-3" /></Button>
           </div>
         </div>
         <div className="flex items-center gap-2 mb-2 flex-wrap">
