@@ -564,15 +564,11 @@ export default function BookingSheet({
               {step === 4 && (
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold">Vos tarifs</h3>
-                    <Badge variant="secondary" className="text-[10px]">
-                      {cartCapacity}/{participants.length} place{participants.length > 1 ? "s" : ""} couverte{cartCapacity > 1 ? "s" : ""}
-                    </Badge>
+                    <h3 className="text-sm font-semibold">Vos achats</h3>
                   </div>
 
                   <p className="text-[11px] text-muted-foreground">
-                    Ajoutez autant de tarifs que nécessaire pour couvrir vos {participants.length} participant{participants.length > 1 ? "s" : ""}.
-                    L'attribution se fera à l'étape suivante.
+                    Ajoutez les tarifs, formules ou bons cadeaux que vous souhaitez utiliser. L'attribution aux participants se fera à l'étape suivante.
                   </p>
 
                   {cart.length > 0 && (
