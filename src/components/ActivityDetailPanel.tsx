@@ -261,10 +261,27 @@ export default function ActivityDetailPanel({
                   )}
                 </MetaBlock>
 
-                {/* META-BLOC : Formules (yoga only) */}
+                {/* META-BLOC : Formules (yoga only) — repliable */}
                 {course && yogaCards.length > 0 && (
                   <MetaBlock icon={Sparkles} title="Formules Cartes Yoga">
-                    <YogaFormulasBlock pricingCards={yogaCards} showHeader={false} />
+                    <Collapsible>
+                      <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                        Vous pouvez acheter un cours à l'unité ou plusieurs cartes de yoga
+                        utilisables quand vous le souhaitez pendant la durée de validité.
+                      </p>
+                      <CollapsibleTrigger asChild>
+                        <button
+                          type="button"
+                          className="group inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                        >
+                          Voir les formules
+                          <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180" />
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-4">
+                        <YogaFormulasBlock pricingCards={yogaCards} showHeader={false} />
+                      </CollapsibleContent>
+                    </Collapsible>
                   </MetaBlock>
                 )}
 
