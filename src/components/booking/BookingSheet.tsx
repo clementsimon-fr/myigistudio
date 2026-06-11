@@ -616,7 +616,7 @@ export default function BookingSheet({
               {/* STEP 5 — Attribution & récap intelligent */}
               {step === 5 && (
                 <div className="space-y-3 pt-2">
-                  <h3 className="text-sm font-semibold">Attribuer les tarifs aux participants</h3>
+                  <h3 className="text-sm font-semibold">Attribuer vos achats aux participants</h3>
 
                   <div className="space-y-2">
                     {participants.map((p, i) => {
