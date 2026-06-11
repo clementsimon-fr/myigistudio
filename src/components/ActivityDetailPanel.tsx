@@ -89,7 +89,7 @@ export default function ActivityDetailPanel({
   const shortDesc = item.description || "";
   const longDesc = (item as any).long_description || shortDesc;
   const hasMore = longDesc && longDesc !== shortDesc && longDesc.length > shortDesc.length;
-  const instructor = item.instructor;
+  const instructor: string | undefined = course?.instructor ?? (item as any).instructor;
 
   // Tarif
   let tarifLabel = "—";
