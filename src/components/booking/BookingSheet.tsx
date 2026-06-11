@@ -719,7 +719,7 @@ function FormulasPickerModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-primary-dark">
             <Sparkles className="h-5 w-5" />
-            {step === "choose" ? "Choisir un moyen de paiement" : "À qui attribuer ?"}
+            {step === "choose" ? "Choisir votre mode de paiement" : "À qui attribuer ?"}
           </DialogTitle>
         </DialogHeader>
 
