@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CalendarDays, Users, Euro, FileCheck, CreditCard, Minus, Plus, X,
-  ChevronRight, ChevronLeft, Sparkles, Gift, Ticket, Info, Pencil,
+  ChevronRight, ChevronLeft, Sparkles, Gift, Ticket, Info, Check, Pencil, ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
