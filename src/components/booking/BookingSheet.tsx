@@ -601,7 +601,7 @@ export default function BookingSheet({
               <ChevronLeft className="h-4 w-4 mr-1" /> Précédent
             </Button>
           ) : <span />}
-          {step < 5 ? (
+          {step < 6 ? (
             <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext()}>
               Continuer <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
