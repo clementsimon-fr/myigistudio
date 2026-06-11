@@ -517,8 +517,8 @@ export default function BookingSheet({
                     </div>
                   )}
 
-                  {/* STEP 4 — Conditions */}
-                  {step === 4 && (
+                  {/* STEP 5 — Conditions */}
+                  {step === 5 && (
                     <div className="space-y-3 pt-2">
                       <h3 className="text-sm font-semibold">Conditions</h3>
                       <div className="rounded-lg border bg-muted/30 max-h-72 overflow-y-auto divide-y">
