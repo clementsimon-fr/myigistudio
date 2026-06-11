@@ -460,7 +460,17 @@ export default function MonEspace() {
               </Button>
             </div>
           )}
+
+          {/* Contact Elodie banner */}
+          <div className="max-w-3xl mt-8 rounded-xl border bg-card p-4 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-sm font-semibold text-primary-dark">Une question ?</p>
+              <p className="text-xs text-muted-foreground">Contactez Élodie pour toute demande personnalisée.</p>
+            </div>
+            <ContactElodieButton variant="outline" className="text-xs" />
+          </div>
         </>
+
       )}
 
       {/* Reservation detail dialog */}
