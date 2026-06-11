@@ -311,17 +311,18 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
   const yogaMonthLabel = yogaMonthDate.toLocaleDateString("fr-FR", { month: "long" });
 
   const handleProgrammeEventClick = useCallback((params: { type: "course" | "workshop"; name: string; id?: string; date?: string }) => {
+    if (params.type === "workshop") {
+      const ws = workshops.find(w => (params.id && w.id === params.id) || (w.name === params.name && (!params.date || w.date === params.date)));
+      if (ws) { setDescriptionWs(ws); return; }
+    } else {
+      const c = courses.find(c => (params.id && c.id === params.id) || c.name === params.name);
+      if (c) { setDescriptionCourse(c); return; }
+    }
+    // fallback: scroll to card if not found
     const cardId = params.type === "course" ? `card-course-${params.id}` : `card-workshop-${params.name}`;
     const el = document.getElementById(cardId);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("ring-2", "ring-primary", "ring-offset-2", "transition-all");
-      setTimeout(() => {
-        el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "transition-all");
-        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-      }, 1800);
-    }
-  }, []);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [workshops, courses]);
 
   const schedulesMap = useMemo(() => {
     const map: Record<string, Set<string>> = {};
