@@ -1,17 +1,19 @@
+import { useState } from "react";
+import { Star } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import StoryPanel from "@/components/StoryPanel";
 import filterYoga from "@/assets/filter-yoga.png";
 import filterPoterie from "@/assets/filter-poterie.png";
 import filterTout from "@/assets/filter-tout.png";
 
 export type FilterCategory = "all" | "yoga" | "poterie";
 
-export const CATEGORY_FILTERS: { value: FilterCategory; label: string; dot?: string; activeBg?: string; inactiveBg?: string; icon?: string; iconSettingKey?: string }[] = [
+export const CATEGORY_FILTERS: { value: FilterCategory; label: string; dot?: string; activeBg?: string; inactiveBg?: string; icon?: string; iconSettingKey?: string; ringColor?: string }[] = [
   { value: "all", label: "Tout", icon: filterTout, iconSettingKey: "filter_icon_tout" },
-  { value: "yoga", label: "Yoga", dot: "bg-[hsl(210,60%,55%)]", activeBg: "bg-[hsl(210,60%,55%)]", inactiveBg: "bg-[hsl(210,60%,90%)] text-[hsl(210,60%,35%)]", icon: filterYoga, iconSettingKey: "filter_icon_yoga" },
-  { value: "poterie", label: "Poterie", dot: "bg-[hsl(40,76%,60%)]", activeBg: "bg-[hsl(40,76%,60%)]", inactiveBg: "bg-[hsl(40,76%,90%)] text-[hsl(40,76%,30%)]", icon: filterPoterie, iconSettingKey: "filter_icon_poterie" },
+  { value: "yoga", label: "Yoga", dot: "bg-[hsl(210,60%,55%)]", activeBg: "bg-[hsl(210,60%,55%)]", inactiveBg: "bg-[hsl(210,60%,90%)] text-[hsl(210,60%,35%)]", icon: filterYoga, iconSettingKey: "filter_icon_yoga", ringColor: "ring-[hsl(210,60%,55%)]" },
+  { value: "poterie", label: "Poterie", dot: "bg-[hsl(40,76%,60%)]", activeBg: "bg-[hsl(40,76%,60%)]", inactiveBg: "bg-[hsl(40,76%,90%)] text-[hsl(40,76%,30%)]", icon: filterPoterie, iconSettingKey: "filter_icon_poterie", ringColor: "ring-[hsl(40,76%,60%)]" },
 ];
 
-// Filters visible to visitors (excludes "Tout")
 const VISIBLE_FILTERS = CATEGORY_FILTERS.filter(f => f.value !== "all");
 
 export const CATEGORY_STYLES: Record<string, { block: string; dot: string; text: string; bookBtn: string }> = {
@@ -39,6 +41,7 @@ interface ActivityFilterBarProps {
 
 export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFilterBarProps) {
   const { get: getSetting } = useSiteSettings();
+  const [storyOpen, setStoryOpen] = useState(false);
 
   const getIcon = (f: typeof CATEGORY_FILTERS[0]) => {
     if (f.iconSettingKey) {
@@ -49,39 +52,49 @@ export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFi
   };
 
   return (
-    <div className="sticky top-16 z-30">
-      <div className="bg-emerald-50/60 backdrop-blur border-b">
-        <div className="container py-2 md:py-3">
-          <div className="grid grid-cols-2 gap-2 md:flex md:items-center md:justify-center md:gap-3 md:flex-wrap">
-            {VISIBLE_FILTERS.map(f => {
-              const isActive = filter === f.value;
-              return (
-                <button
-                  key={f.value}
-                  onClick={() => onFilterChange(isActive ? "all" : f.value)}
-                  className={`rounded-2xl flex items-center gap-2 md:gap-3 px-3 md:px-6 py-2 md:py-3 md:min-w-[200px] transition-all border-2 ${
-                    isActive
-                      ? f.activeBg
-                        ? `${f.activeBg} text-white border-transparent shadow-md`
-                        : "bg-primary-dark text-white border-transparent shadow-md"
-                      : "bg-white border-muted hover:border-muted-foreground/30 hover:shadow-sm"
-                  }`}
-                >
-                  <img src={getIcon(f)} alt="" className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover flex-shrink-0" />
-                  <div className="text-left min-w-0">
-                    <span className={`block font-semibold text-xs md:text-sm leading-tight truncate ${isActive ? "text-white" : "text-foreground"}`}>
-                      <span className="hidden md:inline">Voir les activités </span>{f.label}
+    <>
+      <div className="sticky top-16 z-30">
+        <div className="bg-emerald-50/60 backdrop-blur border-b">
+          <div className="container py-3 md:py-4">
+            <div className="flex items-center justify-center gap-4 md:gap-8">
+              {VISIBLE_FILTERS.map(f => {
+                const isActive = filter === f.value;
+                return (
+                  <button
+                    key={f.value}
+                    onClick={() => onFilterChange(isActive ? "all" : f.value)}
+                    className="flex flex-col items-center gap-1.5"
+                  >
+                    <div
+                      className={`w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden flex items-center justify-center bg-white transition-all ring-2 ring-offset-2 ring-offset-emerald-50 ${
+                        isActive ? `${f.ringColor} shadow-md scale-105` : "ring-transparent hover:ring-muted-foreground/20"
+                      }`}
+                    >
+                      <img src={getIcon(f)} alt={f.label} className="w-full h-full object-cover" />
+                    </div>
+                    <span className={`text-xs md:text-sm font-medium ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+                      {f.label}
                     </span>
-                    <span className={`hidden md:block text-xs mt-0.5 ${isActive ? "text-white/80" : "text-muted-foreground"}`}>
-                      {f.value === "yoga" ? "Cours & planning" : "Activités & calendrier"}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
+
+              {/* Story button */}
+              <button
+                onClick={() => setStoryOpen(true)}
+                className="flex flex-col items-center gap-1.5"
+              >
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center bg-gradient-to-br from-accent/30 to-primary/20 ring-2 ring-offset-2 ring-offset-emerald-50 ring-transparent hover:ring-accent transition-all hover:scale-105">
+                  <Star className="h-7 w-7 md:h-8 md:w-8 text-accent-foreground fill-accent" />
+                </div>
+                <span className="text-xs md:text-sm font-medium text-muted-foreground">Histoire</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      <StoryPanel open={storyOpen} onClose={() => setStoryOpen(false)} />
+    </>
   );
 }

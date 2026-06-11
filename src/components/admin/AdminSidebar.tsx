@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, CalendarDays, CalendarRange, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText, Lightbulb, FileSignature, Sun, ClipboardList } from "lucide-react";
+import { Bell, CalendarDays, CalendarRange, BookOpen, Users, UserCircle, CreditCard, FileText, Gift, LogOut, ScrollText, Lightbulb, FileSignature, Sun, ClipboardList, Sparkles } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -58,6 +58,12 @@ const sidebarGroups: SidebarGroup_[] = [
       { title: "Tarifs Yoga", url: "/admin/tarifs", icon: CreditCard },
       { title: "Bons Cadeaux", url: "/admin/bons-cadeaux", icon: Gift },
       { title: "Conditions", url: "/admin/conditions", icon: ScrollText },
+    ],
+  },
+  {
+    label: "Contenu",
+    items: [
+      { title: "Découvrir", url: "/admin/decouvrir", icon: Sparkles },
     ],
   },
   {
