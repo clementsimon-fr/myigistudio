@@ -584,9 +584,33 @@ export default function BookingSheet({
         }}
         onRequireAuth={(formula) => {
           setPendingFormula(formula);
-          setAuthMode("signup");
+          setPickerOpen(false);
+          setFormulaAuthConfirm(formula);
         }}
       />
+
+      {/* Confirm-auth popup before formula signup */}
+      <Dialog open={!!formulaAuthConfirm} onOpenChange={(v) => !v && setFormulaAuthConfirm(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" /> Compte requis
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Les formules nécessitent de créer un compte (pour conserver vos cartes et votre historique).
+            Voulez-vous créer un compte&nbsp;?
+          </p>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="outline" onClick={() => { setFormulaAuthConfirm(null); setPendingFormula(null); setPickerOpen(true); }}>
+              Retour
+            </Button>
+            <Button onClick={() => { setFormulaAuthConfirm(null); setAuthMode("signup"); }}>
+              Créer un compte
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Auth dialog (inline) */}
       <Dialog open={!!authMode} onOpenChange={(v) => !v && setAuthMode(null)}>
