@@ -627,7 +627,7 @@ export default function AdminActivites() {
 
       {/* Drawer d'édition activité (ouverture vers le bas) */}
       <Sheet open={editorOpen} onOpenChange={(o) => { if (!o) { setEditorOpen(false); fetchData(); } }}>
-        <SheetContent side="bottom" className="h-[92vh] overflow-y-auto p-4 sm:p-6">
+        <SheetContent side="bottom" className="h-[92vh] overflow-y-auto p-4 sm:p-6 sm:max-w-3xl">
           {editorOpen && (
             <ActivityEditor
               form={form}

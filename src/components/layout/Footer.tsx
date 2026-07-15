@@ -1,26 +1,16 @@
-import { Link } from "react-router-dom";
 import { MapPin, Phone, Mail, Instagram } from "lucide-react";
 
 export default function Footer() {
   return (
     <footer className="bg-primary-dark text-primary-dark-foreground">
-      <div className="container py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="container py-12 grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
           <h3 className="text-xl font-display font-bold mb-3">
-            <span className="text-brand-pink">My</span><span className="text-primary">IgiStudio</span>
+            <span className="text-brand-pink">My</span><span className="text-white">IgiStudio</span>
           </h3>
           <p className="text-sm opacity-80 leading-relaxed">
             Yoga, Pilates & Poterie. Un lieu unique pour prendre soin de soi.
           </p>
-        </div>
-
-        <div>
-          <h4 className="font-semibold mb-3 text-sm uppercase tracking-wider opacity-70">Navigation</h4>
-          <div className="space-y-2 text-sm">
-            <Link to="/" className="block opacity-80 hover:opacity-100 transition-opacity">Activités</Link>
-            <Link to="/calendrier" className="block opacity-80 hover:opacity-100 transition-opacity">Planning & réservation</Link>
-            <Link to="/login" className="block opacity-80 hover:opacity-100 transition-opacity">Mon Espace</Link>
-          </div>
         </div>
 
         <div>
@@ -49,7 +39,7 @@ export default function Footer() {
       <div className="border-t border-primary-foreground/10">
         <div className="container py-4 text-center text-xs opacity-60 space-y-1">
           <div>© 2026 IgiStudio. Tous droits réservés.</div>
-          <div>Développé avec passion par TCC</div>
+          <div>Développé avec passion par MyAppFlow</div>
         </div>
       </div>
     </footer>

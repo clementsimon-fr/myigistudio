@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, ChevronLeft, ChevronRight, Plus, Users, Repeat, CalendarIcon, CalendarRange, X, Check } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, Plus, Users, Repeat, CalendarIcon, CalendarRange, X, Check, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useUnifiedActivities } from "@/hooks/useUnifiedActivities";
@@ -95,7 +95,7 @@ function MonthGrid({
               <span className={`text-xs sm:text-sm ${isToday ? "font-bold underline" : ""}`}>{date.getDate()}</span>
               {dots.length > 0 && (
                 <div className="flex gap-0.5 flex-wrap justify-center">
-                  {dots.slice(0, 3).map((cat, i) => <span key={i} className={`w-1.5 h-1.5 rounded-full ${getCategoryDot(cat)}`} />)}
+                  {dots.map((cat, i) => <span key={i} className={`w-1.5 h-1.5 rounded-full ${getCategoryDot(cat)}`} />)}
                 </div>
               )}
               {isSelected && <Check className="h-3 w-3 text-primary" />}
@@ -125,6 +125,7 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
   const [wEndTime, setWEndTime] = useState("10:00");
   const [wSpots, setWSpots] = useState(12);
   const [wPrice, setWPrice] = useState(0);
+  const [wCardCount, setWCardCount] = useState(1);
   const [saving, setSaving] = useState(false);
 
   const filteredActivities = useMemo(
@@ -159,6 +160,7 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
     setWEndTime("10:00");
     setWSpots(12);
     setWPrice(0);
+    setWCardCount(1);
   };
 
   const openWizard = () => {
@@ -166,12 +168,16 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
     setWizardOpen(true);
   };
 
-  // Pré-remplit prix/places dès que l'activité est choisie
+  const wActivity = activityByKey[wActivityId];
+  const isWYoga = wActivity?.category === "yoga";
+
+  // Pré-remplit prix/cartes/places dès que l'activité est choisie
   useEffect(() => {
     const activity = activityByKey[wActivityId];
     if (!activity) return;
     const meta = repMeta(activity);
     setWPrice(meta.price);
+    setWCardCount(meta.card_yoga_count || 1);
     setWSpots(activity.spots || 12);
   }, [wActivityId]);
 
@@ -190,6 +196,9 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
     setSaving(true);
     const duration = calcDuration(wTime, wEndTime);
     const meta = repMeta(activity);
+    const isYogaSubmit = activity.category === "yoga";
+    const submitPrice = isYogaSubmit ? 0 : wPrice;
+    const submitCardCount = isYogaSubmit ? wCardCount : meta.card_yoga_count;
 
     try {
       if (wType === "recurrent") {
@@ -203,7 +212,7 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
             reminder_template: activity.reminder_template, reminder_timing: activity.reminder_timing,
             intensity: activity.intensity === "none" ? "" : activity.intensity,
             day: dn, time: wTime, end_time: wEndTime, duration, days: [dn], frequency: "hebdomadaire",
-            spots: wSpots, spots_left: wSpots, price: wPrice, card_yoga_count: meta.card_yoga_count, inclusions: meta.inclusions,
+            spots: wSpots, spots_left: wSpots, price: submitPrice, card_yoga_count: submitCardCount, inclusions: meta.inclusions,
             complementary_info: activity.complementary_info,
           } as any).select("id").single();
           if (error) throw error;
@@ -211,7 +220,7 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
         }
         const { error: schedErr } = await supabase.from("course_schedules").insert({
           course_id: courseId, day: dn, time: wTime, end_time: wEndTime,
-          spots: wSpots, spots_left: wSpots, price: wPrice, inclusions: meta.inclusions, card_yoga_count: meta.card_yoga_count,
+          spots: wSpots, spots_left: wSpots, price: submitPrice, inclusions: meta.inclusions, card_yoga_count: submitCardCount,
         } as any);
         if (schedErr) throw schedErr;
       } else {
@@ -224,7 +233,7 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
             reminder_template: activity.reminder_template, reminder_timing: activity.reminder_timing,
             intensity: activity.intensity === "none" ? "" : activity.intensity,
             date: d, time: wTime, end_time: wEndTime, duration,
-            spots: wSpots, spots_left: wSpots, price: wPrice, card_yoga_count: meta.card_yoga_count, inclusions: meta.inclusions,
+            spots: wSpots, spots_left: wSpots, price: submitPrice, card_yoga_count: submitCardCount, inclusions: meta.inclusions,
             complementary_info: activity.complementary_info,
             frequency: linkedGroup ? "multi-sessions" : "ponctuel", linked_group: linkedGroup,
           } as any);
@@ -396,11 +405,19 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
               {step === 4 && (
                 <div className="space-y-3">
                   <Label className="text-sm">Modalités</Label>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground w-28">Prix</Label>
-                    <Input type="number" className="w-[100px] h-9" value={wPrice} onChange={e => setWPrice(Number(e.target.value))} />
-                    <span className="text-sm text-muted-foreground">€</span>
-                  </div>
+                  {isWYoga ? (
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground w-28">Nombre de cartes</Label>
+                      <CreditCard className="h-4 w-4 text-muted-foreground" />
+                      <Input type="number" min={1} className="w-[100px] h-9" value={wCardCount} onChange={e => setWCardCount(Number(e.target.value))} />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground w-28">Prix</Label>
+                      <Input type="number" className="w-[100px] h-9" value={wPrice} onChange={e => setWPrice(Number(e.target.value))} />
+                      <span className="text-sm text-muted-foreground">€</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <Label className="text-xs text-muted-foreground w-28">Participants</Label>
                     <Users className="h-4 w-4 text-muted-foreground" />

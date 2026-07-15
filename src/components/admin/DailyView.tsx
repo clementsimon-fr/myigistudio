@@ -108,6 +108,8 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [cancellingReservation, setCancellingReservation] = useState<Reservation | null>(null);
   const [pendingDeleteBlock, setPendingDeleteBlock] = useState<ActivityBlock | null>(null);
+  const [editEventMode, setEditEventMode] = useState(false);
+  const [editParticipantsMode, setEditParticipantsMode] = useState(false);
 
   const dateStr = useMemo(() => formatDateStr(date), [date]);
   const dayName = DAY_NAMES[date.getDay()];
@@ -213,6 +215,13 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
     const fresh = blocks.find(b => b.id === selectedBlock.id);
     setSelectedBlock(fresh || null);
   }, [blocks]);
+
+  // Réinitialise les modes d'édition à chaque ouverture d'un (nouveau) bloc
+  useEffect(() => {
+    setEditEventMode(false);
+    setEditParticipantsMode(false);
+    setShowAddForm(false);
+  }, [selectedBlock?.id]);
 
   // Bouton retour du téléphone / geste swipe-back : ferme le panneau au lieu de quitter la page.
   useBackNavigation(!!selectedBlock, selectedBlock?.id || "", () => setSelectedBlock(null));
@@ -377,35 +386,60 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
           </SheetHeader>
           {selectedBlock && (
             <div className="space-y-4 pt-2 pb-6">
-              {selectedBlock.instructor && <p className="text-sm text-muted-foreground">Intervenant·e : {selectedBlock.instructor}</p>}
-
+              {/* Bloc informations de l'événement */}
               <div className="rounded-lg border p-3 space-y-2">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Modifier l'événement</Label>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input type="time" className="w-[100px] h-9 text-sm" value={selectedBlock.time} onChange={e => updateBlockField({ time: e.target.value })} />
-                  <span className="text-muted-foreground text-xs">→</span>
-                  <Input type="time" className="w-[100px] h-9 text-sm" value={selectedBlock.end_time} onChange={e => updateBlockField({ end_time: e.target.value })} />
-                  <div className="flex items-center gap-1">
-                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                    <Input type="number" className="w-[70px] h-9 text-sm" value={selectedBlock.spots} onChange={e => updateBlockField({ spots: Number(e.target.value) })} />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      {selectedBlock.time} - {selectedBlock.end_time}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                      {selectedBlock.spots} places
+                    </div>
+                    {selectedBlock.instructor && (
+                      <p className="text-xs text-muted-foreground">Intervenant·e : {selectedBlock.instructor}</p>
+                    )}
                   </div>
+                  <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={() => setEditEventMode(v => !v)}>
+                    {editEventMode ? "Fermer" : "Modifier"}
+                  </Button>
                 </div>
-                {selectedBlock.type === "course" && (
-                  <p className="text-[11px] text-muted-foreground">Récurrent chaque {dayName} — modifier l'horaire changera toutes les occurrences.</p>
+
+                {editEventMode && (
+                  <div className="space-y-2 pt-2 border-t">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input type="time" className="w-[100px] h-9 text-sm" value={selectedBlock.time} onChange={e => updateBlockField({ time: e.target.value })} />
+                      <span className="text-muted-foreground text-xs">→</span>
+                      <Input type="time" className="w-[100px] h-9 text-sm" value={selectedBlock.end_time} onChange={e => updateBlockField({ end_time: e.target.value })} />
+                      <div className="flex items-center gap-1">
+                        <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Input type="number" className="w-[70px] h-9 text-sm" value={selectedBlock.spots} onChange={e => updateBlockField({ spots: Number(e.target.value) })} />
+                      </div>
+                    </div>
+                    {selectedBlock.type === "course" && (
+                      <p className="text-[11px] text-muted-foreground">Récurrent chaque {dayName} — modifier l'horaire changera toutes les occurrences.</p>
+                    )}
+                    <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive gap-1.5 text-xs" onClick={() => setPendingDeleteBlock(selectedBlock)}>
+                      <Trash2 className="h-3.5 w-3.5" /> Supprimer cet événement
+                    </Button>
+                  </div>
                 )}
-                <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive gap-1.5 text-xs" onClick={() => setPendingDeleteBlock(selectedBlock)}>
-                  <Trash2 className="h-3.5 w-3.5" /> Supprimer cet événement
-                </Button>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
+              {/* Bloc participants */}
+              <div className="rounded-lg border p-3 space-y-3">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">
                       {selectedBlock.reservations.reduce((s, r) => s + r.participants, 0)} / {selectedBlock.spots} participants
                     </span>
                   </div>
+                  <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={() => setEditParticipantsMode(v => !v)}>
+                    {editParticipantsMode ? "Fermer" : "Modifier"}
+                  </Button>
                 </div>
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
                   <div
@@ -413,10 +447,7 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
                     style={{ width: `${selectedBlock.spots > 0 ? Math.round((selectedBlock.reservations.reduce((s, r) => s + r.participants, 0) / selectedBlock.spots) * 100) : 0}%` }}
                   />
                 </div>
-              </div>
 
-              <div className="border-t pt-3">
-                <h4 className="text-sm font-medium mb-3">Participants inscrits</h4>
                 {selectedBlock.allReservations.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Aucun participant inscrit.</p>
                 ) : (
@@ -442,14 +473,16 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
                           <Badge className="text-xs" variant={r.status === "confirmé" ? "default" : "destructive"}>
                             {r.status}
                           </Badge>
-                          {r.status === "confirmé" ? (
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" title="Annuler" onClick={() => setCancellingReservation(r)}>
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          ) : (
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-primary-dark" title="Rétablir" onClick={() => reconfirmReservation(r)}>
-                              <RotateCcw className="h-4 w-4" />
-                            </Button>
+                          {editParticipantsMode && (
+                            r.status === "confirmé" ? (
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" title="Annuler" onClick={() => setCancellingReservation(r)}>
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-primary-dark" title="Rétablir" onClick={() => reconfirmReservation(r)}>
+                                <RotateCcw className="h-4 w-4" />
+                              </Button>
+                            )
                           )}
                         </div>
                       </div>
@@ -458,7 +491,8 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
                 )}
 
                 {/* Add participant form */}
-                <div className="mt-4 pt-3 border-t">
+                {editParticipantsMode && (
+                <div className="pt-3 border-t">
                   {!showAddForm ? (
                     <Button size="sm" variant="outline" className="w-full gap-1.5 text-xs" onClick={() => { setShowAddForm(true); setAddParticipantName(""); setClientSearch(""); setAddParticipantCount(1); }}>
                       <UserPlus className="h-3.5 w-3.5" /> Ajouter un participant
@@ -579,6 +613,7 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
                     </div>
                   )}
                 </div>
+                )}
               </div>
             </div>
           )}

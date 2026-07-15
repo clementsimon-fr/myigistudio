@@ -33,7 +33,7 @@ export default function Navbar() {
             <div className="hidden md:flex items-center gap-3">
               {isClient && (
                 <button
-                  onClick={() => navigate("/mon-espace?section=reservations")}
+                  onClick={() => navigate("/mon-espace")}
                   className="flex items-center gap-1.5 bg-primary/15 text-primary-dark font-semibold px-4 py-2 rounded-full border-2 border-primary/30 hover:bg-primary/25 transition-colors text-sm"
                 >
                   <User className="h-4 w-4" />
@@ -60,7 +60,7 @@ export default function Navbar() {
             <div className="md:hidden flex items-center gap-2">
               {isClient && (
                 <button
-                  onClick={() => navigate("/mon-espace?section=reservations")}
+                  onClick={() => navigate("/mon-espace")}
                   className="flex items-center gap-1.5 bg-primary/15 text-primary-dark font-semibold px-3 py-2 rounded-full border-2 border-primary/30 text-xs min-h-[44px]"
                 >
                   <User className="h-4 w-4" />

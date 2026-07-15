@@ -302,8 +302,15 @@ function MonthWorkshops({ workshops, onEventClick, hideTitle, hidePriceSpots, mo
       return d >= start && d <= end && d >= today;
     });
 
+    // Multi-sessions (dates liées) : n'afficher que la première date de la série sur le
+    // planning — les dates suivantes sont réservées automatiquement avec elle.
+    const seenGroups = new Set<string>();
     const byCat: Record<string, Workshop[]> = {};
-    for (const w of filtered) {
+    for (const w of filtered.sort((a, b) => a.date.localeCompare(b.date))) {
+      if (w.linked_group) {
+        if (seenGroups.has(w.linked_group)) continue;
+        seenGroups.add(w.linked_group);
+      }
       if (!byCat[w.category]) byCat[w.category] = [];
       if (!byCat[w.category].some(e => e.name === w.name && e.date === w.date)) {
         byCat[w.category].push(w);

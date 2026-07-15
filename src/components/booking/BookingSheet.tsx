@@ -39,8 +39,21 @@ function isBookableSlot(dateStr: string, timeStr?: string): boolean {
   return slotDateTime > now;
 }
 
-function nextDatesForCourse(schedules: Schedule[], count = 8) {
-  const out: { date: string; time: string; end_time: string; scheduleId: string }[] = [];
+// Format en date locale (année-mois-jour) — ne PAS utiliser toISOString() ici :
+// il convertit en UTC et décale la date d'un jour dans les fuseaux horaires
+// en avance sur UTC (ex. Europe/Paris), ce qui envoyait certaines réservations
+// sur le mauvais jour de la semaine.
+function formatLocalDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+interface DateOption {
+  date: string; time: string; end_time: string; scheduleId: string;
+  linkedWorkshopIds?: string[]; linkedDates?: string[];
+}
+
+function nextDatesForCourse(schedules: Schedule[], count = 8): DateOption[] {
+  const out: DateOption[] = [];
   const today = new Date(); today.setHours(0, 0, 0, 0);
   for (let i = 0; i < 60 && out.length < count; i++) {
     const d = new Date(today); d.setDate(today.getDate() + i);
@@ -48,7 +61,7 @@ function nextDatesForCourse(schedules: Schedule[], count = 8) {
     for (const s of schedules) {
       const idx = DAY_INDEX[(s.day || "").toLowerCase()];
       if (idx !== dow) continue;
-      const dateStr = d.toISOString().split("T")[0];
+      const dateStr = formatLocalDateStr(d);
       if (!isBookableSlot(dateStr, s.time)) continue;
       out.push({ date: dateStr, time: s.time, end_time: s.end_time, scheduleId: s.id });
     }
@@ -108,12 +121,38 @@ export default function BookingSheet({
   const isYoga = !!course;
   const connectedName = clientProfile ? (makeDisplayName(clientProfile.first_name, clientProfile.last_name) || clientProfile.email) : "";
 
-  const dates = useMemo(() => {
+  const dates = useMemo((): DateOption[] => {
     if (workshop) {
-      return workshopsList
+      const matching = workshopsList
         .filter((w) => w.name === workshop.name && isBookableSlot(w.date, w.time))
-        .sort((a, b) => a.date.localeCompare(b.date))
-        .map((w) => ({ date: w.date, time: w.time, end_time: w.end_time, scheduleId: w.id }));
+        .sort((a, b) => a.date.localeCompare(b.date));
+      // Multi-sessions (dates liées) : n'afficher que la première date de la série comme
+      // créneau réservable — les dates suivantes sont réservées automatiquement avec elle,
+      // pas individuellement. On regroupe par linked_group pour retrouver toutes les dates liées.
+      const byGroup: Record<string, typeof matching> = {};
+      for (const w of matching) {
+        if (w.linked_group) {
+          if (!byGroup[w.linked_group]) byGroup[w.linked_group] = [];
+          byGroup[w.linked_group].push(w);
+        }
+      }
+      const seenGroups = new Set<string>();
+      const result: DateOption[] = [];
+      for (const w of matching) {
+        if (w.linked_group) {
+          if (seenGroups.has(w.linked_group)) continue;
+          seenGroups.add(w.linked_group);
+          const group = byGroup[w.linked_group];
+          result.push({
+            date: w.date, time: w.time, end_time: w.end_time, scheduleId: w.id,
+            linkedWorkshopIds: group.map((g) => g.id),
+            linkedDates: group.map((g) => g.date),
+          });
+        } else {
+          result.push({ date: w.date, time: w.time, end_time: w.end_time, scheduleId: w.id });
+        }
+      }
+      return result;
     }
     if (course) return nextDatesForCourse(schedules);
     return [];
@@ -380,19 +419,33 @@ export default function BookingSheet({
       } as any);
     }
 
-    await supabase.from("reservations").insert({
+    const baseReservation = {
       client_name: clientName,
       user_id: userId,
       activity_name: name,
       activity_type: course ? "course" : "workshop",
-      date: selected.date,
       time: selected.time,
       end_time: selected.end_time,
       participants: participants.length,
       status: "confirmé",
       course_id: course?.id || null,
-      workshop_id: workshop?.id || null,
-    } as any);
+    };
+
+    if (course) {
+      await supabase.from("reservations").insert({ ...baseReservation, date: selected.date, workshop_id: null } as any);
+    } else if (selected.linkedWorkshopIds && selected.linkedWorkshopIds.length > 1) {
+      // Multi-sessions : une réservation par date liée, pour que chaque date apparaisse
+      // correctement dans l'agenda admin.
+      const rows = selected.linkedWorkshopIds.map((wsId, i) => ({
+        ...baseReservation,
+        date: selected.linkedDates![i],
+        workshop_id: wsId,
+      }));
+      await supabase.from("reservations").insert(rows as any);
+    } else {
+      await supabase.from("reservations").insert({ ...baseReservation, date: selected.date, workshop_id: selected.scheduleId } as any);
+    }
+
     toast({ title: "Réservation confirmée ✓", description: `${name} — ${new Date(selected.date).toLocaleDateString("fr-FR")} à ${selected.time}` });
     onClose();
   };
@@ -540,6 +593,7 @@ export default function BookingSheet({
                     <div className="grid grid-cols-2 gap-2">
                       {dates.map((d, i) => {
                         const dt = new Date(d.date + "T12:00:00");
+                        const isMulti = (d.linkedWorkshopIds?.length || 0) > 1;
                         return (
                           <button
                             key={`${d.scheduleId}-${d.date}`}
@@ -552,9 +606,19 @@ export default function BookingSheet({
                               {dt.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "short" })}
                             </div>
                             <div className="text-[11px] opacity-80 mt-0.5">{d.time?.slice(0, 5)}</div>
+                            {isMulti && (
+                              <div className={`text-[10px] mt-1 font-medium ${i === selectedIdx ? "text-primary-foreground/90" : "text-primary"}`}>
+                                Multi-sessions · {d.linkedWorkshopIds!.length} dates
+                              </div>
+                            )}
                           </button>
                         );
                       })}
+                    </div>
+                  )}
+                  {selected && (selected.linkedDates?.length || 0) > 1 && (
+                    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs text-primary-dark">
+                      Cette réservation couvre <strong>{selected.linkedDates!.length} dates liées</strong> : {selected.linkedDates!.map(d => new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" })).join(" & ")}.
                     </div>
                   )}
                 </div>
@@ -804,6 +868,11 @@ export default function BookingSheet({
                       </div>
                       <Badge variant="secondary">{participants.length} pers.</Badge>
                     </div>
+                    {selected && (selected.linkedDates?.length || 0) > 1 && (
+                      <div className="rounded-lg border border-primary/30 bg-primary/5 p-2 text-xs text-primary-dark">
+                        Multi-sessions : cette réservation couvre <strong>{selected.linkedDates!.length} dates</strong> — {selected.linkedDates!.map(d => new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" })).join(" & ")}.
+                      </div>
+                    )}
                     <div className="space-y-1.5 text-xs border-t pt-2">
                       {summaryLines.map((s) => (
                         <p key={s.id} className="leading-relaxed">{s.line}</p>
@@ -926,9 +995,10 @@ function CartPickerModal({
   open, onClose, isYoga, unitPrice, pricingCards, existingCards, isConnected, cart, onAdd, onRequireAuth,
 }: PickerProps) {
   const [voucherCode, setVoucherCode] = useState("");
+  const [voucherOpen, setVoucherOpen] = useState(false);
 
   useEffect(() => {
-    if (open) setVoucherCode("");
+    if (open) { setVoucherCode(""); setVoucherOpen(false); }
   }, [open]);
 
   // Count existing cards already added to cart
@@ -966,18 +1036,31 @@ function CartPickerModal({
         <div className="space-y-4 pt-2">
           {/* Bon cadeau */}
           <div className="rounded-lg border bg-amber-50/60 border-amber-200 p-3 space-y-2">
-            <div className="flex items-center gap-2 font-semibold text-sm">
-              <Gift className="h-4 w-4 text-amber-700" /> Utiliser un bon cadeau
-            </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Code du bon cadeau"
-                value={voucherCode}
-                onChange={(e) => setVoucherCode(e.target.value)}
-                className="bg-background"
-              />
-              <Button onClick={handleVoucher} disabled={!voucherCode.trim()}>Ajouter</Button>
-            </div>
+            {!voucherOpen ? (
+              <button
+                type="button"
+                onClick={() => setVoucherOpen(true)}
+                className="w-full flex items-center gap-2 font-semibold text-sm text-left"
+              >
+                <Gift className="h-4 w-4 text-amber-700" /> Utiliser un bon cadeau
+              </button>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 font-semibold text-sm">
+                  <Gift className="h-4 w-4 text-amber-700" /> Utiliser un bon cadeau
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    autoFocus
+                    placeholder="Code du bon cadeau"
+                    value={voucherCode}
+                    onChange={(e) => setVoucherCode(e.target.value)}
+                    className="bg-background"
+                  />
+                  <Button onClick={handleVoucher} disabled={!voucherCode.trim()}>Ajouter</Button>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Carte du compte */}

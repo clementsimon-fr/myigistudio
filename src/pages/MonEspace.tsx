@@ -27,10 +27,14 @@ const statusColors: Record<string, string> = {
   "liste d'attente": "bg-accent/20 text-accent-foreground border-accent/30",
 };
 
-type Section = "reservations" | "cartes" | "profil";
-
 // CGV "annulation" (table `conditions`) : annulation possible jusqu'à 12h avant le cours.
 const CANCEL_MIN_HOURS = 12;
+
+// Date locale (pas toISOString, qui décale d'un jour en UTC+ comme Europe/Paris)
+function todayLocalStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 function getCancelEligibility(date: string, time: string) {
   const [h, m] = time.split(":").map(Number);
@@ -46,9 +50,7 @@ export default function MonEspace() {
   const { toast } = useToast();
   const { session, user, clientProfile, loading: authLoading, signOut, refreshProfile } = useAuth();
   const CLIENT_NAME = clientProfile ? (makeDisplayName(clientProfile.first_name, clientProfile.last_name) || clientProfile.email) : "";
-  const sectionParam = searchParams.get("section") as Section | null;
   const isWelcome = searchParams.get("welcome") === "1";
-  const [section, setSection] = useState<Section>(sectionParam || "reservations");
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
@@ -59,10 +61,6 @@ export default function MonEspace() {
       window.history.replaceState({}, "", url.pathname + url.search);
     }
   }, [isWelcome]);
-
-  useEffect(() => {
-    if (sectionParam && sectionParam !== section) setSection(sectionParam);
-  }, [sectionParam]);
 
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [cards, setCards] = useState<ClientCard[]>([]);
@@ -202,19 +200,17 @@ export default function MonEspace() {
 
   const totalCredits = cards.reduce((sum, c) => sum + (c.total_sessions - c.used_sessions), 0);
 
-  const sectionTitle = section === "reservations" ? "Réservations" : section === "cartes" ? "Cartes Yoga" : "Profil";
-
   if (!authLoading && !session) {
     return <Navigate to="/login?returnTo=%2Fmon-espace" replace />;
   }
 
   return (
-    <ClientLayout title={sectionTitle}>
+    <ClientLayout title="Mon espace">
       {authLoading || loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
       ) : (
         <>
-          {/* ─── HEADER DE BIENVENUE (toutes sections) ─── */}
+          {/* ─── BONJOUR + KPI ─── */}
           <div className="max-w-3xl mb-6">
             <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-accent/10 border p-5 md:p-6">
               <div className="flex items-center gap-3">
@@ -237,14 +233,14 @@ export default function MonEspace() {
                 <div className="rounded-xl bg-white/70 backdrop-blur p-3 text-center">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">À venir</p>
                   <p className="text-2xl font-bold text-primary-dark mt-0.5">
-                    {confirmedRes.filter(r => r.date >= new Date().toISOString().split("T")[0]).length}
+                    {confirmedRes.filter(r => r.date >= todayLocalStr()).length}
                   </p>
                   <p className="text-[10px] text-muted-foreground">réservation(s)</p>
                 </div>
                 <div className="rounded-xl bg-white/70 backdrop-blur p-3 text-center">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Historique</p>
                   <p className="text-2xl font-bold text-primary-dark mt-0.5">
-                    {confirmedRes.filter(r => r.date < new Date().toISOString().split("T")[0]).length}
+                    {confirmedRes.filter(r => r.date < todayLocalStr()).length}
                   </p>
                   <p className="text-[10px] text-muted-foreground">séance(s)</p>
                 </div>
@@ -253,8 +249,7 @@ export default function MonEspace() {
           </div>
 
           {/* ─── RÉSERVATIONS ─── */}
-          {section === "reservations" && (
-            <div className="max-w-3xl space-y-4">
+          <div className="max-w-3xl space-y-4 mb-8">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-display font-semibold text-primary-dark">Mes réservations</h2>
               </div>
@@ -277,7 +272,7 @@ export default function MonEspace() {
                 <div className="space-y-2">
                   {filteredRes.map(r => {
                     const isConfirmed = r.status === "confirmé";
-                    const todayStr = new Date().toISOString().split("T")[0];
+                    const todayStr = todayLocalStr();
                     const isFuture = r.date >= todayStr;
                     return (
                       <div key={r.id} className="flex items-center gap-3 rounded-lg border bg-card p-3">
@@ -305,12 +300,10 @@ export default function MonEspace() {
                   })}
                 </div>
               )}
-            </div>
-          )}
+          </div>
 
           {/* ─── CARTES YOGA ─── */}
-          {section === "cartes" && (
-            <div className="max-w-3xl space-y-6">
+          <div className="max-w-3xl space-y-6 mb-8">
               {/* Summary */}
               <div className="rounded-xl border bg-card p-5">
                 <div className="flex items-center justify-between">
@@ -397,12 +390,10 @@ export default function MonEspace() {
                   </div>
                 </div>
               )}
-            </div>
-          )}
+          </div>
 
           {/* ─── PROFIL ─── */}
-          {section === "profil" && (
-            <div className="max-w-lg space-y-4">
+          <div className="max-w-lg space-y-4">
               <div className="rounded-xl border bg-card p-4 md:p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="h-14 w-14 rounded-full bg-primary/15 flex items-center justify-center">
@@ -468,8 +459,7 @@ export default function MonEspace() {
                 <LogOut className="h-4 w-4" />
                 Se déconnecter
               </Button>
-            </div>
-          )}
+          </div>
 
           {/* Contact Elodie banner */}
           <div className="max-w-3xl mt-8 rounded-xl border bg-card p-4 flex items-center justify-between gap-3 flex-wrap">
@@ -488,7 +478,7 @@ export default function MonEspace() {
         <DialogContent className="sm:max-w-md">
           {viewingReservation && (() => {
             const r = viewingReservation;
-            const todayStr = new Date().toISOString().split("T")[0];
+            const todayStr = todayLocalStr();
             const isFuture = r.date >= todayStr;
             const isConfirmed = r.status === "confirmé";
             const canCancel = isConfirmed && isFuture && !!r.time && getCancelEligibility(r.date, r.time).canCancel;
