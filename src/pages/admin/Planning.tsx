@@ -2,8 +2,9 @@ import { useState } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, CalendarRange } from "lucide-react";
+import { CalendarDays, CalendarRange, Calendar } from "lucide-react";
 import DailyView from "@/components/admin/DailyView";
+import MonthlyView from "@/components/admin/MonthlyView";
 
 const CATEGORY_FILTERS = [
   { value: "all", label: "Toutes", dot: "", activeBg: "" },
@@ -12,7 +13,7 @@ const CATEGORY_FILTERS = [
 ];
 
 export default function AdminPlanning() {
-  const [viewMode, setViewMode] = useState<"daily" | "weekly">("daily");
+  const [viewMode, setViewMode] = useState<"daily" | "weekly" | "monthly">("daily");
   const [categoryFilter, setCategoryFilter] = useState("all");
 
   return (
@@ -36,6 +37,14 @@ export default function AdminPlanning() {
           >
             <CalendarRange className="h-4 w-4" /> Cette semaine
           </Button>
+          <Button
+            variant={viewMode === "monthly" ? "default" : "outline"}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setViewMode("monthly")}
+          >
+            <Calendar className="h-4 w-4" /> Ce mois
+          </Button>
         </div>
         <div className="flex gap-1.5 flex-wrap">
           {CATEGORY_FILTERS.map(f => {
@@ -55,7 +64,11 @@ export default function AdminPlanning() {
         </div>
       </div>
 
-      <DailyView categoryFilter={categoryFilter} viewMode={viewMode} />
+      {viewMode === "monthly" ? (
+        <MonthlyView categoryFilter={categoryFilter} />
+      ) : (
+        <DailyView categoryFilter={categoryFilter} viewMode={viewMode} />
+      )}
     </AdminLayout>
   );
 }

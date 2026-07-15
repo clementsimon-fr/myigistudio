@@ -256,7 +256,7 @@ export function ActivityEventsSection({ form, setForm }: ActivityEventsSectionPr
       {/* ═══ Panneau bas d'écran : détail d'une date ponctuelle ═══ */}
       {/* Overlay custom (pas un Sheet Radix) pour éviter les conflits d'empilement avec le Sheet éditeur parent */}
       {sheetDate && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center" onClick={() => setSheetDate(null)}>
+        <div className="fixed inset-0 z-40 flex items-end justify-center" onClick={() => setSheetDate(null)}>
           <div className="absolute inset-0 bg-foreground/40" />
           <div
             className="relative w-full sm:max-w-2xl bg-background rounded-t-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-6 shadow-xl"
@@ -292,11 +292,7 @@ export function ActivityEventsSection({ form, setForm }: ActivityEventsSectionPr
                       <Info className="h-3.5 w-3.5" /> Modalités de ce créneau
                     </Button>
                     <Button type="button" variant="destructive" size="sm" className="gap-1.5 text-xs"
-                      onClick={() => {
-                        if (!window.confirm("Supprimer cette date ?")) return;
-                        removeEvent(idx);
-                        setSheetDate(null);
-                      }}>
+                      onClick={() => setPendingDeleteEventIdx(idx)}>
                       <Trash2 className="h-3.5 w-3.5" /> Supprimer
                     </Button>
                   </div>

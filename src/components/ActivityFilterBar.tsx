@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import { Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import StoryPanel from "@/components/StoryPanel";
 
 export type FilterCategory = "all" | "yoga" | "poterie";
 
@@ -43,7 +41,6 @@ interface HomeButtonRow {
 }
 
 export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFilterBarProps) {
-  const [storyOpen, setStoryOpen] = useState(false);
   const [overrides, setOverrides] = useState<Record<string, HomeButtonRow>>({});
 
   useEffect(() => {
@@ -56,53 +53,33 @@ export default function ActivityFilterBar({ filter, onFilterChange }: ActivityFi
   }, []);
 
   const getLabel = (key: string, fallback: string) => overrides[key]?.title || fallback;
-  const storyLabel = getLabel("decouvrir", "Histoire");
-  const storyIcon = overrides["decouvrir"]?.icon_url;
 
   return (
-    <>
-      <div className="sticky top-16 z-30">
-        <div className="bg-background/95 backdrop-blur border-b">
-          <div className="container py-2.5 flex items-center justify-between gap-3 sm:grid sm:grid-cols-[1fr_auto_1fr]">
-            <div className="flex items-center gap-1.5 sm:col-start-2 sm:justify-self-center">
-              {VISIBLE_FILTERS.map(f => {
-                const isActive = filter === f.value;
-                const label = getLabel(f.value, f.label);
-                return (
-                  <button
-                    key={f.value}
-                    onClick={() => onFilterChange(f.value)}
-                    className={`rounded-full px-4 h-9 text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                      isActive
-                        ? f.activeBg
-                          ? `${f.activeBg} text-white`
-                          : "bg-primary-dark text-primary-dark-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted/70"
-                    }`}
-                  >
-                    {f.dot && <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : f.dot}`} />}
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <button
-              onClick={() => setStoryOpen(true)}
-              className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground shrink-0 sm:col-start-3 sm:justify-self-end"
-            >
-              {storyIcon ? (
-                <img src={storyIcon} alt="" className="w-5 h-5 rounded-full object-cover" />
-              ) : (
-                <Star className="h-4 w-4" />
-              )}
-              <span className="hidden sm:inline">{storyLabel}</span>
-            </button>
-          </div>
+    <div className="sticky top-16 z-30">
+      <div className="bg-background/95 backdrop-blur border-b">
+        <div className="container py-2.5 flex items-center justify-center gap-1.5">
+          {VISIBLE_FILTERS.map(f => {
+            const isActive = filter === f.value;
+            const label = getLabel(f.value, f.label);
+            return (
+              <button
+                key={f.value}
+                onClick={() => onFilterChange(f.value)}
+                className={`rounded-full px-4 h-9 text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  isActive
+                    ? f.activeBg
+                      ? `${f.activeBg} text-white`
+                      : "bg-primary-dark text-primary-dark-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/70"
+                }`}
+              >
+                {f.dot && <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white/80" : f.dot}`} />}
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
-
-      <StoryPanel open={storyOpen} onClose={() => setStoryOpen(false)} />
-    </>
+    </div>
   );
 }
