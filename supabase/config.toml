@@ -1,1 +1,4 @@
-project_id = "zjtjcduptgfcivohyhuk"
+project_id = "foppqdimxvvnkogzzmge"
+
+[functions.create-guest-account]
+verify_jwt = false

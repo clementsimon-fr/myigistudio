@@ -23,6 +23,7 @@ export type Database = {
           id: string
           total_sessions: number
           used_sessions: number
+          user_id: string | null
         }
         Insert: {
           card_name: string
@@ -32,6 +33,7 @@ export type Database = {
           id?: string
           total_sessions?: number
           used_sessions?: number
+          user_id?: string | null
         }
         Update: {
           card_name?: string
@@ -41,6 +43,46 @@ export type Database = {
           id?: string
           total_sessions?: number
           used_sessions?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      client_profiles: {
+        Row: {
+          address: string
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          phone: string
+          reminder_email: boolean
+          reminder_sms: boolean
+          role: string
+        }
+        Insert: {
+          address?: string
+          created_at?: string
+          email?: string
+          first_name?: string
+          id: string
+          last_name?: string
+          phone?: string
+          reminder_email?: boolean
+          reminder_sms?: boolean
+          role?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          phone?: string
+          reminder_email?: boolean
+          reminder_sms?: boolean
+          role?: string
         }
         Relationships: []
       }
@@ -621,6 +663,7 @@ export type Database = {
           schedule_id: string | null
           status: string
           time: string
+          user_id: string | null
           workshop_id: string | null
         }
         Insert: {
@@ -637,6 +680,7 @@ export type Database = {
           schedule_id?: string | null
           status?: string
           time: string
+          user_id?: string | null
           workshop_id?: string | null
         }
         Update: {
@@ -653,6 +697,7 @@ export type Database = {
           schedule_id?: string | null
           status?: string
           time?: string
+          user_id?: string | null
           workshop_id?: string | null
         }
         Relationships: [

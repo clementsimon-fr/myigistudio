@@ -1,32 +1,42 @@
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Shield, User, UserPlus, Eye, Wrench } from "lucide-react";
-import { useDemoContext } from "@/contexts/DemoContext";
-
-const PROFILE_CARDS = [
-  { id: "fournisseur", name: "Fournisseur", subtitle: "Accès complet", icon: Wrench, defaultNavigateTo: "/admin/bonjour", supportsReturn: false },
-  { id: "elodie", name: "Élodie", subtitle: "Administratrice", icon: Shield, defaultNavigateTo: "/admin/bonjour", supportsReturn: false },
-];
+import { Mail, Lock, Loader2, CheckCircle2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get("returnTo");
-  const { setCurrentProfile, getDefaultProfile, tempProfiles } = useDemoContext();
+  const { session, isAdmin, loading, signInWithOtp, signInWithPassword } = useAuth();
+  const [usePassword, setUsePassword] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSelect = (card: typeof PROFILE_CARDS[0]) => {
-    const profile = getDefaultProfile(card.id);
-    if (profile) setCurrentProfile(profile);
-    navigate(card.supportsReturn && returnTo ? returnTo : card.defaultNavigateTo);
-  };
+  useEffect(() => {
+    if (loading || !session) return;
+    navigate(returnTo || (isAdmin ? "/admin/planning" : "/mon-espace"), { replace: true });
+  }, [loading, session, isAdmin, returnTo, navigate]);
 
-  const handleTempSelect = (profile: typeof tempProfiles[0]) => {
-    setCurrentProfile(profile);
-    navigate(returnTo || "/mon-espace");
-  };
-
-  const handleVisitor = () => {
-    setCurrentProfile(null);
-    navigate("/");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSending(true);
+    setError(null);
+    if (usePassword) {
+      const { error } = await signInWithPassword(email.trim(), password);
+      setSending(false);
+      if (error) setError(error);
+    } else {
+      const { error } = await signInWithOtp(email.trim());
+      setSending(false);
+      if (error) setError(error);
+      else setSent(true);
+    }
   };
 
   return (
@@ -42,52 +52,61 @@ export default function Login() {
           )}
         </div>
 
-        <div className="space-y-2">
-          {PROFILE_CARDS.map(card => (
+        {sent ? (
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-center space-y-2">
+            <CheckCircle2 className="h-6 w-6 text-primary-dark mx-auto" />
+            <p className="text-sm text-foreground">
+              Un lien de connexion vient d'être envoyé à <strong>{email}</strong>. Ouvrez-le pour continuer.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="email"
+                required
+                placeholder="votre@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pl-9"
+                autoFocus
+              />
+            </div>
+            {usePassword && (
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="password"
+                  required
+                  placeholder="Mot de passe"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            )}
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" className="w-full" disabled={sending}>
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : usePassword ? "Se connecter" : "Recevoir un lien de connexion"}
+            </Button>
             <button
-              key={card.id}
-              onClick={() => handleSelect(card)}
-              className="w-full flex items-center gap-3 rounded-lg border bg-card p-4 text-left hover:border-primary/40 hover:bg-accent/50 transition-colors"
+              type="button"
+              onClick={() => { setUsePassword((v) => !v); setError(null); }}
+              className="w-full text-center text-xs text-muted-foreground hover:text-foreground underline"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <card.icon className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium text-foreground">{card.name}</p>
-                <p className="text-sm text-muted-foreground">{card.subtitle}</p>
-              </div>
+              {usePassword ? "Pas de mot de passe ? Recevoir un lien de connexion" : "J'ai un mot de passe"}
             </button>
-          ))}
+          </form>
+        )}
 
-          {tempProfiles.map(p => (
-            <button
-              key={p.id}
-              onClick={() => handleTempSelect(p)}
-              className="w-full flex items-center gap-3 rounded-lg border bg-card p-4 text-left hover:border-primary/40 hover:bg-accent/50 transition-colors"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
-                <User className="h-5 w-5 text-secondary-foreground" />
-              </div>
-              <div>
-                <p className="font-medium text-foreground">{p.name}</p>
-                <p className="text-sm text-muted-foreground">Cliente</p>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-4 space-y-3">
-          <button
-            onClick={handleVisitor}
-            className="flex items-center justify-center gap-1.5 w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
-          >
-            <Eye className="h-4 w-4" />
-            Continuer en tant que visiteur
-          </button>
-        </div>
-
-        <div className="mt-6 text-center">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
+        <div className="mt-6 space-y-3">
+          <Link to="/register">
+            <Button type="button" variant="outline" className="w-full">
+              Créer un compte
+            </Button>
+          </Link>
+          <Link to="/" className="block text-center text-sm text-muted-foreground hover:text-foreground">
             ← Retour à l'accueil
           </Link>
         </div>

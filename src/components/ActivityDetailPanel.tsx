@@ -1,14 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, Euro, MapPin, Users, Sparkles, CalendarDays, ClipboardList, Clock, ChevronDown } from "lucide-react";
+import { X, User, Euro, MapPin, Users, CalendarDays, ClipboardList, Clock, ChevronDown, CreditCard, Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RecurringGrid, MonthWorkshops } from "@/components/PlanningTypeView";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
-import YogaFormulasBlock, { YogaFormulasPricingCard } from "@/components/YogaFormulasBlock";
 import BookingSheet from "@/components/booking/BookingSheet";
 
 const PLACEHOLDER_IMG = "/placeholder.svg";
@@ -71,13 +72,22 @@ export default function ActivityDetailPanel({
   spotsLeft,
 }: ActivityDetailPanelProps) {
   const [readMore, setReadMore] = useState(false);
+  const [bookingStarted, setBookingStarted] = useState(false);
   const [yogaUnitPrice, setYogaUnitPrice] = useState<number | null>(null);
-  const [yogaCards, setYogaCards] = useState<YogaFormulasPricingCard[]>([]);
+  const [cardsInfoOpen, setCardsInfoOpen] = useState(false);
+  const bookingRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     setReadMore(false);
+    setBookingStarted(false);
   }, [open, course?.id, workshop?.id]);
+
+  useEffect(() => {
+    if (bookingStarted) {
+      requestAnimationFrame(() => bookingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
+  }, [bookingStarted]);
 
   useEffect(() => {
     if (!open || !course) return;
@@ -87,7 +97,6 @@ export default function ActivityDetailPanel({
       .order("sort_order")
       .then(({ data }) => {
         if (!data) return;
-        setYogaCards(data as unknown as YogaFormulasPricingCard[]);
         const unit = (data as any[]).find((d) => d.sessions === 1);
         if (unit) setYogaUnitPrice(unit.price);
       });
@@ -111,6 +120,9 @@ export default function ActivityDetailPanel({
   } else if (course) {
     tarifLabel = yogaUnitPrice !== null ? `${yogaUnitPrice} € ou 1 carte Yoga` : "1 carte Yoga";
   }
+
+  const inclusions = workshop ? workshop.inclusions : course?.inclusions || schedules[0]?.inclusions;
+  const complementaryInfo = workshop ? workshop.complementary_info : course?.complementary_info;
 
   const places =
     spotsLeft !== undefined
@@ -217,12 +229,30 @@ export default function ActivityDetailPanel({
                         <span className="text-sm font-medium">{instructor || "—"}</span>
                       </div>
                     </div>
-                    <div className="rounded-xl bg-muted/50 p-3">
-                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5">
-                        <Euro className="h-3 w-3" /> Tarif
+                    {course ? (
+                      <button
+                        type="button"
+                        onClick={() => setCardsInfoOpen(true)}
+                        className="rounded-xl bg-muted/50 p-3 text-left hover:bg-muted/70 transition-colors"
+                      >
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5">
+                          <Euro className="h-3 w-3" /> Tarif
+                        </div>
+                        <div className="text-sm font-semibold flex items-center gap-1.5">
+                          {tarifLabel}
+                          <Info className="h-3.5 w-3.5 text-primary shrink-0" />
+                        </div>
+                        {inclusions && <div className="text-[11px] text-muted-foreground mt-1">✓ {inclusions}</div>}
+                      </button>
+                    ) : (
+                      <div className="rounded-xl bg-muted/50 p-3">
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5">
+                          <Euro className="h-3 w-3" /> Tarif
+                        </div>
+                        <div className="text-sm font-semibold">{tarifLabel}</div>
+                        {inclusions && <div className="text-[11px] text-muted-foreground mt-1">✓ {inclusions}</div>}
                       </div>
-                      <div className="text-sm font-semibold">{tarifLabel}</div>
-                    </div>
+                    )}
                     <div className="rounded-xl bg-muted/50 p-3">
                       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5">
                         <MapPin className="h-3 w-3" /> Lieu
@@ -243,63 +273,97 @@ export default function ActivityDetailPanel({
                     </div>
                   </div>
 
-                  {course && filteredSchedules.length > 0 && (
-                    <div className="pt-2 border-t">
-                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wide mb-2 mt-2">
-                        <CalendarDays className="h-3 w-3" /> Planning — récurrent
-                      </div>
-                      <RecurringGrid courses={filteredCourses} schedules={filteredSchedules} />
+                  {complementaryInfo && (
+                    <div className="rounded-xl bg-muted/30 p-3 mb-2 text-sm text-foreground/80 whitespace-pre-line">
+                      {complementaryInfo}
                     </div>
                   )}
-                  {workshop && workshopsList.length > 0 && (
-                    <div className="pt-2 border-t">
-                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wide mb-2 mt-2">
-                        <CalendarDays className="h-3 w-3" /> Planning — ponctuel
-                      </div>
-                      <MonthWorkshops workshops={workshopsList.filter((w) => w.name === workshop.name)} />
-                    </div>
-                  )}
-                </MetaBlock>
 
-                {/* META-BLOC : Formules (yoga only) — repliable */}
-                {course && yogaCards.length > 0 && (
-                  <MetaBlock icon={Sparkles} title="Formules Cartes Yoga">
-                    <Collapsible>
-                      <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-                        Vous pouvez acheter un cours à l'unité ou plusieurs cartes de yoga
-                        utilisables quand vous le souhaitez pendant la durée de validité.
-                      </p>
+                  {((course && filteredSchedules.length > 0) || (workshop && workshopsList.length > 0)) && (
+                    <Collapsible className="pt-2 border-t">
                       <CollapsibleTrigger asChild>
                         <button
                           type="button"
-                          className="group inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                          className="group mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
                         >
-                          Voir les formules
+                          Voir le planning
                           <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180" />
                         </button>
                       </CollapsibleTrigger>
-                      <CollapsibleContent className="pt-4">
-                        <YogaFormulasBlock pricingCards={yogaCards} showHeader={false} />
+                      <CollapsibleContent className="pt-3 space-y-3">
+                        {course && filteredSchedules.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wide mb-2">
+                              <CalendarDays className="h-3 w-3" /> Planning — récurrent
+                            </div>
+                            <RecurringGrid courses={filteredCourses} schedules={filteredSchedules} />
+                          </div>
+                        )}
+                        {workshop && workshopsList.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wide mb-2">
+                              <CalendarDays className="h-3 w-3" /> Planning — ponctuel
+                            </div>
+                            <MonthWorkshops workshops={workshopsList.filter((w) => w.name === workshop.name)} />
+                          </div>
+                        )}
                       </CollapsibleContent>
                     </Collapsible>
-                  </MetaBlock>
-                )}
+                  )}
+                </MetaBlock>
 
-                {/* META-BLOC : Réservation — always open */}
-                <BookingSheet
-                  open={true}
-                  onClose={onClose}
-                  course={course}
-                  workshop={workshop}
-                  schedules={filteredSchedules}
-                  workshopsList={workshopsList.filter((w) => !workshop || w.name === workshop.name)}
-                  unitPrice={yogaUnitPrice}
-                />
+                {/* META-BLOC : Réservation — montée uniquement après clic sur "Réserver" */}
+                {bookingStarted && (
+                  <div ref={bookingRef}>
+                    <BookingSheet
+                      open={true}
+                      onClose={onClose}
+                      course={course}
+                      workshop={workshop}
+                      schedules={filteredSchedules}
+                      workshopsList={workshopsList.filter((w) => !workshop || w.name === workshop.name)}
+                      unitPrice={yogaUnitPrice}
+                    />
+                  </div>
+                )}
               </div>
             </div>
+
+            {!bookingStarted && (
+              <div className="shrink-0 border-t bg-background p-3">
+                <Button className="w-full gap-2" onClick={() => setBookingStarted(true)}>
+                  <CreditCard className="h-4 w-4" /> Réserver
+                </Button>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}
+
+      {/* Popup explicatif du principe des cartes (Yoga uniquement) */}
+      <Dialog open={cardsInfoOpen} onOpenChange={setCardsInfoOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-primary" /> Comment ça marche ?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-foreground/90 leading-relaxed">
+            <p>
+              Vous pouvez régler {yogaUnitPrice !== null ? `${yogaUnitPrice} € ` : ""}
+              à l'unité pour ce cours, ou utiliser <strong>une carte Yoga</strong> déjà en votre possession.
+            </p>
+            <p>
+              Une carte Yoga est un forfait de plusieurs séances acheté à l'avance (moins cher que le cours à
+              l'unité), utilisable pour <strong>n'importe quel cours de yoga</strong> pendant sa durée de validité —
+              vous réservez au fur et à mesure, quand vous le souhaitez.
+            </p>
+            <p className="text-muted-foreground text-xs">
+              Retrouvez toutes les formules de cartes disponibles à l'étape "Vos achats" pendant votre réservation.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AnimatePresence>
   );
 }

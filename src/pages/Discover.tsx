@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Loader2, Megaphone } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Navbar from "@/components/layout/Navbar";
@@ -11,7 +11,6 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 export default function Discover() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   const { get: getSetting, ready: settingsReady } = useSiteSettings();
 
   const initialFilter = searchParams.get("filter") as FilterCategory | null;
@@ -60,15 +59,6 @@ export default function Discover() {
   const handleSubFilterChange = useCallback((value: string) => {
     setSubFilter(value);
   }, []);
-
-  const handleSwitchToReserver = useCallback((params?: { type: "course" | "workshop"; id: string; date?: string }) => {
-    const urlParams = new URLSearchParams();
-    if (params?.type) urlParams.set("type", params.type);
-    if (params?.id) urlParams.set("id", params.id);
-    if (params?.date) urlParams.set("date", params.date);
-    navigate(`/reserver?${urlParams.toString()}`);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [navigate]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -125,7 +115,6 @@ export default function Discover() {
             filter={filter}
             subFilter={subFilter}
             getInstructorPhoto={getInstructorPhoto}
-            onSwitchToPlanning={handleSwitchToReserver}
           />
         )}
       </main>

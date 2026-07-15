@@ -89,64 +89,74 @@ export default function Boutons() {
   return (
     <AdminLayout title="Boutons d'accueil">
       <p className="text-sm text-muted-foreground mb-6">
-        Personnalisez le titre et le logo des boutons affichés sur la page d'accueil.
+        Personnalisez le titre des boutons affichés sur la page d'accueil (Yoga, Poterie ne servent
+        plus qu'au libellé du filtre ; le logo n'est utilisé que pour "Découvrir / Histoire").
       </p>
       <div className="grid gap-4 max-w-2xl">
-        {buttons.map((b) => (
-          <Card key={b.id} className="p-5">
-            <div className="flex items-start gap-4">
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-muted flex items-center justify-center shrink-0">
-                {b.icon_url ? (
-                  <img src={b.icon_url} alt={b.title} className="w-full h-full object-cover" />
-                ) : (
-                  <ImageIcon className="h-8 w-8 text-muted-foreground" />
+        {buttons.map((b) => {
+          const showIcon = b.key === "decouvrir";
+          return (
+            <Card key={b.id} className="p-5">
+              <div className="flex items-start gap-4">
+                {showIcon && (
+                  <div className="w-20 h-20 rounded-full overflow-hidden bg-muted flex items-center justify-center shrink-0">
+                    {b.icon_url ? (
+                      <img src={b.icon_url} alt={b.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                    )}
+                  </div>
                 )}
-              </div>
-              <div className="flex-1 space-y-3">
-                <div>
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {LABEL[b.key] || b.key}
-                  </Label>
-                  <Input
-                    value={b.title}
-                    onChange={(e) => updateLocal(b.id, { title: e.target.value })}
-                    placeholder="Titre du bouton"
-                    className="mt-1"
-                  />
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                      {LABEL[b.key] || b.key}
+                    </Label>
+                    <Input
+                      value={b.title}
+                      onChange={(e) => updateLocal(b.id, { title: e.target.value })}
+                      placeholder="Titre du bouton"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {showIcon && (
+                      <>
+                        <input
+                          ref={(el) => (fileRefs.current[b.id] = el)}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleUpload(b, f);
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => fileRefs.current[b.id]?.click()}
+                        >
+                          <ImageIcon className="h-4 w-4 mr-1.5" /> Changer le logo
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => handleSave(b)}
+                      disabled={saving === b.id}
+                    >
+                      <Save className="h-4 w-4 mr-1.5" />
+                      {saving === b.id ? "..." : "Enregistrer"}
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={(el) => (fileRefs.current[b.id] = el)}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleUpload(b, f);
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileRefs.current[b.id]?.click()}
-                  >
-                    <ImageIcon className="h-4 w-4 mr-1.5" /> Changer le logo
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => handleSave(b)}
-                    disabled={saving === b.id}
-                  >
-                    <Save className="h-4 w-4 mr-1.5" />
-                    {saving === b.id ? "..." : "Enregistrer"}
-                  </Button>
-                </div>
               </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
     </AdminLayout>
   );

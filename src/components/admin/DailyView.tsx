@@ -3,11 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Clock, Users, User, CalendarDays, CalendarRange, Plus, Search, UserPlus } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { ChevronLeft, ChevronRight, Clock, Users, User, Plus, Search, UserPlus, XCircle, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 import { useToast } from "@/hooks/use-toast";
+import ClientDetailDialog from "@/components/admin/ClientDetailDialog";
 
 interface Reservation {
   id: string;
@@ -63,6 +65,7 @@ interface ActivityBlock {
   spotsLeft: number;
   instructor?: string;
   reservations: Reservation[];
+  allReservations: Reservation[];
 }
 
 const DAY_NAMES: Record<number, string> = {
@@ -96,12 +99,17 @@ function getWeekDays(baseDate: Date): Date[] {
 
 interface DailyViewProps {
   categoryFilter?: string;
+  viewMode: "daily" | "weekly";
 }
 
-export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
+export default function DailyView({ categoryFilter = "all", viewMode }: DailyViewProps) {
   const { toast } = useToast();
-  const [viewMode, setViewMode] = useState<"daily" | "weekly">("daily");
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  // "Aujourd'hui" ramène toujours sur la date du jour.
+  useEffect(() => {
+    if (viewMode === "daily") setCurrentDate(new Date());
+  }, [viewMode]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [allReservations, setAllReservations] = useState<Reservation[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -109,6 +117,7 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBlock, setSelectedBlock] = useState<ActivityBlock | null>(null);
+  const [selectedParticipant, setSelectedParticipant] = useState<string | null>(null);
   const [addParticipantName, setAddParticipantName] = useState("");
   const [addParticipantCount, setAddParticipantCount] = useState(1);
   const [addingParticipant, setAddingParticipant] = useState(false);
@@ -117,6 +126,7 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
   const [clientSearch, setClientSearch] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [cancellingReservation, setCancellingReservation] = useState<Reservation | null>(null);
 
   const dateStr = useMemo(() => formatDateStr(currentDate), [currentDate]);
   const dayName = DAY_NAMES[currentDate.getDay()];
@@ -190,12 +200,10 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
       const course = courses.find(c => c.id === sched.course_id);
       if (!course) continue;
       if (categoryFilter !== "all" && course.category !== categoryFilter) continue;
-      const matchingResas = resas.filter(r =>
-        r.status === "confirmé" && (
-          r.schedule_id === sched.id ||
-          (!r.schedule_id && r.course_id === sched.course_id && r.date === ds) ||
-          (!r.schedule_id && !r.course_id && r.activity_name.trim().toLowerCase().includes(course.name.trim().toLowerCase()) && r.date === ds)
-        )
+      const matchingResasAll = resas.filter(r =>
+        r.schedule_id === sched.id ||
+        (!r.schedule_id && r.course_id === sched.course_id && r.date === ds) ||
+        (!r.schedule_id && !r.course_id && r.activity_name.trim().toLowerCase().includes(course.name.trim().toLowerCase()) && r.date === ds)
       );
       result.push({
         id: `${sched.id}-${ds}`,
@@ -207,18 +215,17 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
         spots: sched.spots,
         spotsLeft: sched.spots_left,
         instructor: course.instructor,
-        reservations: matchingResas,
+        reservations: matchingResasAll.filter(r => r.status === "confirmé"),
+        allReservations: matchingResasAll,
       });
     }
 
     const dayWorkshops = workshops.filter(w => w.date === ds);
     for (const ws of dayWorkshops) {
       if (categoryFilter !== "all" && ws.category !== categoryFilter) continue;
-      const matchingResas = resas.filter(r =>
-        r.status === "confirmé" && (
-          r.workshop_id === ws.id ||
-          (!r.workshop_id && r.activity_name.trim().toLowerCase().includes(ws.name.trim().toLowerCase()) && r.date === ds)
-        )
+      const matchingResasAll = resas.filter(r =>
+        r.workshop_id === ws.id ||
+        (!r.workshop_id && r.activity_name.trim().toLowerCase().includes(ws.name.trim().toLowerCase()) && r.date === ds)
       );
       result.push({
         id: ws.id,
@@ -229,7 +236,8 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
         type: "workshop",
         spots: ws.spots,
         spotsLeft: ws.spots_left,
-        reservations: matchingResas,
+        reservations: matchingResasAll.filter(r => r.status === "confirmé"),
+        allReservations: matchingResasAll,
       });
     }
 
@@ -247,11 +255,56 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
     }));
   }, [weekDays, viewMode, schedules, courses, workshops, allReservations, categoryFilter]);
 
-  const prevDay = () => { const d = new Date(currentDate); d.setDate(d.getDate() - 1); setCurrentDate(d); };
-  const nextDay = () => { const d = new Date(currentDate); d.setDate(d.getDate() + 1); setCurrentDate(d); };
   const prevWeek = () => { const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d); };
   const nextWeek = () => { const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d); };
   const goToday = () => setCurrentDate(new Date());
+
+  // Garde le dialog de détail synchronisé avec les données fraîches (après ajout/annulation d'un participant)
+  useEffect(() => {
+    if (!selectedBlock) return;
+    const allBlocks = viewMode === "daily" ? blocks : weekBlocks.flatMap(w => w.blocks);
+    const fresh = allBlocks.find(b => b.id === selectedBlock.id);
+    if (fresh) setSelectedBlock(fresh);
+  }, [blocks, weekBlocks]);
+
+  const confirmCancelReservation = async () => {
+    if (!cancellingReservation) return;
+    const resa = cancellingReservation;
+    await supabase.from("reservations").update({ status: "annulé" }).eq("id", resa.id);
+    if (resa.schedule_id) {
+      const { data: sched } = await supabase.from("course_schedules").select("spots_left").eq("id", resa.schedule_id).single();
+      if (sched) await supabase.from("course_schedules").update({ spots_left: sched.spots_left + resa.participants }).eq("id", resa.schedule_id);
+    } else if (resa.workshop_id) {
+      const { data: ws } = await supabase.from("workshops").select("spots_left").eq("id", resa.workshop_id).single();
+      if (ws) await supabase.from("workshops").update({ spots_left: ws.spots_left + resa.participants }).eq("id", resa.workshop_id);
+    }
+    toast({ title: "Réservation annulée", variant: "destructive" });
+    setCancellingReservation(null);
+    fetchData();
+  };
+
+  const reconfirmReservation = async (resa: Reservation) => {
+    if (resa.schedule_id) {
+      const { data: sched } = await supabase.from("course_schedules").select("spots_left").eq("id", resa.schedule_id).single();
+      if (sched && sched.spots_left >= resa.participants) {
+        await supabase.from("course_schedules").update({ spots_left: sched.spots_left - resa.participants }).eq("id", resa.schedule_id);
+      } else {
+        toast({ title: "Plus de places disponibles", variant: "destructive" });
+        return;
+      }
+    } else if (resa.workshop_id) {
+      const { data: ws } = await supabase.from("workshops").select("spots_left").eq("id", resa.workshop_id).single();
+      if (ws && ws.spots_left >= resa.participants) {
+        await supabase.from("workshops").update({ spots_left: ws.spots_left - resa.participants }).eq("id", resa.workshop_id);
+      } else {
+        toast({ title: "Plus de places disponibles", variant: "destructive" });
+        return;
+      }
+    }
+    await supabase.from("reservations").update({ status: "confirmé" }).eq("id", resa.id);
+    toast({ title: "Réservation re-confirmée" });
+    fetchData();
+  };
 
   const isToday = dateStr === todayStr;
 
@@ -324,26 +377,6 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
 
   return (
     <div className="space-y-4">
-      {/* View mode toggle */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant={viewMode === "daily" ? "default" : "outline"}
-          size="sm"
-          className="gap-1.5"
-          onClick={() => { setViewMode("daily"); setCurrentDate(new Date()); }}
-        >
-          <CalendarDays className="h-4 w-4" /> Aujourd'hui
-        </Button>
-        <Button
-          variant={viewMode === "weekly" ? "default" : "outline"}
-          size="sm"
-          className="gap-1.5"
-          onClick={() => setViewMode("weekly")}
-        >
-          <CalendarRange className="h-4 w-4" /> Semaine
-        </Button>
-      </div>
-
       {viewMode === "daily" ? (
         <>
           <div className="flex items-center justify-center">
@@ -450,26 +483,41 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
 
               <div className="border-t pt-3">
                 <h4 className="text-sm font-medium mb-3">Participants inscrits</h4>
-                {selectedBlock.reservations.length === 0 ? (
+                {selectedBlock.allReservations.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Aucun participant inscrit.</p>
                 ) : (
                   <div className="space-y-2">
-                    {selectedBlock.reservations.map(r => (
-                      <div key={r.id} className="flex items-center justify-between rounded-lg border bg-muted/20 p-3">
-                        <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center">
+                    {selectedBlock.allReservations.map(r => (
+                      <div key={r.id} className="w-full flex items-center justify-between gap-2 rounded-lg border bg-muted/20 p-3">
+                        <button
+                          type="button"
+                          className="flex items-center gap-2 text-left flex-1 min-w-0 hover:opacity-80 transition-opacity"
+                          onClick={() => setSelectedParticipant(r.client_name)}
+                        >
+                          <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
                             <User className="h-4 w-4 text-primary-dark" />
                           </div>
-                          <div>
-                            <p className="text-sm font-medium">{r.client_name}</p>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{r.client_name}</p>
                             <p className="text-xs text-muted-foreground">
                               {r.participants} personne{r.participants > 1 ? "s" : ""}
                             </p>
                           </div>
+                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Badge className="text-xs" variant={r.status === "confirmé" ? "default" : "destructive"}>
+                            {r.status}
+                          </Badge>
+                          {r.status === "confirmé" ? (
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" title="Annuler" onClick={() => setCancellingReservation(r)}>
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-primary-dark" title="Rétablir" onClick={() => reconfirmReservation(r)}>
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
-                        <Badge className="text-xs" variant={r.status === "confirmé" ? "default" : "destructive"}>
-                          {r.status}
-                        </Badge>
                       </div>
                     ))}
                   </div>
@@ -609,6 +657,30 @@ export default function DailyView({ categoryFilter = "all" }: DailyViewProps) {
           )}
         </DialogContent>
       </Dialog>
+
+      <ClientDetailDialog
+        clientName={selectedParticipant}
+        open={!!selectedParticipant}
+        onOpenChange={(open) => !open && setSelectedParticipant(null)}
+        onChanged={fetchData}
+      />
+
+      <AlertDialog open={!!cancellingReservation} onOpenChange={(open) => !open && setCancellingReservation(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Annuler cette réservation ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Les places seront libérées et le client sera notifié de l'annulation.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Non, garder</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCancelReservation} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Oui, annuler
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

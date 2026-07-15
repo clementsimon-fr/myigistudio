@@ -1,13 +1,10 @@
 import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight, Clock, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Workshop } from "@/hooks/useActivitiesData";
 
 interface PotteryCalendarProps {
   workshops: Workshop[];
-  subFilter: string;
-  onSubFilterChange: (v: string) => void;
   onBook: (workshop: Workshop) => void;
 }
 
@@ -17,7 +14,7 @@ function formatDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export default function PotteryCalendar({ workshops, subFilter, onSubFilterChange, onBook }: PotteryCalendarProps) {
+export default function PotteryCalendar({ workshops, onBook }: PotteryCalendarProps) {
   const [monthOffset, setMonthOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -29,17 +26,10 @@ export default function PotteryCalendar({ workshops, subFilter, onSubFilterChang
 
   const monthLabel = monthDate.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
-  // Extract unique pottery type names for sub-filters
-  const subFilterOptions = useMemo(() => {
-    const names = new Set<string>();
-    workshops.filter(w => w.category === "poterie").forEach(w => names.add(w.name));
-    return Array.from(names).sort();
-  }, [workshops]);
-
   // Filtered workshops
   const filtered = useMemo(() => {
-    return workshops.filter(w => w.category === "poterie" && (subFilter === "all" || w.name === subFilter));
-  }, [workshops, subFilter]);
+    return workshops.filter(w => w.category === "poterie");
+  }, [workshops]);
 
   // Map date → workshops for the current month
   const dateMap = useMemo(() => {
@@ -79,31 +69,6 @@ export default function PotteryCalendar({ workshops, subFilter, onSubFilterChang
 
   return (
     <div className="space-y-4">
-      {/* Sub-filters */}
-      {subFilterOptions.length > 1 && (
-        <div className="flex flex-wrap items-center gap-1.5 justify-center">
-          <Button
-            variant={subFilter === "all" ? undefined : "outline"}
-            size="sm"
-            className={`rounded-full text-xs px-4 min-h-[36px] ${subFilter === "all" ? "bg-[hsl(40,76%,60%)] text-white border-transparent hover:opacity-90" : ""}`}
-            onClick={() => onSubFilterChange("all")}
-          >
-            Tout voir
-          </Button>
-          {subFilterOptions.map(name => (
-            <Button
-              key={name}
-              variant={subFilter === name ? undefined : "outline"}
-              size="sm"
-              className={`rounded-full text-xs px-4 min-h-[36px] ${subFilter === name ? "bg-[hsl(40,76%,60%)] text-white border-transparent hover:opacity-90" : ""}`}
-              onClick={() => onSubFilterChange(name)}
-            >
-              {name}
-            </Button>
-          ))}
-        </div>
-      )}
-
       {/* Month navigation */}
       <div className="flex items-center justify-center gap-3">
         <button onClick={() => { setMonthOffset(o => o - 1); setSelectedDate(null); }} className="p-2 rounded-full hover:bg-muted transition-colors">

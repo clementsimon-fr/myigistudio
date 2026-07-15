@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -7,18 +7,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { CalendarDays, CreditCard, Clock, Loader2, User, Pencil, XCircle, ArrowRight, Bell, MapPin, ShoppingCart, Star, Gift, LogOut } from "lucide-react";
+import { CalendarDays, CreditCard, Clock, Loader2, User, XCircle, ArrowRight, Bell, MapPin, ShoppingCart, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useDemoContext } from "@/contexts/DemoContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { makeDisplayName } from "@/lib/client-name";
 import ClientLayout from "@/components/client/ClientLayout";
 import MockStripeModal from "@/components/demo/MockStripeModal";
 import ContactElodieButton from "@/components/ContactElodieButton";
-import { cn } from "@/lib/utils";
+import YogaFormulasBlock from "@/components/YogaFormulasBlock";
 
 interface Reservation { id: string; client_name: string; activity_name: string; activity_type: string; date: string; time: string; end_time: string; participants: number; status: string; created_at: string; course_id: string | null; workshop_id: string | null; }
 interface ClientCard { id: string; client_name: string; card_name: string; total_sessions: number; used_sessions: number; expires_at: string; }
-interface Profile { id: string; user_name: string; bio: string; show_in_community: boolean; avatar_url: string; reminder_sms: boolean; reminder_email: boolean; }
 interface PricingCard { id: string; name: string; sessions: number; price: number; validity: string; popular: boolean; sort_order: number; payment_info: string; }
 
 const statusColors: Record<string, string> = {
@@ -29,12 +29,23 @@ const statusColors: Record<string, string> = {
 
 type Section = "reservations" | "cartes" | "profil";
 
+// CGV "annulation" (table `conditions`) : annulation possible jusqu'à 12h avant le cours.
+const CANCEL_MIN_HOURS = 12;
+
+function getCancelEligibility(date: string, time: string) {
+  const [h, m] = time.split(":").map(Number);
+  const courseStart = new Date(date + "T00:00:00");
+  courseStart.setHours(h, m, 0, 0);
+  const hoursUntil = (courseStart.getTime() - Date.now()) / (1000 * 60 * 60);
+  return { canCancel: hoursUntil >= CANCEL_MIN_HOURS, hoursUntil };
+}
+
 export default function MonEspace() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { currentProfile, setCurrentProfile, addCredits, addNotification } = useDemoContext();
-  const CLIENT_NAME = currentProfile?.name || "Sophie";
+  const { session, user, clientProfile, loading: authLoading, signOut, refreshProfile } = useAuth();
+  const CLIENT_NAME = clientProfile ? (makeDisplayName(clientProfile.first_name, clientProfile.last_name) || clientProfile.email) : "";
   const sectionParam = searchParams.get("section") as Section | null;
   const isWelcome = searchParams.get("welcome") === "1";
   const [section, setSection] = useState<Section>(sectionParam || "reservations");
@@ -55,7 +66,6 @@ export default function MonEspace() {
 
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [cards, setCards] = useState<ClientCard[]>([]);
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [reminderSms, setReminderSms] = useState(false);
   const [reminderEmail, setReminderEmail] = useState(true);
@@ -71,22 +81,28 @@ export default function MonEspace() {
   const [selectedPricingCard, setSelectedPricingCard] = useState<PricingCard | null>(null);
 
   useEffect(() => {
+    if (!CLIENT_NAME) return;
     const load = async () => {
       setLoading(true);
-      const [resR, resC, resP, resPC] = await Promise.all([
+      const [resR, resC, resPC] = await Promise.all([
         supabase.from("reservations").select("*").eq("client_name", CLIENT_NAME).order("date", { ascending: false }),
         supabase.from("client_cards").select("*").eq("client_name", CLIENT_NAME).order("created_at", { ascending: false }),
-        supabase.from("profiles").select("*").eq("user_name", CLIENT_NAME).maybeSingle(),
         supabase.from("pricing_cards").select("*").order("sort_order"),
       ]);
       if (resR.data) setReservations(resR.data as unknown as Reservation[]);
       if (resC.data) setCards(resC.data as unknown as ClientCard[]);
-      if (resP.data) { setProfile(resP.data as unknown as Profile); setReminderSms((resP.data as any).reminder_sms || false); setReminderEmail((resP.data as any).reminder_email ?? true); }
       if (resPC.data) setPricingCards(resPC.data as unknown as PricingCard[]);
       setLoading(false);
     };
     load();
   }, [CLIENT_NAME]);
+
+  useEffect(() => {
+    if (clientProfile) {
+      setReminderSms(clientProfile.reminder_sms);
+      setReminderEmail(clientProfile.reminder_email);
+    }
+  }, [clientProfile]);
 
   useEffect(() => {
     if (!viewingReservation) { setActivityModalities(""); return; }
@@ -113,8 +129,9 @@ export default function MonEspace() {
   const filteredRes = resFilter === "all" ? confirmedRes : resFilter === "yoga" ? yogaRes : resFilter === "poterie" ? potteryRes : atelierRes;
 
   const saveProfile = async () => {
-    if (profile) await supabase.from("profiles").update({ reminder_sms: reminderSms, reminder_email: reminderEmail } as any).eq("id", profile.id);
-    else await supabase.from("profiles").insert({ user_name: CLIENT_NAME, reminder_sms: reminderSms, reminder_email: reminderEmail } as any);
+    if (!user) return;
+    await supabase.from("client_profiles").update({ reminder_sms: reminderSms, reminder_email: reminderEmail }).eq("id", user.id);
+    await refreshProfile();
     toast({ title: "Profil mis à jour ✓" });
   };
 
@@ -137,11 +154,9 @@ export default function MonEspace() {
   const handleStripeSuccess = async () => {
     setShowStripeModal(false);
     if (!selectedPricingCard) return;
-    addCredits(selectedPricingCard.sessions, selectedPricingCard.name);
-    addNotification(`${CLIENT_NAME} vient d'acheter une ${selectedPricingCard.name}`, "purchase");
-    // Create card in DB
     await supabase.from("client_cards").insert({
       client_name: CLIENT_NAME,
+      user_id: user?.id,
       card_name: selectedPricingCard.name,
       total_sessions: selectedPricingCard.sessions,
       used_sessions: 0,
@@ -161,32 +176,26 @@ export default function MonEspace() {
 
   const sectionTitle = section === "reservations" ? "Réservations" : section === "cartes" ? "Cartes Yoga" : "Profil";
 
+  if (!authLoading && !session) {
+    return <Navigate to="/login?returnTo=%2Fmon-espace" replace />;
+  }
+
   return (
     <ClientLayout title={sectionTitle}>
-      {loading ? (
+      {authLoading || loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
       ) : (
         <>
           {/* ─── HEADER DE BIENVENUE (toutes sections) ─── */}
           <div className="max-w-3xl mb-6">
             <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-accent/10 border p-5 md:p-6">
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-3">
-                  <div className="h-14 w-14 rounded-full bg-white/70 backdrop-blur flex items-center justify-center">
-                    <User className="h-7 w-7 text-primary-dark" />
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Bonjour</p>
-                    <h2 className="text-xl font-display font-semibold text-primary-dark">{CLIENT_NAME}</h2>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="h-14 w-14 rounded-full bg-white/70 backdrop-blur flex items-center justify-center">
+                  <User className="h-7 w-7 text-primary-dark" />
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="default" className="gap-1.5" onClick={() => setSection("reservations")}>
-                    <CalendarDays className="h-4 w-4" /> Voir mes réservations
-                  </Button>
-                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setSection("profil")}>
-                    <User className="h-4 w-4" /> Mon profil
-                  </Button>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Bonjour</p>
+                  <h2 className="text-xl font-display font-semibold text-primary-dark">{CLIENT_NAME}</h2>
                 </div>
               </div>
 
@@ -277,12 +286,7 @@ export default function MonEspace() {
               {/* Summary */}
               <div className="rounded-xl border bg-card p-5">
                 <div className="flex items-center justify-between">
-              <div>
-                    <h2 className="text-lg font-display font-semibold text-primary-dark">Mes cartes Yoga</h2>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Vous avez <strong className="text-primary-dark">{totalCredits}</strong> carte{totalCredits > 1 ? "s" : ""} yoga disponible{totalCredits > 1 ? "s" : ""}
-                    </p>
-                  </div>
+                  <h2 className="text-lg font-display font-semibold text-primary-dark">Mes cartes Yoga</h2>
                   <div className="h-14 w-14 rounded-full bg-[hsl(210,60%,55%)]/10 flex items-center justify-center">
                     <CreditCard className="h-7 w-7 text-[hsl(210,60%,55%)]" />
                   </div>
@@ -331,45 +335,7 @@ export default function MonEspace() {
                 {showBuyCards && (
                   <div className="mt-4">
                     <h3 className="text-sm font-semibold text-primary-dark mb-3">Choisir une formule</h3>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {pricingCards.map(card => {
-                        const perSession = card.sessions > 0 && card.sessions < 9999 ? card.price / card.sessions : null;
-                        return (
-                          <div
-                            key={card.id}
-                            className={cn(
-                              "relative rounded-xl border p-5 bg-card flex flex-col cursor-pointer transition-all hover:shadow-md",
-                              card.popular ? "border-[hsl(210,60%,55%)] shadow-lg ring-2 ring-[hsl(210,60%,55%)]/20" : "hover:border-[hsl(210,60%,55%)]/40"
-                            )}
-                            onClick={() => handleBuyCard(card)}
-                          >
-                            {card.popular && (
-                              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                                <Star className="h-3 w-3" /> Populaire
-                              </div>
-                            )}
-                            <h3 className="font-display font-semibold text-lg text-primary-dark">{card.name}</h3>
-                            <div className="mt-3 mb-1">
-                              <span className="text-3xl font-bold text-foreground">{card.price}€</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground mb-1">
-                              {card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`} · {card.validity}
-                            </p>
-                            {perSession !== null && (
-                              <p className="text-xs text-muted-foreground mb-1">
-                                {perSession.toFixed(2)}€ / cours
-                              </p>
-                            )}
-                            {card.payment_info && <p className="text-xs text-[hsl(210,60%,55%)] italic mb-3">{card.payment_info}</p>}
-                            <div className="mt-auto pt-3">
-                              <Button className={cn("w-full", card.popular ? "bg-[hsl(210,60%,55%)] hover:bg-[hsl(210,60%,45%)] text-white" : "")} variant={card.popular ? "default" : "outline"}>
-                                <ShoppingCart className="h-4 w-4 mr-1.5" /> Acheter
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <YogaFormulasBlock pricingCards={pricingCards} onSelectCard={handleBuyCard} showHeader={false} />
                     <div className="mt-4">
                       <ContactElodieButton variant="outline" className="text-xs" />
                     </div>
@@ -441,7 +407,7 @@ export default function MonEspace() {
                     <Switch checked={reminderSms} onCheckedChange={setReminderSms} />
                   </div>
                 </div>
-                {(reminderSms !== (profile?.reminder_sms ?? false) || reminderEmail !== (profile?.reminder_email ?? true)) && (
+                {(reminderSms !== (clientProfile?.reminder_sms ?? false) || reminderEmail !== (clientProfile?.reminder_email ?? true)) && (
                   <Button size="sm" className="text-xs mt-2" onClick={saveProfile}>Sauvegarder</Button>
                 )}
               </div>
@@ -450,7 +416,7 @@ export default function MonEspace() {
               <Button
                 variant="outline"
                 className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
-                onClick={() => { setCurrentProfile(null); navigate("/"); }}
+                onClick={async () => { await signOut(); navigate("/"); }}
               >
                 <LogOut className="h-4 w-4" />
                 Se déconnecter
@@ -478,14 +444,7 @@ export default function MonEspace() {
             const todayStr = new Date().toISOString().split("T")[0];
             const isFuture = r.date >= todayStr;
             const isConfirmed = r.status === "confirmé";
-            let canCancel = false;
-            if (isConfirmed && isFuture && r.time) {
-              const [h, m] = r.time.split(":").map(Number);
-              const courseStart = new Date(r.date + "T00:00:00");
-              courseStart.setHours(h, m, 0, 0);
-              const hoursUntil = (courseStart.getTime() - Date.now()) / (1000 * 60 * 60);
-              canCancel = hoursUntil >= 12;
-            }
+            const canCancel = isConfirmed && isFuture && !!r.time && getCancelEligibility(r.date, r.time).canCancel;
             return (
               <>
                 <DialogHeader>
@@ -520,13 +479,23 @@ export default function MonEspace() {
                       <p className="text-xs text-muted-foreground whitespace-pre-line">{activityModalities}</p>
                     </div>
                   )}
-                  <div className="flex gap-2 pt-2">
-                    {isConfirmed && isFuture && (
-                      <Button variant="destructive" className="flex-1 gap-1.5" onClick={() => setCancelConfirm(r)}>
+                  {isConfirmed && isFuture && (
+                    <div className="pt-2">
+                      <Button
+                        variant="destructive"
+                        className="w-full gap-1.5"
+                        disabled={!canCancel}
+                        onClick={() => setCancelConfirm(r)}
+                      >
                         <XCircle className="h-4 w-4" /> Annuler la réservation
                       </Button>
-                    )}
-                  </div>
+                      {!canCancel && (
+                        <p className="text-xs text-muted-foreground text-center mt-1.5">
+                          Annulation possible jusqu'à 12h avant le cours.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </>
             );
@@ -538,11 +507,7 @@ export default function MonEspace() {
       <AlertDialog open={!!cancelConfirm} onOpenChange={(open) => !open && setCancelConfirm(null)}>
         <AlertDialogContent>
           {cancelConfirm && (() => {
-            const [h, m] = cancelConfirm.time.split(":").map(Number);
-            const courseStart = new Date(cancelConfirm.date + "T00:00:00");
-            courseStart.setHours(h, m, 0, 0);
-            const hoursUntil = (courseStart.getTime() - Date.now()) / (1000 * 60 * 60);
-            const canCancel = hoursUntil >= 12;
+            const { canCancel, hoursUntil } = getCancelEligibility(cancelConfirm.date, cancelConfirm.time);
             const hoursText = Math.floor(hoursUntil) + "h";
             return (
               <>

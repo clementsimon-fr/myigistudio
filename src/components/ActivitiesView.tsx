@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Info, Users, Euro, Clock, Mail, ChevronLeft, ChevronRight, Repeat, CalendarDays } from "lucide-react";
+import { Info, Users, Euro, Clock, Mail, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -53,7 +53,6 @@ interface ActivitiesViewProps {
   filter: FilterCategory;
   subFilter?: string;
   getInstructorPhoto: (id: string | null, name?: string) => string | undefined;
-  onSwitchToPlanning: (params?: { type: "course" | "workshop"; id: string; date?: string }) => void;
 }
 
 function InstructorBadge({ instructor, photo }: { instructor: string; photo?: string }) {
@@ -281,11 +280,10 @@ function YogaPricingCardsMini({ cards }: { cards: YogaPricingCard[] }) {
   );
 }
 
-export default function ActivitiesView({ courses, workshops, schedules, filter, subFilter = "all", getInstructorPhoto, onSwitchToPlanning }: ActivitiesViewProps) {
+export default function ActivitiesView({ courses, workshops, schedules, filter, subFilter = "all", getInstructorPhoto }: ActivitiesViewProps) {
   const [descriptionCourse, setDescriptionCourse] = useState<Course | null>(null);
   const [descriptionWs, setDescriptionWs] = useState<Workshop | null>(null);
   const [yogaMonthOffset, setYogaMonthOffset] = useState(0);
-  const [potterySubFilter, setPotterySubFilter] = useState("all");
   const [yogaCards, setYogaCards] = useState<YogaPricingCard[]>([]);
 
   useEffect(() => {
@@ -332,7 +330,7 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
       }));
   }, [courses, schedules, schedulesMap, subFilter]);
 
-  const potteryGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "poterie" && (potterySubFilter === "all" || w.name === potterySubFilter))), [workshops, potterySubFilter]);
+  const potteryGroups = useMemo(() => groupWorkshops(workshops.filter(w => w.category === "poterie")), [workshops]);
 
   const showYoga = filter === "all" || filter === "yoga";
   const showPoterie = filter === "all" || filter === "poterie";
@@ -370,140 +368,117 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
 
   return (
     <>
-      {/* ─── Meta-bloc : Événements récurrents ─── */}
-      {hasRecurring && (
-        <section className="py-6 md:py-8 border-b bg-muted/20" data-planning-section>
-          <div className="container max-w-5xl">
-            <div className="flex items-center gap-2 mb-4 md:mb-5">
-              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 text-primary">
-                <Repeat className="h-4 w-4" />
-              </div>
-              <div>
-                <h2 className="font-display text-lg md:text-xl font-bold text-primary-dark leading-tight">Événements récurrents</h2>
-                <p className="text-xs text-muted-foreground">Les cours hebdomadaires de Yoga & Pilates</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <button onClick={() => setYogaMonthOffset(o => o - 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronLeft className="h-4 w-4 text-muted-foreground" /></button>
-              <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground capitalize">
-                Planning de {yogaMonthLabel}
-              </h3>
-              <button onClick={() => setYogaMonthOffset(o => o + 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>
-            </div>
-            <div className="max-w-2xl mx-auto">
-              <RecurringGrid courses={courses.filter(c => c.category === "yoga" && (subFilter === "all" || c.name === subFilter))} schedules={schedules} onEventClick={handleProgrammeEventClick} />
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ─── Meta-bloc : Événements ponctuels ─── */}
-      {(hasPonctuelYoga || showPoterie) && (
-        <section className="py-6 md:py-8 border-b bg-card">
-          <div className="container max-w-5xl">
-            <div className="flex items-center gap-2 mb-4 md:mb-5">
-              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-accent/15 text-accent-foreground">
-                <CalendarDays className="h-4 w-4" />
-              </div>
-              <div>
-                <h2 className="font-display text-lg md:text-xl font-bold text-primary-dark leading-tight">Événements ponctuels</h2>
-                <p className="text-xs text-muted-foreground">Ateliers, stages et dates uniques</p>
-              </div>
-            </div>
-            {hasPonctuelYoga && (
-              <div className="max-w-2xl mx-auto mb-6">
-                <MonthWorkshops workshops={yogaWorkshopsForMonth} onEventClick={handleProgrammeEventClick} hideTitle hidePriceSpots monthDate={yogaMonthDate} hideEmptyMessage />
-              </div>
-            )}
-            {showPoterie && (
-              <div className="max-w-lg mx-auto">
-                <PotteryCalendar
-                  workshops={workshops}
-                  subFilter={potterySubFilter}
-                  onSubFilterChange={setPotterySubFilter}
-                  onBook={handleBookPotterySlot}
-                />
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* ─── Découvrir Yoga & Pilates ─── */}
-      {showYoga && coursesWithSchedules.length > 0 && (
-        <section className="py-8 md:py-10">
+      {/* ═══════════ YOGA & PILATES ═══════════ */}
+      {showYoga && (hasRecurring || hasPonctuelYoga || coursesWithSchedules.length > 0) && (
+        <section className="py-8 md:py-10 border-b" data-planning-section>
           <div className="container">
             <h2 className={`text-xl md:text-2xl font-display font-bold mb-5 md:mb-6 text-center ${yogaStyle.text}`}>Yoga & Pilates</h2>
-            <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {coursesWithSchedules.map((course, i) => {
-                const photo = getInstructorPhoto(course.instructor_id, course.instructor);
-                const spotsLeft = getCourseSpotsLeft(course.id);
-                const nextDate = (() => {
-                  const today = new Date();
-                  const dayIdx = today.getDay();
-                  const dayMap: Record<string, number> = { Lundi: 1, Mardi: 2, Mercredi: 3, Jeudi: 4, Vendredi: 5, Samedi: 6, Dimanche: 0 };
-                  let minDiff = Infinity;
-                  for (const d of course.activeDays) {
-                    const target = dayMap[d];
-                    if (target === undefined) continue;
-                    let diff = target - dayIdx;
-                    if (diff < 0) diff += 7;
-                    if (diff === 0) diff = 0;
-                    if (diff < minDiff) minDiff = diff;
-                  }
-                  if (minDiff === Infinity) return null;
-                  const next = new Date(today);
-                  next.setDate(today.getDate() + minDiff);
-                  return next;
-                })();
-                return (
-                  <motion.div id={`card-course-${course.id}`} key={course.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-all">
-                    <div className="aspect-[4/3] overflow-hidden bg-muted relative">
-                      <ImageCarousel images={[course.image, ...(course.images || [])].filter(Boolean)} alt={course.name} />
+
+            {(hasRecurring || hasPonctuelYoga) && (
+              <div className="max-w-2xl mx-auto mb-8 space-y-5">
+                {hasRecurring && (
+                  <div>
+                    <div className="flex items-center justify-center gap-2 mb-3">
+                      <button onClick={() => setYogaMonthOffset(o => o - 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronLeft className="h-4 w-4 text-muted-foreground" /></button>
+                      <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground capitalize">
+                        Planning de {yogaMonthLabel}
+                      </h3>
+                      <button onClick={() => setYogaMonthOffset(o => o + 1)} className="p-1 rounded-full hover:bg-muted transition-colors"><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>
                     </div>
-                    <div className="p-4 md:p-5">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <h3 className={`font-display font-semibold text-base md:text-lg leading-tight ${yogaStyle.text}`}>{course.name}</h3>
-                      </div>
-                      {course.description && <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{course.description}</p>}
-                      {nextDate && (
-                        <p className="text-xs text-muted-foreground mb-2 flex items-center gap-2 flex-wrap">
-                          <span>📅 Prochain cours : {nextDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</span>
-                          {spotsLeft !== undefined && <SpotsBadge spotsLeft={spotsLeft} />}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
-                        <InstructorBadge instructor={course.instructor} photo={photo} />
-                      </div>
-                      <Button size="sm" className={`w-full text-xs ${yogaStyle.bookBtn}`} onClick={() => setDescriptionCourse(course)} disabled={spotsLeft === 0}>
-                        {spotsLeft === 0 ? "Complet" : "Découvrir et réserver"}
-                      </Button>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+                    <RecurringGrid courses={coursesWithSchedules} schedules={schedules} onEventClick={handleProgrammeEventClick} />
+                  </div>
+                )}
+                {hasPonctuelYoga && (
+                  <MonthWorkshops workshops={yogaWorkshopsForMonth} onEventClick={handleProgrammeEventClick} hidePriceSpots monthDate={yogaMonthDate} hideEmptyMessage />
+                )}
+              </div>
+            )}
+
+            {coursesWithSchedules.length > 0 && (
+              <>
+                <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                  {coursesWithSchedules.map((course, i) => {
+                    const photo = getInstructorPhoto(course.instructor_id, course.instructor);
+                    const spotsLeft = getCourseSpotsLeft(course.id);
+                    const nextDate = (() => {
+                      const today = new Date();
+                      const dayIdx = today.getDay();
+                      const dayMap: Record<string, number> = { Lundi: 1, Mardi: 2, Mercredi: 3, Jeudi: 4, Vendredi: 5, Samedi: 6, Dimanche: 0 };
+                      let minDiff = Infinity;
+                      for (const d of course.activeDays) {
+                        const target = dayMap[d];
+                        if (target === undefined) continue;
+                        let diff = target - dayIdx;
+                        if (diff < 0) diff += 7;
+                        if (diff === 0) diff = 0;
+                        if (diff < minDiff) minDiff = diff;
+                      }
+                      if (minDiff === Infinity) return null;
+                      const next = new Date(today);
+                      next.setDate(today.getDate() + minDiff);
+                      return next;
+                    })();
+                    return (
+                      <motion.div id={`card-course-${course.id}`} key={course.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }} className="rounded-xl border bg-card overflow-hidden hover:shadow-lg transition-all">
+                        <div className="aspect-[4/3] overflow-hidden bg-muted relative">
+                          <ImageCarousel images={[course.image, ...(course.images || [])].filter(Boolean)} alt={course.name} />
+                        </div>
+                        <div className="p-4 md:p-5">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <h3 className={`font-display font-semibold text-base md:text-lg leading-tight ${yogaStyle.text}`}>{course.name}</h3>
+                          </div>
+                          {course.description && <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{course.description}</p>}
+                          {nextDate && (
+                            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-2 flex-wrap">
+                              <span>📅 Prochain cours : {nextDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</span>
+                              {spotsLeft !== undefined && <SpotsBadge spotsLeft={spotsLeft} />}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground mb-3">
+                            <InstructorBadge instructor={course.instructor} photo={photo} />
+                          </div>
+                          <Button size="sm" className={`w-full text-xs ${yogaStyle.bookBtn}`} onClick={() => setDescriptionCourse(course)} disabled={spotsLeft === 0}>
+                            {spotsLeft === 0 ? "Complet" : "Découvrir et réserver"}
+                          </Button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </section>
       )}
 
-      {/* ─── Découvrir Poterie ─── */}
+      {/* ═══════════ POTERIE ═══════════ */}
       {showPoterie && (
-        <section className={`py-8 md:py-10 ${showYoga && coursesWithSchedules.length > 0 ? "bg-secondary/10" : ""}`}>
+        <section className={`py-8 md:py-10 ${showYoga ? "bg-secondary/10" : ""}`}>
           <div className="container">
             <h2 className={`text-xl md:text-2xl font-display font-bold mb-5 md:mb-6 text-center ${potteryStyle.text}`}>Poterie</h2>
-            <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {potteryGroups.map((group, i) => (
-                <WorkshopCard key={group.key} group={group} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(group.workshops[0].instructor_id)} onBook={handleBookGroup} />
-              ))}
+
+            <div className="max-w-lg mx-auto mb-8">
+              <PotteryCalendar
+                workshops={workshops}
+                onBook={handleBookPotterySlot}
+              />
             </div>
+
+            {potteryGroups.length > 0 && (
+              <>
+                <h3 className="text-sm md:text-base font-display font-semibold text-muted-foreground mb-4 text-center">Découvrir</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                  {potteryGroups.map((group, i) => (
+                    <WorkshopCard key={group.key} group={group} i={i} onDescription={setDescriptionWs} instructorPhoto={getInstructorPhoto(group.workshops[0].instructor_id)} onBook={handleBookGroup} />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </section>
       )}
 
-      
       <TeamSection />
 
       <section className="py-12 md:py-16">

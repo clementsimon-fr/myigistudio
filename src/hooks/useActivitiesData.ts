@@ -33,6 +33,8 @@ export interface Course {
   images?: string[];
   frequency?: string;
   intensity?: string;
+  inclusions?: string;
+  complementary_info?: string;
 }
 
 export interface Workshop {
@@ -53,6 +55,7 @@ export interface Workshop {
   images?: string[];
   instructor_id: string | null;
   inclusions?: string;
+  complementary_info?: string;
   card_yoga_count?: number;
   linked_group?: string | null;
 }

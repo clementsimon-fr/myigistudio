@@ -11,18 +11,32 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useDemoContext } from "@/contexts/DemoContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { makeDisplayName } from "@/lib/client-name";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import MockStripeModal from "@/components/demo/MockStripeModal";
 import LoginBlock from "@/components/booking/LoginBlock";
-import SignupBlock from "@/components/booking/SignupBlock";
 import YogaFormulasBlock, { YogaFormulasPricingCard } from "@/components/YogaFormulasBlock";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 
 const DAY_INDEX: Record<string, number> = {
   dimanche: 0, lundi: 1, mardi: 2, mercredi: 3, jeudi: 4, vendredi: 5, samedi: 6,
 };
+
+// A slot dated today is only bookable if its start time hasn't passed yet.
+function isBookableSlot(dateStr: string, timeStr?: string): boolean {
+  const now = new Date();
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const slotDate = new Date(dateStr + "T00:00:00");
+  if (slotDate.getTime() > today.getTime()) return true;
+  if (slotDate.getTime() < today.getTime()) return false;
+  if (!timeStr) return true;
+  const [h, m] = timeStr.split(":").map(Number);
+  const slotDateTime = new Date(today);
+  slotDateTime.setHours(h || 0, m || 0, 0, 0);
+  return slotDateTime > now;
+}
 
 function nextDatesForCourse(schedules: Schedule[], count = 8) {
   const out: { date: string; time: string; end_time: string; scheduleId: string }[] = [];
@@ -32,7 +46,10 @@ function nextDatesForCourse(schedules: Schedule[], count = 8) {
     const dow = d.getDay();
     for (const s of schedules) {
       const idx = DAY_INDEX[(s.day || "").toLowerCase()];
-      if (idx === dow) out.push({ date: d.toISOString().split("T")[0], time: s.time, end_time: s.end_time, scheduleId: s.id });
+      if (idx !== dow) continue;
+      const dateStr = d.toISOString().split("T")[0];
+      if (!isBookableSlot(dateStr, s.time)) continue;
+      out.push({ date: dateStr, time: s.time, end_time: s.end_time, scheduleId: s.id });
     }
   }
   return out;
@@ -86,13 +103,14 @@ export default function BookingSheet({
   open, onClose, course, workshop, schedules = [], workshopsList = [], unitPrice,
 }: BookingSheetProps) {
   const { toast } = useToast();
-  const { currentProfile, addReservation, addNotification, addCredits, useCredit, setCurrentProfile, createTempProfile } = useDemoContext();
+  const { session, user, clientProfile } = useAuth();
   const isYoga = !!course;
+  const connectedName = clientProfile ? (makeDisplayName(clientProfile.first_name, clientProfile.last_name) || clientProfile.email) : "";
 
   const dates = useMemo(() => {
     if (workshop) {
       return workshopsList
-        .filter((w) => w.name === workshop.name && new Date(w.date) >= new Date(new Date().toDateString()))
+        .filter((w) => w.name === workshop.name && isBookableSlot(w.date, w.time))
         .sort((a, b) => a.date.localeCompare(b.date))
         .map((w) => ({ date: w.date, time: w.time, end_time: w.end_time, scheduleId: w.id }));
     }
@@ -110,13 +128,13 @@ export default function BookingSheet({
   const [conditionsAccepted, setConditionsAccepted] = useState(false);
   const [pricingCards, setPricingCards] = useState<YogaFormulasPricingCard[]>([]);
   const [guestMode, setGuestMode] = useState(false);
+  const [guestLastName, setGuestLastName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
   const [conditionsList, setConditionsList] = useState<{ id: string; title: string; content: string }[]>([]);
+  const [existingCardsBalance, setExistingCardsBalance] = useState(0);
 
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [pendingFormula, setPendingFormula] = useState<YogaFormulasPricingCard | null>(null);
-  const [formulaAuthConfirm, setFormulaAuthConfirm] = useState<YogaFormulasPricingCard | null>(null);
-  const [authMode, setAuthMode] = useState<null | "login" | "signup">(null);
-  const [registering, setRegistering] = useState(false);
+  const [authMode, setAuthMode] = useState<null | "login">(null);
   const [showStripe, setShowStripe] = useState(false);
 
   // Init on open
@@ -128,7 +146,9 @@ export default function BookingSheet({
     setCart([]);
     setAssignments({});
     setGuestMode(false);
-    setParticipants([{ name: currentProfile?.name || "", isMe: !!currentProfile }]);
+    setGuestLastName("");
+    setGuestEmail("");
+    setParticipants([{ name: connectedName, isMe: !!session }]);
   }, [open]);
 
   // Sync participant 0 if profile changes mid-session
@@ -137,9 +157,18 @@ export default function BookingSheet({
     setParticipants((prev) => {
       if (prev.length === 0) return prev;
       const [first, ...rest] = prev;
-      return [{ name: currentProfile?.name || first.name, isMe: !!currentProfile }, ...rest];
+      return [{ name: connectedName || first.name, isMe: !!session }, ...rest];
     });
-  }, [currentProfile?.id, currentProfile?.name, open]);
+  }, [session, connectedName, open]);
+
+  // Real remaining Yoga card balance for the connected client
+  useEffect(() => {
+    if (!open || !isYoga || !user) { setExistingCardsBalance(0); return; }
+    supabase.from("client_cards").select("total_sessions, used_sessions").eq("user_id", user.id).then(({ data }) => {
+      const balance = (data || []).reduce((sum, c: any) => sum + Math.max(0, c.total_sessions - c.used_sessions), 0);
+      setExistingCardsBalance(balance);
+    });
+  }, [open, isYoga, user]);
 
   useEffect(() => {
     if (!open || !isYoga) return;
@@ -220,8 +249,30 @@ export default function BookingSheet({
 
   const allAssigned = participants.length > 0 && participants.every((_, i) => !!assignments[i]);
 
+  // Cas trivial : 1 participant + 1 tarif acheté → rien à choisir, l'étape Attribution est sautée.
+  const shouldSkipAssignStep = participants.length === 1 && cart.length === 1;
+
+  // Attribution automatique par défaut (dans l'ordre, en respectant la capacité de chaque tarif) —
+  // recalculée à chaque changement de composition ; l'utilisateur peut ensuite ajuster manuellement.
+  useEffect(() => {
+    const next: Record<number, string | null> = {};
+    const used: Record<string, number> = {};
+    for (let i = 0; i < participants.length; i++) {
+      const item = cart.find((ci) => (used[ci.id] || 0) < ci.capacity);
+      if (item) {
+        next[i] = item.id;
+        used[item.id] = (used[item.id] || 0) + 1;
+      } else {
+        next[i] = null;
+      }
+    }
+    setAssignments(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart, participants.length]);
+
   // ---- Step gating ----
-  const identityChosen = !!currentProfile || guestMode;
+  // Une cliente déjà connectée n'a pas besoin de l'étape "Qui réserve ?" — elle est sautée (voir goNext/goPrev).
+  const identityChosen = !!session || (guestMode && guestEmail.trim().length > 0);
   const canNext = () => {
     if (step === 1) return !!selected;
     if (step === 2) return identityChosen && (participants[0]?.name.trim().length > 0);
@@ -240,54 +291,88 @@ export default function BookingSheet({
     { n: 6, label: "Paiement", icon: CreditCard },
   ];
 
-  // ---- Auth ----
-  const handleSignupSubmit = (name: string) => {
-    setRegistering(true);
-    setTimeout(() => {
-      createTempProfile(name);
-      setRegistering(false);
-      setAuthMode(null);
-      toast({ title: "Compte créé ✓", description: "Vous pouvez maintenant choisir une formule." });
-      setStep(4);
-      if (pendingFormula) {
-        setTimeout(() => setPickerOpen(true), 50);
-      }
-    }, 1200);
-  };
+  const goNext = () => setStep((s) => {
+    if (s === 1 && session) return 3;
+    if (s === 4 && shouldSkipAssignStep) return 6;
+    return s + 1;
+  });
+  const goPrev = () => setStep((s) => {
+    if (s === 3 && session) return 1;
+    if (s === 6 && shouldSkipAssignStep) return 4;
+    return s - 1;
+  });
 
   // ---- Finalize ----
   const finalize = async () => {
     if (!selected) return;
     const name = course?.name || workshop?.name || "";
-    // For each formula in cart, give full sessions credit to user account (leftover slots become available credits)
-    cart.forEach((ci) => {
-      if (ci.method.kind === "formula") {
-        const used = slotsUsed(ci.id);
-        const remaining = Math.max(0, ci.capacity - used);
-        // The user buys the full formula; we credit the full pack and immediately "use" the assigned ones
-        addCredits(ci.capacity, `Carte ${ci.method.cardName}`);
-        for (let k = 0; k < used; k++) useCredit();
-        // remaining stays on account, no action needed
-      } else if (ci.method.kind === "existing_card") {
-        useCredit();
+
+    // Invitée sans session : le compte se crée silencieusement au moment du paiement,
+    // sans bloquer la réservation en cours sur un lien email à cliquer.
+    let userId = user?.id || null;
+    const clientName = session ? connectedName : makeDisplayName(participants[0]?.name || "", guestLastName) || participants[0]?.name || "Invité";
+    if (!userId && guestEmail.trim()) {
+      try {
+        const { data, error } = await supabase.functions.invoke("create-guest-account", {
+          body: { email: guestEmail.trim(), first_name: participants[0]?.name || "", last_name: guestLastName, phone: "" },
+        });
+        if (!error && data?.user_id) userId = data.user_id;
+      } catch {
+        // Edge function indisponible : la réservation continue quand même, sans compte lié.
       }
-    });
-    addReservation(name, selected.date, selected.time);
-    addNotification(`${currentProfile?.name || "Un client"} a réservé ${name} (${participants.length} pers.)`, "reservation");
-    try {
-      await supabase.from("reservations").insert({
-        client_name: currentProfile?.name || "Invité",
-        activity_name: name,
-        activity_type: course ? "course" : "workshop",
-        date: selected.date,
-        time: selected.time,
-        end_time: selected.end_time,
-        participants: participants.length,
-        status: "confirmé",
-        course_id: course?.id || null,
-        workshop_id: workshop?.id || null,
+    }
+
+    // Cartes existantes utilisées : décrémenter une vraie carte en base (la plus ancienne avec du solde).
+    const existingCardUses = cart.filter((ci) => ci.method.kind === "existing_card").length;
+    if (existingCardUses > 0 && userId) {
+      const { data: myCards } = await supabase
+        .from("client_cards")
+        .select("id, total_sessions, used_sessions")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true });
+      let remainingToConsume = existingCardUses;
+      for (const c of (myCards as any[]) || []) {
+        if (remainingToConsume <= 0) break;
+        const available = c.total_sessions - c.used_sessions;
+        if (available <= 0) continue;
+        const consume = Math.min(available, remainingToConsume);
+        await supabase.from("client_cards").update({ used_sessions: c.used_sessions + consume }).eq("id", c.id);
+        remainingToConsume -= consume;
+      }
+    }
+
+    // Formules achetées : créditer une nouvelle carte, déjà partiellement utilisée par les participants assignés.
+    for (const ci of cart) {
+      if (ci.method.kind !== "formula") continue;
+      const method = ci.method;
+      const used = slotsUsed(ci.id);
+      const match = pricingCards.find((p) => p.id === method.cardId);
+      const months = match ? parseInt(match.validity.match(/(\d+)/)?.[1] || "1", 10) : 1;
+      const expiresAt = new Date();
+      expiresAt.setMonth(expiresAt.getMonth() + months);
+      await supabase.from("client_cards").insert({
+        client_name: clientName,
+        user_id: userId,
+        card_name: method.cardName,
+        total_sessions: ci.capacity,
+        used_sessions: used,
+        expires_at: expiresAt.toISOString().split("T")[0],
       } as any);
-    } catch {}
+    }
+
+    await supabase.from("reservations").insert({
+      client_name: clientName,
+      user_id: userId,
+      activity_name: name,
+      activity_type: course ? "course" : "workshop",
+      date: selected.date,
+      time: selected.time,
+      end_time: selected.end_time,
+      participants: participants.length,
+      status: "confirmé",
+      course_id: course?.id || null,
+      workshop_id: workshop?.id || null,
+    } as any);
     toast({ title: "Réservation confirmée ✓", description: `${name} — ${new Date(selected.date).toLocaleDateString("fr-FR")} à ${selected.time}` });
     onClose();
   };
@@ -472,36 +557,34 @@ export default function BookingSheet({
                           </div>
                         ) : (
                           <div className="mt-1 space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input
+                                placeholder="Prénom"
+                                value={p.name}
+                                onChange={(e) => { updateParticipantName(0, e.target.value); setGuestMode(true); }}
+                              />
+                              <Input
+                                placeholder="Nom"
+                                value={guestLastName}
+                                onChange={(e) => { setGuestLastName(e.target.value); setGuestMode(true); }}
+                              />
+                            </div>
                             <Input
-                              placeholder="Votre prénom"
-                              value={p.name}
-                              onChange={(e) => updateParticipantName(0, e.target.value)}
+                              type="email"
+                              placeholder="Email"
+                              value={guestEmail}
+                              onChange={(e) => { setGuestEmail(e.target.value); setGuestMode(true); }}
                             />
-                            {!guestMode ? (
-                              <>
-                                <p className="text-[11px] text-muted-foreground">
-                                  Choisissez une option pour continuer :
-                                </p>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                  <Button size="sm" variant="outline" onClick={() => setAuthMode("login")}>
-                                    Se connecter
-                                  </Button>
-                                  <Button size="sm" variant="outline" onClick={() => setAuthMode("signup")}>
-                                    Créer un compte
-                                  </Button>
-                                  <Button size="sm" variant="ghost" className="border border-dashed" onClick={() => setGuestMode(true)}>
-                                    Continuer sans compte
-                                  </Button>
-                                </div>
-                              </>
-                            ) : (
-                              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                <Badge variant="secondary" className="text-[10px]">Mode invité</Badge>
-                                <button onClick={() => setGuestMode(false)} className="underline hover:text-foreground">
-                                  Changer
-                                </button>
-                              </div>
-                            )}
+                            <p className="text-[11px] text-muted-foreground">
+                              Votre compte sera créé automatiquement au moment du paiement.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setAuthMode("login")}
+                              className="text-xs text-primary-dark underline hover:no-underline"
+                            >
+                              Déjà un compte ? Se connecter
+                            </button>
                           </div>
                         )}
                       </div>
@@ -610,7 +693,10 @@ export default function BookingSheet({
               {/* STEP 5 — Attribution & récap intelligent */}
               {step === 5 && (
                 <div className="space-y-3 pt-2">
-                  <h3 className="text-sm font-semibold">Attribuer vos achats aux participants</h3>
+                  <h3 className="text-sm font-semibold">Vérifiez qui utilise quoi</h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Nous avons associé chaque participant automatiquement. Modifiez si besoin.
+                  </p>
 
                   <div className="space-y-2">
                     {participants.map((p, i) => {
@@ -645,7 +731,7 @@ export default function BookingSheet({
 
                   <div className="rounded-lg bg-muted/40 border p-3 space-y-1.5">
                     <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">
-                      Récapitulatif
+                      Ce que vous allez payer
                     </p>
                     {summaryLines.map((s) => (
                       <p key={s.id} className="text-xs leading-relaxed">{s.line}</p>
@@ -722,12 +808,12 @@ export default function BookingSheet({
         {/* Footer */}
         <div className="border-t bg-muted/30 px-5 py-3 flex items-center justify-between gap-2">
           {step > 1 ? (
-            <Button variant="ghost" onClick={() => setStep((s) => s - 1)}>
+            <Button variant="ghost" onClick={goPrev}>
               <ChevronLeft className="h-4 w-4 mr-1" /> Précédent
             </Button>
           ) : <span />}
           {step < 6 ? (
-            <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext()}>
+            <Button onClick={goNext} disabled={!canNext()}>
               Continuer <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           ) : (
@@ -742,65 +828,27 @@ export default function BookingSheet({
       {/* Picker modal — adds items to cart */}
       <CartPickerModal
         open={pickerOpen}
-        onClose={() => { setPickerOpen(false); setPendingFormula(null); }}
+        onClose={() => setPickerOpen(false)}
         isYoga={isYoga}
         unitPrice={pricePerUnit}
         pricingCards={pricingCards}
-        existingCards={currentProfile?.credits || 0}
-        isConnected={!!currentProfile}
+        existingCards={existingCardsBalance}
+        isConnected={identityChosen}
         cart={cart}
         onAdd={(method, capacity) => {
           addCartItem(method, capacity);
           setPickerOpen(false);
         }}
-        onRequireAuth={(formula) => {
-          setPendingFormula(formula);
-          setPickerOpen(false);
-          setFormulaAuthConfirm(formula);
-        }}
+        onRequireAuth={() => { setPickerOpen(false); setAuthMode("login"); }}
       />
 
-      {/* Confirm-auth popup before formula signup */}
-      <Dialog open={!!formulaAuthConfirm} onOpenChange={(v) => !v && setFormulaAuthConfirm(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" /> Compte requis
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Les formules nécessitent de créer un compte (pour conserver vos cartes et votre historique).
-            Voulez-vous créer un compte&nbsp;?
-          </p>
-          <div className="flex gap-2 justify-end pt-2">
-            <Button variant="outline" onClick={() => { setFormulaAuthConfirm(null); setPendingFormula(null); setPickerOpen(true); }}>
-              Retour
-            </Button>
-            <Button onClick={() => { setFormulaAuthConfirm(null); setAuthMode("signup"); }}>
-              Créer un compte
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Auth dialog (inline) */}
+      {/* Auth dialog (inline) — pour une cliente qui a déjà un compte et veut s'y connecter */}
       <Dialog open={!!authMode} onOpenChange={(v) => !v && setAuthMode(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{authMode === "signup" ? "Créer un compte" : "Se connecter"}</DialogTitle>
+            <DialogTitle>Se connecter</DialogTitle>
           </DialogHeader>
-          {authMode === "signup" ? (
-            <SignupBlock
-              registering={registering}
-              onBack={() => setAuthMode(null)}
-              onSubmit={handleSignupSubmit}
-            />
-          ) : (
-            <LoginBlock
-              onBack={() => setAuthMode(null)}
-              onSelect={(p) => { setCurrentProfile(p); setAuthMode(null); toast({ title: `Connecté en tant que ${p.name}` }); }}
-            />
-          )}
+          <LoginBlock onBack={() => setAuthMode(null)} />
         </DialogContent>
       </Dialog>
 
