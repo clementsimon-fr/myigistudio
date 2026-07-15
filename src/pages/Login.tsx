@@ -10,12 +10,11 @@ export default function Login() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get("returnTo");
-  const { session, isAdmin, loading, signInWithOtp, signInWithPassword } = useAuth();
-  const [usePassword, setUsePassword] = useState(true);
+  const { session, isAdmin, loading, signInWithPassword, resetPassword } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,18 +27,24 @@ export default function Login() {
     if (!email.trim()) return;
     setSending(true);
     setError(null);
-    if (usePassword) {
-      // Comptes de test sans email : identifiant PRENOMNOM au lieu d'un email réel.
-      const loginEmail = email.includes("@") ? email.trim() : identifierToSyntheticEmail(email.trim());
-      const { error } = await signInWithPassword(loginEmail, password);
-      setSending(false);
-      if (error) setError(error);
-    } else {
-      const { error } = await signInWithOtp(email.trim());
-      setSending(false);
-      if (error) setError(error);
-      else setSent(true);
+    // Comptes de test sans email : identifiant PRENOMNOM au lieu d'un email réel.
+    const loginEmail = email.includes("@") ? email.trim() : identifierToSyntheticEmail(email.trim());
+    const { error } = await signInWithPassword(loginEmail, password);
+    setSending(false);
+    if (error) setError(error);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim() || !email.includes("@")) {
+      setError("Entrez votre email ci-dessus, puis cliquez sur « Mot de passe oublié ? ».");
+      return;
     }
+    setSending(true);
+    setError(null);
+    const { error } = await resetPassword(email.trim());
+    setSending(false);
+    if (error) setError(error);
+    else setResetSent(true);
   };
 
   return (
@@ -55,11 +60,11 @@ export default function Login() {
           )}
         </div>
 
-        {sent ? (
+        {resetSent ? (
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-center space-y-2">
             <CheckCircle2 className="h-6 w-6 text-primary-dark mx-auto" />
             <p className="text-sm text-foreground">
-              Un lien de connexion vient d'être envoyé à <strong>{email}</strong>. Ouvrez-le pour continuer.
+              Un email pour réinitialiser votre mot de passe vient d'être envoyé à <strong>{email}</strong>.
             </p>
           </div>
         ) : (
@@ -69,36 +74,34 @@ export default function Login() {
               <Input
                 type="text"
                 required
-                placeholder={usePassword ? "votre@email.com ou PRENOMNOM (mode test)" : "votre@email.com"}
+                placeholder="votre@email.com ou PRENOMNOM (mode test)"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-9"
                 autoFocus
               />
             </div>
-            {usePassword && (
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="password"
-                  required
-                  placeholder="Mot de passe"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            )}
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="password"
+                required
+                placeholder="Mot de passe"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pl-9"
+              />
+            </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full" disabled={sending}>
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : usePassword ? "Se connecter" : "Recevoir un lien de connexion"}
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Se connecter"}
             </Button>
             <button
               type="button"
-              onClick={() => { setUsePassword((v) => !v); setError(null); }}
+              onClick={handleForgotPassword}
               className="w-full text-center text-xs text-muted-foreground hover:text-foreground underline"
             >
-              {usePassword ? "Pas de mot de passe ? Recevoir un lien de connexion" : "J'ai un mot de passe"}
+              Mot de passe oublié ?
             </button>
           </form>
         )}

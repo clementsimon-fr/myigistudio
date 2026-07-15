@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 import { useToast } from "@/hooks/use-toast";
+import { useBackNavigation } from "@/hooks/useBackNavigation";
 import ClientDetailDialog from "@/components/admin/ClientDetailDialog";
 
 interface Reservation {
@@ -212,6 +213,9 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
     const fresh = blocks.find(b => b.id === selectedBlock.id);
     setSelectedBlock(fresh || null);
   }, [blocks]);
+
+  // Bouton retour du téléphone / geste swipe-back : ferme le panneau au lieu de quitter la page.
+  useBackNavigation(!!selectedBlock, selectedBlock?.id || "", () => setSelectedBlock(null));
 
   const confirmCancelReservation = async () => {
     if (!cancellingReservation) return;

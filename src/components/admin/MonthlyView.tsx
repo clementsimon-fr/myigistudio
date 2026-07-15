@@ -6,6 +6,7 @@ import { Loader2, ChevronLeft, ChevronRight, Plus, Users, Repeat, CalendarIcon, 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useUnifiedActivities } from "@/hooks/useUnifiedActivities";
+import { useBackNavigation } from "@/hooks/useBackNavigation";
 import { CATEGORIES, calcDuration, type UnifiedActivity } from "@/components/admin/activites/types";
 import DailyView from "@/components/admin/DailyView";
 
@@ -249,6 +250,13 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
     ? new Date(selectedDate + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })
     : "";
 
+  // Bouton retour du téléphone / geste swipe-back : revient à l'étape précédente
+  // au lieu de quitter la page. À la toute première étape, ferme l'assistant.
+  useBackNavigation(wizardOpen, step, () => {
+    if (step === 0) setWizardOpen(false);
+    else setStep((s) => (s - 1) as WizardStep);
+  });
+
   const stepLabels = ["Activité", "Type", "Date", "Heure", "Modalités"];
   const canGoNext =
     (step === 0 && !!wActivityId) ||
@@ -283,10 +291,10 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
 
       {/* ═══ Assistant "Ajouter une date" ═══ */}
       {wizardOpen && (
-        <div className="fixed inset-0 z-40 flex items-end justify-center" onClick={() => setWizardOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setWizardOpen(false)}>
           <div className="absolute inset-0 bg-foreground/40" />
           <div
-            className="relative w-full sm:max-w-lg bg-background rounded-t-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-6 shadow-xl"
+            className="relative w-full sm:max-w-lg bg-background rounded-t-2xl max-h-[85vh] overflow-y-auto p-4 pb-24 sm:p-6 md:pb-6 shadow-xl"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-1">

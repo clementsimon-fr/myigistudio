@@ -25,6 +25,8 @@ interface AuthContextValue {
   isFournisseur: boolean;
   signInWithOtp: (email: string, name?: { first_name?: string; last_name?: string }) => Promise<{ error: string | null }>;
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUpWithPassword: (email: string, password: string, name?: { first_name?: string; last_name?: string }) => Promise<{ error: string | null; needsConfirmation: boolean }>;
+  resetPassword: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -78,6 +80,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message || null };
   }, []);
 
+  const signUpWithPassword = useCallback(async (email: string, password: string, name?: { first_name?: string; last_name?: string }) => {
+    const { data, error } = await supabase.auth.signUp({
+      email, password,
+      options: { data: name, emailRedirectTo: window.location.origin },
+    });
+    if (error) return { error: error.message, needsConfirmation: false };
+    // Si la confirmation par email est activée côté Supabase, la session n'est pas immédiate.
+    return { error: null, needsConfirmation: !data.session };
+  }, []);
+
+  const resetPassword = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return { error: error?.message || null };
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
   }, []);
@@ -98,6 +117,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isFournisseur: role === "fournisseur",
       signInWithOtp,
       signInWithPassword,
+      signUpWithPassword,
+      resetPassword,
       signOut,
       refreshProfile,
     }}>

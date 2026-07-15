@@ -69,6 +69,11 @@ export default function MonEspace() {
   const [loading, setLoading] = useState(true);
   const [reminderSms, setReminderSms] = useState(false);
   const [reminderEmail, setReminderEmail] = useState(true);
+  const [phone, setPhone] = useState("");
+  const [savingPhone, setSavingPhone] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
   const [resFilter, setResFilter] = useState("all");
   const [showBuyCards, setShowBuyCards] = useState(false);
   const [viewingReservation, setViewingReservation] = useState<Reservation | null>(null);
@@ -101,6 +106,7 @@ export default function MonEspace() {
     if (clientProfile) {
       setReminderSms(clientProfile.reminder_sms);
       setReminderEmail(clientProfile.reminder_email);
+      setPhone(clientProfile.phone || "");
     }
   }, [clientProfile]);
 
@@ -133,6 +139,28 @@ export default function MonEspace() {
     await supabase.from("client_profiles").update({ reminder_sms: reminderSms, reminder_email: reminderEmail }).eq("id", user.id);
     await refreshProfile();
     toast({ title: "Profil mis à jour ✓" });
+  };
+
+  const savePhone = async () => {
+    if (!user) return;
+    setSavingPhone(true);
+    const { error } = await supabase.from("client_profiles").update({ phone }).eq("id", user.id);
+    setSavingPhone(false);
+    if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
+    await refreshProfile();
+    toast({ title: "Téléphone mis à jour ✓" });
+  };
+
+  const savePassword = async () => {
+    if (newPassword.length < 6) { toast({ title: "6 caractères minimum", variant: "destructive" }); return; }
+    if (newPassword !== confirmPassword) { toast({ title: "Les mots de passe ne correspondent pas", variant: "destructive" }); return; }
+    setSavingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setSavingPassword(false);
+    if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Mot de passe modifié ✓" });
+    setNewPassword("");
+    setConfirmPassword("");
   };
 
   const handleCancelReservation = async (r: Reservation) => {
@@ -410,6 +438,25 @@ export default function MonEspace() {
                 {(reminderSms !== (clientProfile?.reminder_sms ?? false) || reminderEmail !== (clientProfile?.reminder_email ?? true)) && (
                   <Button size="sm" className="text-xs mt-2" onClick={saveProfile}>Sauvegarder</Button>
                 )}
+              </div>
+
+              <div className="rounded-xl border bg-card p-4 md:p-6 space-y-3">
+                <p className="text-sm font-medium">Téléphone</p>
+                <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="06 12 34 56 78" />
+                {phone !== (clientProfile?.phone || "") && (
+                  <Button size="sm" className="text-xs gap-1.5" onClick={savePhone} disabled={savingPhone}>
+                    {savingPhone ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Sauvegarder
+                  </Button>
+                )}
+              </div>
+
+              <div className="rounded-xl border bg-card p-4 md:p-6 space-y-3">
+                <p className="text-sm font-medium">Changer le mot de passe</p>
+                <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Nouveau mot de passe" />
+                <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirmer le mot de passe" />
+                <Button size="sm" className="text-xs gap-1.5" onClick={savePassword} disabled={savingPassword || !newPassword}>
+                  {savingPassword ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Changer le mot de passe
+                </Button>
               </div>
 
               {/* Déconnexion */}

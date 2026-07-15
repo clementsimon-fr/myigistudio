@@ -5,9 +5,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import RequireAdmin from "@/components/auth/RequireAdmin";
+import FeedbackButton from "@/components/FeedbackButton";
 import Discover from "./pages/Discover";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ResetPassword from "./pages/ResetPassword";
 import MonEspace from "./pages/MonEspace";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminClients from "./pages/admin/Clients";
@@ -33,6 +35,7 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <BrowserRouter>
+          <FeedbackButton />
           <Routes>
             <Route path="/" element={<Discover />} />
             <Route path="/activites" element={<Navigate to="/" replace />} />
@@ -43,6 +46,7 @@ const App = () => (
             <Route path="/calendrier" element={<Navigate to="/" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/mon-espace" element={<MonEspace />} />
             <Route element={<RequireAdmin><Outlet /></RequireAdmin>}>
               <Route path="/admin" element={<AdminDashboard />} />

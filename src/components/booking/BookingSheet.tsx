@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { makeDisplayName, makeSyntheticEmail, makeTestIdentifier } from "@/lib/client-name";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useBackNavigation } from "@/hooks/useBackNavigation";
 import MockStripeModal from "@/components/demo/MockStripeModal";
 import LoginBlock from "@/components/booking/LoginBlock";
 import YogaFormulasBlock, { YogaFormulasPricingCard } from "@/components/YogaFormulasBlock";
@@ -308,6 +309,13 @@ export default function BookingSheet({
     if (s === 3 && session) return 1;
     if (s === 6 && shouldSkipAssignStep) return 4;
     return s - 1;
+  });
+
+  // Bouton retour du téléphone / geste swipe-back : revient à l'étape précédente
+  // au lieu de quitter la page. À la toute première étape, ferme le tunnel.
+  useBackNavigation(open, step, () => {
+    if (step === 1) onClose();
+    else goPrev();
   });
 
   // ---- Finalize ----

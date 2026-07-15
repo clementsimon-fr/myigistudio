@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Clock, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useBackNavigation } from "@/hooks/useBackNavigation";
 import { makeDisplayName } from "@/lib/client-name";
 
 interface ReservationRow {
@@ -124,6 +125,9 @@ export default function ClientDetailDialog({ clientName, open, onOpenChange, onC
       setLoading(false);
     })();
   }, [open, clientName]);
+
+  // Bouton retour du téléphone / geste swipe-back : ferme le panneau au lieu de quitter la page.
+  useBackNavigation(open, clientName || "", () => onOpenChange(false));
 
   const saveEdit = async () => {
     if (!profile) return;

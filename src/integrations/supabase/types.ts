@@ -10,7 +10,32 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -173,6 +198,7 @@ export type Database = {
         Row: {
           card_yoga_count: number | null
           category: string
+          complementary_info: string
           created_at: string
           day: string
           days: string[]
@@ -200,6 +226,7 @@ export type Database = {
         Insert: {
           card_yoga_count?: number | null
           category?: string
+          complementary_info?: string
           created_at?: string
           day: string
           days?: string[]
@@ -227,6 +254,7 @@ export type Database = {
         Update: {
           card_yoga_count?: number | null
           category?: string
+          complementary_info?: string
           created_at?: string
           day?: string
           days?: string[]
@@ -260,6 +288,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dev_feedback: {
+        Row: {
+          author_name: string | null
+          author_phone: string | null
+          author_role: string | null
+          created_at: string
+          id: string
+          message: string
+          priority: string
+          status: string
+        }
+        Insert: {
+          author_name?: string | null
+          author_phone?: string | null
+          author_role?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          priority?: string
+          status?: string
+        }
+        Update: {
+          author_name?: string | null
+          author_phone?: string | null
+          author_role?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          priority?: string
+          status?: string
+        }
+        Relationships: []
       }
       feature_examples: {
         Row: {
@@ -779,6 +840,7 @@ export type Database = {
         Row: {
           card_yoga_count: number
           category: string
+          complementary_info: string
           created_at: string
           date: string
           description: string
@@ -805,6 +867,7 @@ export type Database = {
         Insert: {
           card_yoga_count?: number
           category?: string
+          complementary_info?: string
           created_at?: string
           date: string
           description?: string
@@ -831,6 +894,7 @@ export type Database = {
         Update: {
           card_yoga_count?: number
           category?: string
+          complementary_info?: string
           created_at?: string
           date?: string
           description?: string
@@ -998,6 +1062,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

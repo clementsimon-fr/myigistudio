@@ -13,7 +13,7 @@ export default function Register() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get("returnTo");
-  const { signInWithOtp } = useAuth();
+  const { signUpWithPassword } = useAuth();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -26,12 +26,16 @@ export default function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName.trim()) return;
+    if (password.trim().length < 6) {
+      setError("Mot de passe : 6 caractères minimum.");
+      return;
+    }
     setSending(true);
     setError(null);
 
     if (noEmailMode) {
-      if (!lastName.trim() || password.trim().length < 6) {
-        setError("Nom et mot de passe (6 caractères min.) requis.");
+      if (!lastName.trim()) {
+        setError("Le nom est requis en mode test.");
         setSending(false);
         return;
       }
@@ -52,10 +56,11 @@ export default function Register() {
     }
 
     if (!email.trim()) { setSending(false); return; }
-    const { error } = await signInWithOtp(email.trim(), { first_name: firstName.trim(), last_name: lastName.trim() });
+    const { error, needsConfirmation } = await signUpWithPassword(email.trim(), password.trim(), { first_name: firstName.trim(), last_name: lastName.trim() });
     setSending(false);
-    if (error) setError(error);
-    else setSent(true);
+    if (error) { setError(error); return; }
+    if (needsConfirmation) setSent(true);
+    else navigate(returnTo || "/mon-espace", { replace: true });
   };
 
   return (
@@ -72,7 +77,7 @@ export default function Register() {
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-center space-y-2">
             <CheckCircle2 className="h-6 w-6 text-primary-dark mx-auto" />
             <p className="text-sm text-foreground">
-              Un lien de connexion vient d'être envoyé à <strong>{email}</strong>. Ouvrez-le pour finaliser votre compte{returnTo ? " et continuer votre réservation" : ""}.
+              Un email de confirmation vient d'être envoyé à <strong>{email}</strong>. Ouvrez-le pour finaliser votre compte{returnTo ? " et continuer votre réservation" : ""}.
             </p>
           </div>
         ) : (
@@ -99,16 +104,15 @@ export default function Register() {
                 Pas d'email (mode test)
               </label>
               {noEmailMode && (
-                <>
-                  <p className="text-xs text-muted-foreground">
-                    Identifiant de connexion : <strong className="text-foreground">{makeTestIdentifier(firstName, lastName) || "PRENOMNOM"}</strong>
-                  </p>
-                  <div>
-                    <Label htmlFor="password">Mot de passe</Label>
-                    <Input id="password" type="password" placeholder="6 caractères min." value={password} onChange={(e) => setPassword(e.target.value)} required />
-                  </div>
-                </>
+                <p className="text-xs text-muted-foreground">
+                  Identifiant de connexion : <strong className="text-foreground">{makeTestIdentifier(firstName, lastName) || "PRENOMNOM"}</strong>
+                </p>
               )}
+
+              <div>
+                <Label htmlFor="password">Mot de passe</Label>
+                <Input id="password" type="password" placeholder="6 caractères min." value={password} onChange={(e) => setPassword(e.target.value)} required />
+              </div>
 
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full" disabled={sending}>

@@ -49,9 +49,11 @@ export default function Navbar() {
                 </Button>
               )}
 
-              <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-destructive hover:text-destructive" onClick={handleLogout}>
-                <LogOut className="h-3.5 w-3.5" /> Déconnexion
-              </Button>
+              {!isAdminLike && (
+                <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-destructive hover:text-destructive" onClick={handleLogout}>
+                  <LogOut className="h-3.5 w-3.5" /> Déconnexion
+                </Button>
+              )}
             </div>
 
             {/* Mobile: connected badge + logout */}
@@ -75,9 +77,11 @@ export default function Navbar() {
                   <Settings className="h-4 w-4" /> Espace Admin
                 </button>
               )}
-              <button onClick={handleLogout} className="p-2 text-destructive" aria-label="Déconnexion">
-                <LogOut className="h-4 w-4" />
-              </button>
+              {!isAdminLike && (
+                <button onClick={handleLogout} className="p-2 text-destructive" aria-label="Déconnexion">
+                  <LogOut className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </>
         ) : (

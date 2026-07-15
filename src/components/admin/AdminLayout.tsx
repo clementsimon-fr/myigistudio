@@ -22,7 +22,7 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
             <div className="flex items-center gap-1.5 shrink-0">
               <Link to="/">
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-                  <Globe className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Voir le site</span>
+                  <Globe className="h-3.5 w-3.5" /> Voir le site
                 </Button>
               </Link>
             </div>

@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RecurringGrid, MonthWorkshops } from "@/components/PlanningTypeView";
 import { supabase } from "@/integrations/supabase/client";
+import { useBackNavigation } from "@/hooks/useBackNavigation";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
 import BookingSheet from "@/components/booking/BookingSheet";
@@ -88,6 +89,9 @@ export default function ActivityDetailPanel({
       requestAnimationFrame(() => bookingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
     }
   }, [bookingStarted]);
+
+  // Bouton retour du téléphone / geste swipe-back : ferme le panneau au lieu de quitter la page.
+  useBackNavigation(open, "panel", onClose);
 
   useEffect(() => {
     if (!open || !course) return;
