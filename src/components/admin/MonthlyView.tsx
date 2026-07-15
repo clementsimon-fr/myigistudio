@@ -242,6 +242,14 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
     }
   };
 
+  // Bouton retour du téléphone / geste swipe-back : revient à l'étape précédente
+  // au lieu de quitter la page. À la toute première étape, ferme l'assistant.
+  // (doit rester avant tout `return` conditionnel pour respecter les Rules of Hooks)
+  useBackNavigation(wizardOpen, step, () => {
+    if (step === 0) setWizardOpen(false);
+    else setStep((s) => (s - 1) as WizardStep);
+  });
+
   if (loading) {
     return <div className="flex items-center justify-center h-64"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
@@ -249,13 +257,6 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
   const selectedDateLabel = selectedDate
     ? new Date(selectedDate + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })
     : "";
-
-  // Bouton retour du téléphone / geste swipe-back : revient à l'étape précédente
-  // au lieu de quitter la page. À la toute première étape, ferme l'assistant.
-  useBackNavigation(wizardOpen, step, () => {
-    if (step === 0) setWizardOpen(false);
-    else setStep((s) => (s - 1) as WizardStep);
-  });
 
   const stepLabels = ["Activité", "Type", "Date", "Heure", "Modalités"];
   const canGoNext =
