@@ -4,8 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Search, Loader2, UserPlus, RotateCcw } from "lucide-react";
+import { Search, Loader2, UserPlus, Archive } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +27,6 @@ interface AggregatedClient {
 
 export default function AdminClients() {
   const { toast } = useToast();
-  const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<AggregatedClient[]>([]);
@@ -151,19 +149,6 @@ export default function AdminClients() {
     loadClients();
   };
 
-  const handleResetAll = async () => {
-    await Promise.all([
-      supabase.from("reservations").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
-      supabase.from("client_cards").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
-      supabase.from("profiles").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
-      supabase.from("gift_vouchers").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
-      supabase.from("forum_posts").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
-    ]);
-    toast({ title: "Données clients réinitialisées ✓" });
-    setResetDialogOpen(false);
-    loadClients();
-  };
-
   const filtered = useMemo(() => {
     let list = clients;
     if (search.trim()) {
@@ -178,27 +163,8 @@ export default function AdminClients() {
     return list;
   }, [clients, search]);
 
-  const withAccount = clients.filter(c => !!c.profileId).length;
-  const withoutAccount = clients.filter(c => !c.profileId).length;
-
   return (
     <AdminLayout title="Clients">
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6 overflow-x-hidden">
-        <div className="rounded-xl border bg-card p-4 text-center">
-          <p className="text-2xl font-bold text-primary-dark">{clients.length}</p>
-          <p className="text-[11px] text-muted-foreground">Total</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4 text-center">
-          <p className="text-2xl font-bold text-primary-dark">{withAccount}</p>
-          <p className="text-[11px] text-muted-foreground">Avec compte</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4 text-center">
-          <p className="text-2xl font-bold text-primary-dark">{withoutAccount}</p>
-          <p className="text-[11px] text-muted-foreground">Sans compte</p>
-        </div>
-      </div>
-
       <div className="flex flex-col gap-3 mb-6">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
@@ -208,27 +174,12 @@ export default function AdminClients() {
           <Button size="sm" className="gap-1.5" onClick={openNewClient}>
             <UserPlus className="h-4 w-4" /> Ajouter
           </Button>
+          <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground" disabled title="Bientôt disponible">
+            <Archive className="h-4 w-4" /> Importer archives
+          </Button>
         </div>
         <p className="text-sm text-muted-foreground">{filtered.length} client{filtered.length > 1 ? "s" : ""}</p>
       </div>
-
-      {/* Reset confirmation dialog */}
-      <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Réinitialiser toutes les données clients ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Cette action supprimera les fiches clients historiques (sans compte), les réservations, cartes, bons cadeaux et messages du forum. Les comptes clients réels (avec connexion) ne sont pas supprimés ici. Cette action est irréversible.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleResetAll} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Tout supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
@@ -300,12 +251,6 @@ export default function AdminClients() {
           </table>
         </div>
       )}
-
-      <div className="mt-8 pt-4 border-t flex justify-end">
-        <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setResetDialogOpen(true)}>
-          <RotateCcw className="h-4 w-4" /> Réinitialiser les données clients
-        </Button>
-      </div>
 
       <ClientDetailDialog
         clientName={selectedClient}

@@ -2,9 +2,10 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, Clock, Users, User, Plus, Search, UserPlus, XCircle, RotateCcw } from "lucide-react";
+import { Clock, Users, User, Plus, Search, UserPlus, XCircle, RotateCcw, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
@@ -82,36 +83,14 @@ function formatDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function getWeekDays(baseDate: Date): Date[] {
-  const d = new Date(baseDate);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(d.setDate(diff));
-  monday.setHours(0, 0, 0, 0);
-  const days: Date[] = [];
-  for (let i = 0; i < 7; i++) {
-    const dd = new Date(monday);
-    dd.setDate(monday.getDate() + i);
-    days.push(dd);
-  }
-  return days;
-}
-
 interface DailyViewProps {
+  date: Date;
   categoryFilter?: string;
-  viewMode: "daily" | "weekly";
 }
 
-export default function DailyView({ categoryFilter = "all", viewMode }: DailyViewProps) {
+export default function DailyView({ date, categoryFilter = "all" }: DailyViewProps) {
   const { toast } = useToast();
-  const [currentDate, setCurrentDate] = useState(new Date());
-
-  // "Aujourd'hui" ramène toujours sur la date du jour.
-  useEffect(() => {
-    if (viewMode === "daily") setCurrentDate(new Date());
-  }, [viewMode]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [allReservations, setAllReservations] = useState<Reservation[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
@@ -127,43 +106,27 @@ export default function DailyView({ categoryFilter = "all", viewMode }: DailyVie
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [cancellingReservation, setCancellingReservation] = useState<Reservation | null>(null);
+  const [pendingDeleteBlock, setPendingDeleteBlock] = useState<ActivityBlock | null>(null);
 
-  const dateStr = useMemo(() => formatDateStr(currentDate), [currentDate]);
-  const dayName = DAY_NAMES[currentDate.getDay()];
-  const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate]);
-  const todayStr = formatDateStr(new Date());
+  const dateStr = useMemo(() => formatDateStr(date), [date]);
+  const dayName = DAY_NAMES[date.getDay()];
 
   const fetchData = async () => {
     setLoading(true);
-    if (viewMode === "daily") {
-      const [resaRes, schedRes, courseRes, wsRes] = await Promise.all([
-        supabase.from("reservations").select("*").eq("date", dateStr),
-        supabase.from("course_schedules").select("*"),
-        supabase.from("courses").select("id, name, category, instructor"),
-        supabase.from("workshops").select("*"),
-      ]);
-      if (resaRes.data) setReservations(resaRes.data as unknown as Reservation[]);
-      if (schedRes.data) setSchedules(schedRes.data as unknown as Schedule[]);
-      if (courseRes.data) setCourses(courseRes.data as unknown as Course[]);
-      if (wsRes.data) setWorkshops(wsRes.data as unknown as Workshop[]);
-    } else {
-      const weekStart = formatDateStr(weekDays[0]);
-      const weekEnd = formatDateStr(weekDays[6]);
-      const [resaRes, schedRes, courseRes, wsRes] = await Promise.all([
-        supabase.from("reservations").select("*").gte("date", weekStart).lte("date", weekEnd),
-        supabase.from("course_schedules").select("*"),
-        supabase.from("courses").select("id, name, category, instructor"),
-        supabase.from("workshops").select("*"),
-      ]);
-      if (resaRes.data) setAllReservations(resaRes.data as unknown as Reservation[]);
-      if (schedRes.data) setSchedules(schedRes.data as unknown as Schedule[]);
-      if (courseRes.data) setCourses(courseRes.data as unknown as Course[]);
-      if (wsRes.data) setWorkshops(wsRes.data as unknown as Workshop[]);
-    }
+    const [resaRes, schedRes, courseRes, wsRes] = await Promise.all([
+      supabase.from("reservations").select("*").eq("date", dateStr),
+      supabase.from("course_schedules").select("*"),
+      supabase.from("courses").select("id, name, category, instructor"),
+      supabase.from("workshops").select("*"),
+    ]);
+    if (resaRes.data) setReservations(resaRes.data as unknown as Reservation[]);
+    if (schedRes.data) setSchedules(schedRes.data as unknown as Schedule[]);
+    if (courseRes.data) setCourses(courseRes.data as unknown as Course[]);
+    if (wsRes.data) setWorkshops(wsRes.data as unknown as Workshop[]);
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [dateStr, viewMode, currentDate]);
+  useEffect(() => { fetchData(); }, [dateStr]);
 
   // Fetch known client names for smart selector
   useEffect(() => {
@@ -190,23 +153,21 @@ export default function DailyView({ categoryFilter = "all", viewMode }: DailyVie
     fetchClients();
   }, []);
 
-  const buildBlocks = (date: Date, resas: Reservation[]): ActivityBlock[] => {
+  const blocks = useMemo((): ActivityBlock[] => {
     const result: ActivityBlock[] = [];
-    const dn = DAY_NAMES[date.getDay()];
-    const ds = formatDateStr(date);
 
-    const daySchedules = schedules.filter(s => s.day === dn);
+    const daySchedules = schedules.filter(s => s.day === dayName);
     for (const sched of daySchedules) {
       const course = courses.find(c => c.id === sched.course_id);
       if (!course) continue;
       if (categoryFilter !== "all" && course.category !== categoryFilter) continue;
-      const matchingResasAll = resas.filter(r =>
+      const matchingResasAll = reservations.filter(r =>
         r.schedule_id === sched.id ||
-        (!r.schedule_id && r.course_id === sched.course_id && r.date === ds) ||
-        (!r.schedule_id && !r.course_id && r.activity_name.trim().toLowerCase().includes(course.name.trim().toLowerCase()) && r.date === ds)
+        (!r.schedule_id && r.course_id === sched.course_id && r.date === dateStr) ||
+        (!r.schedule_id && !r.course_id && r.activity_name.trim().toLowerCase().includes(course.name.trim().toLowerCase()) && r.date === dateStr)
       );
       result.push({
-        id: `${sched.id}-${ds}`,
+        id: `${sched.id}-${dateStr}`,
         title: course.name,
         category: course.category,
         time: sched.time,
@@ -220,12 +181,12 @@ export default function DailyView({ categoryFilter = "all", viewMode }: DailyVie
       });
     }
 
-    const dayWorkshops = workshops.filter(w => w.date === ds);
+    const dayWorkshops = workshops.filter(w => w.date === dateStr);
     for (const ws of dayWorkshops) {
       if (categoryFilter !== "all" && ws.category !== categoryFilter) continue;
-      const matchingResasAll = resas.filter(r =>
+      const matchingResasAll = reservations.filter(r =>
         r.workshop_id === ws.id ||
-        (!r.workshop_id && r.activity_name.trim().toLowerCase().includes(ws.name.trim().toLowerCase()) && r.date === ds)
+        (!r.workshop_id && r.activity_name.trim().toLowerCase().includes(ws.name.trim().toLowerCase()) && r.date === dateStr)
       );
       result.push({
         id: ws.id,
@@ -243,29 +204,14 @@ export default function DailyView({ categoryFilter = "all", viewMode }: DailyVie
 
     result.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
     return result;
-  };
+  }, [dayName, dateStr, schedules, courses, workshops, reservations, categoryFilter]);
 
-  const blocks = useMemo(() => buildBlocks(currentDate, reservations), [dayName, dateStr, schedules, courses, workshops, reservations, categoryFilter]);
-
-  const weekBlocks = useMemo(() => {
-    if (viewMode !== "weekly") return [];
-    return weekDays.map(date => ({
-      date,
-      blocks: buildBlocks(date, allReservations.filter(r => r.date === formatDateStr(date))),
-    }));
-  }, [weekDays, viewMode, schedules, courses, workshops, allReservations, categoryFilter]);
-
-  const prevWeek = () => { const d = new Date(currentDate); d.setDate(d.getDate() - 7); setCurrentDate(d); };
-  const nextWeek = () => { const d = new Date(currentDate); d.setDate(d.getDate() + 7); setCurrentDate(d); };
-  const goToday = () => setCurrentDate(new Date());
-
-  // Garde le dialog de détail synchronisé avec les données fraîches (après ajout/annulation d'un participant)
+  // Garde le sheet de détail synchronisé avec les données fraîches
   useEffect(() => {
     if (!selectedBlock) return;
-    const allBlocks = viewMode === "daily" ? blocks : weekBlocks.flatMap(w => w.blocks);
-    const fresh = allBlocks.find(b => b.id === selectedBlock.id);
-    if (fresh) setSelectedBlock(fresh);
-  }, [blocks, weekBlocks]);
+    const fresh = blocks.find(b => b.id === selectedBlock.id);
+    setSelectedBlock(fresh || null);
+  }, [blocks]);
 
   const confirmCancelReservation = async () => {
     if (!cancellingReservation) return;
@@ -306,7 +252,36 @@ export default function DailyView({ categoryFilter = "all", viewMode }: DailyVie
     fetchData();
   };
 
-  const isToday = dateStr === todayStr;
+  const updateBlockField = async (patch: Partial<{ time: string; end_time: string; spots: number }>) => {
+    if (!selectedBlock) return;
+    const table = selectedBlock.type === "course" ? "course_schedules" : "workshops";
+    const id = selectedBlock.type === "course" ? selectedBlock.id.split("-")[0] : selectedBlock.id;
+    const payload: any = { ...patch };
+    if (patch.spots !== undefined) {
+      payload.spots_left = selectedBlock.spotsLeft + (patch.spots - selectedBlock.spots);
+    }
+    const { error } = await supabase.from(table).update(payload).eq("id", id);
+    if (error) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      return;
+    }
+    fetchData();
+  };
+
+  const confirmDeleteBlock = async () => {
+    if (!pendingDeleteBlock) return;
+    const table = pendingDeleteBlock.type === "course" ? "course_schedules" : "workshops";
+    const id = pendingDeleteBlock.type === "course" ? pendingDeleteBlock.id.split("-")[0] : pendingDeleteBlock.id;
+    const { error } = await supabase.from(table).delete().eq("id", id);
+    setPendingDeleteBlock(null);
+    if (error) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Événement supprimé" });
+    setSelectedBlock(null);
+    fetchData();
+  };
 
   const renderBlock = (block: ActivityBlock) => {
     const totalParticipants = block.reservations.reduce((sum, r) => sum + r.participants, 0);
@@ -335,7 +310,6 @@ export default function DailyView({ categoryFilter = "all", viewMode }: DailyVie
             {totalParticipants}/{block.spots}
           </span>
         </div>
-        {/* Fill progress bar */}
         <div className="mt-2 h-2 rounded-full bg-black/10 overflow-hidden">
           <div
             className={`h-full rounded-full transition-all ${fillPct >= 80 ? "bg-destructive/60" : fillPct >= 40 ? "bg-primary/50" : "bg-primary/30"}`}
@@ -369,98 +343,55 @@ export default function DailyView({ categoryFilter = "all", viewMode }: DailyVie
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-32">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {viewMode === "daily" ? (
-        <>
-          <div className="flex items-center justify-center">
-            <div className="text-center">
-              <h3 className="text-sm md:text-lg font-semibold capitalize">
-                {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-              </h3>
-            </div>
-          </div>
-
-          {blocks.length === 0 ? (
-            <div className="rounded-xl border bg-card p-12 text-center text-muted-foreground">
-              Aucune activité programmée ce jour.
-            </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {blocks.map(renderBlock)}
-            </div>
-          )}
-        </>
+    <div>
+      {blocks.length === 0 ? (
+        <div className="rounded-xl border bg-card p-8 text-center text-muted-foreground text-sm">
+          Aucune activité programmée ce jour.
+        </div>
       ) : (
-        <>
-          <div className="flex items-center justify-between">
-            <Button variant="outline" size="icon" onClick={prevWeek}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="text-center">
-              <h3 className="text-sm md:text-lg font-semibold">
-                Semaine du {weekDays[0].toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
-                {" "}au {weekDays[6].toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
-              </h3>
-              {!weekDays.some(d => formatDateStr(d) === todayStr) && (
-                <Button variant="link" size="sm" className="text-xs h-auto p-0" onClick={goToday}>
-                  Cette semaine
-                </Button>
-              )}
-            </div>
-            <Button variant="outline" size="icon" onClick={nextWeek}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="space-y-4">
-            {weekBlocks.map(({ date, blocks: dayBlks }) => {
-              const isDayToday = formatDateStr(date) === todayStr;
-              return (
-                <div key={formatDateStr(date)}>
-                  <div className={`flex items-center gap-3 mb-2 ${isDayToday ? "text-primary-dark" : "text-foreground"}`}>
-                    <div className={`text-sm font-semibold capitalize ${isDayToday ? "bg-primary-dark text-primary-dark-foreground px-3 py-1 rounded-full" : ""}`}>
-                      {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
-                    </div>
-                    {isDayToday && <Badge variant="outline" className="text-xs">Aujourd'hui</Badge>}
-                  </div>
-                  {dayBlks.length === 0 ? (
-                    <div className="rounded-lg border border-dashed bg-muted/10 p-4 text-center text-sm text-muted-foreground">
-                      Aucune activité
-                    </div>
-                  ) : (
-                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      {dayBlks.map(renderBlock)}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {blocks.map(renderBlock)}
+        </div>
       )}
 
-      {/* Detail dialog */}
-      <Dialog open={!!selectedBlock} onOpenChange={(open) => !open && setSelectedBlock(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+      {/* Detail sheet */}
+      <Sheet open={!!selectedBlock} onOpenChange={(open) => !open && setSelectedBlock(null)}>
+        <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto">
+          <SheetHeader className="text-left">
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs capitalize">{selectedBlock?.category}</Badge>
               <Badge variant="secondary" className="text-xs">{selectedBlock?.type === "course" ? "Cours" : "Atelier"}</Badge>
             </div>
-            <DialogTitle className="font-display text-xl mt-2">{selectedBlock?.title}</DialogTitle>
-          </DialogHeader>
+            <SheetTitle className="font-display text-xl mt-1">{selectedBlock?.title}</SheetTitle>
+          </SheetHeader>
           {selectedBlock && (
-            <div className="space-y-4 pt-2">
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1"><Clock className="h-4 w-4" /> {selectedBlock.time} - {selectedBlock.end_time}</span>
-                {selectedBlock.instructor && <span>· {selectedBlock.instructor}</span>}
+            <div className="space-y-4 pt-2 pb-6">
+              {selectedBlock.instructor && <p className="text-sm text-muted-foreground">Intervenant·e : {selectedBlock.instructor}</p>}
+
+              <div className="rounded-lg border p-3 space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Modifier l'événement</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input type="time" className="w-[100px] h-9 text-sm" value={selectedBlock.time} onChange={e => updateBlockField({ time: e.target.value })} />
+                  <span className="text-muted-foreground text-xs">→</span>
+                  <Input type="time" className="w-[100px] h-9 text-sm" value={selectedBlock.end_time} onChange={e => updateBlockField({ end_time: e.target.value })} />
+                  <div className="flex items-center gap-1">
+                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Input type="number" className="w-[70px] h-9 text-sm" value={selectedBlock.spots} onChange={e => updateBlockField({ spots: Number(e.target.value) })} />
+                  </div>
+                </div>
+                {selectedBlock.type === "course" && (
+                  <p className="text-[11px] text-muted-foreground">Récurrent chaque {dayName} — modifier l'horaire changera toutes les occurrences.</p>
+                )}
+                <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive gap-1.5 text-xs" onClick={() => setPendingDeleteBlock(selectedBlock)}>
+                  <Trash2 className="h-3.5 w-3.5" /> Supprimer cet événement
+                </Button>
               </div>
 
               <div>
@@ -472,7 +403,6 @@ export default function DailyView({ categoryFilter = "all", viewMode }: DailyVie
                     </span>
                   </div>
                 </div>
-                {/* Fill bar in detail */}
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
                   <div
                     className="h-full rounded-full bg-primary transition-all"
@@ -534,8 +464,7 @@ export default function DailyView({ categoryFilter = "all", viewMode }: DailyVie
                       <h4 className="text-sm font-medium flex items-center gap-1.5">
                         <UserPlus className="h-3.5 w-3.5" /> Ajouter un participant
                       </h4>
-                      
-                      {/* Smart search / select */}
+
                       <div className="relative">
                         <div className="relative">
                           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -606,18 +535,12 @@ export default function DailyView({ categoryFilter = "all", viewMode }: DailyVie
                           onClick={async () => {
                             if (!addParticipantName.trim() || !selectedBlock) return;
                             setAddingParticipant(true);
-                            const blockDate = viewMode === "daily" ? dateStr : (() => {
-                              for (const { date, blocks: dayBlks } of weekBlocks) {
-                                if (dayBlks.some(b => b.id === selectedBlock.id)) return formatDateStr(date);
-                              }
-                              return dateStr;
-                            })();
                             const insertData: any = {
                               client_name: addParticipantName.trim(),
                               participants: addParticipantCount,
                               activity_name: selectedBlock.title,
                               activity_type: selectedBlock.type,
-                              date: blockDate,
+                              date: dateStr,
                               time: selectedBlock.time,
                               end_time: selectedBlock.end_time,
                               status: "confirmé",
@@ -655,8 +578,8 @@ export default function DailyView({ categoryFilter = "all", viewMode }: DailyVie
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       <ClientDetailDialog
         clientName={selectedParticipant}
@@ -677,6 +600,25 @@ export default function DailyView({ categoryFilter = "all", viewMode }: DailyVie
             <AlertDialogCancel>Non, garder</AlertDialogCancel>
             <AlertDialogAction onClick={confirmCancelReservation} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Oui, annuler
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!pendingDeleteBlock} onOpenChange={(open) => !open && setPendingDeleteBlock(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cet événement ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDeleteBlock?.type === "course"
+                ? `Toutes les occurrences futures de "${pendingDeleteBlock?.title}" chaque semaine seront supprimées.`
+                : `"${pendingDeleteBlock?.title}" sera retiré du planning.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteBlock} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
