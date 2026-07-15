@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
-import { makeDisplayName } from "@/lib/client-name";
+import { makeDisplayName, makeSyntheticEmail, makeTestIdentifier } from "@/lib/client-name";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import MockStripeModal from "@/components/demo/MockStripeModal";
@@ -130,6 +130,8 @@ export default function BookingSheet({
   const [guestMode, setGuestMode] = useState(false);
   const [guestLastName, setGuestLastName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
+  const [noEmailMode, setNoEmailMode] = useState(false);
+  const [guestPassword, setGuestPassword] = useState("");
   const [conditionsList, setConditionsList] = useState<{ id: string; title: string; content: string }[]>([]);
   const [existingCardsBalance, setExistingCardsBalance] = useState(0);
 
@@ -148,6 +150,8 @@ export default function BookingSheet({
     setGuestMode(false);
     setGuestLastName("");
     setGuestEmail("");
+    setNoEmailMode(false);
+    setGuestPassword("");
     setParticipants([{ name: connectedName, isMe: !!session }]);
   }, [open]);
 
@@ -272,7 +276,11 @@ export default function BookingSheet({
 
   // ---- Step gating ----
   // Une cliente déjà connectée n'a pas besoin de l'étape "Qui réserve ?" — elle est sautée (voir goNext/goPrev).
-  const identityChosen = !!session || (guestMode && guestEmail.trim().length > 0);
+  const identityChosen = !!session || (guestMode && (
+    noEmailMode
+      ? guestLastName.trim().length > 0 && guestPassword.trim().length >= 6
+      : guestEmail.trim().length > 0
+  ));
   const canNext = () => {
     if (step === 1) return !!selected;
     if (step === 2) return identityChosen && (participants[0]?.name.trim().length > 0);
@@ -311,10 +319,14 @@ export default function BookingSheet({
     // sans bloquer la réservation en cours sur un lien email à cliquer.
     let userId = user?.id || null;
     const clientName = session ? connectedName : makeDisplayName(participants[0]?.name || "", guestLastName) || participants[0]?.name || "Invité";
-    if (!userId && guestEmail.trim()) {
+    const accountEmail = noEmailMode ? makeSyntheticEmail(participants[0]?.name || "", guestLastName) : guestEmail.trim();
+    if (!userId && accountEmail) {
       try {
         const { data, error } = await supabase.functions.invoke("create-guest-account", {
-          body: { email: guestEmail.trim(), first_name: participants[0]?.name || "", last_name: guestLastName, phone: "" },
+          body: {
+            email: accountEmail, first_name: participants[0]?.name || "", last_name: guestLastName, phone: "",
+            ...(noEmailMode ? { password: guestPassword } : {}),
+          },
         });
         if (!error && data?.user_id) userId = data.user_id;
       } catch {
@@ -573,11 +585,34 @@ export default function BookingSheet({
                               type="email"
                               placeholder="Email"
                               value={guestEmail}
+                              disabled={noEmailMode}
                               onChange={(e) => { setGuestEmail(e.target.value); setGuestMode(true); }}
+                              className={noEmailMode ? "opacity-50" : ""}
                             />
-                            <p className="text-[11px] text-muted-foreground">
-                              Votre compte sera créé automatiquement au moment du paiement.
-                            </p>
+                            {!noEmailMode && (
+                              <p className="text-[11px] text-muted-foreground">
+                                Votre compte sera créé automatiquement au moment du paiement.
+                              </p>
+                            )}
+
+                            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Checkbox checked={noEmailMode} onCheckedChange={(v) => { setNoEmailMode(!!v); setGuestMode(true); }} />
+                              Pas d'email (mode test)
+                            </label>
+                            {noEmailMode && (
+                              <>
+                                <p className="text-[11px] text-muted-foreground">
+                                  Identifiant de connexion : <strong className="text-foreground">{makeTestIdentifier(p.name, guestLastName) || "PRENOMNOM"}</strong>
+                                </p>
+                                <Input
+                                  type="password"
+                                  placeholder="Choisir un mot de passe (6 caractères min.)"
+                                  value={guestPassword}
+                                  onChange={(e) => setGuestPassword(e.target.value)}
+                                />
+                              </>
+                            )}
+
                             <button
                               type="button"
                               onClick={() => setAuthMode("login")}

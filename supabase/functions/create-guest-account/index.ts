@@ -10,13 +10,14 @@ interface Payload {
   first_name?: string;
   last_name?: string;
   phone?: string;
+  password?: string;
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { email, first_name, last_name, phone }: Payload = await req.json();
+    const { email, first_name, last_name, phone, password }: Payload = await req.json();
     if (!email) {
       return new Response(JSON.stringify({ error: "email requis" }), {
         status: 400,
@@ -44,6 +45,7 @@ Deno.serve(async (req) => {
       const { data: created, error: createError } = await admin.auth.admin.createUser({
         email,
         email_confirm: true,
+        ...(password ? { password } : {}),
         user_metadata: { first_name: first_name || "", last_name: last_name || "" },
       });
       if (createError || !created.user) {

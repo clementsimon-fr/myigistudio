@@ -4,6 +4,7 @@ import { Mail, Lock, Loader2, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { identifierToSyntheticEmail } from "@/lib/client-name";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -28,7 +29,9 @@ export default function Login() {
     setSending(true);
     setError(null);
     if (usePassword) {
-      const { error } = await signInWithPassword(email.trim(), password);
+      // Comptes de test sans email : identifiant PRENOMNOM au lieu d'un email réel.
+      const loginEmail = email.includes("@") ? email.trim() : identifierToSyntheticEmail(email.trim());
+      const { error } = await signInWithPassword(loginEmail, password);
       setSending(false);
       if (error) setError(error);
     } else {
@@ -64,9 +67,9 @@ export default function Login() {
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                type="email"
+                type="text"
                 required
-                placeholder="votre@email.com"
+                placeholder={usePassword ? "votre@email.com ou PRENOMNOM (mode test)" : "votre@email.com"}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-9"
