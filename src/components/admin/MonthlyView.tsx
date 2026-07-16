@@ -123,6 +123,8 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
   const [wCalMonth, setWCalMonth] = useState(new Date());
   const [wTime, setWTime] = useState("09:00");
   const [wEndTime, setWEndTime] = useState("10:00");
+  // Horaires individuels par date pour les événements multi-sessions (chaque date peut avoir son propre créneau).
+  const [wDateTimes, setWDateTimes] = useState<Record<string, { time: string; end_time: string }>>({});
   const [wSpots, setWSpots] = useState(12);
   const [wPrice, setWPrice] = useState(0);
   const [wCardCount, setWCardCount] = useState(1);
@@ -163,6 +165,7 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
     setWCalMonth(new Date());
     setWTime("09:00");
     setWEndTime("10:00");
+    setWDateTimes({});
     setWSpots(12);
     setWPrice(0);
     setWCardCount(1);
@@ -190,6 +193,14 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
     const ds = formatDateStr(date);
     if (wType === "multi-sessions") {
       setWDates(prev => prev.includes(ds) ? prev.filter(d => d !== ds) : [...prev, ds].sort());
+      setWDateTimes(prev => {
+        if (prev[ds]) {
+          const next = { ...prev };
+          delete next[ds];
+          return next;
+        }
+        return { ...prev, [ds]: { time: wTime, end_time: wEndTime } };
+      });
     } else {
       setWDates([ds]);
     }
@@ -231,13 +242,16 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
       } else {
         const linkedGroup = wType === "multi-sessions" && wDates.length > 1 ? crypto.randomUUID() : null;
         for (const d of wDates) {
+          const dTime = isMultiDateWizard ? (wDateTimes[d]?.time || wTime) : wTime;
+          const dEndTime = isMultiDateWizard ? (wDateTimes[d]?.end_time || wEndTime) : wEndTime;
+          const dDuration = isMultiDateWizard ? calcDuration(dTime, dEndTime) : duration;
           const { error } = await supabase.from("workshops").insert({
             name: activity.name, category: activity.category, description: activity.description,
             long_description: activity.long_description, instructor_id: activity.instructor_id,
             image: activity.image, images: activity.images, modalities: activity.modalities,
             reminder_template: activity.reminder_template, reminder_timing: activity.reminder_timing,
             intensity: activity.intensity === "none" ? "" : activity.intensity,
-            date: d, time: wTime, end_time: wEndTime, duration,
+            date: d, time: dTime, end_time: dEndTime, duration: dDuration,
             spots: wSpots, spots_left: wSpots, price: submitPrice, card_yoga_count: submitCardCount, inclusions: meta.inclusions,
             complementary_info: activity.complementary_info,
             frequency: linkedGroup ? "multi-sessions" : "ponctuel", linked_group: linkedGroup,
@@ -273,11 +287,14 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
     : "";
 
   const stepLabels = ["Activité", "Type", "Date", "Heure", "Modalités"];
+  const isMultiDateWizard = wType === "multi-sessions" && wDates.length > 1;
   const canGoNext =
     (step === 0 && !!wActivityId) ||
     (step === 1 && !!wType) ||
     (step === 2 && wDates.length > 0) ||
-    (step === 3 && !!wTime && !!wEndTime) ||
+    (step === 3 && (isMultiDateWizard
+      ? wDates.every(d => !!wDateTimes[d]?.time && !!wDateTimes[d]?.end_time)
+      : !!wTime && !!wEndTime)) ||
     step === 4;
 
   return (
@@ -386,7 +403,10 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
                         <span key={d} className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary-dark rounded-full px-2.5 py-1">
                           {new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
                           {wType === "multi-sessions" && (
-                            <button type="button" onClick={() => setWDates(prev => prev.filter(x => x !== d))}><X className="h-3 w-3" /></button>
+                            <button type="button" onClick={() => {
+                              setWDates(prev => prev.filter(x => x !== d));
+                              setWDateTimes(prev => { const next = { ...prev }; delete next[d]; return next; });
+                            }}><X className="h-3 w-3" /></button>
                           )}
                         </span>
                       ))}
@@ -397,13 +417,38 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
 
               {step === 3 && (
                 <div className="space-y-2">
-                  <Label className="text-sm">Horaire</Label>
-                  <div className="flex items-center gap-2">
-                    <Input type="time" className="w-[120px] h-10" value={wTime} onChange={e => setWTime(e.target.value)} />
-                    <span className="text-muted-foreground">→</span>
-                    <Input type="time" className="w-[120px] h-10" value={wEndTime} onChange={e => setWEndTime(e.target.value)} />
-                    {wTime && wEndTime && <span className="text-xs text-muted-foreground">{calcDuration(wTime, wEndTime)}</span>}
-                  </div>
+                  {isMultiDateWizard ? (
+                    <>
+                      <Label className="text-sm">Horaire de chaque date</Label>
+                      <p className="text-[11px] text-muted-foreground">Chaque date de la série peut avoir son propre horaire.</p>
+                      <div className="space-y-2">
+                        {wDates.map(d => {
+                          const dt = wDateTimes[d] || { time: wTime, end_time: wEndTime };
+                          return (
+                            <div key={d} className="flex items-center gap-2 rounded-lg border p-2">
+                              <span className="text-xs font-medium capitalize w-24 shrink-0">
+                                {new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                              </span>
+                              <Input type="time" className="w-[110px] h-9" value={dt.time} onChange={e => setWDateTimes(prev => ({ ...prev, [d]: { ...dt, time: e.target.value } }))} />
+                              <span className="text-muted-foreground text-xs">→</span>
+                              <Input type="time" className="w-[110px] h-9" value={dt.end_time} onChange={e => setWDateTimes(prev => ({ ...prev, [d]: { ...dt, end_time: e.target.value } }))} />
+                              {dt.time && dt.end_time && <span className="text-[11px] text-muted-foreground ml-auto">{calcDuration(dt.time, dt.end_time)}</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Label className="text-sm">Horaire</Label>
+                      <div className="flex items-center gap-2">
+                        <Input type="time" className="w-[120px] h-10" value={wTime} onChange={e => setWTime(e.target.value)} />
+                        <span className="text-muted-foreground">→</span>
+                        <Input type="time" className="w-[120px] h-10" value={wEndTime} onChange={e => setWEndTime(e.target.value)} />
+                        {wTime && wEndTime && <span className="text-xs text-muted-foreground">{calcDuration(wTime, wEndTime)}</span>}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 

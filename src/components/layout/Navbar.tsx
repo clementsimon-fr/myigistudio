@@ -18,13 +18,16 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b">
       <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="flex flex-col leading-none">
-          <span className="text-2xl font-display font-bold">
-            <span className="text-brand-pink">My</span><span className="text-primary-dark">IgiStudio</span>
-          </span>
-          <span className="text-[10px] md:text-xs font-display font-semibold text-primary-dark/70 -mt-0.5">
-            Yoga, Pilates & Poterie
-          </span>
+        <Link to="/" className="flex items-center gap-2">
+          <img src="/logo-igistudio.jpg" alt="Igi Studio" className="h-10 w-10 rounded-full object-cover shrink-0" />
+          <div className="flex flex-col leading-none">
+            <span className="text-2xl font-display font-bold">
+              <span className="text-brand-pink">My</span><span className="text-primary-dark">IgiStudio</span>
+            </span>
+            <span className="text-[10px] md:text-xs font-display font-semibold text-primary-dark/70 -mt-0.5">
+              Yoga, Pilates & Poterie
+            </span>
+          </div>
         </Link>
 
         {isLoggedIn ? (

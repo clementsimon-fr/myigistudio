@@ -3,11 +3,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { MapPin } from "lucide-react";
 
-export function TemplateEditor({ value, onChange, variables, readOnly, showInsertModalities }: {
+export function TemplateEditor({ value, onChange, variables, readOnly, showInsertModalities, rows = 3 }: {
   value: string; onChange: (v: string) => void;
   variables: { key: string; label: string }[];
   readOnly?: boolean;
   showInsertModalities?: boolean;
+  rows?: number;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -26,7 +27,7 @@ export function TemplateEditor({ value, onChange, variables, readOnly, showInser
     <div className="space-y-1.5">
       <Textarea ref={textareaRef} value={value}
         onChange={e => onChange(e.target.value)}
-        rows={3} readOnly={readOnly} className={`text-xs ${readOnly ? "opacity-60" : ""}`} />
+        rows={rows} readOnly={readOnly} className={`text-xs ${readOnly ? "opacity-60" : ""}`} />
       {!readOnly && (
         <div className="flex flex-wrap gap-1">
           <span className="text-[10px] text-muted-foreground mr-1">Insérer :</span>
