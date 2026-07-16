@@ -713,6 +713,7 @@ export type Database = {
         Row: {
           activity_name: string
           activity_type: string
+          booking_group_id: string | null
           client_name: string
           course_id: string | null
           created_at: string
@@ -721,6 +722,8 @@ export type Database = {
           id: string
           notes: string
           participants: number
+          payment_amount: number
+          payment_method: string | null
           schedule_id: string | null
           status: string
           time: string
@@ -730,6 +733,7 @@ export type Database = {
         Insert: {
           activity_name: string
           activity_type?: string
+          booking_group_id?: string | null
           client_name?: string
           course_id?: string | null
           created_at?: string
@@ -738,6 +742,8 @@ export type Database = {
           id?: string
           notes?: string
           participants?: number
+          payment_amount?: number
+          payment_method?: string | null
           schedule_id?: string | null
           status?: string
           time: string
@@ -747,6 +753,7 @@ export type Database = {
         Update: {
           activity_name?: string
           activity_type?: string
+          booking_group_id?: string | null
           client_name?: string
           course_id?: string | null
           created_at?: string
@@ -755,6 +762,8 @@ export type Database = {
           id?: string
           notes?: string
           participants?: number
+          payment_amount?: number
+          payment_method?: string | null
           schedule_id?: string | null
           status?: string
           time?: string

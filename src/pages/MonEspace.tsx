@@ -9,18 +9,19 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { CalendarDays, CreditCard, Clock, Loader2, User, XCircle, ArrowRight, Bell, MapPin, ShoppingCart, LogOut, ChevronDown } from "lucide-react";
+import { CalendarDays, CreditCard, Clock, Loader2, User, XCircle, ArrowRight, Bell, MapPin, ShoppingCart, LogOut, ChevronDown, RefreshCw, Gift, Receipt } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { makeDisplayName } from "@/lib/client-name";
+import { useBackNavigation } from "@/hooks/useBackNavigation";
 import ClientLayout from "@/components/client/ClientLayout";
 import MockStripeModal from "@/components/demo/MockStripeModal";
 import ContactElodieButton from "@/components/ContactElodieButton";
 import YogaFormulasBlock from "@/components/YogaFormulasBlock";
 
-interface Reservation { id: string; client_name: string; activity_name: string; activity_type: string; date: string; time: string; end_time: string; participants: number; status: string; created_at: string; course_id: string | null; workshop_id: string | null; }
-interface ClientCard { id: string; client_name: string; card_name: string; total_sessions: number; used_sessions: number; expires_at: string; }
+interface Reservation { id: string; client_name: string; activity_name: string; activity_type: string; date: string; time: string; end_time: string; participants: number; status: string; created_at: string; course_id: string | null; workshop_id: string | null; booking_group_id: string | null; payment_method: string | null; payment_amount: number; user_id: string | null; }
+interface ClientCard { id: string; client_name: string; card_name: string; total_sessions: number; used_sessions: number; expires_at: string; created_at: string; }
 interface PricingCard { id: string; name: string; sessions: number; price: number; validity: string; popular: boolean; sort_order: number; payment_info: string; }
 
 const statusColors: Record<string, string> = {
@@ -44,6 +45,25 @@ function getCancelEligibility(date: string, time: string) {
   courseStart.setHours(h, m, 0, 0);
   const hoursUntil = (courseStart.getTime() - Date.now()) / (1000 * 60 * 60);
   return { canCancel: hoursUntil >= CANCEL_MIN_HOURS, hoursUntil };
+}
+
+// La durée de validité admin ("3 mois", "1 an") est du texte libre — même parsing que
+// dans BookingSheet.tsx pour rester cohérent entre les deux parcours d'achat.
+function computeExpiryFromValidity(validity: string): string {
+  const months = parseInt(validity?.match(/(\d+)/)?.[1] || "1", 10);
+  const isYear = /an|année/i.test(validity || "");
+  const expiresAt = new Date();
+  expiresAt.setMonth(expiresAt.getMonth() + (isYear ? months * 12 : months));
+  return `${expiresAt.getFullYear()}-${String(expiresAt.getMonth() + 1).padStart(2, "0")}-${String(expiresAt.getDate()).padStart(2, "0")}`;
+}
+
+interface PurchaseEntry {
+  id: string;
+  date: string;
+  label: string;
+  detail: string;
+  amount: number;
+  icon: "card" | "reservation" | "voucher";
 }
 
 export default function MonEspace() {
@@ -85,19 +105,31 @@ export default function MonEspace() {
   const [stripeAmount, setStripeAmount] = useState(0);
   const [stripeDescription, setStripeDescription] = useState("");
   const [selectedPricingCard, setSelectedPricingCard] = useState<PricingCard | null>(null);
+  const [voucherHistory, setVoucherHistory] = useState<{ id: string; code: string; card_name: string; amount: number; sessions: number; used_at: string | null }[]>([]);
+  const [groupParticipants, setGroupParticipants] = useState<string[]>([]);
+  const [rescheduleTarget, setRescheduleTarget] = useState<Reservation | null>(null);
+
+  // Bouton retour du téléphone / geste swipe-back : reste dans l'espace client au lieu
+  // de renvoyer vers la page d'accueil (le client peut toujours y aller via "Faire une
+  // réservation" ou "Déconnexion", qui sont des navigations explicites).
+  useBackNavigation(!authLoading && !!session, "mon-espace-root", () => {
+    window.history.pushState({ __mesRoot: true }, "");
+  });
 
   useEffect(() => {
     if (!CLIENT_NAME) return;
     const load = async () => {
       setLoading(true);
-      const [resR, resC, resPC] = await Promise.all([
+      const [resR, resC, resPC, resV] = await Promise.all([
         supabase.from("reservations").select("*").eq("client_name", CLIENT_NAME).order("date", { ascending: false }),
         supabase.from("client_cards").select("*").eq("client_name", CLIENT_NAME).order("created_at", { ascending: false }),
         supabase.from("pricing_cards").select("*").order("sort_order"),
+        supabase.from("gift_vouchers").select("*").or(`buyer_name.eq.${CLIENT_NAME},beneficiary_name.eq.${CLIENT_NAME}`).eq("used", true),
       ]);
       if (resR.data) setReservations(resR.data as unknown as Reservation[]);
       if (resC.data) setCards(resC.data as unknown as ClientCard[]);
       if (resPC.data) setPricingCards(resPC.data as unknown as PricingCard[]);
+      if (resV.data) setVoucherHistory(resV.data as unknown as typeof voucherHistory);
       setLoading(false);
     };
     load();
@@ -112,8 +144,8 @@ export default function MonEspace() {
   }, [clientProfile]);
 
   useEffect(() => {
-    if (!viewingReservation) { setActivityModalities(""); return; }
-    const fetchModalities = async () => {
+    if (!viewingReservation) { setActivityModalities(""); setGroupParticipants([]); return; }
+    const fetchDetails = async () => {
       const r = viewingReservation;
       if (r.activity_type === "course" && r.course_id) {
         const { data } = await supabase.from("courses").select("modalities").eq("id", r.course_id).maybeSingle();
@@ -124,8 +156,17 @@ export default function MonEspace() {
       } else {
         setActivityModalities("");
       }
+      if (r.booking_group_id) {
+        const { data } = await supabase.from("reservations").select("client_name, user_id").eq("booking_group_id", r.booking_group_id).eq("date", r.date);
+        if (data) {
+          const names = Array.from(new Set((data as any[]).map((row) => row.client_name).filter(Boolean)));
+          setGroupParticipants(names);
+        }
+      } else {
+        setGroupParticipants([]);
+      }
     };
-    fetchModalities();
+    fetchDetails();
   }, [viewingReservation]);
 
   // 1.11: Only count confirmed reservations (exclude cancelled)
@@ -164,6 +205,62 @@ export default function MonEspace() {
     setConfirmPassword("");
   };
 
+  const [rescheduleOptions, setRescheduleOptions] = useState<{ date: string; time: string; end_time: string }[]>([]);
+  const [rescheduleLoading, setRescheduleLoading] = useState(false);
+  const [rescheduleSaving, setRescheduleSaving] = useState(false);
+
+  const DAY_INDEX: Record<string, number> = { dimanche: 0, lundi: 1, mardi: 2, mercredi: 3, jeudi: 4, vendredi: 5, samedi: 6 };
+  const localDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  const openReschedule = async (r: Reservation) => {
+    setRescheduleTarget(r);
+    setRescheduleLoading(true);
+    setRescheduleOptions([]);
+    const todayStr = todayLocalStr();
+    if (r.activity_type === "course" && r.course_id) {
+      const { data } = await supabase.from("course_schedules").select("day, time, end_time").eq("course_id", r.course_id);
+      const opts: { date: string; time: string; end_time: string }[] = [];
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      for (let i = 0; i < 30 && opts.length < 8; i++) {
+        const d = new Date(today); d.setDate(today.getDate() + i);
+        const dow = d.getDay();
+        for (const s of (data || []) as any[]) {
+          if (DAY_INDEX[(s.day || "").toLowerCase()] !== dow) continue;
+          const dateStr = localDateStr(d);
+          if (dateStr === r.date && s.time === r.time) continue;
+          if (dateStr < todayStr) continue;
+          opts.push({ date: dateStr, time: s.time, end_time: s.end_time });
+        }
+      }
+      setRescheduleOptions(opts);
+    } else if (r.activity_type === "workshop" && r.workshop_id) {
+      const { data } = await supabase.from("workshops").select("date, time, end_time").eq("name", r.activity_name).gte("date", todayStr);
+      const opts = ((data || []) as any[])
+        .filter((w) => !(w.date === r.date && w.time === r.time))
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((w) => ({ date: w.date, time: w.time, end_time: w.end_time }));
+      setRescheduleOptions(opts);
+    }
+    setRescheduleLoading(false);
+  };
+
+  const confirmReschedule = async (opt: { date: string; time: string; end_time: string }) => {
+    if (!rescheduleTarget) return;
+    setRescheduleSaving(true);
+    const r = rescheduleTarget;
+    const query = r.booking_group_id
+      ? supabase.from("reservations").update({ date: opt.date, time: opt.time, end_time: opt.end_time }).eq("booking_group_id", r.booking_group_id).eq("date", r.date)
+      : supabase.from("reservations").update({ date: opt.date, time: opt.time, end_time: opt.end_time }).eq("id", r.id);
+    const { error } = await query;
+    setRescheduleSaving(false);
+    if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Réservation reprogrammée ✓", description: `Nouvelle date : ${new Date(opt.date + "T00:00:00").toLocaleDateString("fr-FR")} à ${opt.time}` });
+    setRescheduleTarget(null);
+    setViewingReservation(null);
+    const { data } = await supabase.from("reservations").select("*").eq("client_name", CLIENT_NAME).order("date", { ascending: false });
+    if (data) setReservations(data as unknown as Reservation[]);
+  };
+
   const handleCancelReservation = async (r: Reservation) => {
     await supabase.from("reservations").update({ status: "annulé" }).eq("id", r.id);
     toast({ title: "En annulant, nous espérons que vous allez bien, et, nous vous remercions de prévenir l'intervenant. À bientôt ❤️" });
@@ -189,7 +286,7 @@ export default function MonEspace() {
       card_name: selectedPricingCard.name,
       total_sessions: selectedPricingCard.sessions,
       used_sessions: 0,
-      expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      expires_at: computeExpiryFromValidity(selectedPricingCard.validity),
     } as any);
     toast({ title: `${selectedPricingCard.name} achetée avec succès ! 🎉` });
     // Refresh cards
@@ -202,6 +299,45 @@ export default function MonEspace() {
   const unitPrice = unitCard ? unitCard.price : null;
 
   const totalCredits = cards.reduce((sum, c) => sum + (c.total_sessions - c.used_sessions), 0);
+
+  // Cartes encore utilisables vs. cartes vidées — ces dernières partent dans le rollup
+  // "Anciennes cartes" pour ne pas encombrer la vue principale.
+  const activeCards = cards.filter(c => c.total_sessions - c.used_sessions > 0);
+  const oldCards = cards.filter(c => c.total_sessions - c.used_sessions <= 0);
+
+  // Historique des achats unifié : cartes (client_cards), achats à l'unité réglés au moment
+  // d'une réservation (reservations.payment_amount), et bons cadeaux utilisés. Les cartes
+  // achetées pendant une réservation créent à la fois une ligne "Formule" sur la réservation
+  // ET une carte dans client_cards — on exclut donc les lignes "Formule" côté réservations
+  // pour ne pas afficher deux fois le même achat.
+  const purchaseEntries: PurchaseEntry[] = [
+    ...cards.map((c): PurchaseEntry => ({
+      id: `card-${c.id}`,
+      date: c.created_at,
+      label: c.card_name,
+      detail: `${c.total_sessions} cours crédité${c.total_sessions > 1 ? "s" : ""}`,
+      amount: pricingCards.find(p => p.name === c.card_name)?.price ?? 0,
+      icon: "card",
+    })),
+    ...reservations
+      .filter(r => r.payment_amount > 0 && r.payment_method && !r.payment_method.startsWith("Formule"))
+      .map((r): PurchaseEntry => ({
+        id: `res-${r.id}`,
+        date: r.created_at,
+        label: r.payment_method as string,
+        detail: r.activity_name,
+        amount: r.payment_amount,
+        icon: "reservation",
+      })),
+    ...voucherHistory.map((v): PurchaseEntry => ({
+      id: `voucher-${v.id}`,
+      date: v.used_at || "",
+      label: `Bon cadeau ${v.code}`,
+      detail: `Utilisé comme moyen de paiement — ${v.card_name}`,
+      amount: 0,
+      icon: "voucher",
+    })),
+  ].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
   if (!authLoading && !session) {
     return <Navigate to="/login?returnTo=%2Fmon-espace" replace />;
@@ -226,12 +362,12 @@ export default function MonEspace() {
                 </div>
               </div>
 
-              {/* 3 stats */}
-              <div className="grid grid-cols-3 gap-2 md:gap-3 mt-5">
+              {/* 2 stats */}
+              <div className="grid grid-cols-2 gap-2 md:gap-3 mt-5">
                 <div className="rounded-xl bg-white/70 backdrop-blur p-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Cartes Yoga</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Cours Yoga</p>
                   <p className="text-2xl font-bold text-primary-dark mt-0.5">{totalCredits}</p>
-                  <p className="text-[10px] text-muted-foreground">restante{totalCredits > 1 ? "s" : ""}</p>
+                  <p className="text-[10px] text-muted-foreground">restant{totalCredits > 1 ? "s" : ""}</p>
                 </div>
                 <div className="rounded-xl bg-white/70 backdrop-blur p-3 text-center">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">À venir</p>
@@ -239,13 +375,6 @@ export default function MonEspace() {
                     {confirmedRes.filter(r => r.date >= todayLocalStr()).length}
                   </p>
                   <p className="text-[10px] text-muted-foreground">réservation(s)</p>
-                </div>
-                <div className="rounded-xl bg-white/70 backdrop-blur p-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Historique</p>
-                  <p className="text-2xl font-bold text-primary-dark mt-0.5">
-                    {confirmedRes.filter(r => r.date < todayLocalStr()).length}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">séance(s)</p>
                 </div>
               </div>
             </div>
@@ -317,7 +446,7 @@ export default function MonEspace() {
               {/* Active cards */}
               <div>
                 <h3 className="text-sm font-semibold text-primary-dark mb-3">Cartes actives</h3>
-                {cards.length === 0 ? (
+                {activeCards.length === 0 ? (
                   <div className="text-center py-8 rounded-xl border border-dashed">
                     <CreditCard className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">Aucune carte active.</p>
@@ -325,14 +454,14 @@ export default function MonEspace() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {cards.map(card => {
+                    {activeCards.map(card => {
                       const remaining = card.total_sessions - card.used_sessions;
                       const pct = (card.used_sessions / card.total_sessions) * 100;
                       return (
                         <div key={card.id} className="rounded-xl border bg-background p-4">
                           <div className="flex items-center justify-between mb-2">
                             <h3 className="font-semibold text-sm text-primary-dark">{card.card_name}</h3>
-                            <span className="text-[10px] md:text-xs text-muted-foreground">Exp. {new Date(card.expires_at).toLocaleDateString("fr-FR")}</span>
+                            <span className="text-[10px] md:text-xs text-muted-foreground">Valable jusqu'au {new Date(card.expires_at).toLocaleDateString("fr-FR")}</span>
                           </div>
                           <div className="flex items-center gap-2 mb-1.5">
                             <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
@@ -340,7 +469,7 @@ export default function MonEspace() {
                             </div>
                             <span className="text-xs font-medium">{card.used_sessions}/{card.total_sessions}</span>
                           </div>
-                          <p className="text-xs text-muted-foreground">{remaining} carte{remaining > 1 ? "s" : ""} yoga restante{remaining > 1 ? "s" : ""}</p>
+                          <p className="text-xs text-muted-foreground">{remaining} cours restant{remaining > 1 ? "s" : ""}</p>
                         </div>
                       );
                     })}
@@ -353,29 +482,50 @@ export default function MonEspace() {
                 <ShoppingCart className="h-4 w-4" /> Ajouter cartes yoga
               </Button>
 
-              {/* Purchase history */}
-              {cards.length > 0 && (
+              {/* Anciennes cartes (rollup) */}
+              {oldCards.length > 0 && (
+                <Collapsible>
+                  <CollapsibleTrigger asChild>
+                    <button type="button" className="w-full flex items-center justify-between rounded-lg border bg-background/60 p-3 hover:bg-muted/30 transition-colors group">
+                      <span className="text-sm font-medium text-muted-foreground">Anciennes cartes ({oldCards.length})</span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-2">
+                    {oldCards.map(card => (
+                      <div key={card.id} className="rounded-lg border bg-background/60 p-3 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">{card.card_name}</p>
+                          <p className="text-[11px] text-muted-foreground">Expirée le {new Date(card.expires_at).toLocaleDateString("fr-FR")}</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{card.used_sessions}/{card.total_sessions} cours utilisés</span>
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {/* Purchase history — l'ensemble des transactions, pas que les cartes */}
+              {purchaseEntries.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold text-primary-dark mb-3">Historique des achats</h3>
-                  <div className="rounded-xl border bg-background overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b bg-muted/30">
-                          <th className="text-left p-3 font-medium text-muted-foreground text-xs">Carte</th>
-                          <th className="text-left p-3 font-medium text-muted-foreground text-xs">Séances</th>
-                          <th className="text-left p-3 font-medium text-muted-foreground text-xs">Expiration</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {cards.map(card => (
-                          <tr key={card.id} className="border-b last:border-0">
-                            <td className="p-3 font-medium text-xs">{card.card_name}</td>
-                            <td className="p-3 text-xs text-muted-foreground">{card.used_sessions}/{card.total_sessions} utilisées</td>
-                            <td className="p-3 text-xs text-muted-foreground">{new Date(card.expires_at).toLocaleDateString("fr-FR")}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="space-y-2">
+                    {purchaseEntries.map(entry => (
+                      <div key={entry.id} className="flex items-center gap-3 rounded-lg border bg-background p-3">
+                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          {entry.icon === "card" && <CreditCard className="h-4 w-4 text-primary-dark" />}
+                          {entry.icon === "reservation" && <Receipt className="h-4 w-4 text-primary-dark" />}
+                          {entry.icon === "voucher" && <Gift className="h-4 w-4 text-primary-dark" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{entry.label}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {entry.date ? new Date(entry.date).toLocaleDateString("fr-FR") : ""} · {entry.detail}
+                          </p>
+                        </div>
+                        {entry.amount > 0 && <span className="text-sm font-semibold shrink-0">{entry.amount} €</span>}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -519,9 +669,9 @@ export default function MonEspace() {
 
       )}
 
-      {/* Reservation detail dialog */}
-      <Dialog open={!!viewingReservation} onOpenChange={(open) => !open && setViewingReservation(null)}>
-        <DialogContent className="sm:max-w-md">
+      {/* Reservation detail sheet */}
+      <Sheet open={!!viewingReservation} onOpenChange={(open) => !open && setViewingReservation(null)}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
           {viewingReservation && (() => {
             const r = viewingReservation;
             const todayStr = todayLocalStr();
@@ -530,11 +680,11 @@ export default function MonEspace() {
             const canCancel = isConfirmed && isFuture && !!r.time && getCancelEligibility(r.date, r.time).canCancel;
             return (
               <>
-                <DialogHeader>
+                <SheetHeader className="text-left">
                   <Badge variant="outline" className={`w-fit text-[10px] ${statusColors[r.status] || ""}`}>{r.status}</Badge>
-                  <DialogTitle className="font-display text-xl">{r.activity_name}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-3 pt-2">
+                  <SheetTitle className="font-display text-xl">{r.activity_name}</SheetTitle>
+                </SheetHeader>
+                <div className="space-y-3 pt-2 pb-6">
                   <div className="flex items-center gap-2 text-sm">
                     <CalendarDays className="h-4 w-4 text-muted-foreground" />
                     <span>{new Date(r.date + "T00:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
@@ -543,16 +693,21 @@ export default function MonEspace() {
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <span>{r.time}{r.end_time ? ` - ${r.end_time}` : ""}</span>
                   </div>
-                  {r.participants > 1 && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span>{r.participants} participant{r.participants > 1 ? "s" : ""}</span>
-                    </div>
-                  )}
                   <div className="flex items-center gap-2 text-sm">
                     <CreditCard className="h-4 w-4 text-muted-foreground" />
                     <span>Type : {r.activity_type === "course" ? "Cours" : "Atelier"}</span>
                   </div>
+                  {groupParticipants.length > 1 && (
+                    <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <User className="h-3.5 w-3.5 text-primary-dark" />
+                        <span className="text-xs font-semibold text-primary-dark">Participants ({groupParticipants.length})</span>
+                      </div>
+                      <ul className="text-xs text-muted-foreground space-y-0.5">
+                        {groupParticipants.map((name) => <li key={name}>• {name}</li>)}
+                      </ul>
+                    </div>
+                  )}
                   {activityModalities && (
                     <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
                       <div className="flex items-center gap-1.5 mb-1">
@@ -563,18 +718,28 @@ export default function MonEspace() {
                     </div>
                   )}
                   {isConfirmed && isFuture && (
-                    <div className="pt-2">
-                      <Button
-                        variant="destructive"
-                        className="w-full gap-1.5"
-                        disabled={!canCancel}
-                        onClick={() => setCancelConfirm(r)}
-                      >
-                        <XCircle className="h-4 w-4" /> Annuler la réservation
-                      </Button>
+                    <div className="pt-2 space-y-2">
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1 gap-1.5"
+                          disabled={!canCancel}
+                          onClick={() => openReschedule(r)}
+                        >
+                          <RefreshCw className="h-4 w-4" /> Reprogrammer
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          className="flex-1 gap-1.5"
+                          disabled={!canCancel}
+                          onClick={() => setCancelConfirm(r)}
+                        >
+                          <XCircle className="h-4 w-4" /> Annuler
+                        </Button>
+                      </div>
                       {!canCancel && (
-                        <p className="text-xs text-muted-foreground text-center mt-1.5">
-                          Annulation possible jusqu'à 12h avant le cours.
+                        <p className="text-xs text-muted-foreground text-center">
+                          Annulation et reprogrammation possibles jusqu'à 12h avant le cours.
                         </p>
                       )}
                     </div>
@@ -583,8 +748,41 @@ export default function MonEspace() {
               </>
             );
           })()}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
+
+      {/* Reschedule sheet */}
+      <Sheet open={!!rescheduleTarget} onOpenChange={(open) => !open && setRescheduleTarget(null)}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
+          <SheetHeader className="text-left">
+            <SheetTitle>Choisir une nouvelle date</SheetTitle>
+          </SheetHeader>
+          <div className="pt-2 pb-6 space-y-2">
+            {rescheduleLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            ) : rescheduleOptions.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Aucun autre créneau disponible pour le moment.</p>
+            ) : (
+              rescheduleOptions.map((opt) => (
+                <button
+                  key={`${opt.date}-${opt.time}`}
+                  type="button"
+                  disabled={rescheduleSaving}
+                  onClick={() => confirmReschedule(opt)}
+                  className="w-full flex items-center justify-between rounded-lg border bg-card p-3 text-left hover:bg-muted/40 transition-colors disabled:opacity-50"
+                >
+                  <span className="text-sm capitalize">
+                    {new Date(opt.date + "T00:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                  </span>
+                  <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5" /> {opt.time}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Cancel confirmation dialog */}
       <AlertDialog open={!!cancelConfirm} onOpenChange={(open) => !open && setCancelConfirm(null)}>

@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 import FeedbackButton from "@/components/FeedbackButton";
+import ScrollToTop from "@/components/ScrollToTop";
 import Discover from "./pages/Discover";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -35,6 +36,7 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <FeedbackButton />
           <Routes>
             <Route path="/" element={<Discover />} />
