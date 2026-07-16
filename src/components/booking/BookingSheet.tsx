@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CalendarDays, Users, Euro, CreditCard, Minus, Plus,
-  ChevronRight, ChevronLeft, Sparkles, Gift, Ticket, Info, Check, Trash2, ArrowLeft, ShoppingBag,
+  ChevronRight, ChevronLeft, Sparkles, Gift, Ticket, Info, Check, Trash2, ArrowLeft, ShoppingBag, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,7 +73,7 @@ function nextDatesForCourse(schedules: Schedule[], count = 8): DateOption[] {
 type CartItemMethod =
   | { kind: "unit"; price: number }
   | { kind: "formula"; cardId: string; cardName: string; sessions: number; price: number }
-  | { kind: "voucher"; code: string }
+  | { kind: "voucher"; code: string; amount: number }
   | { kind: "existing_card"; cardName: string };
 
 interface CartItem {
@@ -99,15 +99,16 @@ interface BookingSheetProps {
 
 const newId = () => Math.random().toString(36).slice(2, 10);
 
-function methodLabel(m: CartItemMethod): string {
-  if (m.kind === "unit") return `Carte à l'unité — ${m.price} €`;
+// "Carte" est un terme réservé au yoga (cartes de cours) — pour la poterie on parle de tarif/paiement.
+function methodLabel(m: CartItemMethod, isYoga: boolean): string {
+  if (m.kind === "unit") return isYoga ? `Carte à l'unité — ${m.price} €` : `Tarif — ${m.price} €`;
   if (m.kind === "formula") return `Formule "${m.cardName}" (${m.sessions} cours) — ${m.price} €`;
-  if (m.kind === "voucher") return `Bon cadeau ${m.code}`;
+  if (m.kind === "voucher") return `Bon cadeau ${m.code} (${m.amount} €)`;
   return `Carte du compte`;
 }
 
-function methodShort(m: CartItemMethod): string {
-  if (m.kind === "unit") return "Carte unité";
+function methodShort(m: CartItemMethod, isYoga: boolean): string {
+  if (m.kind === "unit") return isYoga ? "Carte unité" : "Tarif";
   if (m.kind === "formula") return `Formule ${m.cardName}`;
   if (m.kind === "voucher") return `Bon ${m.code}`;
   return "Carte du compte";
@@ -241,7 +242,10 @@ export default function BookingSheet({
   }, [open, isYoga]);
 
   const selected = dates[selectedIdx];
-  const pricePerUnit = isYoga ? unitPrice ?? 0 : (workshop?.price ?? 0);
+  // Une fiche yoga en mode "prix" se paie comme la poterie (montant fixe, pas de cartes).
+  const yogaPrixMode = isYoga && course?.tariff_mode === "prix";
+  const pricePerUnit = yogaPrixMode ? (course?.price ?? 0) : isYoga ? unitPrice ?? 0 : (workshop?.price ?? 0);
+  const useCardsSystem = isYoga && !yogaPrixMode;
 
   const setParticipantCount = (n: number) => {
     setParticipants((prev) => {
@@ -281,15 +285,17 @@ export default function BookingSheet({
     });
   };
 
-  // Total to pay: sum prices (formula price counted once per item; voucher/existing_card = 0)
+  // Total to pay: sum prices (formula price counted once per item; existing_card = 0;
+  // voucher covers up to its amount, the client pays the difference if the tarif costs more).
   const totalToPay = useMemo(() => {
     let t = 0;
     cart.forEach((ci) => {
       if (ci.method.kind === "unit") t += ci.method.price;
       else if (ci.method.kind === "formula") t += ci.method.price;
+      else if (ci.method.kind === "voucher") t += Math.max(0, pricePerUnit - ci.method.amount);
     });
     return t;
-  }, [cart]);
+  }, [cart, pricePerUnit]);
 
   const allAssigned = participants.length > 0 && participants.every((_, i) => !!assignments[i]);
 
@@ -370,6 +376,33 @@ export default function BookingSheet({
       setStep(1);
       return;
     }
+
+    // Vérification des places au moment du paiement — le nombre affiché à l'étape 1 peut être
+    // périmé si quelqu'un d'autre a réservé entre-temps ; on relit spots_left en base juste
+    // avant de confirmer pour ne jamais dépasser la capacité réelle.
+    const requiredSpots = participants.length;
+    let courseSchedSpotsLeft = 0;
+    let workshopSpotsLeftById: Record<string, number> = {};
+    if (course && selected.scheduleId) {
+      const { data: schedRow } = await supabase.from("course_schedules").select("spots_left").eq("id", selected.scheduleId).maybeSingle();
+      if (!schedRow || schedRow.spots_left < requiredSpots) {
+        toast({ title: "Plus assez de places disponibles", description: "Quelqu'un d'autre vient de réserver entre-temps. Merci de choisir un autre créneau.", variant: "destructive" });
+        setStep(1);
+        return;
+      }
+      courseSchedSpotsLeft = schedRow.spots_left;
+    } else if (workshop) {
+      const wsIds = selected.linkedWorkshopIds && selected.linkedWorkshopIds.length > 1 ? selected.linkedWorkshopIds : [selected.scheduleId];
+      const { data: wsRows } = await supabase.from("workshops").select("id, spots_left").in("id", wsIds);
+      const insufficient = !wsRows || wsRows.length !== wsIds.length || wsRows.some((w: any) => w.spots_left < requiredSpots);
+      if (insufficient) {
+        toast({ title: "Plus assez de places disponibles", description: "Quelqu'un d'autre vient de réserver entre-temps. Merci de choisir un autre créneau.", variant: "destructive" });
+        setStep(1);
+        return;
+      }
+      for (const w of wsRows as { id: string; spots_left: number }[]) workshopSpotsLeftById[w.id] = w.spots_left;
+    }
+
     const name = course?.name || workshop?.name || "";
 
     // Invitée sans session : le compte se crée silencieusement au moment du paiement,
@@ -461,9 +494,12 @@ export default function BookingSheet({
         let paymentMethod: string | null = null;
         let paymentAmount = 0;
         if (item) {
-          paymentMethod = methodLabel(item.method);
+          paymentMethod = methodLabel(item.method, useCardsSystem);
           if ((item.method.kind === "unit" || item.method.kind === "formula") && !chargedItemIds.has(item.id)) {
             paymentAmount = item.method.price;
+            chargedItemIds.add(item.id);
+          } else if (item.method.kind === "voucher" && !chargedItemIds.has(item.id)) {
+            paymentAmount = Math.max(0, pricePerUnit - item.method.amount);
             chargedItemIds.add(item.id);
           }
         }
@@ -487,13 +523,24 @@ export default function BookingSheet({
 
     if (course) {
       await supabase.from("reservations").insert(participantRows(selected.date, null) as any);
+      if (selected.scheduleId) {
+        await supabase.from("course_schedules").update({ spots_left: Math.max(0, courseSchedSpotsLeft - requiredSpots) }).eq("id", selected.scheduleId);
+      }
     } else if (selected.linkedWorkshopIds && selected.linkedWorkshopIds.length > 1) {
       // Multi-sessions : une réservation par date liée, pour que chaque date apparaisse
       // correctement dans l'agenda admin.
       const rows = selected.linkedWorkshopIds.flatMap((wsId, i) => participantRows(selected.linkedDates![i], wsId));
       await supabase.from("reservations").insert(rows as any);
+      for (const wsId of selected.linkedWorkshopIds) {
+        const left = workshopSpotsLeftById[wsId];
+        if (left != null) await supabase.from("workshops").update({ spots_left: Math.max(0, left - requiredSpots) }).eq("id", wsId);
+      }
     } else {
       await supabase.from("reservations").insert(participantRows(selected.date, selected.scheduleId) as any);
+      if (selected.scheduleId) {
+        const left = workshopSpotsLeftById[selected.scheduleId];
+        if (left != null) await supabase.from("workshops").update({ spots_left: Math.max(0, left - requiredSpots) }).eq("id", selected.scheduleId);
+      }
     }
 
     toast({ title: "Réservation confirmée ✓", description: `${name} — ${new Date(selected.date).toLocaleDateString("fr-FR")} à ${selected.time}` });
@@ -566,9 +613,10 @@ export default function BookingSheet({
       line = `Formule "${ci.method.cardName}" (${ci.capacity} cours) — ${ci.method.price} €. ${used} cours utilisé${used > 1 ? "s" : ""}${usedBy.length ? " : " + usedBy.join(", ") : ""}.`;
       if (remaining > 0) line += ` ${remaining} cours crédité${remaining > 1 ? "s" : ""} sur votre compte.`;
     } else if (ci.method.kind === "unit") {
-      line = `Carte à l'unité — ${ci.method.price} €${usedBy.length ? ` (${usedBy.join(", ")})` : ""}.`;
+      line = `${useCardsSystem ? "Carte à l'unité" : "Tarif"} — ${ci.method.price} €${usedBy.length ? ` (${usedBy.join(", ")})` : ""}.`;
     } else if (ci.method.kind === "voucher") {
-      line = `Bon cadeau ${ci.method.code}${usedBy.length ? ` — utilisé par ${usedBy.join(", ")}` : ""}.`;
+      const diff = Math.max(0, pricePerUnit - ci.method.amount);
+      line = `Bon cadeau ${ci.method.code} (${ci.method.amount} €)${diff > 0 ? ` + ${diff} € à régler` : ""}${usedBy.length ? ` — utilisé par ${usedBy.join(", ")}` : ""}.`;
     } else {
       line = `1 cours (carte du compte)${usedBy.length ? ` — utilisé par ${usedBy.join(", ")}` : ""}.`;
     }
@@ -814,7 +862,7 @@ export default function BookingSheet({
                         {cart.map((ci) => (
                           <div key={ci.id} className="flex items-center justify-between rounded-lg border bg-card p-3">
                             <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{methodLabel(ci.method)}</p>
+                              <p className="text-sm font-medium truncate">{methodLabel(ci.method, useCardsSystem)}</p>
                               <p className="text-[11px] text-muted-foreground">
                                 {ci.capacity} place{ci.capacity > 1 ? "s" : ""}
                               </p>
@@ -879,7 +927,7 @@ export default function BookingSheet({
                                 const disabled = available <= 0;
                                 return (
                                   <SelectItem key={ci.id} value={ci.id} disabled={disabled}>
-                                    {methodShort(ci.method)} — {available}/{ci.capacity} dispo.
+                                    {methodShort(ci.method, useCardsSystem)} — {available}/{ci.capacity} dispo.
                                   </SelectItem>
                                 );
                               })}
@@ -995,7 +1043,7 @@ export default function BookingSheet({
       <CartPickerModal
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        isYoga={isYoga}
+        isYoga={useCardsSystem}
         unitPrice={pricePerUnit}
         pricingCards={pricingCards}
         existingCards={existingCardsBalance}
@@ -1050,9 +1098,11 @@ function CartPickerModal({
 }: PickerProps) {
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherOpen, setVoucherOpen] = useState(false);
+  const [voucherError, setVoucherError] = useState("");
+  const [voucherChecking, setVoucherChecking] = useState(false);
 
   useEffect(() => {
-    if (open) { setVoucherCode(""); setVoucherOpen(false); }
+    if (open) { setVoucherCode(""); setVoucherOpen(false); setVoucherError(""); }
   }, [open]);
 
   // Count existing cards already added to cart
@@ -1060,9 +1110,26 @@ function CartPickerModal({
   const accountCardsLeft = Math.max(0, existingCards - accountCardsUsed);
 
   const handleUnit = () => onAdd({ kind: "unit", price: unitPrice }, 1);
-  const handleVoucher = () => {
-    if (!voucherCode.trim()) return;
-    onAdd({ kind: "voucher", code: voucherCode.trim() }, 1);
+  const handleVoucher = async () => {
+    const code = voucherCode.trim();
+    if (!code) return;
+    if (cart.some((ci) => ci.method.kind === "voucher" && ci.method.code.toLowerCase() === code.toLowerCase())) {
+      setVoucherError("Ce bon cadeau est déjà dans votre panier.");
+      return;
+    }
+    setVoucherChecking(true);
+    setVoucherError("");
+    const { data } = await supabase.from("gift_vouchers").select("code, amount, used, expires_at").ilike("code", code).maybeSingle();
+    setVoucherChecking(false);
+    if (!data) { setVoucherError("Ce code de bon cadeau n'existe pas."); return; }
+    if (data.used) { setVoucherError("Ce bon cadeau a déjà été utilisé."); return; }
+    if (data.expires_at && data.expires_at < new Date().toISOString().slice(0, 10)) {
+      setVoucherError("Ce bon cadeau a expiré.");
+      return;
+    }
+    onAdd({ kind: "voucher", code: data.code, amount: data.amount }, 1);
+    setVoucherCode("");
+    setVoucherOpen(false);
   };
   const handleExistingCard = () => {
     if (accountCardsLeft <= 0) return;
@@ -1128,11 +1195,14 @@ function CartPickerModal({
                     autoFocus
                     placeholder="Code du bon cadeau"
                     value={voucherCode}
-                    onChange={(e) => setVoucherCode(e.target.value)}
+                    onChange={(e) => { setVoucherCode(e.target.value); setVoucherError(""); }}
                     className="bg-background"
                   />
-                  <Button onClick={handleVoucher} disabled={!voucherCode.trim()}>Ajouter</Button>
+                  <Button onClick={handleVoucher} disabled={!voucherCode.trim() || voucherChecking}>
+                    {voucherChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ajouter"}
+                  </Button>
                 </div>
+                {voucherError && <p className="text-xs text-destructive">{voucherError}</p>}
               </>
             )}
           </div>
@@ -1172,7 +1242,7 @@ function CartPickerModal({
             </div>
           )}
 
-          {/* Poterie : paiement direct */}
+          {/* Poterie, ou yoga en mode "prix" : paiement direct, pas de système de cartes */}
           {!isYoga && (
             <button
               onClick={() => onAdd({ kind: "unit", price: unitPrice }, 1)}

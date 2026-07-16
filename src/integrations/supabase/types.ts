@@ -221,6 +221,7 @@ export type Database = {
           reminder_timing: string
           spots: number
           spots_left: number
+          tariff_mode: string
           time: string
         }
         Insert: {
@@ -249,6 +250,7 @@ export type Database = {
           reminder_timing?: string
           spots?: number
           spots_left?: number
+          tariff_mode?: string
           time: string
         }
         Update: {
@@ -277,6 +279,7 @@ export type Database = {
           reminder_timing?: string
           spots?: number
           spots_left?: number
+          tariff_mode?: string
           time?: string
         }
         Relationships: [
@@ -724,6 +727,7 @@ export type Database = {
           participants: number
           payment_amount: number
           payment_method: string | null
+          phone: string | null
           schedule_id: string | null
           status: string
           time: string
@@ -744,6 +748,7 @@ export type Database = {
           participants?: number
           payment_amount?: number
           payment_method?: string | null
+          phone?: string | null
           schedule_id?: string | null
           status?: string
           time: string
@@ -764,6 +769,7 @@ export type Database = {
           participants?: number
           payment_amount?: number
           payment_method?: string | null
+          phone?: string | null
           schedule_id?: string | null
           status?: string
           time?: string

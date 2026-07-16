@@ -137,9 +137,9 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
 
   const activityByKey = useMemo(() => {
     const map: Record<string, UnifiedActivity> = {};
-    filteredActivities.forEach(a => { map[a.source + ":" + a.id] = a; });
+    activities.forEach(a => { map[a.source + ":" + a.id] = a; });
     return map;
-  }, [filteredActivities]);
+  }, [activities]);
 
   const getEventsForDate = (date: Date) => {
     const ds = formatDateStr(date);
@@ -187,6 +187,12 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
     setWPrice(meta.price);
     setWCardCount(meta.card_yoga_count || 1);
     setWSpots(activity.spots || 12);
+    // "Récurrent" n'est proposé que pour le yoga — si l'activité change pour une non-yoga
+    // alors que "Récurrent" était sélectionné, on retombe sur "Ponctuel".
+    if (activity.category !== "yoga" && wType === "recurrent") {
+      setWType("ponctuel");
+      setWDates([]);
+    }
   }, [wActivityId]);
 
   const toggleWizardDate = (date: Date) => {
@@ -214,7 +220,8 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
     const meta = repMeta(activity);
     const isYogaSubmit = activity.category === "yoga";
     const submitPrice = isYogaSubmit ? 0 : wPrice;
-    const submitCardCount = isYogaSubmit ? wCardCount : meta.card_yoga_count;
+    // 1 date de yoga = 1 cours, non modifiable par date (le tarif se paramètre sur la fiche).
+    const submitCardCount = isYogaSubmit ? 1 : meta.card_yoga_count;
 
     try {
       if (wType === "recurrent") {
@@ -349,7 +356,9 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
                 <div className="space-y-2">
                   <Label className="text-sm">Quelle activité ?</Label>
                   <div className="grid gap-1.5 max-h-[50vh] overflow-y-auto">
-                    {filteredActivities.map(a => (
+                    {/* Le choix de l'activité ici n'est pas lié au filtre Yoga/Poterie de la page :
+                        Élodie doit pouvoir ajouter une date pour n'importe quelle activité. */}
+                    {activities.map(a => (
                       <button
                         key={a.source + ":" + a.id}
                         type="button"
@@ -373,9 +382,14 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
                     <Button type="button" variant={wType === "ponctuel" ? "default" : "outline"} className="justify-start gap-2" onClick={() => { setWType("ponctuel"); setWDates([]); }}>
                       <CalendarIcon className="h-4 w-4" /> Ponctuel — une seule date
                     </Button>
-                    <Button type="button" variant={wType === "recurrent" ? "default" : "outline"} className="justify-start gap-2" onClick={() => { setWType("recurrent"); setWDates([]); }}>
-                      <Repeat className="h-4 w-4" /> Récurrent — chaque semaine
-                    </Button>
+                    {/* La récurrence hebdomadaire n'existe qu'au format "cours" (table courses/
+                        course_schedules) — un événement poterie récurrent y serait invisible côté
+                        client, puisque la page d'accueil lit les ateliers depuis la table workshops. */}
+                    {isWYoga && (
+                      <Button type="button" variant={wType === "recurrent" ? "default" : "outline"} className="justify-start gap-2" onClick={() => { setWType("recurrent"); setWDates([]); }}>
+                        <Repeat className="h-4 w-4" /> Récurrent — chaque semaine
+                      </Button>
+                    )}
                     <Button type="button" variant={wType === "multi-sessions" ? "default" : "outline"} className="justify-start gap-2" onClick={() => { setWType("multi-sessions"); setWDates([]); }}>
                       <CalendarRange className="h-4 w-4" /> Multi-sessions — plusieurs dates liées
                     </Button>
@@ -456,11 +470,11 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
                 <div className="space-y-3">
                   <Label className="text-sm">Modalités</Label>
                   {isWYoga ? (
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs text-muted-foreground w-28">Nombre de cartes</Label>
-                      <CreditCard className="h-4 w-4 text-muted-foreground" />
-                      <Input type="number" min={1} className="w-[100px] h-9" value={wCardCount} onChange={e => setWCardCount(Number(e.target.value))} />
-                    </div>
+                    // Le tarif (cours ou prix) se configure sur la fiche activité, pas par date —
+                    // une date de yoga vaut toujours 1 cours quand la fiche est en mode "Cours".
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <CreditCard className="h-3.5 w-3.5" /> Tarif défini sur la fiche activité (1 cours par défaut).
+                    </p>
                   ) : (
                     <div className="flex items-center gap-2">
                       <Label className="text-xs text-muted-foreground w-28">Prix</Label>

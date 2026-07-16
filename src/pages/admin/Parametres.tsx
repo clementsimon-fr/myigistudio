@@ -148,10 +148,7 @@ export default function AdminParametres() {
                 const isDone = f.status === "traité";
                 return (
                   <div key={f.id} className={`rounded-lg border p-3 space-y-2 ${isDone ? "opacity-60" : ""}`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <Badge variant="outline" className={`text-[10px] ${prio.className}`}>{prio.label}</Badge>
-                      <span className="text-[11px] text-muted-foreground">{new Date(f.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-                    </div>
+                    <Badge variant="outline" className={`text-[10px] ${prio.className}`}>{prio.label}</Badge>
                     <p className="text-sm whitespace-pre-line">{f.message}</p>
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs text-muted-foreground">

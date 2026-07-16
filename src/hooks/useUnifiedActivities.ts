@@ -51,6 +51,7 @@ export function useUnifiedActivities() {
           schedules: [...mergedSchedules.values()],
           intensity: primary.intensity || "none", reminder_timing: primary.reminder_timing || "1j", workshopEvents: [],
           complementary_info: primary.complementary_info || "",
+          price: primary.price || 0, tariff_mode: primary.tariff_mode || "cours",
         });
       }
     }

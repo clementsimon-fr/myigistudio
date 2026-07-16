@@ -39,6 +39,13 @@ function todayLocalStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// La poterie n'a ni annulation ni reprogrammation en libre-service (contrairement au yoga) —
+// Élodie gère ces demandes directement pour les ateliers.
+function isPotteryActivity(name: string): boolean {
+  const n = name.toLowerCase();
+  return n.includes("poterie") || n.includes("tour") || n.includes("modelage");
+}
+
 function getCancelEligibility(date: string, time: string) {
   const [h, m] = time.split(":").map(Number);
   const courseStart = new Date(date + "T00:00:00");
@@ -172,7 +179,7 @@ export default function MonEspace() {
   // 1.11: Only count confirmed reservations (exclude cancelled)
   const confirmedRes = reservations.filter(r => r.status !== "annulé");
   const yogaRes = confirmedRes.filter(r => r.activity_type === "course");
-  const potteryRes = confirmedRes.filter(r => r.activity_type === "workshop" && (r.activity_name.toLowerCase().includes("poterie") || r.activity_name.toLowerCase().includes("tour") || r.activity_name.toLowerCase().includes("modelage")));
+  const potteryRes = confirmedRes.filter(r => r.activity_type === "workshop" && isPotteryActivity(r.activity_name));
   const atelierRes = confirmedRes.filter(r => r.activity_type === "workshop" && !potteryRes.includes(r));
   const filteredRes = resFilter === "all" ? confirmedRes : resFilter === "yoga" ? yogaRes : resFilter === "poterie" ? potteryRes : atelierRes;
 
@@ -677,7 +684,8 @@ export default function MonEspace() {
             const todayStr = todayLocalStr();
             const isFuture = r.date >= todayStr;
             const isConfirmed = r.status === "confirmé";
-            const canCancel = isConfirmed && isFuture && !!r.time && getCancelEligibility(r.date, r.time).canCancel;
+            const isPottery = r.activity_type === "workshop" && isPotteryActivity(r.activity_name);
+            const canCancel = !isPottery && isConfirmed && isFuture && !!r.time && getCancelEligibility(r.date, r.time).canCancel;
             return (
               <>
                 <SheetHeader className="text-left">
@@ -718,31 +726,37 @@ export default function MonEspace() {
                     </div>
                   )}
                   {isConfirmed && isFuture && (
-                    <div className="pt-2 space-y-2">
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          className="flex-1 gap-1.5"
-                          disabled={!canCancel}
-                          onClick={() => openReschedule(r)}
-                        >
-                          <RefreshCw className="h-4 w-4" /> Reprogrammer
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          className="flex-1 gap-1.5"
-                          disabled={!canCancel}
-                          onClick={() => setCancelConfirm(r)}
-                        >
-                          <XCircle className="h-4 w-4" /> Annuler
-                        </Button>
+                    isPottery ? (
+                      <p className="text-xs text-muted-foreground text-center pt-2">
+                        Pour annuler ou reprogrammer cet atelier, contactez directement Élodie.
+                      </p>
+                    ) : (
+                      <div className="pt-2 space-y-2">
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            className="flex-1 gap-1.5"
+                            disabled={!canCancel}
+                            onClick={() => openReschedule(r)}
+                          >
+                            <RefreshCw className="h-4 w-4" /> Reprogrammer
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            className="flex-1 gap-1.5"
+                            disabled={!canCancel}
+                            onClick={() => setCancelConfirm(r)}
+                          >
+                            <XCircle className="h-4 w-4" /> Annuler
+                          </Button>
+                        </div>
+                        {!canCancel && (
+                          <p className="text-xs text-muted-foreground text-center">
+                            Annulation et reprogrammation possibles jusqu'à 12h avant le cours.
+                          </p>
+                        )}
                       </div>
-                      {!canCancel && (
-                        <p className="text-xs text-muted-foreground text-center">
-                          Annulation et reprogrammation possibles jusqu'à 12h avant le cours.
-                        </p>
-                      )}
-                    </div>
+                    )
                   )}
                 </div>
               </>

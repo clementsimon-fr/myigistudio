@@ -11,9 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { makeDisplayName } from "@/lib/client-name";
 
 const PRIORITIES = [
-  { value: "urgent", label: "Urgent", detail: "sous 4h" },
-  { value: "important", label: "Important", detail: "sous 1-3 jours" },
-  { value: "discuss", label: "Pour en parler", detail: "sous 7 jours" },
+  { value: "urgent", label: "Urgent" },
+  { value: "important", label: "Important" },
+  { value: "discuss", label: "Pour en parler" },
 ];
 
 export default function FeedbackButton() {
@@ -100,7 +100,6 @@ export default function FeedbackButton() {
                       }`}
                     >
                       <span className="font-medium">{p.label}</span>
-                      <span className="text-xs text-muted-foreground">{p.detail}</span>
                     </button>
                   ))}
                 </div>

@@ -69,7 +69,7 @@ export interface UnifiedActivity {
   courseIds?: string[];
   frequency?: string; spots?: number; spots_left?: number; schedules?: Schedule[];
   date?: string; time?: string; end_time?: string; duration?: string; price?: number;
-  intensity?: string; reminder_timing?: string;
+  intensity?: string; reminder_timing?: string; tariff_mode?: string;
   inclusions?: string; card_yoga_count?: number; complementary_info?: string;
   workshopEvents?: WorkshopEvent[];
 }
@@ -129,6 +129,9 @@ export interface ActivityForm {
   default_card_yoga_count: number;
   default_inclusions: string;
   default_complementary_info: string;
+  // Yoga uniquement : "cours" (cartes/carte à l'unité, comportement historique) ou "prix"
+  // (montant fixe en euros, sans passage par le système de cartes).
+  tariff_mode: string;
 }
 
 export const emptyEvent = (): EventSlot => ({
@@ -144,5 +147,5 @@ export const emptyForm = (): ActivityForm => ({
   default_reminder: "", default_modalities: "",
   intensity: "none", reminder_timing: "1j",
   default_price: 0, default_card_yoga_count: 1, default_inclusions: "",
-  default_complementary_info: "",
+  default_complementary_info: "", tariff_mode: "cours",
 });

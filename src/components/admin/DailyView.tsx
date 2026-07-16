@@ -28,6 +28,7 @@ interface Reservation {
   course_id: string | null;
   workshop_id: string | null;
   user_id: string | null;
+  phone: string | null;
 }
 
 interface Schedule {
@@ -102,8 +103,10 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
   const [loading, setLoading] = useState(true);
   const [selectedBlock, setSelectedBlock] = useState<ActivityBlock | null>(null);
   const [selectedParticipant, setSelectedParticipant] = useState<string | null>(null);
+  const [selectedParticipantPhone, setSelectedParticipantPhone] = useState<string | null>(null);
   const [addParticipantName, setAddParticipantName] = useState("");
   const [addParticipantCount, setAddParticipantCount] = useState(1);
+  const [addParticipantPhone, setAddParticipantPhone] = useState("");
   const [addingParticipant, setAddingParticipant] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [knownClients, setKnownClients] = useState<string[]>([]);
@@ -479,7 +482,7 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
                         <button
                           type="button"
                           className="flex items-center gap-2 text-left flex-1 min-w-0 hover:opacity-80 transition-opacity"
-                          onClick={() => setSelectedParticipant(r.client_name)}
+                          onClick={() => { setSelectedParticipant(r.client_name); setSelectedParticipantPhone(r.phone); }}
                         >
                           <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
                             <User className="h-4 w-4 text-primary-dark" />
@@ -516,7 +519,7 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
                 {editParticipantsMode && (
                 <div className="pt-3 border-t">
                   {!showAddForm ? (
-                    <Button size="sm" variant="outline" className="w-full gap-1.5 text-xs" onClick={() => { setShowAddForm(true); setAddParticipantName(""); setClientSearch(""); setAddParticipantCount(1); }}>
+                    <Button size="sm" variant="outline" className="w-full gap-1.5 text-xs" onClick={() => { setShowAddForm(true); setAddParticipantName(""); setClientSearch(""); setAddParticipantCount(1); setAddParticipantPhone(""); }}>
                       <UserPlus className="h-3.5 w-3.5" /> Ajouter un participant
                     </Button>
                   ) : (
@@ -568,19 +571,28 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
                       </div>
 
                       {addParticipantName && (
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs gap-1">
-                            <User className="h-3 w-3" /> {addParticipantName}
-                          </Badge>
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs text-muted-foreground">Nb :</span>
-                            <Input
-                              type="number" min={1} max={20}
-                              value={addParticipantCount}
-                              onChange={e => setAddParticipantCount(Number(e.target.value))}
-                              className="w-16 h-8 text-xs"
-                            />
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs gap-1">
+                              <User className="h-3 w-3" /> {addParticipantName}
+                            </Badge>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-muted-foreground">Nb :</span>
+                              <Input
+                                type="number" min={1} max={20}
+                                value={addParticipantCount}
+                                onChange={e => setAddParticipantCount(Number(e.target.value))}
+                                className="w-16 h-8 text-xs"
+                              />
+                            </div>
                           </div>
+                          <Input
+                            type="tel"
+                            placeholder="Téléphone (optionnel)"
+                            value={addParticipantPhone}
+                            onChange={e => setAddParticipantPhone(e.target.value)}
+                            className="h-9 text-xs"
+                          />
                         </div>
                       )}
 
@@ -598,6 +610,7 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
                             const insertData: any = {
                               client_name: addParticipantName.trim(),
                               participants: addParticipantCount,
+                              phone: addParticipantPhone.trim() || null,
                               activity_name: selectedBlock.title,
                               activity_type: selectedBlock.type,
                               date: dateStr,
@@ -605,17 +618,29 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
                               end_time: selectedBlock.end_time,
                               status: "confirmé",
                             };
+                            let schedIdForDecrement: string | null = null;
                             if (selectedBlock.type === "course") {
                               const schedId = selectedBlock.id.split("-")[0];
                               const sched = schedules.find(s => s.id === schedId);
                               if (sched) {
                                 insertData.schedule_id = sched.id;
                                 insertData.course_id = sched.course_id;
+                                schedIdForDecrement = sched.id;
                               }
                             } else {
                               insertData.workshop_id = selectedBlock.id;
                             }
                             const { error } = await supabase.from("reservations").insert(insertData);
+                            if (!error) {
+                              // Une place ajoutée manuellement compte comme réservée : on décrémente
+                              // les places restantes pour rester cohérent avec les réservations client.
+                              const newSpotsLeft = Math.max(0, selectedBlock.spotsLeft - addParticipantCount);
+                              if (selectedBlock.type === "course" && schedIdForDecrement) {
+                                await supabase.from("course_schedules").update({ spots_left: newSpotsLeft }).eq("id", schedIdForDecrement);
+                              } else if (selectedBlock.type === "workshop") {
+                                await supabase.from("workshops").update({ spots_left: newSpotsLeft }).eq("id", selectedBlock.id);
+                              }
+                            }
                             setAddingParticipant(false);
                             if (error) {
                               toast({ title: "Erreur", description: error.message, variant: "destructive" });
@@ -624,6 +649,7 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
                               setAddParticipantName("");
                               setClientSearch("");
                               setAddParticipantCount(1);
+                              setAddParticipantPhone("");
                               setShowAddForm(false);
                               fetchData();
                             }
@@ -644,6 +670,7 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
 
       <ClientDetailDialog
         clientName={selectedParticipant}
+        fallbackPhone={selectedParticipantPhone}
         open={!!selectedParticipant}
         onOpenChange={(open) => !open && setSelectedParticipant(null)}
         onChanged={fetchData}

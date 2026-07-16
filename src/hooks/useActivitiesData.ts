@@ -35,6 +35,8 @@ export interface Course {
   intensity?: string;
   inclusions?: string;
   complementary_info?: string;
+  price?: number;
+  tariff_mode?: string;
 }
 
 export interface Workshop {

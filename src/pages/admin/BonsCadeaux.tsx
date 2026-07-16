@@ -6,11 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Loader2, Gift, Copy, Check, Search, Hash } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useUnifiedActivities } from "@/hooks/useUnifiedActivities";
 
 interface Voucher {
   id: string;
@@ -35,14 +36,6 @@ interface PricingCard {
   price: number;
 }
 
-interface UnifiedActivity {
-  id: string;
-  name: string;
-  category: string;
-  source: "course" | "workshop";
-  price?: number;
-}
-
 function generateCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "IGI-";
@@ -61,7 +54,17 @@ export default function AdminBonsCadeaux() {
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [pricingCards, setPricingCards] = useState<PricingCard[]>([]);
   const [existingClients, setExistingClients] = useState<string[]>([]);
-  const [activities, setActivities] = useState<UnifiedActivity[]>([]);
+  const { activities: fiches } = useUnifiedActivities();
+  const activities = useMemo(
+    () => fiches.map(f => ({
+      id: f.id,
+      name: f.name,
+      category: f.category,
+      source: f.source,
+      price: f.source === "workshop" ? f.price : f.schedules?.[0]?.price,
+    })),
+    [fiches],
+  );
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -94,37 +97,26 @@ export default function AdminBonsCadeaux() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [vRes, pRes, clientsRes, coursesRes, workshopsRes] = await Promise.all([
+    const [vRes, pRes, profilesRes, clientProfilesRes] = await Promise.all([
       supabase.from("gift_vouchers").select("*").order("created_at", { ascending: false }),
       supabase.from("pricing_cards").select("id, name, sessions, price").order("sort_order"),
       supabase.from("profiles").select("user_name, first_name, last_name"),
-      supabase.from("courses").select("id, name, category"),
-      supabase.from("workshops").select("id, name, category, price"),
+      supabase.from("client_profiles").select("first_name, last_name"),
     ]);
     if (vRes.data) setVouchers(vRes.data as unknown as Voucher[]);
     if (pRes.data) setPricingCards(pRes.data as unknown as PricingCard[]);
-    if (clientsRes.data) {
-      const names = new Set<string>();
-      for (const r of clientsRes.data as any[]) {
-        if (r.user_name) names.add(r.user_name);
-        // Also add display name built from first_name/last_name
-        const fn = (r.first_name || "").trim();
-        const ln = (r.last_name || "").trim();
-        if (fn) {
-          const displayName = ln ? `${fn}.${ln.charAt(0).toUpperCase()}` : fn;
-          names.add(displayName);
-        }
+    const names = new Set<string>();
+    for (const r of [...(profilesRes.data as any[] || []), ...(clientProfilesRes.data as any[] || [])]) {
+      if (r.user_name) names.add(r.user_name);
+      // Also add display name built from first_name/last_name
+      const fn = (r.first_name || "").trim();
+      const ln = (r.last_name || "").trim();
+      if (fn) {
+        const displayName = ln ? `${fn}.${ln.charAt(0).toUpperCase()}` : fn;
+        names.add(displayName);
       }
-      setExistingClients([...names].sort());
     }
-    const acts: UnifiedActivity[] = [];
-    if (coursesRes.data) {
-      for (const c of coursesRes.data as any[]) acts.push({ id: c.id, name: c.name, category: c.category, source: "course" });
-    }
-    if (workshopsRes.data) {
-      for (const w of workshopsRes.data as any[]) acts.push({ id: w.id, name: w.name, category: w.category, source: "workshop", price: w.price });
-    }
-    setActivities(acts);
+    setExistingClients([...names].sort());
     setLoading(false);
   };
 
@@ -344,14 +336,14 @@ export default function AdminBonsCadeaux() {
         </table>
       </div>
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="font-display flex items-center gap-2">
+      {/* Create/Edit Sheet */}
+      <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+        <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto">
+          <SheetHeader className="text-left">
+            <SheetTitle className="font-display flex items-center gap-2">
               <Gift className="h-5 w-5" /> {editingId ? "Modifier" : "Nouveau"} bon cadeau
-            </DialogTitle>
-          </DialogHeader>
+            </SheetTitle>
+          </SheetHeader>
 
           {!editingId && step === "client" ? (
             <div className="space-y-5 pt-2">
@@ -583,8 +575,8 @@ export default function AdminBonsCadeaux() {
               </Button>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>

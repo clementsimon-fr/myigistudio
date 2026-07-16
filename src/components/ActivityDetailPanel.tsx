@@ -122,7 +122,9 @@ export default function ActivityDetailPanel({
   if (workshop) {
     tarifLabel = workshop.price ? `${workshop.price} €` : "Gratuit";
   } else if (course) {
-    tarifLabel = yogaUnitPrice !== null ? `${yogaUnitPrice} € ou 1 carte Yoga` : "1 carte Yoga";
+    tarifLabel = course.tariff_mode === "prix"
+      ? `${course.price ?? 0} €`
+      : (yogaUnitPrice !== null ? `${yogaUnitPrice} € ou 1 carte Yoga` : "1 carte Yoga");
   }
 
   const inclusions = workshop ? workshop.inclusions : course?.inclusions || schedules[0]?.inclusions;
@@ -233,7 +235,7 @@ export default function ActivityDetailPanel({
                         <span className="text-sm font-medium">{instructor || "—"}</span>
                       </div>
                     </div>
-                    {course ? (
+                    {course && course.tariff_mode !== "prix" ? (
                       <button
                         type="button"
                         onClick={() => setCardsInfoOpen(true)}

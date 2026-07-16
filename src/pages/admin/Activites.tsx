@@ -140,9 +140,10 @@ function ActivityEditor({
         <ActivityRemindersSection form={form} setForm={setForm} />
       )}
 
-      {/* Footer */}
+      {/* Footer — marge basse généreuse : sur iPhone, la barre du navigateur peut
+          chevaucher le bas de l'écran même avec le padding standard d'AdminLayout. */}
       {!editingActivity && (
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 border-t pt-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 border-t pt-4 pb-8 sm:pb-4">
           <Button variant="outline" className="min-h-[44px]" onClick={handleBack}>Annuler</Button>
           <Button className="min-h-[44px]" onClick={() => onSave(true)} disabled={!form.name || form.events.length === 0}>
             Créer l'activité
@@ -301,12 +302,53 @@ export default function AdminActivites() {
       default_card_yoga_count: defaultCardVal,
       default_inclusions: defaultInclusionsVal,
       default_complementary_info: a.complementary_info || "",
+      tariff_mode: a.tariff_mode || "cours",
     });
     setEditorOpen(true);
   };
 
   const save = async (closeAfter = true) => {
     const instrId = instructorsList.find(i => i.name === form.instructor)?.id || null;
+
+    // Nouvelle fiche : on ne crée aucune date/événement réservable automatiquement — Élodie
+    // doit ensuite passer par admin/agenda ("Ajouter une date") pour planifier de vraies séances.
+    if (!editingActivity) {
+      const sharedData = {
+        name: form.name, description: form.description, long_description: form.long_description,
+        category: form.category, instructor_id: instrId,
+        image: form.image, images: form.images,
+        reminder_template: form.default_reminder,
+        modalities: form.default_modalities,
+        intensity: form.intensity === "none" ? "" : form.intensity, reminder_timing: form.reminder_timing,
+        inclusions: form.default_inclusions || "",
+        complementary_info: form.default_complementary_info || "",
+      };
+      if (form.category === "yoga") {
+        await supabase.from("courses").insert({
+          ...sharedData, instructor: form.instructor,
+          price: form.default_price || 0, card_yoga_count: form.default_card_yoga_count || 0,
+          tariff_mode: form.tariff_mode,
+          day: "", time: "00:00", end_time: "00:00", duration: "0min", days: [], frequency: "",
+          spots: 0, spots_left: 0,
+        } as any);
+      } else {
+        // Le schéma workshops exige une date : on utilise une date passée (donc jamais
+        // réservable côté client) le temps qu'une vraie date soit ajoutée via l'agenda.
+        const placeholder = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const placeholderDate = `${placeholder.getFullYear()}-${String(placeholder.getMonth() + 1).padStart(2, "0")}-${String(placeholder.getDate()).padStart(2, "0")}`;
+        await supabase.from("workshops").insert({
+          ...sharedData,
+          date: placeholderDate, time: "00:00", end_time: "00:00", duration: "0min", frequency: "ponctuel",
+          price: form.default_price || 0, card_yoga_count: form.default_card_yoga_count || 0,
+          spots: 0, spots_left: 0,
+        } as any);
+      }
+      toast({ title: "Activité créée ✓", description: "Ajoutez ses premières dates depuis Agenda." });
+      setEditorOpen(false);
+      fetchData();
+      return;
+    }
+
     const targetCourseIds = editingActivity?.courseIds || (editingActivity?.source === "course" ? [editingActivity.id] : []);
     const primaryCourseId = targetCourseIds[0];
 
@@ -339,7 +381,7 @@ export default function AdminActivites() {
       complementary_info: form.default_complementary_info || "",
     };
     // courses table has 'instructor' column, workshops does not
-    const courseData = { ...sharedData, instructor: form.instructor, price: dPrice, card_yoga_count: dCard };
+    const courseData = { ...sharedData, instructor: form.instructor, price: dPrice, card_yoga_count: dCard, tariff_mode: form.tariff_mode };
     const workshopData = sharedData;
 
     // ── Handle recurring events → courses table ──

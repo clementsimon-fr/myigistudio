@@ -99,7 +99,15 @@ function WeekProgram({ courses, schedules, workshops, onEventClick }: {
       });
     }
 
-    for (const w of workshops) {
+    // Multi-sessions (dates liées) : n'afficher que la première date de la série sur le
+    // planning — les dates suivantes sont réservées automatiquement avec elle.
+    const seenGroups = new Set<string>();
+    const sortedWorkshops = [...workshops].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    for (const w of sortedWorkshops) {
+      if (w.linked_group) {
+        if (seenGroups.has(w.linked_group)) continue;
+        seenGroups.add(w.linked_group);
+      }
       const wDate = new Date(w.date + "T12:00:00");
       if (wDate >= monday && wDate <= sunday) {
         result.push({

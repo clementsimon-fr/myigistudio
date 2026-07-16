@@ -61,12 +61,15 @@ interface Profile {
 
 interface ClientDetailDialogProps {
   clientName: string | null;
+  // Téléphone saisi directement sur une réservation ajoutée manuellement (invité sans
+  // compte) — affiché si aucun profil client n'est trouvé pour ce nom.
+  fallbackPhone?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onChanged?: () => void;
 }
 
-export default function ClientDetailDialog({ clientName, open, onOpenChange, onChanged }: ClientDetailDialogProps) {
+export default function ClientDetailDialog({ clientName, fallbackPhone, open, onOpenChange, onChanged }: ClientDetailDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -256,7 +259,14 @@ export default function ClientDetailDialog({ clientName, open, onOpenChange, onC
                       )}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">Ce client n'a pas de compte — aucune information de contact enregistrée.</p>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Ce client n'a pas de compte.</p>
+                      {fallbackPhone ? (
+                        <p className="text-sm text-muted-foreground">📞 {fallbackPhone}</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Aucune information de contact enregistrée.</p>
+                      )}
+                    </div>
                   )}
                 </TabsContent>
 

@@ -214,8 +214,7 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
         )}
         {!group.isLinked && hasFutureDate && nextFuture && (
           <p className="text-xs text-muted-foreground mb-2 flex items-center gap-2 flex-wrap">
-            <span>📅 Prochaine date : {new Date(nextFuture.date + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
-            {futureDates.length > 1 && <span className="text-primary font-medium"> · {futureDates.length} dates disponibles</span>}</span>
+            <span>📅 Prochaine date : {new Date(nextFuture.date + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</span>
             <SpotsBadge spotsLeft={spotsLeft} />
           </p>
         )}
