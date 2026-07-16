@@ -27,16 +27,16 @@ export default function ContactElodieButton({ variant = "outline", className = "
             </p>
             <div className="space-y-2">
               <a
-                href="mailto:elodie@myigistudio.fr"
+                href="mailto:igistudiofr@gmail.com"
                 className="flex items-center gap-2 rounded-lg border p-3 text-sm hover:bg-muted/50 transition-colors"
               >
-                📧 elodie@myigistudio.fr
+                📧 igistudiofr@gmail.com
               </a>
               <a
-                href="tel:+33600000000"
+                href="tel:+33662299213"
                 className="flex items-center gap-2 rounded-lg border p-3 text-sm hover:bg-muted/50 transition-colors"
               >
-                📱 06 00 00 00 00
+                📱 06 62 29 92 13
               </a>
             </div>
             <Button className="w-full" onClick={() => setOpen(false)}>Fermer</Button>

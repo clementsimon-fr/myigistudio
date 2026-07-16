@@ -479,8 +479,6 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         </section>
       )}
 
-      <TeamSection />
-
       <section className="py-12 md:py-16">
         <div className="container max-w-2xl text-center">
           <h2 className="text-xl md:text-2xl font-display font-bold text-primary-dark mb-4">Infos Pratiques</h2>
@@ -488,11 +486,18 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
             <p>Arrivez 10 minutes avant le cours · Tapis fournis · Tenue confortable</p>
             <p>Annulation gratuite jusqu'à 24h avant le cours. Au-delà, le crédit est débité.</p>
           </div>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
             <ContactElodieButton variant="outline" />
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" asChild>
+              <a href="https://www.igistudio.fr/mentions-l%C3%A9gales-et-cgv" target="_blank" rel="noopener noreferrer">
+                Lire les mentions légales et CGV
+              </a>
+            </Button>
           </div>
         </div>
       </section>
+
+      <TeamSection />
 
       {/* Activity detail slide-up panel — courses */}
       <ActivityDetailPanel
