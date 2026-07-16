@@ -4,10 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { CalendarDays, CreditCard, Clock, Loader2, User, XCircle, ArrowRight, Bell, MapPin, ShoppingCart, LogOut } from "lucide-react";
+import { CalendarDays, CreditCard, Clock, Loader2, User, XCircle, ArrowRight, Bell, MapPin, ShoppingCart, LogOut, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -73,7 +75,8 @@ export default function MonEspace() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
   const [resFilter, setResFilter] = useState("all");
-  const [showBuyCards, setShowBuyCards] = useState(false);
+  const [buySheetOpen, setBuySheetOpen] = useState(false);
+  const [buyStep, setBuyStep] = useState<1 | 2>(1);
   const [viewingReservation, setViewingReservation] = useState<Reservation | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState<Reservation | null>(null);
   const [activityModalities, setActivityModalities] = useState<string>("");
@@ -302,15 +305,12 @@ export default function MonEspace() {
               )}
           </div>
 
-          {/* ─── CARTES YOGA ─── */}
-          <div className="max-w-3xl space-y-6 mb-8">
-              {/* Summary */}
-              <div className="rounded-xl border bg-card p-5">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-display font-semibold text-primary-dark">Mes cartes Yoga</h2>
-                  <div className="h-14 w-14 rounded-full bg-[hsl(210,60%,55%)]/10 flex items-center justify-center">
-                    <CreditCard className="h-7 w-7 text-[hsl(210,60%,55%)]" />
-                  </div>
+          {/* ─── CARTES YOGA (méta-bloc unique) ─── */}
+          <div className="max-w-3xl rounded-xl border bg-card p-5 space-y-6 mb-8">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-display font-semibold text-primary-dark">Mes cartes Yoga</h2>
+                <div className="h-14 w-14 rounded-full bg-[hsl(210,60%,55%)]/10 flex items-center justify-center">
+                  <CreditCard className="h-7 w-7 text-[hsl(210,60%,55%)]" />
                 </div>
               </div>
 
@@ -329,7 +329,7 @@ export default function MonEspace() {
                       const remaining = card.total_sessions - card.used_sessions;
                       const pct = (card.used_sessions / card.total_sessions) * 100;
                       return (
-                        <div key={card.id} className="rounded-xl border bg-card p-4">
+                        <div key={card.id} className="rounded-xl border bg-background p-4">
                           <div className="flex items-center justify-between mb-2">
                             <h3 className="font-semibold text-sm text-primary-dark">{card.card_name}</h3>
                             <span className="text-[10px] md:text-xs text-muted-foreground">Exp. {new Date(card.expires_at).toLocaleDateString("fr-FR")}</span>
@@ -348,27 +348,16 @@ export default function MonEspace() {
                 )}
               </div>
 
-              {/* 1.5: Button to reveal buying section */}
-              <div>
-                <Button variant="outline" className="w-full gap-2" onClick={() => setShowBuyCards(!showBuyCards)}>
-                  <ShoppingCart className="h-4 w-4" /> {showBuyCards ? "Masquer les formules" : "Ajouter cartes yoga"}
-                </Button>
-                {showBuyCards && (
-                  <div className="mt-4">
-                    <h3 className="text-sm font-semibold text-primary-dark mb-3">Choisir une formule</h3>
-                    <YogaFormulasBlock pricingCards={pricingCards} onSelectCard={handleBuyCard} showHeader={false} />
-                    <div className="mt-4">
-                      <ContactElodieButton variant="outline" className="text-xs" />
-                    </div>
-                  </div>
-                )}
-              </div>
+              {/* Achat via assistant en bas d'écran */}
+              <Button variant="outline" className="w-full gap-2" onClick={() => { setBuyStep(1); setBuySheetOpen(true); }}>
+                <ShoppingCart className="h-4 w-4" /> Ajouter cartes yoga
+              </Button>
 
               {/* Purchase history */}
               {cards.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold text-primary-dark mb-3">Historique des achats</h3>
-                  <div className="rounded-xl border bg-card overflow-hidden">
+                  <div className="rounded-xl border bg-background overflow-hidden">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b bg-muted/30">
@@ -392,73 +381,130 @@ export default function MonEspace() {
               )}
           </div>
 
-          {/* ─── PROFIL ─── */}
-          <div className="max-w-lg space-y-4">
-              <div className="rounded-xl border bg-card p-4 md:p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-14 w-14 rounded-full bg-primary/15 flex items-center justify-center">
-                    <User className="h-7 w-7 text-primary-dark" />
-                  </div>
-                  <div>
-                    <h3 className="font-display font-semibold text-primary-dark">{CLIENT_NAME}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Membre depuis {reservations.length > 0 ? new Date(reservations[reservations.length - 1]?.created_at).toLocaleDateString("fr-FR", { month: "long", year: "numeric" }) : "récemment"}
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Bell className="h-4 w-4 text-primary-dark" />
-                    <p className="text-sm font-medium">Préférences de rappel</p>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border p-3">
-                    <div>
-                      <p className="text-sm font-medium">📧 Rappel par e-mail</p>
-                      <p className="text-[10px] text-muted-foreground">Recevoir un rappel par e-mail avant chaque séance</p>
+          {/* Assistant d'achat : formules → suivant → résumé → payer */}
+          <Sheet open={buySheetOpen} onOpenChange={setBuySheetOpen}>
+            <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
+              <SheetHeader className="text-left">
+                <SheetTitle>{buyStep === 1 ? "Choisir une formule" : "Résumé de la commande"}</SheetTitle>
+              </SheetHeader>
+              <div className="pt-2 pb-6">
+                {buyStep === 1 && (
+                  <>
+                    <YogaFormulasBlock
+                      pricingCards={pricingCards}
+                      onSelectCard={(card) => { setSelectedPricingCard(card as PricingCard); setBuyStep(2); }}
+                      showHeader={false}
+                    />
+                    <div className="mt-4">
+                      <ContactElodieButton variant="outline" className="text-xs" />
                     </div>
-                    <Switch checked={reminderEmail} onCheckedChange={setReminderEmail} />
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border p-3">
-                    <div>
-                      <p className="text-sm font-medium">📱 Rappel par SMS</p>
-                      <p className="text-[10px] text-muted-foreground">Recevoir un rappel par SMS avant chaque séance</p>
+                  </>
+                )}
+                {buyStep === 2 && selectedPricingCard && (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border bg-card p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold">
+                          {selectedPricingCard.sessions === 1 ? "Carte Yoga à l'unité" : `Cartes Yoga "${selectedPricingCard.name}"`}
+                        </p>
+                        <Badge variant="secondary">
+                          {selectedPricingCard.sessions >= 9999 ? "Illimité" : `${selectedPricingCard.sessions} cours`}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Validité : {selectedPricingCard.validity}</p>
+                      <div className="border-t pt-2 flex items-center justify-between">
+                        <span className="text-sm font-semibold">Total</span>
+                        <span className="text-lg font-bold">{selectedPricingCard.price} €</span>
+                      </div>
                     </div>
-                    <Switch checked={reminderSms} onCheckedChange={setReminderSms} />
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1" onClick={() => setBuyStep(1)}>Retour</Button>
+                      <Button className="flex-1 gap-1.5" onClick={() => { setBuySheetOpen(false); handleBuyCard(selectedPricingCard); }}>
+                        <CreditCard className="h-4 w-4" /> Payer
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                {(reminderSms !== (clientProfile?.reminder_sms ?? false) || reminderEmail !== (clientProfile?.reminder_email ?? true)) && (
-                  <Button size="sm" className="text-xs mt-2" onClick={saveProfile}>Sauvegarder</Button>
                 )}
               </div>
+            </SheetContent>
+          </Sheet>
 
-              <div className="rounded-xl border bg-card p-4 md:p-6 space-y-3">
-                <p className="text-sm font-medium">Téléphone</p>
-                <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="06 12 34 56 78" />
-                {phone !== (clientProfile?.phone || "") && (
-                  <Button size="sm" className="text-xs gap-1.5" onClick={savePhone} disabled={savingPhone}>
-                    {savingPhone ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Sauvegarder
+          {/* ─── PROFIL (bloc repliable) ─── */}
+          <div className="max-w-lg mb-8">
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <button type="button" className="w-full flex items-center justify-between rounded-xl border bg-card p-4 md:p-6 hover:bg-muted/30 transition-colors group">
+                  <div className="flex items-center gap-3">
+                    <div className="h-14 w-14 rounded-full bg-primary/15 flex items-center justify-center">
+                      <User className="h-7 w-7 text-primary-dark" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-display font-semibold text-primary-dark">{CLIENT_NAME}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Membre depuis {reservations.length > 0 ? new Date(reservations[reservations.length - 1]?.created_at).toLocaleDateString("fr-FR", { month: "long", year: "numeric" }) : "récemment"}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-4">
+                <div className="rounded-xl border bg-card p-4 md:p-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Bell className="h-4 w-4 text-primary-dark" />
+                      <p className="text-sm font-medium">Préférences de rappel</p>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div>
+                        <p className="text-sm font-medium">📧 Rappel par e-mail</p>
+                        <p className="text-[10px] text-muted-foreground">Recevoir un rappel par e-mail avant chaque séance</p>
+                      </div>
+                      <Switch checked={reminderEmail} onCheckedChange={setReminderEmail} />
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div>
+                        <p className="text-sm font-medium">📱 Rappel par SMS</p>
+                        <p className="text-[10px] text-muted-foreground">Recevoir un rappel par SMS avant chaque séance</p>
+                      </div>
+                      <Switch checked={reminderSms} onCheckedChange={setReminderSms} />
+                    </div>
+                  </div>
+                  {(reminderSms !== (clientProfile?.reminder_sms ?? false) || reminderEmail !== (clientProfile?.reminder_email ?? true)) && (
+                    <Button size="sm" className="text-xs mt-2" onClick={saveProfile}>Sauvegarder</Button>
+                  )}
+                </div>
+
+                <div className="rounded-xl border bg-card p-4 md:p-6 space-y-3">
+                  <p className="text-sm font-medium">Téléphone</p>
+                  <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="06 12 34 56 78" />
+                  {phone !== (clientProfile?.phone || "") && (
+                    <Button size="sm" className="text-xs gap-1.5" onClick={savePhone} disabled={savingPhone}>
+                      {savingPhone ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Sauvegarder
+                    </Button>
+                  )}
+                </div>
+
+                <div className="rounded-xl border bg-card p-4 md:p-6 space-y-3">
+                  <p className="text-sm font-medium">Changer le mot de passe</p>
+                  <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Nouveau mot de passe" />
+                  <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirmer le mot de passe" />
+                  <Button size="sm" className="text-xs gap-1.5" onClick={savePassword} disabled={savingPassword || !newPassword}>
+                    {savingPassword ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Changer le mot de passe
                   </Button>
-                )}
-              </div>
+                </div>
 
-              <div className="rounded-xl border bg-card p-4 md:p-6 space-y-3">
-                <p className="text-sm font-medium">Changer le mot de passe</p>
-                <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Nouveau mot de passe" />
-                <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirmer le mot de passe" />
-                <Button size="sm" className="text-xs gap-1.5" onClick={savePassword} disabled={savingPassword || !newPassword}>
-                  {savingPassword ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} Changer le mot de passe
+                {/* Déconnexion */}
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={async () => { await signOut(); navigate("/"); }}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Se déconnecter
                 </Button>
-              </div>
-
-              {/* Déconnexion */}
-              <Button
-                variant="outline"
-                className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
-                onClick={async () => { await signOut(); navigate("/"); }}
-              >
-                <LogOut className="h-4 w-4" />
-                Se déconnecter
-              </Button>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
 
           {/* Contact Elodie banner */}

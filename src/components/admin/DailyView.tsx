@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Clock, Users, User, Plus, Search, UserPlus, XCircle, RotateCcw, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +27,7 @@ interface Reservation {
   schedule_id: string | null;
   course_id: string | null;
   workshop_id: string | null;
+  user_id: string | null;
 }
 
 interface Schedule {
@@ -68,6 +70,8 @@ interface ActivityBlock {
   instructor?: string;
   reservations: Reservation[];
   allReservations: Reservation[];
+  day?: string;
+  date?: string;
 }
 
 const DAY_NAMES: Record<number, string> = {
@@ -181,6 +185,7 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
         instructor: course.instructor,
         reservations: matchingResasAll.filter(r => r.status === "confirmé"),
         allReservations: matchingResasAll,
+        day: dayName,
       });
     }
 
@@ -202,6 +207,7 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
         spotsLeft: ws.spots_left,
         reservations: matchingResasAll.filter(r => r.status === "confirmé"),
         allReservations: matchingResasAll,
+        date: ws.date,
       });
     }
 
@@ -265,7 +271,7 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
     fetchData();
   };
 
-  const updateBlockField = async (patch: Partial<{ time: string; end_time: string; spots: number }>) => {
+  const updateBlockField = async (patch: Partial<{ time: string; end_time: string; spots: number; day: string; date: string }>) => {
     if (!selectedBlock) return;
     const table = selectedBlock.type === "course" ? "course_schedules" : "workshops";
     const id = selectedBlock.type === "course" ? selectedBlock.id.split("-")[0] : selectedBlock.id;
@@ -409,6 +415,22 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
 
                 {editEventMode && (
                   <div className="space-y-2 pt-2 border-t">
+                    {selectedBlock.type === "workshop" ? (
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs text-muted-foreground w-16">Date</Label>
+                        <Input type="date" className="w-[160px] h-9 text-sm" value={selectedBlock.date} onChange={e => updateBlockField({ date: e.target.value })} />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs text-muted-foreground w-16">Jour</Label>
+                        <Select value={selectedBlock.day} onValueChange={v => updateBlockField({ day: v })}>
+                          <SelectTrigger className="w-[160px] h-9 text-sm"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {Object.values(DAY_NAMES).map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div className="flex flex-wrap items-center gap-2">
                       <Input type="time" className="w-[100px] h-9 text-sm" value={selectedBlock.time} onChange={e => updateBlockField({ time: e.target.value })} />
                       <span className="text-muted-foreground text-xs">→</span>
@@ -419,7 +441,7 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
                       </div>
                     </div>
                     {selectedBlock.type === "course" && (
-                      <p className="text-[11px] text-muted-foreground">Récurrent chaque {dayName} — modifier l'horaire changera toutes les occurrences.</p>
+                      <p className="text-[11px] text-muted-foreground">Récurrent chaque {selectedBlock.day} — modifier l'horaire ou le jour changera toutes les occurrences.</p>
                     )}
                     <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive gap-1.5 text-xs" onClick={() => setPendingDeleteBlock(selectedBlock)}>
                       <Trash2 className="h-3.5 w-3.5" /> Supprimer cet événement
@@ -465,7 +487,7 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">{r.client_name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {r.participants} personne{r.participants > 1 ? "s" : ""}
+                              {r.user_id ? "Client" : "Invité"}{r.participants > 1 ? ` · ${r.participants} personnes` : ""}
                             </p>
                           </div>
                         </button>

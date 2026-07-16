@@ -325,7 +325,7 @@ export default function BookingSheet({
     if (step === 1) return !!selected;
     if (step === 2) return identityChosen && (participants[0]?.name.trim().length > 0);
     if (step === 3) return participants.length > 0 && participants.every((p) => p.name.trim().length > 0);
-    if (step === 4) return cart.length > 0;
+    if (step === 4) return cart.length > 0 && cartCapacity >= participants.length;
     if (step === 5) return allAssigned;
     return true;
   };
@@ -419,31 +419,33 @@ export default function BookingSheet({
       } as any);
     }
 
-    const baseReservation = {
-      client_name: clientName,
-      user_id: userId,
-      activity_name: name,
-      activity_type: course ? "course" : "workshop",
-      time: selected.time,
-      end_time: selected.end_time,
-      participants: participants.length,
-      status: "confirmé",
-      course_id: course?.id || null,
-    };
+    // Une ligne de réservation par participant (et par date liée en cas de multi-sessions) :
+    // le participant 0 est le compte réservant, les suivants sont des invités sans compte
+    // (user_id null) — permet à l'admin de voir chaque personne nommément (pas juste "×2").
+    const participantRows = (date: string, workshopId: string | null) =>
+      participants.map((p, i) => ({
+        client_name: i === 0 ? clientName : (p.name.trim() || "Invité"),
+        user_id: i === 0 ? userId : null,
+        activity_name: name,
+        activity_type: course ? "course" : "workshop",
+        date,
+        time: selected.time,
+        end_time: selected.end_time,
+        participants: 1,
+        status: "confirmé",
+        course_id: course?.id || null,
+        workshop_id: workshopId,
+      }));
 
     if (course) {
-      await supabase.from("reservations").insert({ ...baseReservation, date: selected.date, workshop_id: null } as any);
+      await supabase.from("reservations").insert(participantRows(selected.date, null) as any);
     } else if (selected.linkedWorkshopIds && selected.linkedWorkshopIds.length > 1) {
       // Multi-sessions : une réservation par date liée, pour que chaque date apparaisse
       // correctement dans l'agenda admin.
-      const rows = selected.linkedWorkshopIds.map((wsId, i) => ({
-        ...baseReservation,
-        date: selected.linkedDates![i],
-        workshop_id: wsId,
-      }));
+      const rows = selected.linkedWorkshopIds.flatMap((wsId, i) => participantRows(selected.linkedDates![i], wsId));
       await supabase.from("reservations").insert(rows as any);
     } else {
-      await supabase.from("reservations").insert({ ...baseReservation, date: selected.date, workshop_id: selected.scheduleId } as any);
+      await supabase.from("reservations").insert(participantRows(selected.date, selected.scheduleId) as any);
     }
 
     toast({ title: "Réservation confirmée ✓", description: `${name} — ${new Date(selected.date).toLocaleDateString("fr-FR")} à ${selected.time}` });
@@ -788,6 +790,12 @@ export default function BookingSheet({
                     {cart.length === 0 ? "Ajouter un tarif" : "Ajouter un autre tarif"}
                   </Button>
 
+                  {cartCapacity < participants.length && (
+                    <p className="text-xs text-destructive">
+                      Il manque {participants.length - cartCapacity} place{participants.length - cartCapacity > 1 ? "s" : ""} pour couvrir les {participants.length} participants — ajoutez un tarif supplémentaire.
+                    </p>
+                  )}
+
                   {totalToPay > 0 && (
                     <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 text-sm">
                       Total à régler : <strong>{totalToPay} €</strong>
@@ -1034,6 +1042,26 @@ function CartPickerModal({
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
+          {/* Carte du compte — mise en avant en premier si disponible */}
+          {isYoga && isConnected && accountCardsLeft > 0 && (
+            <button
+              onClick={handleExistingCard}
+              className="w-full text-left rounded-xl border-2 p-4 bg-primary/10 border-primary shadow-sm hover:shadow-md hover:bg-primary/15 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-primary-dark flex items-center gap-1.5 text-base">
+                    <Ticket className="h-5 w-5" /> Utiliser une de mes cartes
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {accountCardsLeft} carte{accountCardsLeft > 1 ? "s" : ""} disponible{accountCardsLeft > 1 ? "s" : ""}
+                  </p>
+                </div>
+                <Badge className="bg-primary text-primary-foreground">Gratuit</Badge>
+              </div>
+            </button>
+          )}
+
           {/* Bon cadeau */}
           <div className="rounded-lg border bg-amber-50/60 border-amber-200 p-3 space-y-2">
             {!voucherOpen ? (
@@ -1062,26 +1090,6 @@ function CartPickerModal({
               </>
             )}
           </div>
-
-          {/* Carte du compte */}
-          {isYoga && isConnected && accountCardsLeft > 0 && (
-            <button
-              onClick={handleExistingCard}
-              className="w-full text-left rounded-lg border p-4 bg-primary/5 border-primary/30 hover:shadow-md transition-all"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-primary-dark flex items-center gap-1.5">
-                    <Ticket className="h-4 w-4" /> Utiliser une de mes cartes
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {accountCardsLeft} carte{accountCardsLeft > 1 ? "s" : ""} disponible{accountCardsLeft > 1 ? "s" : ""}
-                  </p>
-                </div>
-                <Badge>Gratuit</Badge>
-              </div>
-            </button>
-          )}
 
           {/* Carte à l'unité */}
           {isYoga && (

@@ -144,8 +144,13 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
     const dn = DAY_NAMES[date.getDay()];
     const cats: string[] = [];
     for (const activity of filteredActivities) {
-      if ((activity.schedules || []).some(s => s.day === dn)) cats.push(activity.category);
-      if ((activity.workshopEvents || []).some(we => we.date === ds)) cats.push(activity.category);
+      // Une pastille par créneau réel (pas par activité) pour refléter le nombre d'événements du jour.
+      for (const s of activity.schedules || []) {
+        if (s.day === dn) cats.push(activity.category);
+      }
+      for (const we of activity.workshopEvents || []) {
+        if (we.date === ds) cats.push(activity.category);
+      }
     }
     return cats;
   };

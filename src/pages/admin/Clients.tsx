@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Loader2, UserPlus, Archive } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Search, Loader2, UserPlus, Archive, Trash2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +37,8 @@ export default function AdminClients() {
   const [editForm, setEditForm] = useState({ first_name: "", last_name: "", phone: "", email: "", address: "" });
   const [newClientOpen, setNewClientOpen] = useState(false);
   const [newClientType, setNewClientType] = useState<"actuel" | "futur">("actuel");
+  const [cleanConfirmOpen, setCleanConfirmOpen] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
 
   const loadClients = async () => {
     setLoading(true);
@@ -149,6 +152,21 @@ export default function AdminClients() {
     loadClients();
   };
 
+  const cleanDatabase = async () => {
+    setCleaning(true);
+    await Promise.all([
+      supabase.from("reservations").delete().not("id", "is", null),
+      supabase.from("client_cards").delete().not("id", "is", null),
+      supabase.from("gift_vouchers").delete().not("id", "is", null),
+      supabase.from("profiles").delete().not("id", "is", null),
+      supabase.from("client_profiles").delete().eq("role", "client"),
+    ]);
+    setCleaning(false);
+    setCleanConfirmOpen(false);
+    toast({ title: "Base nettoyée ✓", description: "Réservations, clients et cartes/bons cadeaux supprimés." });
+    loadClients();
+  };
+
   const filtered = useMemo(() => {
     let list = clients;
     if (search.trim()) {
@@ -177,6 +195,9 @@ export default function AdminClients() {
           <Button size="sm" variant="outline" className="gap-1.5 text-muted-foreground" disabled title="Bientôt disponible">
             <Archive className="h-4 w-4" /> Importer archives
           </Button>
+          <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setCleanConfirmOpen(true)}>
+            <Trash2 className="h-4 w-4" /> Nettoyer base
+          </Button>
         </div>
         <p className="text-sm text-muted-foreground">{filtered.length} client{filtered.length > 1 ? "s" : ""}</p>
       </div>
@@ -193,12 +214,11 @@ export default function AdminClients() {
                 <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Email</th>
                 <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Prestations</th>
                 <th className="text-left p-3 font-medium text-muted-foreground">Yoga</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Résa</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Aucun client trouvé</td></tr>
+                <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Aucun client trouvé</td></tr>
               ) : filtered.map((c) => (
                 <tr
                   key={c.name}
@@ -213,7 +233,7 @@ export default function AdminClients() {
                   </td>
                   <td className="p-3">
                     <Badge variant="outline" className={`text-[10px] ${c.profileId ? "bg-primary/10 text-primary-dark border-primary/20" : "bg-muted text-muted-foreground"}`}>
-                      {c.profileId ? "Compte" : "Sans compte"}
+                      {c.profileId ? "Compte" : "Invité"}
                     </Badge>
                   </td>
                   <td className="p-3 hidden md:table-cell text-muted-foreground">{c.email || "—"}</td>
@@ -239,11 +259,6 @@ export default function AdminClients() {
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
-                  </td>
-                  <td className="p-3">
-                    {c.totalReservations === 0
-                      ? <Badge variant="outline" className="text-xs">Futur client</Badge>
-                      : c.totalReservations}
                   </td>
                 </tr>
               ))}
@@ -293,6 +308,29 @@ export default function AdminClients() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={cleanConfirmOpen} onOpenChange={setCleanConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Nettoyer la base de données ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action supprime définitivement toutes les réservations, tous les clients (comptes et invités),
+              ainsi que leurs cartes Yoga et bons cadeaux. Les activités, cours et paramètres du studio ne sont pas
+              touchés. Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={cleaning}
+              onClick={(e) => { e.preventDefault(); cleanDatabase(); }}
+            >
+              {cleaning ? <Loader2 className="h-4 w-4 animate-spin" /> : "Oui, tout supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </AdminLayout>
   );
