@@ -669,7 +669,9 @@ export default function AdminActivites() {
 
       {/* Drawer d'édition activité (ouverture vers le bas) */}
       <Sheet open={editorOpen} onOpenChange={(o) => { if (!o) { setEditorOpen(false); fetchData(); } }}>
-        <SheetContent side="bottom" className="h-[92vh] overflow-y-auto p-4 sm:p-6 sm:max-w-3xl">
+        {/* max-h (pas h fixe) + dvh : sur iPhone, 100vh ne tient pas compte de la barre du
+            navigateur qui rétrécit la zone visible, ce qui coupait le bouton "Créer" tout en bas. */}
+        <SheetContent side="bottom" className="max-h-[92dvh] overflow-y-auto p-4 sm:p-6 sm:max-w-3xl">
           {editorOpen && (
             <ActivityEditor
               form={form}

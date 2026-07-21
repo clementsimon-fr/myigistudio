@@ -135,16 +135,6 @@ function InterestForm({ activityName }: { activityName: string }) {
   );
 }
 
-function formatLinkedDates(dates: string[]): string {
-  if (dates.length === 0) return "";
-  const formatted = dates.map(d => {
-    const date = new Date(d + "T12:00:00");
-    return date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
-  });
-  if (formatted.length === 1) return formatted[0];
-  return formatted.slice(0, -1).join(", ") + " & " + formatted[formatted.length - 1];
-}
-
 interface WorkshopGroup {
   key: string;
   workshops: Workshop[];
@@ -206,13 +196,9 @@ function WorkshopCard({ group, i, onDescription, instructorPhoto, onBook }: {
           <h3 className={`font-display font-semibold text-base md:text-lg leading-tight ${style.text}`}>{ws.name}</h3>
         </div>
         <p className="text-xs md:text-sm text-muted-foreground mb-3 line-clamp-2">{ws.description}</p>
-        {group.isLinked && futureDates.length > 0 && (
-          <p className="text-xs text-primary font-medium mb-2 flex items-center gap-2 flex-wrap">
-            <span>📅 {formatLinkedDates(futureDates.map(w => w.date))}</span>
-            {hasFutureDate && <SpotsBadge spotsLeft={spotsLeft} />}
-          </p>
-        )}
-        {!group.isLinked && hasFutureDate && nextFuture && (
+        {/* Multi-sessions : n'afficher que la première date de la série — réserver cette date
+            réserve automatiquement toute la série, inutile de lister les suivantes ici. */}
+        {hasFutureDate && nextFuture && (
           <p className="text-xs text-muted-foreground mb-2 flex items-center gap-2 flex-wrap">
             <span>📅 Prochaine date : {new Date(nextFuture.date + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</span>
             <SpotsBadge spotsLeft={spotsLeft} />

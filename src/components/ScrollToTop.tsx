@@ -9,5 +9,19 @@ export default function ScrollToTop() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
+
+  // Le swipe-back natif iOS Safari restaure la page depuis le bfcache (snapshot figé)
+  // au lieu de rejouer une navigation React normale : l'effet ci-dessus ne se redéclenche
+  // pas dans ce cas précis, donc le scroll figé de l'ancienne page reste affiché avec le
+  // même chevauchement. "pageshow" + event.persisted est le signal standard pour détecter
+  // une restauration bfcache et forcer le même correctif.
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) window.scrollTo(0, 0);
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
   return null;
 }

@@ -32,8 +32,15 @@ export default function AdminTarifs() {
   const [pricingNotes, setPricingNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
 
-  const emptyForm = { name: "", sessions: 10, price: 0, validity: "3 mois", popular: false, sort_order: 0, payment_info: "" };
+  const emptyForm = { name: "", sessions: 10, price: 0, validityMonths: 3, popular: false, sort_order: 0, payment_info: "" };
   const [form, setForm] = useState(emptyForm);
+
+  // La validité est stockée en base sous forme de texte ("3 mois") pour compatibilité avec
+  // l'existant, mais Élodie la saisit désormais en nombre de mois pour éviter toute ambiguïté.
+  const parseValidityMonths = (validity: string): number => {
+    const n = parseInt(validity.match(/(\d+)/)?.[1] || "1", 10);
+    return /an|année/i.test(validity) ? n * 12 : n;
+  };
 
   const fetchCards = async () => {
     setLoading(true);
@@ -51,12 +58,13 @@ export default function AdminTarifs() {
   const openNew = () => { setEditingId(null); setForm({ ...emptyForm, sort_order: cards.length }); setDialogOpen(true); };
   const openEdit = (c: PricingCard) => {
     setEditingId(c.id);
-    setForm({ name: c.name, sessions: c.sessions, price: c.price, validity: c.validity, popular: c.popular, sort_order: c.sort_order, payment_info: c.payment_info || "" });
+    setForm({ name: c.name, sessions: c.sessions, price: c.price, validityMonths: parseValidityMonths(c.validity), popular: c.popular, sort_order: c.sort_order, payment_info: c.payment_info || "" });
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
-    const payload = { name: form.name, sessions: form.sessions, price: form.price, validity: form.validity, popular: form.popular, sort_order: form.sort_order, payment_info: form.payment_info };
+    const validity = `${form.validityMonths} mois`;
+    const payload = { name: form.name, sessions: form.sessions, price: form.price, validity, popular: form.popular, sort_order: form.sort_order, payment_info: form.payment_info };
     if (editingId) {
       await supabase.from("pricing_cards").update(payload as any).eq("id", editingId);
     } else {
@@ -166,8 +174,8 @@ export default function AdminTarifs() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Validité</Label>
-                <Input value={form.validity} onChange={e => setForm({ ...form, validity: e.target.value })} placeholder="3 mois" />
+                <Label>Validité (mois)</Label>
+                <Input type="number" min={1} value={form.validityMonths} onChange={e => setForm({ ...form, validityMonths: Number(e.target.value) })} />
               </div>
               <div>
                 <Label>Ordre d'affichage</Label>

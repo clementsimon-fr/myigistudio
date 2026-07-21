@@ -95,7 +95,6 @@ export default function PotteryCalendar({ workshops, onBook }: PotteryCalendarPr
             const dateStr = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             const ws = dateMap[dateStr];
             const hasSlots = ws && ws.length > 0;
-            const allFull = hasSlots && ws.every(w => w.spots_left === 0);
             const isSelected = selectedDate === dateStr;
             const today = formatDateStr(new Date());
             const isPast = dateStr < today;
@@ -106,10 +105,8 @@ export default function PotteryCalendar({ workshops, onBook }: PotteryCalendarPr
                 disabled={!hasSlots || isPast}
                 onClick={() => setSelectedDate(isSelected ? null : dateStr)}
                 className={`aspect-square rounded-full flex items-center justify-center text-xs font-medium transition-all
-                  ${!hasSlots || isPast ? "text-muted-foreground/30 cursor-default" : "cursor-pointer hover:scale-110"}
+                  ${!hasSlots || isPast ? "text-muted-foreground/30 cursor-default" : "cursor-pointer hover:scale-110 bg-[hsl(40,76%,60%)]/15 text-[hsl(40,50%,35%)] border border-[hsl(40,76%,60%)]/40"}
                   ${isSelected ? "ring-2 ring-offset-1 ring-[hsl(40,76%,60%)]" : ""}
-                  ${hasSlots && !allFull && !isPast ? "bg-emerald-100 text-emerald-700 border border-emerald-300" : ""}
-                  ${hasSlots && allFull && !isPast ? "bg-red-100 text-red-600 border border-red-300" : ""}
                 `}
               >
                 {day}
@@ -117,12 +114,6 @@ export default function PotteryCalendar({ workshops, onBook }: PotteryCalendarPr
             );
           })}
         </div>
-      </div>
-
-      {/* Legend */}
-      <div className="flex items-center justify-center gap-4 text-[10px] text-muted-foreground">
-        <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-emerald-100 border border-emerald-300" /> Disponible</div>
-        <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-red-100 border border-red-300" /> Complet</div>
       </div>
 
       {/* Slots for selected date */}

@@ -14,7 +14,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { makeDisplayName } from "@/lib/client-name";
-import { useBackNavigation } from "@/hooks/useBackNavigation";
 import ClientLayout from "@/components/client/ClientLayout";
 import MockStripeModal from "@/components/demo/MockStripeModal";
 import ContactElodieButton from "@/components/ContactElodieButton";
@@ -118,10 +117,20 @@ export default function MonEspace() {
 
   // Bouton retour du téléphone / geste swipe-back : reste dans l'espace client au lieu
   // de renvoyer vers la page d'accueil (le client peut toujours y aller via "Faire une
-  // réservation" ou "Déconnexion", qui sont des navigations explicites).
-  useBackNavigation(!authLoading && !!session, "mon-espace-root", () => {
-    window.history.pushState({ __mesRoot: true }, "");
-  });
+  // réservation" ou "Déconnexion", qui sont des navigations explicites). On empile plusieurs
+  // entrées d'un coup (pas juste une seule qu'on re-pousserait après coup) : sur un vrai geste
+  // de swipe-back iOS, le popstate peut arriver après que la page ait déjà commencé sa
+  // transition, donc une seule entrée de garde est trop fragile pour être fiable à 100%.
+  useEffect(() => {
+    if (authLoading || !session) return;
+    const GUARD_DEPTH = 30;
+    for (let i = 0; i < GUARD_DEPTH; i++) window.history.pushState({ __mesRoot: true }, "");
+    const handlePopState = () => {
+      window.history.pushState({ __mesRoot: true }, "");
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [authLoading, session]);
 
   useEffect(() => {
     if (!CLIENT_NAME) return;
@@ -270,6 +279,24 @@ export default function MonEspace() {
 
   const handleCancelReservation = async (r: Reservation) => {
     await supabase.from("reservations").update({ status: "annulé" }).eq("id", r.id);
+    // Un cours annulé payé par carte du compte redonne un cours de crédit — on rend la séance à
+    // la carte dont la validité expire le plus tôt parmi celles déjà entamées (cohérent avec
+    // l'ordre de consommation utilisé à la réservation : soonest-expiry first).
+    if (r.activity_type === "course" && r.payment_method === "Carte du compte" && user) {
+      const { data: myCards } = await supabase
+        .from("client_cards")
+        .select("id, used_sessions, expires_at")
+        .eq("user_id", user.id)
+        .gt("used_sessions", 0)
+        .order("expires_at", { ascending: true })
+        .limit(1);
+      const card = (myCards as any[] | null)?.[0];
+      if (card) {
+        await supabase.from("client_cards").update({ used_sessions: card.used_sessions - 1 }).eq("id", card.id);
+        const { data: cardsData } = await supabase.from("client_cards").select("*").eq("client_name", CLIENT_NAME).order("created_at", { ascending: false });
+        if (cardsData) setCards(cardsData as unknown as ClientCard[]);
+      }
+    }
     toast({ title: "En annulant, nous espérons que vous allez bien, et, nous vous remercions de prévenir l'intervenant. À bientôt ❤️" });
     setCancelConfirm(null);
     setViewingReservation(null);
@@ -725,12 +752,7 @@ export default function MonEspace() {
                       <p className="text-xs text-muted-foreground whitespace-pre-line">{activityModalities}</p>
                     </div>
                   )}
-                  {isConfirmed && isFuture && (
-                    isPottery ? (
-                      <p className="text-xs text-muted-foreground text-center pt-2">
-                        Pour annuler ou reprogrammer cet atelier, contactez directement Élodie.
-                      </p>
-                    ) : (
+                  {isConfirmed && isFuture && !isPottery && (
                       <div className="pt-2 space-y-2">
                         <div className="flex gap-2">
                           <Button
@@ -756,7 +778,6 @@ export default function MonEspace() {
                           </p>
                         )}
                       </div>
-                    )
                   )}
                 </div>
               </>
@@ -804,12 +825,20 @@ export default function MonEspace() {
           {cancelConfirm && (() => {
             const { canCancel, hoursUntil } = getCancelEligibility(cancelConfirm.date, cancelConfirm.time);
             const hoursText = Math.floor(hoursUntil) + "h";
+            const willRefundCard = canCancel && cancelConfirm.activity_type === "course" && cancelConfirm.payment_method === "Carte du compte";
             return (
               <>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Confirmer l'annulation</AlertDialogTitle>
                   <AlertDialogDescription asChild>
                     <div className="space-y-3">
+                      {willRefundCard && (
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                          <p className="text-sm text-foreground">
+                            Vous avez <strong>{totalCredits}</strong> cours de disponible{totalCredits > 1 ? "s" : ""}. Après annulation, vous aurez <strong>{totalCredits + 1}</strong> cours de disponible{totalCredits + 1 > 1 ? "s" : ""}.
+                          </p>
+                        </div>
+                      )}
                       {canCancel ? (
                         <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
                           <p className="text-sm text-foreground">

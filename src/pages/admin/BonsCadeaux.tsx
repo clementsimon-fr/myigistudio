@@ -12,6 +12,7 @@ import { Plus, Pencil, Trash2, Loader2, Gift, Copy, Check, Search, Hash } from "
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useUnifiedActivities } from "@/hooks/useUnifiedActivities";
+import { makeDisplayName } from "@/lib/client-name";
 
 interface Voucher {
   id: string;
@@ -97,23 +98,39 @@ export default function AdminBonsCadeaux() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [vRes, pRes, profilesRes, clientProfilesRes] = await Promise.all([
+    const [vRes, pRes, profilesRes, clientProfilesRes, reservationsRes, cardsRes] = await Promise.all([
       supabase.from("gift_vouchers").select("*").order("created_at", { ascending: false }),
       supabase.from("pricing_cards").select("id, name, sessions, price").order("sort_order"),
       supabase.from("profiles").select("user_name, first_name, last_name"),
-      supabase.from("client_profiles").select("first_name, last_name"),
+      supabase.from("client_profiles").select("first_name, last_name, email"),
+      supabase.from("reservations").select("client_name"),
+      supabase.from("client_cards").select("client_name"),
     ]);
     if (vRes.data) setVouchers(vRes.data as unknown as Voucher[]);
     if (pRes.data) setPricingCards(pRes.data as unknown as PricingCard[]);
     const names = new Set<string>();
-    for (const r of [...(profilesRes.data as any[] || []), ...(clientProfilesRes.data as any[] || [])]) {
+    for (const r of (profilesRes.data as any[]) || []) {
       if (r.user_name) names.add(r.user_name);
-      // Also add display name built from first_name/last_name
-      const fn = (r.first_name || "").trim();
-      const ln = (r.last_name || "").trim();
-      if (fn) {
-        const displayName = ln ? `${fn}.${ln.charAt(0).toUpperCase()}` : fn;
-        names.add(displayName);
+      const displayName = makeDisplayName(r.first_name, r.last_name);
+      if (displayName) names.add(displayName);
+    }
+    for (const r of (clientProfilesRes.data as any[]) || []) {
+      const displayName = makeDisplayName(r.first_name, r.last_name) || r.email;
+      if (displayName) names.add(displayName);
+    }
+    // La plupart des vraies clientes n'ont qu'une ligne "client_name" sur une réservation ou une
+    // carte, sans compte Supabase Auth associé (invités ajoutés manuellement par exemple) — la
+    // liste des "clients existants" doit inclure ces noms-là aussi, pas seulement les profils.
+    for (const r of (reservationsRes.data as any[]) || []) {
+      if (r.client_name) names.add(r.client_name);
+    }
+    for (const r of (cardsRes.data as any[]) || []) {
+      if (r.client_name) names.add(r.client_name);
+    }
+    if (vRes.data) {
+      for (const v of vRes.data as any[]) {
+        if (v.buyer_name) names.add(v.buyer_name);
+        if (v.beneficiary_name) names.add(v.beneficiary_name);
       }
     }
     setExistingClients([...names].sort());

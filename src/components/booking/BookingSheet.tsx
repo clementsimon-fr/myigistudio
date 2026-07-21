@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  CalendarDays, Users, Euro, CreditCard, Minus, Plus,
-  ChevronRight, ChevronLeft, Sparkles, Gift, Ticket, Info, Check, Trash2, ArrowLeft, ShoppingBag, Loader2,
+  CalendarDays, Users, CreditCard, Minus, Plus,
+  ChevronRight, ChevronLeft, Sparkles, Gift, Ticket, Info, Check, ArrowLeft, ShoppingBag, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { makeDisplayName, makeSyntheticEmail, makeTestIdentifier } from "@/lib/client-name";
 import { useToast } from "@/hooks/use-toast";
@@ -177,6 +176,9 @@ export default function BookingSheet({
   const [existingCardsBalance, setExistingCardsBalance] = useState(0);
 
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Quel participant a ouvert le picker "Ajouter un tarif" — le tarif ajouté lui est
+  // directement attribué, plutôt que de laisser l'auto-attribution générique décider.
+  const [pickerForParticipant, setPickerForParticipant] = useState<number | null>(null);
   const [authMode, setAuthMode] = useState<null | "login">(null);
   const [showStripe, setShowStripe] = useState(false);
 
@@ -247,11 +249,25 @@ export default function BookingSheet({
   const pricePerUnit = yogaPrixMode ? (course?.price ?? 0) : isYoga ? unitPrice ?? 0 : (workshop?.price ?? 0);
   const useCardsSystem = isYoga && !yogaPrixMode;
 
+  // Places réellement disponibles pour la date choisie — sert à plafonner le nombre de
+  // participants avant même d'arriver à l'étape paiement (mieux vaut prévenir que devoir
+  // reculer une fois arrivé au bout du tunnel).
+  const availableSpots = useMemo(() => {
+    if (!selected) return Infinity;
+    if (course) {
+      return schedules.find((s) => s.id === selected.scheduleId)?.spots_left ?? Infinity;
+    }
+    const ids = selected.linkedWorkshopIds && selected.linkedWorkshopIds.length > 1 ? selected.linkedWorkshopIds : [selected.scheduleId];
+    const values = ids.map((id) => workshopsList.find((w) => w.id === id)?.spots_left ?? Infinity);
+    return Math.min(...values);
+  }, [selected, course, schedules, workshopsList]);
+
   const setParticipantCount = (n: number) => {
+    const capped = Math.min(n, availableSpots);
     setParticipants((prev) => {
       const next = [...prev];
-      while (next.length < n) next.push({ name: "", isMe: false });
-      while (next.length > n) {
+      while (next.length < capped) next.push({ name: "", isMe: false });
+      while (next.length > capped) {
         const removedIdx = next.length - 1;
         next.pop();
         setAssignments((a) => { const c = { ...a }; delete c[removedIdx]; return c; });
@@ -265,13 +281,13 @@ export default function BookingSheet({
   };
 
   // ---- Cart helpers ----
-  const cartCapacity = useMemo(() => cart.reduce((s, c) => s + c.capacity, 0), [cart]);
-
   const slotsUsed = (itemId: string) =>
     Object.values(assignments).filter((id) => id === itemId).length;
 
-  const addCartItem = (method: CartItemMethod, capacity: number) => {
-    setCart((c) => [...c, { id: newId(), method, capacity }]);
+  const addCartItem = (method: CartItemMethod, capacity: number): string => {
+    const id = newId();
+    setCart((c) => [...c, { id, method, capacity }]);
+    return id;
   };
 
   const removeCartItem = (id: string) => {
@@ -283,6 +299,19 @@ export default function BookingSheet({
       });
       return next;
     });
+  };
+
+  // "Changer" le moyen de paiement d'un participant : si personne d'autre ne partage ce tarif,
+  // on le retire carrément du panier (sinon il resterait facturé sans que personne ne l'utilise) ;
+  // s'il est partagé (formule à plusieurs places), on libère juste la place de ce participant.
+  const changePaymentMethod = (participantIdx: number) => {
+    const assignedId = assignments[participantIdx];
+    if (!assignedId) return;
+    if (slotsUsed(assignedId) <= 1) {
+      removeCartItem(assignedId);
+    } else {
+      setAssignments((a) => ({ ...a, [participantIdx]: null }));
+    }
   };
 
   // Total to pay: sum prices (formula price counted once per item; existing_card = 0;
@@ -299,25 +328,35 @@ export default function BookingSheet({
 
   const allAssigned = participants.length > 0 && participants.every((_, i) => !!assignments[i]);
 
-  // Cas trivial : 1 participant + 1 tarif acheté → rien à choisir, l'étape Attribution est sautée.
-  const shouldSkipAssignStep = participants.length === 1 && cart.length === 1;
-
-  // Attribution automatique par défaut (dans l'ordre, en respectant la capacité de chaque tarif) —
-  // recalculée à chaque changement de composition ; l'utilisateur peut ensuite ajuster manuellement.
+  // Attribution "collante" : un choix de moyen de paiement fait pour un participant reste tel
+  // quel tant que le tarif choisi existe encore et a de la place — seuls les participants sans
+  // attribution valide (nouveaux, ou dont le tarif a été supprimé) sont réattribués automatiquement
+  // au premier tarif restant avec de la place. Sans ça, ajouter un participant ou un tarif
+  // recalculait tout depuis zéro et effaçait les choix déjà faits à la main.
   useEffect(() => {
-    const next: Record<number, string | null> = {};
-    const used: Record<string, number> = {};
-    for (let i = 0; i < participants.length; i++) {
-      const item = cart.find((ci) => (used[ci.id] || 0) < ci.capacity);
-      if (item) {
-        next[i] = item.id;
-        used[item.id] = (used[item.id] || 0) + 1;
-      } else {
-        next[i] = null;
+    setAssignments((prev) => {
+      const next: Record<number, string | null> = {};
+      const used: Record<string, number> = {};
+      for (let i = 0; i < participants.length; i++) {
+        const assignedId = prev[i];
+        const item = assignedId ? cart.find((ci) => ci.id === assignedId) : undefined;
+        if (item && (used[item.id] || 0) < item.capacity) {
+          next[i] = item.id;
+          used[item.id] = (used[item.id] || 0) + 1;
+        } else {
+          next[i] = null;
+        }
       }
-    }
-    setAssignments(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      for (let i = 0; i < participants.length; i++) {
+        if (next[i]) continue;
+        const item = cart.find((ci) => (used[ci.id] || 0) < ci.capacity);
+        if (item) {
+          next[i] = item.id;
+          used[item.id] = (used[item.id] || 0) + 1;
+        }
+      }
+      return next;
+    });
   }, [cart, participants.length]);
 
   // ---- Step gating ----
@@ -330,27 +369,26 @@ export default function BookingSheet({
   const canNext = () => {
     if (step === 1) return !!selected;
     if (step === 2) return identityChosen && (participants[0]?.name.trim().length > 0);
-    if (step === 3) return participants.length > 0 && participants.every((p) => p.name.trim().length > 0) && cart.length > 0 && cartCapacity >= participants.length;
-    if (step === 4) return allAssigned;
+    // L'attribution se fait en direct, par participant, dans l'étape elle-même — plus besoin
+    // d'une étape "Attribution" séparée ensuite : il suffit que tout le monde ait un moyen de
+    // paiement choisi avant de continuer.
+    if (step === 3) return participants.length > 0 && participants.every((p) => p.name.trim().length > 0) && allAssigned;
     return true;
   };
 
   const STEPS = [
     { n: 1, label: "Date", icon: CalendarDays },
     { n: 2, label: "Qui réserve ?", icon: Users },
-    { n: 3, label: "Participants & achats", icon: Users },
-    { n: 4, label: "Attribution", icon: Euro },
-    { n: 5, label: "Paiement", icon: CreditCard },
+    { n: 3, label: "Participants & paiement", icon: Users },
+    { n: 4, label: "Paiement", icon: CreditCard },
   ];
 
   const goNext = () => setStep((s) => {
     if (s === 1 && session) return 3;
-    if (s === 3 && shouldSkipAssignStep) return 5;
     return s + 1;
   });
   const goPrev = () => setStep((s) => {
     if (s === 3 && session) return 1;
-    if (s === 5 && shouldSkipAssignStep) return 3;
     return s - 1;
   });
 
@@ -401,6 +439,27 @@ export default function BookingSheet({
         return;
       }
       for (const w of wsRows as { id: string; spots_left: number }[]) workshopSpotsLeftById[w.id] = w.spots_left;
+    }
+
+    // Revalidation des bons cadeaux juste avant paiement : la vérification faite à l'ajout au
+    // panier peut être périmée (code utilisé ailleurs entre-temps, ou expiré pendant que la
+    // cliente finalise) — la mise à jour est conditionnée sur used=false + non expiré, et on
+    // vérifie qu'elle a bien pris effet avant de poursuivre (sinon quelqu'un a pu utiliser
+    // deux fois le même bon en cas de double-soumission concurrente).
+    for (const ci of cart) {
+      if (ci.method.kind !== "voucher") continue;
+      const { data: revalidated, error: voucherErr } = await supabase
+        .from("gift_vouchers")
+        .update({ used: true, used_at: new Date().toISOString() } as any)
+        .eq("code", ci.method.code)
+        .eq("used", false)
+        .gte("expires_at", todayStr)
+        .select("id");
+      if (voucherErr || !revalidated || revalidated.length === 0) {
+        toast({ title: "Bon cadeau invalide", description: `Le bon ${ci.method.code} a été utilisé ou a expiré entre-temps. Merci de le retirer du panier.`, variant: "destructive" });
+        setStep(3);
+        return;
+      }
     }
 
     const name = course?.name || workshop?.name || "";
@@ -469,12 +528,6 @@ export default function BookingSheet({
         used_sessions: used,
         expires_at: formatLocalDateStr(expiresAt),
       } as any);
-    }
-
-    // Bons cadeaux utilisés : on les marque consommés pour empêcher une réutilisation.
-    for (const ci of cart) {
-      if (ci.method.kind !== "voucher") continue;
-      await supabase.from("gift_vouchers").update({ used: true, used_at: new Date().toISOString() } as any).eq("code", ci.method.code);
     }
 
     // Un même identifiant relie toutes les lignes d'un même paiement (une ou plusieurs dates
@@ -575,7 +628,7 @@ export default function BookingSheet({
     window.history.pushState({ bookingStep: step }, "");
     const handler = (e: PopStateEvent) => {
       const target = (e.state && (e.state as any).bookingStep) as number | undefined;
-      if (typeof target === "number" && target >= 1 && target <= 5) {
+      if (typeof target === "number" && target >= 1 && target <= 4) {
         setStep(target);
       } else {
         setStep((s) => {
@@ -798,163 +851,108 @@ export default function BookingSheet({
                 </div>
               )}
 
-              {/* STEP 3 — Participants + Achats (fusionnées, deux colonnes) */}
+              {/* STEP 3 — Participants & moyen de paiement, en direct par personne : ajouter un
+                  participant demande tout de suite comment il paie, en proposant en priorité de
+                  réutiliser la place restante d'un tarif déjà choisi par quelqu'un d'autre. */}
               {step === 3 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2">
-                  {/* Colonne 1 — Participants */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold">Participants</h3>
-                      <div className="inline-flex items-center gap-2 rounded-lg border bg-background p-1">
-                        <Button size="icon" variant="ghost" className="h-7 w-7"
-                          onClick={() => setParticipantCount(Math.max(1, participants.length - 1))}
-                          disabled={participants.length <= 1}>
-                          <Minus className="h-3.5 w-3.5" />
-                        </Button>
-                        <span className="text-sm font-semibold min-w-[20px] text-center">{participants.length}</span>
-                        <Button size="icon" variant="ghost" className="h-7 w-7"
-                          onClick={() => setParticipantCount(participants.length + 1)}>
-                          <Plus className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold">Participants & paiement</h3>
+                    <div className="inline-flex items-center gap-2 rounded-lg border bg-background p-1">
+                      <Button size="icon" variant="ghost" className="h-7 w-7"
+                        onClick={() => setParticipantCount(Math.max(1, participants.length - 1))}
+                        disabled={participants.length <= 1}>
+                        <Minus className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className="text-sm font-semibold min-w-[20px] text-center">{participants.length}</span>
+                      <Button size="icon" variant="ghost" className="h-7 w-7"
+                        disabled={participants.length >= availableSpots}
+                        onClick={() => setParticipantCount(participants.length + 1)}>
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
+                  </div>
 
-                    <div className="space-y-2">
-                      {participants.map((p, i) => (
-                        <div key={i} className="rounded-lg border bg-card p-3">
-                          <Label className="text-[11px] text-muted-foreground">Participant {i + 1}</Label>
+                  {Number.isFinite(availableSpots) && participants.length >= availableSpots && (
+                    <p className="text-xs text-destructive">
+                      Il ne reste que {availableSpots} place{availableSpots > 1 ? "s" : ""} pour cette date.
+                    </p>
+                  )}
+
+                  <div className="space-y-3">
+                    {participants.map((p, i) => {
+                      const assignedId = assignments[i];
+                      const assignedItem = cart.find((ci) => ci.id === assignedId);
+                      const reusableItems = cart.filter((ci) => ci.id !== assignedId && ci.capacity - slotsUsed(ci.id) > 0);
+                      return (
+                        <div key={i} className="rounded-lg border bg-card p-3 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-[11px] text-muted-foreground">Participant {i + 1}</Label>
+                            {p.isMe && <Badge variant="secondary" className="text-[10px]">Connecté</Badge>}
+                            {!p.isMe && guestMode && <Badge variant="secondary" className="text-[10px]">Invité</Badge>}
+                          </div>
                           {i === 0 ? (
-                            <div className="mt-1 flex items-center justify-between">
-                              <span className="text-sm font-medium">
-                                {p.isMe ? `Moi — ${p.name}` : p.name || "—"}
-                              </span>
-                              {p.isMe && <Badge variant="secondary" className="text-[10px]">Connecté</Badge>}
-                              {!p.isMe && guestMode && <Badge variant="secondary" className="text-[10px]">Invité</Badge>}
-                            </div>
+                            <p className="text-sm font-medium">{p.isMe ? `Moi — ${p.name}` : p.name || "—"}</p>
                           ) : (
                             <Input
-                              className="mt-1"
                               placeholder="Prénom"
                               value={p.name}
                               onChange={(e) => updateParticipantName(i, e.target.value)}
                             />
                           )}
-                        </div>
-                      ))}
-                      {participants.length === 1 && (
-                        <p className="text-[11px] text-muted-foreground">
-                          Vous pouvez continuer seul·e ou cliquer sur + pour ajouter des participants.
-                        </p>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Colonne 2 — Moyen de paiement */}
-                  <div className="space-y-3 sm:border-l sm:pl-5">
-                    <h3 className="text-sm font-semibold">Vos achats</h3>
-
-                    <p className="text-[11px] text-muted-foreground">
-                      Ajoutez les tarifs, formules ou bons cadeaux que vous souhaitez utiliser. L'attribution aux participants se fera à l'étape suivante.
-                    </p>
-
-                    {cart.length > 0 && (
-                      <div className="space-y-2">
-                        {cart.map((ci) => (
-                          <div key={ci.id} className="flex items-center justify-between rounded-lg border bg-card p-3">
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{methodLabel(ci.method, useCardsSystem)}</p>
-                              <p className="text-[11px] text-muted-foreground">
-                                {ci.capacity} place{ci.capacity > 1 ? "s" : ""}
-                              </p>
-                            </div>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeCartItem(ci.id)}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                          <div className="pt-2 border-t space-y-1.5">
+                            <Label className="text-[11px] text-muted-foreground">Moyen de paiement</Label>
+                            {assignedItem ? (
+                              <div className="flex items-center justify-between gap-2 rounded-md bg-primary/5 border border-primary/20 px-2.5 py-2">
+                                <span className="text-xs font-medium truncate">{methodLabel(assignedItem.method, useCardsSystem)}</span>
+                                <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] shrink-0"
+                                  onClick={() => changePaymentMethod(i)}>
+                                  Changer
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5">
+                                {reusableItems.map((ci) => {
+                                  const remaining = ci.capacity - slotsUsed(ci.id);
+                                  return (
+                                    <button
+                                      key={ci.id}
+                                      type="button"
+                                      onClick={() => setAssignments((a) => ({ ...a, [i]: ci.id }))}
+                                      className="w-full flex items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-xs hover:bg-muted/50 transition-colors text-left"
+                                    >
+                                      <span>Utiliser {methodShort(ci.method, useCardsSystem)}</span>
+                                      <span className="text-muted-foreground shrink-0">{remaining} restant{remaining > 1 ? "s" : ""}</span>
+                                    </button>
+                                  );
+                                })}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full gap-1.5 text-xs"
+                                  onClick={() => { setPickerForParticipant(i); setPickerOpen(true); }}
+                                >
+                                  <Sparkles className="h-3.5 w-3.5" /> Ajouter un tarif
+                                </Button>
+                              </div>
+                            )}
                           </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <Button
-                      onClick={() => setPickerOpen(true)}
-                      className="w-full gap-2"
-                      variant={cartCapacity >= participants.length ? "outline" : "default"}
-                    >
-                      <Sparkles className="h-4 w-4" />
-                      {cart.length === 0 ? "Ajouter un tarif" : "Ajouter un autre tarif"}
-                    </Button>
-
-                    {cartCapacity < participants.length && (
-                      <p className="text-xs text-destructive">
-                        Il manque {participants.length - cartCapacity} place{participants.length - cartCapacity > 1 ? "s" : ""} pour couvrir les {participants.length} participants — ajoutez un tarif supplémentaire.
-                      </p>
-                    )}
-
-                    {totalToPay > 0 && (
-                      <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 text-sm">
-                        Total à régler : <strong>{totalToPay} €</strong>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 4 — Attribution & récap intelligent */}
-              {step === 4 && (
-                <div className="space-y-3 pt-2">
-                  <h3 className="text-sm font-semibold">Vérifiez qui utilise quoi</h3>
-                  <p className="text-[11px] text-muted-foreground">
-                    Nous avons associé chaque participant automatiquement. Modifiez si besoin.
-                  </p>
-
-                  <div className="space-y-2">
-                    {participants.map((p, i) => {
-                      const currentId = assignments[i] || "";
-                      return (
-                        <div key={i} className="rounded-lg border bg-card p-3 space-y-2">
-                          <Label className="text-[11px] text-muted-foreground">
-                            {p.isMe ? `Moi — ${p.name}` : p.name || `Participant ${i + 1}`}
-                          </Label>
-                          <Select
-                            value={currentId}
-                            onValueChange={(v) => setAssignments((a) => ({ ...a, [i]: v }))}
-                          >
-                            <SelectTrigger><SelectValue placeholder="Choisir un tarif" /></SelectTrigger>
-                            <SelectContent>
-                              {cart.map((ci) => {
-                                const used = slotsUsed(ci.id);
-                                const available = ci.capacity - used + (currentId === ci.id ? 1 : 0);
-                                const disabled = available <= 0;
-                                return (
-                                  <SelectItem key={ci.id} value={ci.id} disabled={disabled}>
-                                    {methodShort(ci.method, useCardsSystem)} — {available}/{ci.capacity} dispo.
-                                  </SelectItem>
-                                );
-                              })}
-                            </SelectContent>
-                          </Select>
                         </div>
                       );
                     })}
                   </div>
 
-                  <div className="rounded-lg bg-muted/40 border p-3 space-y-1.5">
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">
-                      Ce que vous allez payer
-                    </p>
-                    {summaryLines.map((s) => (
-                      <p key={s.id} className="text-xs leading-relaxed">{s.line}</p>
-                    ))}
-                    <div className="border-t pt-1.5 mt-1.5 flex justify-between text-sm">
-                      <span className="font-semibold">Total</span>
-                      <span className="font-bold">{totalToPay} €</span>
+                  {totalToPay > 0 && (
+                    <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 text-sm">
+                      Total à régler : <strong>{totalToPay} €</strong>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 
-              {/* STEP 5 — Conditions + Paiement */}
-              {step === 5 && (
+              {/* STEP 4 — Conditions + Paiement */}
+              {step === 4 && (
                 <div className="space-y-3 pt-2">
                   <h3 className="text-sm font-semibold">Récapitulatif & paiement</h3>
 
@@ -1026,7 +1024,7 @@ export default function BookingSheet({
               <ChevronLeft className="h-4 w-4 mr-1" /> Précédent
             </Button>
           ) : <span />}
-          {step < 5 ? (
+          {step < 4 ? (
             <Button onClick={goNext} disabled={!canNext()}>
               Continuer <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
@@ -1042,16 +1040,21 @@ export default function BookingSheet({
       {/* Picker modal — adds items to cart */}
       <CartPickerModal
         open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
+        onClose={() => { setPickerOpen(false); setPickerForParticipant(null); }}
         isYoga={useCardsSystem}
         unitPrice={pricePerUnit}
         pricingCards={pricingCards}
         existingCards={existingCardsBalance}
         isConnected={identityChosen}
+        stillNeeded={1}
         cart={cart}
         onAdd={(method, capacity) => {
-          addCartItem(method, capacity);
+          const id = addCartItem(method, capacity);
+          if (pickerForParticipant !== null) {
+            setAssignments((a) => ({ ...a, [pickerForParticipant]: id }));
+          }
           setPickerOpen(false);
+          setPickerForParticipant(null);
         }}
         onRequireAuth={() => { setPickerOpen(false); setAuthMode("login"); }}
       />
@@ -1088,13 +1091,17 @@ interface PickerProps {
   pricingCards: YogaFormulasPricingCard[];
   existingCards: number;
   isConnected: boolean;
+  // Places encore à couvrir. Une fois à 0, seules les formules restent proposées (elles créditent
+  // légitimement plus de cours que nécessaire pour l'instant, à utiliser plus tard) — les tarifs
+  // à l'unité/bon cadeau/carte du compte n'ont pas de raison d'être ajoutés au-delà du nécessaire.
+  stillNeeded: number;
   cart: CartItem[];
   onAdd: (method: CartItemMethod, capacity: number) => void;
   onRequireAuth: (formula: YogaFormulasPricingCard) => void;
 }
 
 function CartPickerModal({
-  open, onClose, isYoga, unitPrice, pricingCards, existingCards, isConnected, cart, onAdd, onRequireAuth,
+  open, onClose, isYoga, unitPrice, pricingCards, existingCards, isConnected, stillNeeded, cart, onAdd, onRequireAuth,
 }: PickerProps) {
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherOpen, setVoucherOpen] = useState(false);
@@ -1155,8 +1162,15 @@ function CartPickerModal({
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
+          {stillNeeded <= 0 && (
+            <div className="rounded-md bg-muted/50 border p-2.5 text-xs text-muted-foreground">
+              {isYoga
+                ? "Tous les participants sont déjà couverts — seules les formules restent proposées ici, pour créditer votre compte de cours en avance."
+                : "Le tarif est déjà réglé pour tous les participants."}
+            </div>
+          )}
           {/* Carte du compte — mise en avant en premier si disponible */}
-          {isYoga && isConnected && accountCardsLeft > 0 && (
+          {stillNeeded > 0 && isYoga && isConnected && accountCardsLeft > 0 && (
             <button
               onClick={handleExistingCard}
               className="w-full text-left rounded-xl border-2 p-4 bg-primary/10 border-primary shadow-sm hover:shadow-md hover:bg-primary/15 transition-all"
@@ -1176,6 +1190,7 @@ function CartPickerModal({
           )}
 
           {/* Bon cadeau */}
+          {stillNeeded > 0 && (
           <div className="rounded-lg border bg-amber-50/60 border-amber-200 p-3 space-y-2">
             {!voucherOpen ? (
               <button
@@ -1206,9 +1221,10 @@ function CartPickerModal({
               </>
             )}
           </div>
+          )}
 
           {/* Carte à l'unité */}
-          {isYoga && (
+          {stillNeeded > 0 && isYoga && (
             <button
               onClick={handleUnit}
               className="w-full text-left rounded-lg border p-4 bg-emerald-50/60 border-emerald-200 hover:shadow-md transition-all"
@@ -1243,7 +1259,7 @@ function CartPickerModal({
           )}
 
           {/* Poterie, ou yoga en mode "prix" : paiement direct, pas de système de cartes */}
-          {!isYoga && (
+          {stillNeeded > 0 && !isYoga && (
             <button
               onClick={() => onAdd({ kind: "unit", price: unitPrice }, 1)}
               className="w-full text-left rounded-lg border p-4 bg-amber-50/60 border-amber-200 hover:shadow-md transition-all"

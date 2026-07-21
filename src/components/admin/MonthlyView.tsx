@@ -128,6 +128,9 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
   const [wSpots, setWSpots] = useState(12);
   const [wPrice, setWPrice] = useState(0);
   const [wCardCount, setWCardCount] = useState(1);
+  // Poterie récurrente : pas de table "schedules" pour les ateliers — on génère à la place
+  // N dates individuelles (une par semaine) sur le jour choisi.
+  const [wRecurrenceWeeks, setWRecurrenceWeeks] = useState(8);
   const [saving, setSaving] = useState(false);
 
   const filteredActivities = useMemo(
@@ -187,12 +190,6 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
     setWPrice(meta.price);
     setWCardCount(meta.card_yoga_count || 1);
     setWSpots(activity.spots || 12);
-    // "Récurrent" n'est proposé que pour le yoga — si l'activité change pour une non-yoga
-    // alors que "Récurrent" était sélectionné, on retombe sur "Ponctuel".
-    if (activity.category !== "yoga" && wType === "recurrent") {
-      setWType("ponctuel");
-      setWDates([]);
-    }
   }, [wActivityId]);
 
   const toggleWizardDate = (date: Date) => {
@@ -224,7 +221,7 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
     const submitCardCount = isYogaSubmit ? 1 : meta.card_yoga_count;
 
     try {
-      if (wType === "recurrent") {
+      if (wType === "recurrent" && isYogaSubmit) {
         const dn = DAY_NAMES[new Date(wDates[0] + "T12:00:00").getDay()];
         let courseId = activity.courseIds?.[0];
         if (!courseId) {
@@ -246,6 +243,27 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
           spots: wSpots, spots_left: wSpots, price: submitPrice, inclusions: meta.inclusions, card_yoga_count: submitCardCount,
         } as any);
         if (schedErr) throw schedErr;
+      } else if (wType === "recurrent" && !isYogaSubmit) {
+        // Les ateliers n'ont pas de table "schedules" séparée des dates réelles : une
+        // récurrence se traduit par N lignes workshops indépendantes, une par semaine.
+        const firstDate = new Date(wDates[0] + "T12:00:00");
+        const rows = Array.from({ length: Math.max(1, wRecurrenceWeeks) }, (_, i) => {
+          const d = new Date(firstDate);
+          d.setDate(firstDate.getDate() + i * 7);
+          return {
+            name: activity.name, category: activity.category, description: activity.description,
+            long_description: activity.long_description, instructor_id: activity.instructor_id,
+            image: activity.image, images: activity.images, modalities: activity.modalities,
+            reminder_template: activity.reminder_template, reminder_timing: activity.reminder_timing,
+            intensity: activity.intensity === "none" ? "" : activity.intensity,
+            date: formatDateStr(d), time: wTime, end_time: wEndTime, duration,
+            spots: wSpots, spots_left: wSpots, price: submitPrice, card_yoga_count: submitCardCount, inclusions: meta.inclusions,
+            complementary_info: activity.complementary_info,
+            frequency: "hebdomadaire", linked_group: null,
+          };
+        });
+        const { error } = await supabase.from("workshops").insert(rows as any);
+        if (error) throw error;
       } else {
         const linkedGroup = wType === "multi-sessions" && wDates.length > 1 ? crypto.randomUUID() : null;
         for (const d of wDates) {
@@ -382,14 +400,9 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
                     <Button type="button" variant={wType === "ponctuel" ? "default" : "outline"} className="justify-start gap-2" onClick={() => { setWType("ponctuel"); setWDates([]); }}>
                       <CalendarIcon className="h-4 w-4" /> Ponctuel — une seule date
                     </Button>
-                    {/* La récurrence hebdomadaire n'existe qu'au format "cours" (table courses/
-                        course_schedules) — un événement poterie récurrent y serait invisible côté
-                        client, puisque la page d'accueil lit les ateliers depuis la table workshops. */}
-                    {isWYoga && (
-                      <Button type="button" variant={wType === "recurrent" ? "default" : "outline"} className="justify-start gap-2" onClick={() => { setWType("recurrent"); setWDates([]); }}>
-                        <Repeat className="h-4 w-4" /> Récurrent — chaque semaine
-                      </Button>
-                    )}
+                    <Button type="button" variant={wType === "recurrent" ? "default" : "outline"} className="justify-start gap-2" onClick={() => { setWType("recurrent"); setWDates([]); }}>
+                      <Repeat className="h-4 w-4" /> Récurrent — chaque semaine
+                    </Button>
                     <Button type="button" variant={wType === "multi-sessions" ? "default" : "outline"} className="justify-start gap-2" onClick={() => { setWType("multi-sessions"); setWDates([]); }}>
                       <CalendarRange className="h-4 w-4" /> Multi-sessions — plusieurs dates liées
                     </Button>
@@ -487,6 +500,14 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
                     <Users className="h-4 w-4 text-muted-foreground" />
                     <Input type="number" className="w-[100px] h-9" value={wSpots} onChange={e => setWSpots(Number(e.target.value))} />
                   </div>
+                  {wType === "recurrent" && !isWYoga && (
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground w-28">Pendant</Label>
+                      <Repeat className="h-4 w-4 text-muted-foreground" />
+                      <Input type="number" min={1} className="w-[100px] h-9" value={wRecurrenceWeeks} onChange={e => setWRecurrenceWeeks(Number(e.target.value))} />
+                      <span className="text-sm text-muted-foreground">semaines</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
