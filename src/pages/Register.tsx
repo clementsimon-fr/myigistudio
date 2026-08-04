@@ -3,11 +3,8 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { makeTestIdentifier, makeSyntheticEmail } from "@/lib/client-name";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -17,7 +14,7 @@ export default function Register() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [noEmailMode, setNoEmailMode] = useState(false);
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -30,33 +27,13 @@ export default function Register() {
       setError("Mot de passe : 6 caractères minimum.");
       return;
     }
+    if (!email.trim()) return;
     setSending(true);
     setError(null);
 
-    if (noEmailMode) {
-      if (!lastName.trim()) {
-        setError("Le nom est requis en mode test.");
-        setSending(false);
-        return;
-      }
-      const syntheticEmail = makeSyntheticEmail(firstName, lastName);
-      const { data, error } = await supabase.functions.invoke("create-guest-account", {
-        body: { email: syntheticEmail, first_name: firstName.trim(), last_name: lastName.trim(), password: password.trim() },
-      });
-      if (error || !data?.user_id) {
-        setError(error?.message || "Création du compte impossible");
-        setSending(false);
-        return;
-      }
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email: syntheticEmail, password: password.trim() });
-      setSending(false);
-      if (signInError) { setError(signInError.message); return; }
-      navigate(returnTo || "/mon-espace", { replace: true });
-      return;
-    }
-
-    if (!email.trim()) { setSending(false); return; }
-    const { error, needsConfirmation } = await signUpWithPassword(email.trim(), password.trim(), { first_name: firstName.trim(), last_name: lastName.trim() });
+    const { error, needsConfirmation } = await signUpWithPassword(email.trim(), password.trim(), {
+      first_name: firstName.trim(), last_name: lastName.trim(), phone: phone.trim(),
+    });
     setSending(false);
     if (error) { setError(error); return; }
     if (needsConfirmation) setSent(true);
@@ -90,24 +67,17 @@ export default function Register() {
                 </div>
                 <div>
                   <Label htmlFor="last_name">Nom</Label>
-                  <Input id="last_name" placeholder="Ex : Dupont" value={lastName} onChange={(e) => setLastName(e.target.value)} required={noEmailMode} />
+                  <Input id="last_name" placeholder="Ex : Dupont" value={lastName} onChange={(e) => setLastName(e.target.value)} />
                 </div>
               </div>
               <div>
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="votre@email.com" value={email} onChange={(e) => setEmail(e.target.value)}
-                  disabled={noEmailMode} required={!noEmailMode} className={noEmailMode ? "opacity-50" : ""} />
+                <Input id="email" type="email" placeholder="votre@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
-
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Checkbox checked={noEmailMode} onCheckedChange={(v) => setNoEmailMode(!!v)} />
-                Pas d'email (mode test)
-              </label>
-              {noEmailMode && (
-                <p className="text-xs text-muted-foreground">
-                  Identifiant de connexion : <strong className="text-foreground">{makeTestIdentifier(firstName, lastName) || "PRENOMNOM"}</strong>
-                </p>
-              )}
+              <div>
+                <Label htmlFor="phone">Téléphone</Label>
+                <Input id="phone" type="tel" placeholder="Ex : 06 12 34 56 78" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </div>
 
               <div>
                 <Label htmlFor="password">Mot de passe</Label>

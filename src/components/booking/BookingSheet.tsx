@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CalendarDays, Users, CreditCard, Minus, Plus,
-  ChevronRight, ChevronLeft, Sparkles, Gift, Ticket, Info, Check, ArrowLeft, ShoppingBag, Loader2,
+  ChevronRight, ChevronLeft, Sparkles, Gift, Info, Check, ArrowLeft, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { makeDisplayName, makeSyntheticEmail, makeTestIdentifier } from "@/lib/client-name";
+import { makeDisplayName } from "@/lib/client-name";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useBackNavigation } from "@/hooks/useBackNavigation";
@@ -170,8 +170,7 @@ export default function BookingSheet({
   const [guestMode, setGuestMode] = useState(false);
   const [guestLastName, setGuestLastName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
-  const [noEmailMode, setNoEmailMode] = useState(false);
-  const [guestPassword, setGuestPassword] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
   const [conditionsList, setConditionsList] = useState<{ id: string; title: string; content: string }[]>([]);
   const [existingCardsBalance, setExistingCardsBalance] = useState(0);
 
@@ -193,8 +192,7 @@ export default function BookingSheet({
     setGuestMode(false);
     setGuestLastName("");
     setGuestEmail("");
-    setNoEmailMode(false);
-    setGuestPassword("");
+    setGuestPhone("");
     setParticipants([{ name: connectedName, isMe: !!session }]);
   }, [open]);
 
@@ -361,26 +359,23 @@ export default function BookingSheet({
 
   // ---- Step gating ----
   // Une cliente déjà connectée n'a pas besoin de l'étape "Qui réserve ?" — elle est sautée (voir goNext/goPrev).
-  const identityChosen = !!session || (guestMode && (
-    noEmailMode
-      ? guestLastName.trim().length > 0 && guestPassword.trim().length >= 6
-      : guestEmail.trim().length > 0
-  ));
+  const identityChosen = !!session || (guestMode && guestEmail.trim().length > 0);
   const canNext = () => {
     if (step === 1) return !!selected;
     if (step === 2) return identityChosen && (participants[0]?.name.trim().length > 0);
-    // L'attribution se fait en direct, par participant, dans l'étape elle-même — plus besoin
-    // d'une étape "Attribution" séparée ensuite : il suffit que tout le monde ait un moyen de
-    // paiement choisi avant de continuer.
-    if (step === 3) return participants.length > 0 && participants.every((p) => p.name.trim().length > 0) && allAssigned;
+    if (step === 3) return participants.length > 0 && participants.every((p) => p.name.trim().length > 0);
+    // Étape 4 (paiement) séparée de l'étape 3 (participants) : plus lisible que de choisir
+    // le moyen de paiement de chaque personne au même endroit où on l'ajoute.
+    if (step === 4) return allAssigned;
     return true;
   };
 
   const STEPS = [
     { n: 1, label: "Date", icon: CalendarDays },
     { n: 2, label: "Qui réserve ?", icon: Users },
-    { n: 3, label: "Participants & paiement", icon: Users },
+    { n: 3, label: "Participants", icon: Users },
     { n: 4, label: "Paiement", icon: CreditCard },
+    { n: 5, label: "Récapitulatif", icon: Check },
   ];
 
   const goNext = () => setStep((s) => {
@@ -457,7 +452,7 @@ export default function BookingSheet({
         .select("id");
       if (voucherErr || !revalidated || revalidated.length === 0) {
         toast({ title: "Bon cadeau invalide", description: `Le bon ${ci.method.code} a été utilisé ou a expiré entre-temps. Merci de le retirer du panier.`, variant: "destructive" });
-        setStep(3);
+        setStep(4);
         return;
       }
     }
@@ -468,13 +463,12 @@ export default function BookingSheet({
     // sans bloquer la réservation en cours sur un lien email à cliquer.
     let userId = user?.id || null;
     const clientName = session ? connectedName : makeDisplayName(participants[0]?.name || "", guestLastName) || participants[0]?.name || "Invité";
-    const accountEmail = noEmailMode ? makeSyntheticEmail(participants[0]?.name || "", guestLastName) : guestEmail.trim();
+    const accountEmail = guestEmail.trim();
     if (!userId && accountEmail) {
       try {
         const { data, error } = await supabase.functions.invoke("create-guest-account", {
           body: {
-            email: accountEmail, first_name: participants[0]?.name || "", last_name: guestLastName, phone: "",
-            ...(noEmailMode ? { password: guestPassword } : {}),
+            email: accountEmail, first_name: participants[0]?.name || "", last_name: guestLastName, phone: guestPhone.trim(),
           },
         });
         if (!error && data?.user_id) {
@@ -628,7 +622,7 @@ export default function BookingSheet({
     window.history.pushState({ bookingStep: step }, "");
     const handler = (e: PopStateEvent) => {
       const target = (e.state && (e.state as any).bookingStep) as number | undefined;
-      if (typeof target === "number" && target >= 1 && target <= 4) {
+      if (typeof target === "number" && target >= 1 && target <= 5) {
         setStep(target);
       } else {
         setStep((s) => {
@@ -808,33 +802,17 @@ export default function BookingSheet({
                               type="email"
                               placeholder="Email"
                               value={guestEmail}
-                              disabled={noEmailMode}
                               onChange={(e) => { setGuestEmail(e.target.value); setGuestMode(true); }}
-                              className={noEmailMode ? "opacity-50" : ""}
                             />
-                            {!noEmailMode && (
-                              <p className="text-[11px] text-muted-foreground">
-                                Votre compte sera créé automatiquement au moment du paiement.
-                              </p>
-                            )}
-
-                            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <Checkbox checked={noEmailMode} onCheckedChange={(v) => { setNoEmailMode(!!v); setGuestMode(true); }} />
-                              Pas d'email (mode test)
-                            </label>
-                            {noEmailMode && (
-                              <>
-                                <p className="text-[11px] text-muted-foreground">
-                                  Identifiant de connexion : <strong className="text-foreground">{makeTestIdentifier(p.name, guestLastName) || "PRENOMNOM"}</strong>
-                                </p>
-                                <Input
-                                  type="password"
-                                  placeholder="Choisir un mot de passe (6 caractères min.)"
-                                  value={guestPassword}
-                                  onChange={(e) => setGuestPassword(e.target.value)}
-                                />
-                              </>
-                            )}
+                            <Input
+                              type="tel"
+                              placeholder="Téléphone"
+                              value={guestPhone}
+                              onChange={(e) => { setGuestPhone(e.target.value); setGuestMode(true); }}
+                            />
+                            <p className="text-[11px] text-muted-foreground">
+                              Votre compte sera créé automatiquement au moment du paiement.
+                            </p>
 
                             <button
                               type="button"
@@ -851,13 +829,12 @@ export default function BookingSheet({
                 </div>
               )}
 
-              {/* STEP 3 — Participants & moyen de paiement, en direct par personne : ajouter un
-                  participant demande tout de suite comment il paie, en proposant en priorité de
-                  réutiliser la place restante d'un tarif déjà choisi par quelqu'un d'autre. */}
+              {/* STEP 3 — Participants uniquement (qui vient, combien) : le moyen de paiement se
+                  choisit ensuite, à l'étape suivante, pour ne pas mélanger les deux décisions. */}
               {step === 3 && (
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold">Participants & paiement</h3>
+                    <h3 className="text-sm font-semibold">Qui participe ?</h3>
                     <div className="inline-flex items-center gap-2 rounded-lg border bg-background p-1">
                       <Button size="icon" variant="ghost" className="h-7 w-7"
                         onClick={() => setParticipantCount(Math.max(1, participants.length - 1))}
@@ -879,65 +856,115 @@ export default function BookingSheet({
                     </p>
                   )}
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
+                    {participants.map((p, i) => (
+                      <div key={i} className="rounded-lg border bg-card p-3 flex items-center gap-2">
+                        <Label className="text-[11px] text-muted-foreground shrink-0 w-16">Participant {i + 1}</Label>
+                        {i === 0 ? (
+                          <p className="text-sm font-medium flex-1">{p.isMe ? `Moi — ${p.name}` : p.name || "—"}</p>
+                        ) : (
+                          <Input
+                            placeholder="Prénom"
+                            value={p.name}
+                            onChange={(e) => updateParticipantName(i, e.target.value)}
+                            className="flex-1"
+                          />
+                        )}
+                        {p.isMe && <Badge variant="secondary" className="text-[10px] shrink-0">Connecté</Badge>}
+                        {!p.isMe && guestMode && <Badge variant="secondary" className="text-[10px] shrink-0">Invité</Badge>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 4 — Paiement : d'abord les moyens de paiement déjà dans le panier (une
+                  formule à plusieurs cours peut couvrir plusieurs participants d'un coup), puis
+                  l'attribution par personne pour celles et ceux pas encore couverts. */}
+              {step === 4 && (
+                <div className="space-y-4 pt-2">
+                  <h3 className="text-sm font-semibold">Moyen de paiement</h3>
+
+                  {cart.length > 0 && (
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] text-muted-foreground">Tarifs ajoutés</Label>
+                      {cart.map((ci) => {
+                        const used = slotsUsed(ci.id);
+                        const remaining = ci.capacity - used;
+                        return (
+                          <div key={ci.id} className="flex items-center justify-between gap-2 rounded-md border bg-background px-2.5 py-2 text-xs">
+                            <div className="min-w-0">
+                              <span className="font-medium">{methodLabel(ci.method, useCardsSystem)}</span>
+                              <span className="text-muted-foreground ml-1.5">
+                                {used}/{ci.capacity} attribué{ci.capacity > 1 ? "s" : ""}
+                                {remaining > 0 ? ` · ${remaining} dispo pour d'autres participants` : ""}
+                              </span>
+                            </div>
+                            {used === 0 && (
+                              <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] shrink-0 text-destructive hover:text-destructive"
+                                onClick={() => removeCartItem(ci.id)}>
+                                Retirer
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full gap-1.5"
+                    onClick={() => { setPickerForParticipant(null); setPickerOpen(true); }}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" /> Acheter un tarif ou une carte
+                  </Button>
+
+                  <div className="pt-1 border-t space-y-2">
+                    <Label className="text-[11px] text-muted-foreground">Attribution par participant</Label>
                     {participants.map((p, i) => {
                       const assignedId = assignments[i];
                       const assignedItem = cart.find((ci) => ci.id === assignedId);
                       const reusableItems = cart.filter((ci) => ci.id !== assignedId && ci.capacity - slotsUsed(ci.id) > 0);
+                      const label = p.isMe ? `Moi — ${p.name}` : (p.name || `Participant ${i + 1}`);
                       return (
-                        <div key={i} className="rounded-lg border bg-card p-3 space-y-2.5">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-[11px] text-muted-foreground">Participant {i + 1}</Label>
-                            {p.isMe && <Badge variant="secondary" className="text-[10px]">Connecté</Badge>}
-                            {!p.isMe && guestMode && <Badge variant="secondary" className="text-[10px]">Invité</Badge>}
-                          </div>
-                          {i === 0 ? (
-                            <p className="text-sm font-medium">{p.isMe ? `Moi — ${p.name}` : p.name || "—"}</p>
+                        <div key={i} className="rounded-lg border bg-card p-3 space-y-1.5">
+                          <p className="text-sm font-medium truncate">{label}</p>
+                          {assignedItem ? (
+                            <div className="flex items-center justify-between gap-2 rounded-md bg-primary/5 border border-primary/20 px-2.5 py-2">
+                              <span className="text-xs font-medium truncate">{methodLabel(assignedItem.method, useCardsSystem)}</span>
+                              <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] shrink-0"
+                                onClick={() => changePaymentMethod(i)}>
+                                Changer
+                              </Button>
+                            </div>
                           ) : (
-                            <Input
-                              placeholder="Prénom"
-                              value={p.name}
-                              onChange={(e) => updateParticipantName(i, e.target.value)}
-                            />
+                            <div className="space-y-1.5">
+                              {reusableItems.map((ci) => {
+                                const remaining = ci.capacity - slotsUsed(ci.id);
+                                return (
+                                  <button
+                                    key={ci.id}
+                                    type="button"
+                                    onClick={() => setAssignments((a) => ({ ...a, [i]: ci.id }))}
+                                    className="w-full flex items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-xs hover:bg-muted/50 transition-colors text-left"
+                                  >
+                                    <span>Utiliser {methodShort(ci.method, useCardsSystem)}</span>
+                                    <span className="text-muted-foreground shrink-0">{remaining} restant{remaining > 1 ? "s" : ""}</span>
+                                  </button>
+                                );
+                              })}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full gap-1.5 text-xs"
+                                onClick={() => { setPickerForParticipant(i); setPickerOpen(true); }}
+                              >
+                                <Sparkles className="h-3.5 w-3.5" /> Ajouter un tarif
+                              </Button>
+                            </div>
                           )}
-
-                          <div className="pt-2 border-t space-y-1.5">
-                            <Label className="text-[11px] text-muted-foreground">Moyen de paiement</Label>
-                            {assignedItem ? (
-                              <div className="flex items-center justify-between gap-2 rounded-md bg-primary/5 border border-primary/20 px-2.5 py-2">
-                                <span className="text-xs font-medium truncate">{methodLabel(assignedItem.method, useCardsSystem)}</span>
-                                <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] shrink-0"
-                                  onClick={() => changePaymentMethod(i)}>
-                                  Changer
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="space-y-1.5">
-                                {reusableItems.map((ci) => {
-                                  const remaining = ci.capacity - slotsUsed(ci.id);
-                                  return (
-                                    <button
-                                      key={ci.id}
-                                      type="button"
-                                      onClick={() => setAssignments((a) => ({ ...a, [i]: ci.id }))}
-                                      className="w-full flex items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-xs hover:bg-muted/50 transition-colors text-left"
-                                    >
-                                      <span>Utiliser {methodShort(ci.method, useCardsSystem)}</span>
-                                      <span className="text-muted-foreground shrink-0">{remaining} restant{remaining > 1 ? "s" : ""}</span>
-                                    </button>
-                                  );
-                                })}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="w-full gap-1.5 text-xs"
-                                  onClick={() => { setPickerForParticipant(i); setPickerOpen(true); }}
-                                >
-                                  <Sparkles className="h-3.5 w-3.5" /> Ajouter un tarif
-                                </Button>
-                              </div>
-                            )}
-                          </div>
                         </div>
                       );
                     })}
@@ -951,8 +978,8 @@ export default function BookingSheet({
                 </div>
               )}
 
-              {/* STEP 4 — Conditions + Paiement */}
-              {step === 4 && (
+              {/* STEP 5 — Conditions + Paiement */}
+              {step === 5 && (
                 <div className="space-y-3 pt-2">
                   <h3 className="text-sm font-semibold">Récapitulatif & paiement</h3>
 
@@ -1024,7 +1051,7 @@ export default function BookingSheet({
               <ChevronLeft className="h-4 w-4 mr-1" /> Précédent
             </Button>
           ) : <span />}
-          {step < 4 ? (
+          {step < 5 ? (
             <Button onClick={goNext} disabled={!canNext()}>
               Continuer <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
@@ -1046,7 +1073,7 @@ export default function BookingSheet({
         pricingCards={pricingCards}
         existingCards={existingCardsBalance}
         isConnected={identityChosen}
-        stillNeeded={1}
+        stillNeeded={pickerForParticipant !== null ? 1 : participants.filter((_, i) => !assignments[i]).length}
         cart={cart}
         onAdd={(method, capacity) => {
           const id = addCartItem(method, capacity);
@@ -1169,41 +1196,44 @@ function CartPickerModal({
                 : "Le tarif est déjà réglé pour tous les participants."}
             </div>
           )}
-          {/* Carte du compte — mise en avant en premier si disponible */}
+          {/* Carte du compte — mise en avant en premier si disponible. Même gabarit que les
+              formules ci-dessous (titre + sous-texte à gauche, "prix" + décompte à droite) pour
+              une lecture cohérente d'une option à l'autre. */}
           {stillNeeded > 0 && isYoga && isConnected && accountCardsLeft > 0 && (
             <button
               onClick={handleExistingCard}
-              className="w-full text-left rounded-xl border-2 p-4 bg-primary/10 border-primary shadow-sm hover:shadow-md hover:bg-primary/15 transition-all"
+              className="w-full flex items-center gap-3 rounded-lg border border-primary/50 bg-primary/5 p-3 text-left transition-all hover:shadow-sm hover:bg-primary/10"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-primary-dark flex items-center gap-1.5 text-base">
-                    <Ticket className="h-5 w-5" /> Utiliser une de mes cartes
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {accountCardsLeft} cours disponible{accountCardsLeft > 1 ? "s" : ""}
-                  </p>
-                </div>
-                <Badge className="bg-primary text-primary-foreground">Gratuit</Badge>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">Utiliser une de mes cartes</p>
+                <p className="text-xs text-muted-foreground">Déjà réglées</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold">Gratuit</p>
+                <p className="text-[11px] text-muted-foreground">{accountCardsLeft} cours dispo.</p>
               </div>
             </button>
           )}
 
           {/* Bon cadeau */}
           {stillNeeded > 0 && (
-          <div className="rounded-lg border bg-amber-50/60 border-amber-200 p-3 space-y-2">
+          <div className="rounded-lg border p-3 space-y-2">
             {!voucherOpen ? (
               <button
                 type="button"
                 onClick={() => setVoucherOpen(true)}
-                className="w-full flex items-center gap-2 font-semibold text-sm text-left"
+                className="w-full flex items-center gap-3 text-left"
               >
-                <Gift className="h-4 w-4 text-amber-700" /> Utiliser un bon cadeau
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">Utiliser un bon cadeau</p>
+                  <p className="text-xs text-muted-foreground">Saisir un code</p>
+                </div>
+                <Gift className="h-4 w-4 text-muted-foreground shrink-0" />
               </button>
             ) : (
               <>
                 <div className="flex items-center gap-2 font-semibold text-sm">
-                  <Gift className="h-4 w-4 text-amber-700" /> Utiliser un bon cadeau
+                  <Gift className="h-4 w-4 text-muted-foreground" /> Utiliser un bon cadeau
                 </div>
                 <div className="flex gap-2">
                   <Input
@@ -1227,14 +1257,15 @@ function CartPickerModal({
           {stillNeeded > 0 && isYoga && (
             <button
               onClick={handleUnit}
-              className="w-full text-left rounded-lg border p-4 bg-emerald-50/60 border-emerald-200 hover:shadow-md transition-all"
+              className="w-full flex items-center gap-3 rounded-lg border bg-background p-3 text-left transition-all hover:shadow-sm hover:bg-muted/40"
             >
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-semibold text-foreground">Carte Yoga à l'unité</p>
-                  <p className="text-xs text-muted-foreground">1 cours</p>
-                </div>
-                <p className="text-lg font-bold">{unitPrice} €</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">Carte Yoga à l'unité</p>
+                <p className="text-xs text-muted-foreground">Valable ponctuellement</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold">{unitPrice} €</p>
+                <p className="text-[11px] text-muted-foreground">1 cours</p>
               </div>
             </button>
           )}
@@ -1248,9 +1279,9 @@ function CartPickerModal({
                 showHeader={false}
               />
               {!isConnected && (
-                <div className="rounded-md bg-amber-50 border border-amber-200 p-2 flex items-start gap-2">
-                  <Info className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
-                  <p className="text-xs text-amber-800">
+                <div className="rounded-md bg-muted/50 border p-2 flex items-start gap-2">
+                  <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                  <p className="text-xs text-muted-foreground">
                     Vous devez créer un compte ou vous connecter pour utiliser une formule.
                   </p>
                 </div>
@@ -1262,14 +1293,15 @@ function CartPickerModal({
           {stillNeeded > 0 && !isYoga && (
             <button
               onClick={() => onAdd({ kind: "unit", price: unitPrice }, 1)}
-              className="w-full text-left rounded-lg border p-4 bg-amber-50/60 border-amber-200 hover:shadow-md transition-all"
+              className="w-full flex items-center gap-3 rounded-lg border bg-background p-3 text-left transition-all hover:shadow-sm hover:bg-muted/40"
             >
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-semibold">Paiement direct</p>
-                  <p className="text-xs text-muted-foreground">1 place</p>
-                </div>
-                <p className="text-lg font-bold">{unitPrice} €</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">Paiement direct</p>
+                <p className="text-xs text-muted-foreground">Pour cette réservation</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold">{unitPrice} €</p>
+                <p className="text-[11px] text-muted-foreground">1 place</p>
               </div>
             </button>
           )}

@@ -330,21 +330,25 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
         </Button>
       </div>
 
-      <MonthGrid
-        month={browseMonth}
-        onMonthChange={setBrowseMonth}
-        getDots={getEventsForDate}
-        selectedDates={selectedDate ? [selectedDate] : []}
-        onDayClick={(d) => setSelectedDate(formatDateStr(d))}
-        todayStr={todayStr}
-      />
+      {/* Sur ordinateur, calendrier et infos de la date sélectionnée côte à côte plutôt que
+          l'un sous l'autre — évite d'avoir à scroller pour voir le détail d'un jour. */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-6">
+        <MonthGrid
+          month={browseMonth}
+          onMonthChange={setBrowseMonth}
+          getDots={getEventsForDate}
+          selectedDates={selectedDate ? [selectedDate] : []}
+          onDayClick={(d) => setSelectedDate(formatDateStr(d))}
+          todayStr={todayStr}
+        />
 
-      {selectedDate && (
-        <div className="space-y-3 pt-2">
-          <h3 className="text-sm md:text-base font-semibold capitalize text-center">{selectedDateLabel}</h3>
-          <DailyView date={new Date(selectedDate + "T12:00:00")} categoryFilter={categoryFilter} />
-        </div>
-      )}
+        {selectedDate && (
+          <div className="space-y-3 pt-4 lg:pt-0">
+            <h3 className="text-sm md:text-base font-semibold capitalize text-center lg:text-left">{selectedDateLabel}</h3>
+            <DailyView date={new Date(selectedDate + "T12:00:00")} categoryFilter={categoryFilter} />
+          </div>
+        )}
+      </div>
 
       {/* ═══ Assistant "Ajouter une date" ═══ */}
       {wizardOpen && (

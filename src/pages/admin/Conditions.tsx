@@ -161,9 +161,11 @@ export default function AdminConditions() {
                   {!c.active && <Badge variant="outline" className="text-[10px]">Désactivée</Badge>}
                 </div>
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {c.applies_to.map(a => (
+                  {/* Filtre les valeurs héritées d'anciennes catégories d'activité supprimées
+                      (ex: "bien-être") plutôt que d'afficher le texte brut en secours. */}
+                  {c.applies_to.filter(a => ACTIVITY_OPTIONS.some(o => o.value === a)).map(a => (
                     <Badge key={a} variant="secondary" className="text-[10px]">
-                      {ACTIVITY_OPTIONS.find(o => o.value === a)?.label || a}
+                      {ACTIVITY_OPTIONS.find(o => o.value === a)?.label}
                     </Badge>
                   ))}
                 </div>

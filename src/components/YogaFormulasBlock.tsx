@@ -1,5 +1,4 @@
-import { Sparkles, Star } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Sparkles } from "lucide-react";
 
 export interface YogaFormulasPricingCard {
   id: string;
@@ -21,7 +20,11 @@ interface YogaFormulasBlockProps {
 /**
  * Bloc canonique "Formules Cartes Yoga".
  * À utiliser partout dans l'application dès qu'on affiche les formules.
- * Affiche la carte à l'unité (fond vert) + les cartes multiples avec un badge % d'économie.
+ *
+ * Une seule ligne visuelle par formule : nom + validité à gauche, prix + nombre de
+ * cours à droite. Pas de badges superposés (Gratuit / -X% / Populaire) qui parlaient
+ * chacun d'une chose différente — la formule mise en avant se distingue juste par un
+ * cadre plus marqué, pas par du texte en plus.
  */
 export default function YogaFormulasBlock({
   pricingCards,
@@ -30,17 +33,33 @@ export default function YogaFormulasBlock({
 }: YogaFormulasBlockProps) {
   const unitCards = pricingCards.filter((c) => c.sessions === 1);
   const multiCards = pricingCards.filter((c) => c.sessions > 1);
-  const unitPrice = unitCards[0]?.price ?? null;
 
-  const discount = (card: YogaFormulasPricingCard) => {
-    if (!unitPrice || card.sessions <= 1 || card.sessions >= 9999) return null;
-    const perSession = card.price / card.sessions;
-    const pct = Math.round((1 - perSession / unitPrice) * 100);
-    return pct > 0 ? pct : null;
-  };
+  const sessionsLabel = (card: YogaFormulasPricingCard) =>
+    card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`;
+
+  const FormulaRow = ({ card }: { card: YogaFormulasPricingCard }) => (
+    <button
+      type="button"
+      onClick={() => onSelectCard?.(card)}
+      className={`w-full flex items-center gap-3 rounded-lg border p-3 text-left transition-all hover:shadow-sm hover:bg-muted/40 ${
+        card.popular ? "border-primary/50 bg-primary/5" : "bg-background"
+      }`}
+    >
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold truncate">
+          {card.sessions === 1 ? "Carte Yoga à l'unité" : `Cartes Yoga "${card.name}"`}
+        </p>
+        <p className="text-xs text-muted-foreground">{card.validity}</p>
+      </div>
+      <div className="text-right shrink-0">
+        <p className="text-sm font-bold">{card.price} €</p>
+        <p className="text-[11px] text-muted-foreground">{sessionsLabel(card)}</p>
+      </div>
+    </button>
+  );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {showHeader && (
         <div>
           <h3 className="flex items-center gap-2 font-display font-semibold text-primary-dark text-lg">
@@ -53,28 +72,7 @@ export default function YogaFormulasBlock({
         </div>
       )}
 
-      {/* Unit card */}
-      {unitCards.map((card) => (
-        <button
-          key={card.id}
-          type="button"
-          onClick={() => onSelectCard?.(card)}
-          className="w-full text-left rounded-lg border p-4 relative bg-emerald-50/60 border-emerald-200 hover:shadow-md transition-all"
-        >
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="font-semibold text-foreground">Carte Yoga à l'unité</p>
-              <p className="text-xs text-muted-foreground">{card.validity}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-lg font-bold">{card.price} €</p>
-              <Badge variant="secondary" className="text-sm font-bold px-2.5 py-0.5">
-                1 cours
-              </Badge>
-            </div>
-          </div>
-        </button>
-      ))}
+      {unitCards.map((card) => <FormulaRow key={card.id} card={card} />)}
 
       {multiCards.length > 0 && (
         <div className="flex items-center gap-3">
@@ -84,41 +82,8 @@ export default function YogaFormulasBlock({
         </div>
       )}
 
-      <div className="grid gap-3">
-        {multiCards.map((card) => {
-          const pct = discount(card);
-          return (
-            <button
-              key={card.id}
-              type="button"
-              onClick={() => onSelectCard?.(card)}
-              className="w-full text-left rounded-lg border p-4 relative cursor-pointer hover:shadow-md transition-all"
-            >
-              {card.popular && (
-                <div className="absolute -top-2.5 right-3 bg-accent text-accent-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                  <Star className="h-2.5 w-2.5" /> Populaire
-                </div>
-              )}
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-semibold text-primary-dark">Cartes Yoga "{card.name}"</p>
-                  <p className="text-xs text-muted-foreground">{card.validity}</p>
-                  {pct !== null && (
-                    <span className="inline-block mt-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                      -{pct}%
-                    </span>
-                  )}
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold">{card.price} €</p>
-                  <Badge variant="secondary" className="text-sm font-bold px-2.5 py-0.5">
-                    {card.sessions >= 9999 ? "Illimité" : `${card.sessions} cours`}
-                  </Badge>
-                </div>
-              </div>
-            </button>
-          );
-        })}
+      <div className="space-y-2">
+        {multiCards.map((card) => <FormulaRow key={card.id} card={card} />)}
       </div>
     </div>
   );

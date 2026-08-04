@@ -45,6 +45,14 @@ function isPotteryActivity(name: string): boolean {
   return n.includes("poterie") || n.includes("tour") || n.includes("modelage");
 }
 
+// "Carte du compte" (carte déjà en poche) et "Formule ..." (formule tout juste achetée pendant
+// cette réservation, qui crée elle aussi une vraie carte) consomment un cours de crédit — annuler
+// doit donc le restituer. "Carte à l'unité" et "Bon cadeau" sont des paiements directs sans carte.
+function isCardRefundablePaymentMethod(paymentMethod: string | null): boolean {
+  if (!paymentMethod) return false;
+  return paymentMethod === "Carte du compte" || paymentMethod.startsWith("Formule ");
+}
+
 function getCancelEligibility(date: string, time: string) {
   const [h, m] = time.split(":").map(Number);
   const courseStart = new Date(date + "T00:00:00");
@@ -233,6 +241,8 @@ export default function MonEspace() {
     setRescheduleLoading(true);
     setRescheduleOptions([]);
     const todayStr = todayLocalStr();
+    const now = new Date();
+    const nowTimeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
     if (r.activity_type === "course" && r.course_id) {
       const { data } = await supabase.from("course_schedules").select("day, time, end_time").eq("course_id", r.course_id);
       const opts: { date: string; time: string; end_time: string }[] = [];
@@ -245,6 +255,8 @@ export default function MonEspace() {
           const dateStr = localDateStr(d);
           if (dateStr === r.date && s.time === r.time) continue;
           if (dateStr < todayStr) continue;
+          // Aujourd'hui : ne pas proposer un créneau dont l'heure est déjà passée.
+          if (dateStr === todayStr && s.time <= nowTimeStr) continue;
           opts.push({ date: dateStr, time: s.time, end_time: s.end_time });
         }
       }
@@ -253,6 +265,7 @@ export default function MonEspace() {
       const { data } = await supabase.from("workshops").select("date, time, end_time").eq("name", r.activity_name).gte("date", todayStr);
       const opts = ((data || []) as any[])
         .filter((w) => !(w.date === r.date && w.time === r.time))
+        .filter((w) => !(w.date === todayStr && w.time <= nowTimeStr))
         .sort((a, b) => a.date.localeCompare(b.date))
         .map((w) => ({ date: w.date, time: w.time, end_time: w.end_time }));
       setRescheduleOptions(opts);
@@ -279,10 +292,11 @@ export default function MonEspace() {
 
   const handleCancelReservation = async (r: Reservation) => {
     await supabase.from("reservations").update({ status: "annulé" }).eq("id", r.id);
-    // Un cours annulé payé par carte du compte redonne un cours de crédit — on rend la séance à
-    // la carte dont la validité expire le plus tôt parmi celles déjà entamées (cohérent avec
-    // l'ordre de consommation utilisé à la réservation : soonest-expiry first).
-    if (r.activity_type === "course" && r.payment_method === "Carte du compte" && user) {
+    // Un cours annulé payé par carte du compte (ou par une formule tout juste achetée, qui crée
+    // aussi une vraie carte) redonne un cours de crédit — on rend la séance à la carte dont la
+    // validité expire le plus tôt parmi celles déjà entamées (cohérent avec l'ordre de
+    // consommation utilisé à la réservation : soonest-expiry first).
+    if (r.activity_type === "course" && isCardRefundablePaymentMethod(r.payment_method) && user) {
       const { data: myCards } = await supabase
         .from("client_cards")
         .select("id, used_sessions, expires_at")
@@ -830,7 +844,7 @@ export default function MonEspace() {
           {cancelConfirm && (() => {
             const { canCancel, hoursUntil } = getCancelEligibility(cancelConfirm.date, cancelConfirm.time);
             const hoursText = Math.floor(hoursUntil) + "h";
-            const willRefundCard = canCancel && cancelConfirm.activity_type === "course" && cancelConfirm.payment_method === "Carte du compte";
+            const willRefundCard = canCancel && cancelConfirm.activity_type === "course" && isCardRefundablePaymentMethod(cancelConfirm.payment_method);
             return (
               <>
                 <AlertDialogHeader>

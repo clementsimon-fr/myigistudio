@@ -25,7 +25,7 @@ interface AuthContextValue {
   isFournisseur: boolean;
   signInWithOtp: (email: string, name?: { first_name?: string; last_name?: string }) => Promise<{ error: string | null }>;
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUpWithPassword: (email: string, password: string, name?: { first_name?: string; last_name?: string }) => Promise<{ error: string | null; needsConfirmation: boolean }>;
+  signUpWithPassword: (email: string, password: string, name?: { first_name?: string; last_name?: string; phone?: string }) => Promise<{ error: string | null; needsConfirmation: boolean }>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message || null };
   }, []);
 
-  const signUpWithPassword = useCallback(async (email: string, password: string, name?: { first_name?: string; last_name?: string }) => {
+  const signUpWithPassword = useCallback(async (email: string, password: string, name?: { first_name?: string; last_name?: string; phone?: string }) => {
     const { data, error } = await supabase.auth.signUp({
       email, password,
       options: { data: name, emailRedirectTo: window.location.origin },

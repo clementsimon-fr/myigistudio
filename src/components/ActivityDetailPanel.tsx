@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, Euro, MapPin, Users, CalendarDays, ClipboardList, Clock, ChevronDown, CreditCard, Info } from "lucide-react";
+import { X, User, Euro, MapPin, Users, ClipboardList, Clock, CreditCard, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RecurringGrid, MonthWorkshops } from "@/components/PlanningTypeView";
 import { supabase } from "@/integrations/supabase/client";
 import { useBackNavigation } from "@/hooks/useBackNavigation";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
@@ -155,7 +153,6 @@ export default function ActivityDetailPanel({
     ? computeDuration(schedules[0].time, schedules[0].end_time)
     : null;
 
-  const filteredCourses = course ? allCourses.filter((c) => c.id === course.id) : [];
   const filteredSchedules = course ? schedules.filter((s) => s.course_id === course.id) : [];
 
   return (
@@ -169,14 +166,20 @@ export default function ActivityDetailPanel({
           className="fixed inset-0 z-50 bg-foreground/40"
           onClick={onClose}
         >
+          {/* Wrapper non-animé : porte le positionnement/centrage. La transform de framer-motion
+              (translateY, sur le motion.div enfant) écrase tout transform Tailwind posé sur le
+              même élément — d'où le -translate-x-1/2 de centrage desktop ignoré si on le mettait ici. */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-x-0 bottom-0 z-50 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-2xl"
+          >
           <motion.div
             key="panel"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 280 }}
-            onClick={(e) => e.stopPropagation()}
-            className="fixed inset-x-0 bottom-0 z-50 bg-background rounded-t-3xl max-h-[92vh] overflow-hidden flex flex-col sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-2xl"
+            className="bg-background rounded-t-3xl max-h-[92vh] overflow-hidden flex flex-col"
           >
             <div className="relative h-56 flex-shrink-0">
               <img src={image || PLACEHOLDER_IMG} alt={name} className="w-full h-full object-cover" />
@@ -285,37 +288,6 @@ export default function ActivityDetailPanel({
                     </div>
                   )}
 
-                  {((course && filteredSchedules.length > 0) || (workshop && workshopsList.length > 0)) && (
-                    <Collapsible className="pt-2 border-t">
-                      <CollapsibleTrigger asChild>
-                        <button
-                          type="button"
-                          className="group mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
-                        >
-                          Voir le planning
-                          <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180" />
-                        </button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="pt-3 space-y-3">
-                        {course && filteredSchedules.length > 0 && (
-                          <div>
-                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wide mb-2">
-                              <CalendarDays className="h-3 w-3" /> Planning — récurrent
-                            </div>
-                            <RecurringGrid courses={filteredCourses} schedules={filteredSchedules} />
-                          </div>
-                        )}
-                        {workshop && workshopsList.length > 0 && (
-                          <div>
-                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wide mb-2">
-                              <CalendarDays className="h-3 w-3" /> Planning — ponctuel
-                            </div>
-                            <MonthWorkshops workshops={workshopsList.filter((w) => w.name === workshop.name)} />
-                          </div>
-                        )}
-                      </CollapsibleContent>
-                    </Collapsible>
-                  )}
                 </MetaBlock>
 
                 {/* META-BLOC : Réservation — montée uniquement après clic sur "Réserver" */}
@@ -343,6 +315,7 @@ export default function ActivityDetailPanel({
               </div>
             )}
           </motion.div>
+          </div>
         </motion.div>
       )}
 
