@@ -447,7 +447,7 @@ export default function MonEspace() {
                           <p className="text-[10px] text-muted-foreground uppercase">{new Date(r.date + "T00:00:00").toLocaleDateString("fr-FR", { month: "short" })}</p>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{r.activity_name}</p>
+                          <p className="font-medium text-sm">{r.activity_name}</p>
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <Clock className="h-3 w-3" /> {r.time}{r.end_time ? ` - ${r.end_time}` : ""}
                             {r.participants > 1 && <span>· {r.participants} pers.</span>}
@@ -539,11 +539,16 @@ export default function MonEspace() {
                 </Collapsible>
               )}
 
-              {/* Purchase history — l'ensemble des transactions, pas que les cartes */}
+              {/* Purchase history — l'ensemble des transactions, pas que les cartes — en roll up */}
               {purchaseEntries.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-primary-dark mb-3">Historique des achats</h3>
-                  <div className="space-y-2">
+                <Collapsible>
+                  <CollapsibleTrigger asChild>
+                    <button type="button" className="w-full flex items-center justify-between rounded-lg border bg-background/60 p-3 hover:bg-muted/30 transition-colors group">
+                      <span className="text-sm font-medium text-primary-dark">Historique des achats ({purchaseEntries.length})</span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-2 pt-2">
                     {purchaseEntries.map(entry => (
                       <div key={entry.id} className="flex items-center gap-3 rounded-lg border bg-background p-3">
                         <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -560,8 +565,8 @@ export default function MonEspace() {
                         {entry.amount > 0 && <span className="text-sm font-semibold shrink-0">{entry.amount} €</span>}
                       </div>
                     ))}
-                  </div>
-                </div>
+                  </CollapsibleContent>
+                </Collapsible>
               )}
           </div>
 

@@ -366,7 +366,7 @@ export default function AdminBonsCadeaux() {
             <div className="space-y-5 pt-2">
               {/* Step 1: Client selection */}
               <div>
-                <Label className="text-sm font-semibold">Acheteur</Label>
+                <Label className="text-sm font-semibold">Qui achète ?</Label>
                 <div className="flex gap-2 mt-2">
                   <Button
                     variant={buyerClientType === "existing" ? "default" : "outline"}
@@ -411,7 +411,7 @@ export default function AdminBonsCadeaux() {
               </div>
 
               <div>
-                <Label className="text-sm font-semibold">Bénéficiaire</Label>
+                <Label className="text-sm font-semibold">Pour qui ?</Label>
                 <div className="flex gap-2 mt-2">
                   <Button
                     variant={beneficiaryClientType === "existing" ? "default" : "outline"}
