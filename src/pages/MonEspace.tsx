@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { makeDisplayName } from "@/lib/client-name";
 import ClientLayout from "@/components/client/ClientLayout";
-import MockStripeModal from "@/components/demo/MockStripeModal";
+import StripeCheckoutModal from "@/components/payment/StripeCheckoutModal";
 import ContactElodieButton from "@/components/ContactElodieButton";
 import YogaFormulasBlock from "@/components/YogaFormulasBlock";
 
@@ -894,8 +894,8 @@ export default function MonEspace() {
         </DialogContent>
       </Dialog>
 
-      {/* Mock Stripe Modal */}
-      <MockStripeModal
+      {/* Paiement Stripe (mode test) */}
+      <StripeCheckoutModal
         open={showStripeModal}
         onClose={() => setShowStripeModal(false)}
         onSuccess={handleStripeSuccess}

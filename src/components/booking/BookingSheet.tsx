@@ -15,7 +15,7 @@ import { makeDisplayName, makeSyntheticEmail, makeTestIdentifier } from "@/lib/c
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useBackNavigation } from "@/hooks/useBackNavigation";
-import MockStripeModal from "@/components/demo/MockStripeModal";
+import StripeCheckoutModal from "@/components/payment/StripeCheckoutModal";
 import LoginBlock from "@/components/booking/LoginBlock";
 import YogaFormulasBlock, { YogaFormulasPricingCard } from "@/components/YogaFormulasBlock";
 import type { Course, Workshop, Schedule } from "@/hooks/useActivitiesData";
@@ -1069,7 +1069,7 @@ export default function BookingSheet({
         </DialogContent>
       </Dialog>
 
-      <MockStripeModal
+      <StripeCheckoutModal
         open={showStripe}
         onClose={() => setShowStripe(false)}
         onSuccess={() => { setShowStripe(false); finalize(); }}
