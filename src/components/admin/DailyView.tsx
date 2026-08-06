@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Clock, Users, User, Plus, Search, UserPlus, XCircle, RotateCcw, Trash2 } from "lucide-react";
+import { Clock, Users, User, Plus, Search, UserPlus, XCircle, RotateCcw, Trash2, Link2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { CATEGORY_STYLES } from "@/components/ActivityFilterBar";
@@ -57,6 +57,7 @@ interface Workshop {
   end_time: string;
   spots: number;
   spots_left: number;
+  linked_group: string | null;
 }
 
 interface ActivityBlock {
@@ -73,6 +74,9 @@ interface ActivityBlock {
   allReservations: Reservation[];
   day?: string;
   date?: string;
+  // Nombre de dates liées (multi-sessions) et leurs dates, pour signaler que l'événement fait
+  // partie d'une série — réserver une date de la série engage pour toutes les autres.
+  linkedDates?: string[];
 }
 
 const DAY_NAMES: Record<number, string> = {
@@ -199,6 +203,11 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
         r.workshop_id === ws.id ||
         (!r.workshop_id && r.activity_name.trim().toLowerCase().includes(ws.name.trim().toLowerCase()) && r.date === dateStr)
       );
+      // Multi-sessions : retrouve les autres dates de la même série (linked_group) pour
+      // signaler que réserver celle-ci engage aussi pour les autres.
+      const linkedDates = ws.linked_group
+        ? workshops.filter(w => w.linked_group === ws.linked_group).map(w => w.date).sort()
+        : undefined;
       result.push({
         id: ws.id,
         title: ws.name,
@@ -211,6 +220,7 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
         reservations: matchingResasAll.filter(r => r.status === "confirmé"),
         allReservations: matchingResasAll,
         date: ws.date,
+        linkedDates: linkedDates && linkedDates.length > 1 ? linkedDates : undefined,
       });
     }
 
@@ -316,11 +326,18 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
         className={`rounded-xl border-2 p-4 cursor-pointer transition-all hover:shadow-md ${style.block}`}
         onClick={() => setSelectedBlock(block)}
       >
-        <div className="flex items-start justify-between mb-2">
+        <div className="flex items-start justify-between mb-2 gap-2">
           <h4 className="font-semibold text-sm">{block.title}</h4>
-          <Badge variant="secondary" className="text-[10px] px-1.5">
-            {block.type === "course" ? "Cours" : "Atelier"}
-          </Badge>
+          <div className="flex items-center gap-1 shrink-0">
+            {block.linkedDates && (
+              <Badge variant="outline" className="text-[10px] px-1.5 gap-1" title={`Série multi-sessions : ${block.linkedDates.length} dates liées`}>
+                <Link2 className="h-2.5 w-2.5" /> {block.linkedDates.length} dates
+              </Badge>
+            )}
+            <Badge variant="secondary" className="text-[10px] px-1.5">
+              {block.type === "course" ? "Cours" : "Atelier"}
+            </Badge>
+          </div>
         </div>
         <div className="flex items-center gap-3 text-xs opacity-80">
           <span className="flex items-center gap-1">
@@ -395,6 +412,16 @@ export default function DailyView({ date, categoryFilter = "all" }: DailyViewPro
           </SheetHeader>
           {selectedBlock && (
             <div className="space-y-4 pt-2 pb-6">
+              {selectedBlock.linkedDates && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs text-primary-dark flex items-start gap-2">
+                  <Link2 className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <p>
+                    Événement multi-sessions : connecté à <strong>{selectedBlock.linkedDates.length} dates</strong> —{" "}
+                    {selectedBlock.linkedDates.map(d => new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" })).join(" & ")}.
+                    Une réservation sur l'une de ces dates couvre automatiquement toute la série.
+                  </p>
+                </div>
+              )}
               {/* Bloc informations de l'événement */}
               <div className="rounded-lg border p-3 space-y-2">
                 <div className="flex items-start justify-between gap-2">

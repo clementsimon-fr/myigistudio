@@ -26,9 +26,18 @@ export default function PotteryCalendar({ workshops, onBook }: PotteryCalendarPr
 
   const monthLabel = monthDate.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
-  // Filtered workshops
+  // Filtered workshops — pour une série multi-sessions (même linked_group), seule la première
+  // date est proposée au calendrier : réserver cette date engage pour l'ensemble de la série,
+  // la deuxième date (et les suivantes) ne doivent donc pas être réservables séparément.
   const filtered = useMemo(() => {
-    return workshops.filter(w => w.category === "poterie");
+    const poterie = workshops.filter(w => w.category === "poterie");
+    const firstDateByGroup = new Map<string, string>();
+    for (const w of poterie) {
+      if (!w.linked_group) continue;
+      const current = firstDateByGroup.get(w.linked_group);
+      if (!current || w.date < current) firstDateByGroup.set(w.linked_group, w.date);
+    }
+    return poterie.filter(w => !w.linked_group || w.date === firstDateByGroup.get(w.linked_group));
   }, [workshops]);
 
   // Map date → workshops for the current month
