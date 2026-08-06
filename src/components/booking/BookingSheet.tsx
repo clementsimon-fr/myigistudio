@@ -24,8 +24,10 @@ const DAY_INDEX: Record<string, number> = {
   dimanche: 0, lundi: 1, mardi: 2, mercredi: 3, jeudi: 4, vendredi: 5, samedi: 6,
 };
 
-// A slot dated today is only bookable if its start time hasn't passed yet.
-function isBookableSlot(dateStr: string, timeStr?: string): boolean {
+// A slot dated today is only bookable until `bufferMinutes` before its start — les CGV du
+// studio ("Conditions d'annulation", identique au site igistudio.fr) précisent que les cours
+// sont réservables jusqu'à 30 minutes avant leur début, pas jusqu'à l'heure pile.
+function isBookableSlot(dateStr: string, timeStr?: string, bufferMinutes = 0): boolean {
   const now = new Date();
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const slotDate = new Date(dateStr + "T00:00:00");
@@ -35,7 +37,8 @@ function isBookableSlot(dateStr: string, timeStr?: string): boolean {
   const [h, m] = timeStr.split(":").map(Number);
   const slotDateTime = new Date(today);
   slotDateTime.setHours(h || 0, m || 0, 0, 0);
-  return slotDateTime > now;
+  const cutoff = new Date(slotDateTime.getTime() - bufferMinutes * 60 * 1000);
+  return cutoff > now;
 }
 
 // Format en date locale (année-mois-jour) — ne PAS utiliser toISOString() ici :
@@ -61,7 +64,7 @@ function nextDatesForCourse(schedules: Schedule[], count = 8): DateOption[] {
       const idx = DAY_INDEX[(s.day || "").toLowerCase()];
       if (idx !== dow) continue;
       const dateStr = formatLocalDateStr(d);
-      if (!isBookableSlot(dateStr, s.time)) continue;
+      if (!isBookableSlot(dateStr, s.time, 30)) continue;
       out.push({ date: dateStr, time: s.time, end_time: s.end_time, scheduleId: s.id });
     }
   }

@@ -243,6 +243,11 @@ export default function MonEspace() {
     const todayStr = todayLocalStr();
     const now = new Date();
     const nowTimeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    // CGV du studio (identiques à igistudio.fr) : les cours sont réservables jusqu'à 30 minutes
+    // avant leur début — reprogrammer vers un nouveau créneau, c'est réserver ce créneau, la
+    // même règle s'applique donc (pas pour la poterie, dont les CGV ne fixent pas ce délai).
+    const now30 = new Date(now.getTime() + 30 * 60 * 1000);
+    const nowPlus30Str = `${String(now30.getHours()).padStart(2, "0")}:${String(now30.getMinutes()).padStart(2, "0")}`;
     if (r.activity_type === "course" && r.course_id) {
       const { data } = await supabase.from("course_schedules").select("day, time, end_time").eq("course_id", r.course_id);
       const opts: { date: string; time: string; end_time: string }[] = [];
@@ -255,8 +260,8 @@ export default function MonEspace() {
           const dateStr = localDateStr(d);
           if (dateStr === r.date && s.time === r.time) continue;
           if (dateStr < todayStr) continue;
-          // Aujourd'hui : ne pas proposer un créneau dont l'heure est déjà passée.
-          if (dateStr === todayStr && s.time <= nowTimeStr) continue;
+          // Aujourd'hui : ne pas proposer un créneau à moins de 30 minutes de son début.
+          if (dateStr === todayStr && s.time <= nowPlus30Str) continue;
           opts.push({ date: dateStr, time: s.time, end_time: s.end_time });
         }
       }

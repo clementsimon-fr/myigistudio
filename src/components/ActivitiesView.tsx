@@ -468,8 +468,8 @@ export default function ActivitiesView({ courses, workshops, schedules, filter, 
         <div className="container max-w-2xl text-center">
           <h2 className="text-xl md:text-2xl font-display font-bold text-primary-dark mb-4">Infos Pratiques</h2>
           <div className="space-y-3 text-muted-foreground text-sm">
-            <p>Arrivez 10 minutes avant le cours · Tapis fournis · Tenue confortable</p>
-            <p>Annulation gratuite jusqu'à 24h avant le cours. Au-delà, le crédit est débité.</p>
+            <p>Arrivez 5 minutes avant le cours · Tapis fournis · Tenue confortable</p>
+            <p>Annulation gratuite jusqu'à 12h avant le cours. Au-delà, le crédit est débité.</p>
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
             <ContactElodieButton variant="outline" />
