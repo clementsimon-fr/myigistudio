@@ -56,14 +56,6 @@ export default function AdminBottomNav() {
           <Bell className="h-5 w-5" />
           Notifications
         </NavLink>
-        <button
-          type="button"
-          onClick={() => setEditionOpen(true)}
-          className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-xs ${editionActive ? "text-primary-dark font-medium" : "text-muted-foreground"}`}
-        >
-          <Pencil className="h-5 w-5" />
-          Édition
-        </button>
         <NavLink
           to="/admin/clients"
           className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-xs text-muted-foreground"
@@ -72,6 +64,14 @@ export default function AdminBottomNav() {
           <Users className="h-5 w-5" />
           Clients
         </NavLink>
+        <button
+          type="button"
+          onClick={() => setEditionOpen(true)}
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-xs ${editionActive ? "text-primary-dark font-medium" : "text-muted-foreground"}`}
+        >
+          <Pencil className="h-5 w-5" />
+          Édition
+        </button>
       </nav>
 
       <Sheet open={editionOpen} onOpenChange={setEditionOpen}>

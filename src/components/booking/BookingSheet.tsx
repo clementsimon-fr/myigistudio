@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CalendarDays, Users, CreditCard, Minus, Plus,
@@ -113,6 +114,7 @@ export default function BookingSheet({
   open, onClose, course, workshop, schedules = [], workshopsList = [], unitPrice,
 }: BookingSheetProps) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { session, user, clientProfile } = useAuth();
   const isYoga = !!course;
   const connectedName = clientProfile ? (makeDisplayName(clientProfile.first_name, clientProfile.last_name) || clientProfile.email) : "";
@@ -165,12 +167,17 @@ export default function BookingSheet({
   const [guestLastName, setGuestLastName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
+  const [guestPassword, setGuestPassword] = useState("");
   const [conditionsList, setConditionsList] = useState<{ id: string; title: string; content: string }[]>([]);
   const [existingCardsBalance, setExistingCardsBalance] = useState(0);
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [authMode, setAuthMode] = useState<null | "login">(null);
   const [showStripe, setShowStripe] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
+  // Modale de confirmation affichée seulement après un succès *vérifié* de l'écriture en base
+  // (voir finalize()) — jamais affichée si l'insertion de la réservation a échoué.
+  const [successOpen, setSuccessOpen] = useState(false);
 
   // Init on open
   useEffect(() => {
@@ -183,6 +190,8 @@ export default function BookingSheet({
     setGuestLastName("");
     setGuestEmail("");
     setGuestPhone("");
+    setGuestPassword("");
+    setSuccessOpen(false);
     setParticipants([{ name: connectedName, isMe: !!session }]);
   }, [open]);
 
@@ -315,9 +324,12 @@ export default function BookingSheet({
   // ---- Step gating ----
   // Une cliente déjà connectée n'a pas besoin de l'étape "Qui réserve ?" — elle est sautée (voir goNext/goPrev).
   const identityChosen = !!session || (guestMode && guestEmail.trim().length > 0);
+  // Le mot de passe n'est requis que pour une invitée qui crée son compte à la volée —
+  // une cliente déjà connectée n'a rien à saisir ici.
+  const guestPasswordValid = !!session || guestPassword.trim().length >= 6;
   const canNext = () => {
     if (step === 1) return !!selected;
-    if (step === 2) return identityChosen && (participants[0]?.name.trim().length > 0);
+    if (step === 2) return identityChosen && guestPasswordValid && (participants[0]?.name.trim().length > 0);
     if (step === 3) return participants.length > 0 && participants.every((p) => p.name.trim().length > 0);
     // Étape 4 (paiement) séparée de l'étape 3 (participants) : plus lisible que de choisir
     // le moyen de paiement de chaque personne au même endroit où on l'ajoute.
@@ -351,7 +363,9 @@ export default function BookingSheet({
 
   // ---- Finalize ----
   const finalize = async () => {
-    if (!selected) return;
+    if (!selected || finalizing) return;
+    setFinalizing(true);
+    try {
     // Garde-fou : une date passée ne doit jamais pouvoir être réservée, même si la liste des
     // créneaux affichée était périmée (onglet resté ouvert, cache) — todayLocalStr() en date
     // locale, pas toISOString(), pour éviter le décalage UTC déjà rencontré ailleurs.
@@ -419,24 +433,37 @@ export default function BookingSheet({
     let userId = user?.id || null;
     const clientName = session ? connectedName : makeDisplayName(participants[0]?.name || "", guestLastName) || participants[0]?.name || "Invité";
     const accountEmail = guestEmail.trim();
+    let accountCreationFailed = false;
     if (!userId && accountEmail) {
       try {
         const { data, error } = await supabase.functions.invoke("create-guest-account", {
           body: {
-            email: accountEmail, first_name: participants[0]?.name || "", last_name: guestLastName, phone: guestPhone.trim(),
+            email: accountEmail, first_name: participants[0]?.name || "", last_name: guestLastName,
+            phone: guestPhone.trim(), password: guestPassword.trim() || undefined,
           },
         });
         if (!error && data?.user_id) {
           userId = data.user_id;
-          // Le compte vient d'être créé : on connecte la cliente tout de suite pour qu'elle
-          // reste identifiée si elle enchaîne d'autres réservations dans la foulée.
-          if (data.password) {
-            await supabase.auth.signInWithPassword({ email: accountEmail, password: data.password });
+          // Le compte vient d'être créé : on connecte la cliente tout de suite avec le mot de
+          // passe qu'elle a choisi, pour qu'elle reste identifiée si elle enchaîne d'autres
+          // réservations dans la foulée.
+          const passwordToUse = guestPassword.trim() || data.password;
+          if (passwordToUse) {
+            await supabase.auth.signInWithPassword({ email: accountEmail, password: passwordToUse });
           }
+        } else if (error) {
+          accountCreationFailed = true;
         }
       } catch {
         // Edge function indisponible : la réservation continue quand même, sans compte lié.
+        accountCreationFailed = true;
       }
+    }
+    if (accountCreationFailed) {
+      toast({
+        title: "Compte non créé",
+        description: "Votre réservation continue, mais nous n'avons pas pu créer votre compte. Contactez-nous si besoin.",
+      });
     }
 
     // Cartes existantes utilisées : décrémenter la carte dont la validité expire le plus tôt
@@ -523,30 +550,50 @@ export default function BookingSheet({
         };
       });
 
+    // Étape critique : si l'insertion échoue ici, la cliente ne doit JAMAIS voir un message de
+    // succès — sans ça elle repart persuadée d'être inscrite alors que rien n'a été enregistré,
+    // et la réservation n'apparaît nulle part côté admin (notifications, agenda, clients).
+    let reservationError: string | null = null;
     if (course) {
-      await supabase.from("reservations").insert(participantRows(selected.date, null) as any);
-      if (selected.scheduleId) {
+      const { error } = await supabase.from("reservations").insert(participantRows(selected.date, null) as any);
+      reservationError = error?.message || null;
+      if (!error && selected.scheduleId) {
         await supabase.from("course_schedules").update({ spots_left: Math.max(0, courseSchedSpotsLeft - requiredSpots) }).eq("id", selected.scheduleId);
       }
     } else if (selected.linkedWorkshopIds && selected.linkedWorkshopIds.length > 1) {
       // Multi-sessions : une réservation par date liée, pour que chaque date apparaisse
       // correctement dans l'agenda admin.
       const rows = selected.linkedWorkshopIds.flatMap((wsId, i) => participantRows(selected.linkedDates![i], wsId));
-      await supabase.from("reservations").insert(rows as any);
-      for (const wsId of selected.linkedWorkshopIds) {
-        const left = workshopSpotsLeftById[wsId];
-        if (left != null) await supabase.from("workshops").update({ spots_left: Math.max(0, left - requiredSpots) }).eq("id", wsId);
+      const { error } = await supabase.from("reservations").insert(rows as any);
+      reservationError = error?.message || null;
+      if (!error) {
+        for (const wsId of selected.linkedWorkshopIds) {
+          const left = workshopSpotsLeftById[wsId];
+          if (left != null) await supabase.from("workshops").update({ spots_left: Math.max(0, left - requiredSpots) }).eq("id", wsId);
+        }
       }
     } else {
-      await supabase.from("reservations").insert(participantRows(selected.date, selected.scheduleId) as any);
-      if (selected.scheduleId) {
+      const { error } = await supabase.from("reservations").insert(participantRows(selected.date, selected.scheduleId) as any);
+      reservationError = error?.message || null;
+      if (!error && selected.scheduleId) {
         const left = workshopSpotsLeftById[selected.scheduleId];
         if (left != null) await supabase.from("workshops").update({ spots_left: Math.max(0, left - requiredSpots) }).eq("id", selected.scheduleId);
       }
     }
 
-    toast({ title: "Réservation confirmée ✓", description: `${name} — ${new Date(selected.date).toLocaleDateString("fr-FR")} à ${selected.time}` });
-    onClose();
+    if (reservationError) {
+      toast({
+        title: "La réservation n'a pas pu être enregistrée",
+        description: reservationError || "Merci de réessayer, ou de nous contacter si le problème persiste.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSuccessOpen(true);
+    } finally {
+      setFinalizing(false);
+    }
   };
 
   const handleConfirmPayment = () => {
@@ -602,6 +649,14 @@ export default function BookingSheet({
   }, [step, open]);
 
   if (!open) return null;
+
+  // Cartes qu'il restera sur le compte une fois cette réservation posée : le solde existant non
+  // consommé par ce panier + la part non utilisée de chaque formule tout juste ajoutée (une
+  // formule à 10 cours pour 1 place réservée en crédite 9 sur le compte).
+  const remainingCardsAfterBooking = useCardsSystem
+    ? Math.max(0, existingCardsBalance - cart.filter((ci) => ci.method.kind === "existing_card").length)
+      + cart.reduce((sum, ci) => ci.method.kind === "formula" ? sum + Math.max(0, ci.capacity - slotsUsed(ci.id)) : sum, 0)
+    : 0;
 
   // ---- Smart summary lines (Step 5 + Step 6) ----
   const summaryLines = cart.map((ci) => {
@@ -765,8 +820,14 @@ export default function BookingSheet({
                               value={guestPhone}
                               onChange={(e) => { setGuestPhone(e.target.value); setGuestMode(true); }}
                             />
+                            <Input
+                              type="password"
+                              placeholder="Mot de passe (6 caractères min.)"
+                              value={guestPassword}
+                              onChange={(e) => { setGuestPassword(e.target.value); setGuestMode(true); }}
+                            />
                             <p className="text-[11px] text-muted-foreground">
-                              Votre compte sera créé automatiquement au moment du paiement.
+                              Votre compte sera créé automatiquement au moment du paiement, avec ce mot de passe.
                             </p>
 
                             <button
@@ -870,8 +931,15 @@ export default function BookingSheet({
                   )}
 
                   {allAssigned ? (
-                    <div className="rounded-md bg-primary/5 border border-primary/20 p-2.5 text-xs text-primary-dark flex items-center gap-1.5">
-                      <Check className="h-3.5 w-3.5 shrink-0" /> Toutes les places sont couvertes.
+                    <div className="rounded-md bg-primary/5 border border-primary/20 p-2.5 text-xs text-primary-dark space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <Check className="h-3.5 w-3.5 shrink-0" /> Toutes les places sont couvertes.
+                      </div>
+                      {remainingCardsAfterBooking > 0 && (
+                        <p className="pl-5">
+                          Après réservation, il vous restera <strong>{remainingCardsAfterBooking}</strong> carte{remainingCardsAfterBooking > 1 ? "s" : ""} sur votre compte.
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <p className="text-xs text-destructive">
@@ -974,8 +1042,8 @@ export default function BookingSheet({
               Continuer <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           ) : (
-            <Button onClick={handleConfirmPayment} disabled={!conditionsAccepted} className="gap-1.5 min-w-0 flex-1 sm:flex-initial">
-              <CreditCard className="h-4 w-4 shrink-0" />
+            <Button onClick={handleConfirmPayment} disabled={!conditionsAccepted || finalizing} className="gap-1.5 min-w-0 flex-1 sm:flex-initial">
+              {finalizing ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <CreditCard className="h-4 w-4 shrink-0" />}
               <span className="truncate min-w-0">{totalToPay > 0 ? `Confirmer le paiement (${totalToPay} €)` : "Confirmer la réservation"}</span>
             </Button>
           )}
@@ -1017,6 +1085,31 @@ export default function BookingSheet({
         amount={totalToPay}
         description={`${activityName} — MyIgiStudio`}
       />
+
+      {/* Confirmation finale — n'apparaît qu'après un succès vérifié en base (voir finalize()) */}
+      <Dialog open={successOpen} onOpenChange={() => { /* fermeture uniquement via les boutons ci-dessous */ }}>
+        <DialogContent className="sm:max-w-sm text-center" hideClose>
+          <div className="flex flex-col items-center gap-3 py-2">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary">
+              <Check className="h-6 w-6" />
+            </div>
+            <DialogHeader>
+              <DialogTitle className="font-display text-lg text-center">Réservation validée</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              {activityName} — {selected && new Date(selected.date).toLocaleDateString("fr-FR")} à {selected?.time}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button className="w-full" onClick={() => { setSuccessOpen(false); onClose(); navigate("/mon-espace"); }}>
+              Accéder à votre compte
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => { setSuccessOpen(false); onClose(); }}>
+              Fermer la fenêtre
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
