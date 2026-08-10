@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Lock, Save, Loader2, LogOut, MessageCircle, Check } from "lucide-react";
+import { Mail, Lock, Save, Loader2, LogOut, MessageCircle, Check, BellRing } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { saveSiteSettings } from "@/hooks/useSiteSettings";
 
 interface FeedbackRow {
   id: string;
@@ -40,6 +41,21 @@ export default function AdminParametres() {
   const [feedbacks, setFeedbacks] = useState<FeedbackRow[]>([]);
   const [loadingFeedback, setLoadingFeedback] = useState(true);
   const [showResolved, setShowResolved] = useState(false);
+
+  const [notificationEmail, setNotificationEmail] = useState("");
+  const [savingNotificationEmail, setSavingNotificationEmail] = useState(false);
+
+  useEffect(() => {
+    supabase.from("site_settings").select("value").eq("key", "notification_email").maybeSingle()
+      .then(({ data }) => { if (data?.value) setNotificationEmail(data.value); });
+  }, []);
+
+  const handleSaveNotificationEmail = async () => {
+    setSavingNotificationEmail(true);
+    await saveSiteSettings([{ key: "notification_email", value: notificationEmail.trim() }]);
+    setSavingNotificationEmail(false);
+    toast({ title: "Email de notification enregistré ✓" });
+  };
 
   const loadFeedback = async () => {
     setLoadingFeedback(true);
@@ -125,6 +141,28 @@ export default function AdminParametres() {
           </div>
           <Button className="gap-1.5" onClick={handleSavePassword} disabled={savingPassword || !password}>
             {savingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Changer le mot de passe
+          </Button>
+        </div>
+
+        <div className="rounded-xl border bg-card p-6 space-y-4">
+          <h2 className="text-sm font-semibold text-primary-dark flex items-center gap-2">
+            <BellRing className="h-4 w-4" /> Notifications de réservation
+          </h2>
+          <div>
+            <Label>Email recevant les nouvelles réservations</Label>
+            <Input
+              type="email"
+              value={notificationEmail}
+              onChange={e => setNotificationEmail(e.target.value)}
+              placeholder="igistudiofr@gmail.com"
+            />
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Chaque réservation client envoie un email de confirmation à la cliente et un email
+              à cette adresse. Laissez vide pour utiliser l'adresse de contact par défaut.
+            </p>
+          </div>
+          <Button className="gap-1.5" onClick={handleSaveNotificationEmail} disabled={savingNotificationEmail}>
+            {savingNotificationEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Enregistrer
           </Button>
         </div>
 
