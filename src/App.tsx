@@ -1,5 +1,7 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, Outlet } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,25 +10,38 @@ import RequireAdmin from "@/components/auth/RequireAdmin";
 import FeedbackButton from "@/components/FeedbackButton";
 import TesterGuideBanner from "@/components/TesterGuideBanner";
 import ScrollToTop from "@/components/ScrollToTop";
+// Page d'accueil chargée immédiatement (c'est la page que voit tout visiteur mobile en premier).
 import Discover from "./pages/Discover";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ResetPassword from "./pages/ResetPassword";
-import MonEspace from "./pages/MonEspace";
-import AdminDashboard from "./pages/admin/Dashboard";
-import AdminClients from "./pages/admin/Clients";
-import AdminActivites from "./pages/admin/Activites";
-import AdminIntervenants from "./pages/admin/Intervenants";
-import AdminTarifs from "./pages/admin/Tarifs";
-import AdminContenu from "./pages/admin/Contenu";
-import AdminDecouvrir from "./pages/admin/Decouvrir";
-import AdminBoutons from "./pages/admin/Boutons";
-import AdminBonsCadeaux from "./pages/admin/BonsCadeaux";
-import AdminConditions from "./pages/admin/Conditions";
-import AdminPlanning from "./pages/admin/Planning";
-import AdminImport from "./pages/admin/Import";
-import AdminParametres from "./pages/admin/Parametres";
-import NotFound from "./pages/NotFound";
+// Tout le reste — espace client + l'intégralité de l'admin (13 pages) — était jusqu'ici
+// regroupé dans le MÊME fichier JS que la page d'accueil (plus d'1 Mo au total), téléchargé et
+// exécuté par chaque visiteur avant même de voir un cours, y compris sur mobile. Passage en
+// import() paresseux : chaque page ne charge son code que lorsqu'on y navigue réellement.
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const MonEspace = lazy(() => import("./pages/MonEspace"));
+const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const AdminClients = lazy(() => import("./pages/admin/Clients"));
+const AdminActivites = lazy(() => import("./pages/admin/Activites"));
+const AdminIntervenants = lazy(() => import("./pages/admin/Intervenants"));
+const AdminTarifs = lazy(() => import("./pages/admin/Tarifs"));
+const AdminContenu = lazy(() => import("./pages/admin/Contenu"));
+const AdminDecouvrir = lazy(() => import("./pages/admin/Decouvrir"));
+const AdminBoutons = lazy(() => import("./pages/admin/Boutons"));
+const AdminBonsCadeaux = lazy(() => import("./pages/admin/BonsCadeaux"));
+const AdminConditions = lazy(() => import("./pages/admin/Conditions"));
+const AdminPlanning = lazy(() => import("./pages/admin/Planning"));
+const AdminImport = lazy(() => import("./pages/admin/Import"));
+const AdminParametres = lazy(() => import("./pages/admin/Parametres"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+function RouteFallback() {
+  return (
+    <div className="flex justify-center items-center py-24">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 const queryClient = new QueryClient();
 
@@ -40,6 +55,7 @@ const App = () => (
           <ScrollToTop />
           <TesterGuideBanner />
           <FeedbackButton />
+          <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<Discover />} />
             <Route path="/activites" element={<Navigate to="/" replace />} />
@@ -70,6 +86,7 @@ const App = () => (
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>

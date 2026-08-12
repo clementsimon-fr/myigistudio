@@ -67,13 +67,20 @@ export default function AdminParametres() {
 
   // --- Notifications push (app installée sur l'écran d'accueil) ---
   const pushSupported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
-  // iOS n'expose l'API Push que depuis l'app lancée en plein écran (ajoutée à l'écran d'accueil),
-  // jamais depuis un onglet Safari classique — (window.navigator as any).standalone est la
-  // propriété historique iOS, display-mode: standalone couvre Android/desktop.
+  // Seul iOS/Safari restreint l'API Push aux apps lancées en plein écran (ajoutées à l'écran
+  // d'accueil) — Android Chrome et desktop l'exposent dans un onglet normal, sans installation.
+  // Bug corrigé le 12/08/2026 : le gate "isStandalone" bloquait AUSSI Android/desktop derrière
+  // un message d'instructions purement iOS ("Safari → Partager..."), ce qui empêchait le bouton
+  // "Activer les notifications" de s'afficher chez une admin Android n'ayant pas ouvert l'app
+  // depuis l'icône exacte — résultat : aucun abonnement jamais créé, malgré l'app installée.
+  const isIOS = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isStandalone = typeof window !== "undefined" && (
     window.matchMedia?.("(display-mode: standalone)").matches
     || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
   );
+  // Le message "ajoutez à l'écran d'accueil" ne s'applique qu'à iOS ; ailleurs, le bouton
+  // d'activation doit être disponible dès que l'API est supportée, standalone ou non.
+  const needsHomeScreenFirst = isIOS && !isStandalone;
   const [pushSubscribed, setPushSubscribed] = useState<boolean | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
 
@@ -248,7 +255,7 @@ export default function AdminParametres() {
             <p className="text-sm font-medium flex items-center gap-1.5">
               <Smartphone className="h-3.5 w-3.5" /> Notifications sur cet appareil
             </p>
-            {!isStandalone ? (
+            {needsHomeScreenFirst ? (
               <p className="text-xs text-muted-foreground">
                 Ajoutez d'abord l'app à votre écran d'accueil (Safari → Partager → « Sur l'écran d'accueil »),
                 puis ouvrez-la depuis l'icône pour activer les notifications ici.
