@@ -92,7 +92,12 @@ async function sendWebPush(
       keys: { p256dh: sub.p256dh, auth: sub.auth },
     });
     try {
-      await subscriber.pushTextMessage(JSON.stringify({ title, body, url: "/admin" }), {});
+      // urgency: High — sans ce paramètre (par défaut "Normal"), Android peut différer la
+      // livraison de la notification tant que le téléphone est en veille ou l'app/le navigateur
+      // fermé, ce qui donnait l'impression que le push "ne marche que si l'app est ouverte".
+      await subscriber.pushTextMessage(JSON.stringify({ title, body, url: "/admin" }), {
+        urgency: webpush.Urgency.High,
+      });
       sent++;
     } catch (err) {
       failed++;

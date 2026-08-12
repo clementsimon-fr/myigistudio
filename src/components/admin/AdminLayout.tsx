@@ -4,6 +4,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import AdminSidebar from "./AdminSidebar";
 import AdminBottomNav from "./AdminBottomNav";
+import AdminTesterInfoBanner from "./AdminTesterInfoBanner";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -16,6 +17,7 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
       <div className="min-h-screen flex w-full overflow-x-hidden">
         <AdminSidebar />
         <div className="flex-1 flex flex-col min-w-0">
+          <AdminTesterInfoBanner />
           <header className="h-14 flex items-center border-b px-3 sm:px-4 gap-3 bg-card shrink-0">
             <SidebarTrigger className="hidden md:inline-flex" />
             <h1 className="text-base sm:text-lg font-display font-bold text-primary-dark truncate flex-1">{title}</h1>

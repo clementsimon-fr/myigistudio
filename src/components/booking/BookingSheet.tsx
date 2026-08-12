@@ -1001,7 +1001,7 @@ export default function BookingSheet({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="w-full gap-1.5"
+                    className="w-full gap-1.5 border-accent bg-accent text-accent-foreground hover:bg-accent/90 hover:text-accent-foreground"
                     onClick={() => setPickerOpen(true)}
                   >
                     <Sparkles className="h-3.5 w-3.5" /> Ajouter des cartes ou utiliser un bon cadeau
@@ -1260,13 +1260,13 @@ function CartPickerModal({
           {stillNeeded > 0 && isYoga && isConnected && accountCardsLeft > 0 && (
             <button
               onClick={handleExistingCard}
-              className="w-full flex items-center gap-3 rounded-lg border border-primary/50 bg-primary/5 p-3 text-left transition-all hover:shadow-sm hover:bg-primary/10"
+              className="w-full flex items-center gap-3 rounded-lg border border-accent bg-accent text-accent-foreground p-3 text-left transition-all hover:shadow-sm hover:bg-accent/90"
             >
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">Utiliser une de mes cartes</p>
-                <p className="text-xs text-muted-foreground">Déjà réglées</p>
+                <p className="text-xs opacity-80">Déjà réglées</p>
               </div>
-              <p className="text-sm font-medium text-muted-foreground shrink-0">{accountCardsLeft} cours dispo.</p>
+              <p className="text-sm font-medium opacity-80 shrink-0">{accountCardsLeft} cours dispo.</p>
             </button>
           )}
 
