@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Lock, Save, Loader2, LogOut, MessageCircle, Check, BellRing } from "lucide-react";
+import { Mail, Lock, Save, Loader2, LogOut, MessageCircle, Check, BellRing, Smartphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { saveSiteSettings } from "@/hooks/useSiteSettings";
@@ -20,6 +20,14 @@ interface FeedbackRow {
   author_role: string | null;
   status: string;
   created_at: string;
+}
+
+// L'API Push exige un Uint8Array pour applicationServerKey, pas la chaîne base64url brute.
+function urlBase64ToUint8Array(base64Url: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64Url.length % 4)) % 4);
+  const base64 = (base64Url + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
 
 const PRIORITY_LABELS: Record<string, { label: string; className: string }> = {
@@ -55,6 +63,77 @@ export default function AdminParametres() {
     await saveSiteSettings([{ key: "notification_email", value: notificationEmail.trim() }]);
     setSavingNotificationEmail(false);
     toast({ title: "Email de notification enregistré ✓" });
+  };
+
+  // --- Notifications push (app installée sur l'écran d'accueil) ---
+  const pushSupported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  // iOS n'expose l'API Push que depuis l'app lancée en plein écran (ajoutée à l'écran d'accueil),
+  // jamais depuis un onglet Safari classique — (window.navigator as any).standalone est la
+  // propriété historique iOS, display-mode: standalone couvre Android/desktop.
+  const isStandalone = typeof window !== "undefined" && (
+    window.matchMedia?.("(display-mode: standalone)").matches
+    || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
+  const [pushSubscribed, setPushSubscribed] = useState<boolean | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+
+  useEffect(() => {
+    if (!pushSupported) { setPushSubscribed(false); return; }
+    navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => setPushSubscribed(!!sub))
+      .catch(() => setPushSubscribed(false));
+  }, [pushSupported]);
+
+  const handleEnablePush = async () => {
+    if (!user) return;
+    setPushBusy(true);
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        toast({ title: "Notifications refusées", description: "Autorisez les notifications dans les réglages iOS pour cette app si vous changez d'avis.", variant: "destructive" });
+        return;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      const publicKey = import.meta.env.VITE_WEBPUSH_PUBLIC_KEY as string | undefined;
+      if (!publicKey) throw new Error("Clé publique de notification non configurée.");
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+      const json = sub.toJSON();
+      const { error } = await supabase.from("push_subscriptions").upsert({
+        user_id: user.id,
+        endpoint: json.endpoint!,
+        p256dh: json.keys!.p256dh,
+        auth: json.keys!.auth,
+      } as any, { onConflict: "endpoint" });
+      if (error) throw error;
+      setPushSubscribed(true);
+      toast({ title: "Notifications activées ✓" });
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e?.message || "Impossible d'activer les notifications.", variant: "destructive" });
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  const handleDisablePush = async () => {
+    setPushBusy(true);
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+        await sub.unsubscribe();
+      }
+      setPushSubscribed(false);
+      toast({ title: "Notifications désactivées" });
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e?.message, variant: "destructive" });
+    } finally {
+      setPushBusy(false);
+    }
   };
 
   const loadFeedback = async () => {
@@ -164,6 +243,31 @@ export default function AdminParametres() {
           <Button className="gap-1.5" onClick={handleSaveNotificationEmail} disabled={savingNotificationEmail}>
             {savingNotificationEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Enregistrer
           </Button>
+
+          <div className="border-t pt-4 space-y-2">
+            <p className="text-sm font-medium flex items-center gap-1.5">
+              <Smartphone className="h-3.5 w-3.5" /> Notifications sur cet appareil
+            </p>
+            {!isStandalone ? (
+              <p className="text-xs text-muted-foreground">
+                Ajoutez d'abord l'app à votre écran d'accueil (Safari → Partager → « Sur l'écran d'accueil »),
+                puis ouvrez-la depuis l'icône pour activer les notifications ici.
+              </p>
+            ) : !pushSupported ? (
+              <p className="text-xs text-muted-foreground">Les notifications ne sont pas prises en charge sur cet appareil.</p>
+            ) : pushSubscribed ? (
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary-dark border-primary/20">Activées</Badge>
+                <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={handleDisablePush} disabled={pushBusy}>
+                  {pushBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Désactiver"}
+                </Button>
+              </div>
+            ) : (
+              <Button size="sm" className="gap-1.5" onClick={handleEnablePush} disabled={pushBusy}>
+                {pushBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <BellRing className="h-4 w-4" />} Activer les notifications sur cet appareil
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="rounded-xl border bg-card p-6 space-y-4">

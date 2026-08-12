@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as webpush from "jsr:@negrel/webpush";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -61,6 +62,46 @@ async function sendBrevoEmail(apiKey: string, params: {
   } catch (err) {
     return { ok: false, error: (err as Error).message };
   }
+}
+
+// Envoie une notification push (app installée sur l'écran d'accueil) à tous les appareils
+// abonnés (aujourd'hui : l'admin uniquement, via Admin → Paramètres). Nettoie au passage les
+// abonnements expirés (410 Gone — l'utilisateur a désinstallé l'app ou révoqué la permission).
+async function sendWebPush(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  contactEmail: string,
+  title: string,
+  body: string,
+): Promise<{ sent: number; failed: number }> {
+  const vapidJson = Deno.env.get("WEBPUSH_VAPID_KEYS_JSON");
+  if (!vapidJson) return { sent: 0, failed: 0 };
+
+  const { data: subs } = await supabaseAdmin.from("push_subscriptions").select("id, endpoint, p256dh, auth");
+  if (!subs || subs.length === 0) return { sent: 0, failed: 0 };
+
+  const vapidKeys = await webpush.importVapidKeys(JSON.parse(vapidJson), { extractable: false });
+  const appServer = await webpush.ApplicationServer.new({
+    contactInformation: `mailto:${contactEmail}`,
+    vapidKeys,
+  });
+
+  let sent = 0, failed = 0;
+  for (const sub of subs as any[]) {
+    const subscriber = appServer.subscribe({
+      endpoint: sub.endpoint,
+      keys: { p256dh: sub.p256dh, auth: sub.auth },
+    });
+    try {
+      await subscriber.pushTextMessage(JSON.stringify({ title, body, url: "/admin" }), {});
+      sent++;
+    } catch (err) {
+      failed++;
+      if (err instanceof webpush.PushMessageError && err.isGone()) {
+        await supabaseAdmin.from("push_subscriptions").delete().eq("id", sub.id);
+      }
+    }
+  }
+  return { sent, failed };
 }
 
 Deno.serve(async (req) => {
@@ -134,6 +175,14 @@ Deno.serve(async (req) => {
         </div>
       `,
     });
+
+    const pushResult = await sendWebPush(
+      admin,
+      adminEmail,
+      "Nouvelle réservation",
+      `${client_name} — ${activity_name}`,
+    ).catch(() => ({ sent: 0, failed: 0 }));
+    (results as any).push = pushResult;
 
     return new Response(JSON.stringify(results), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
