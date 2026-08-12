@@ -39,6 +39,13 @@ Deno.serve(async (req) => {
         },
       ],
       return_url: returnUrl,
+      // Sans ce champ, Stripe redirige TOUJOURS la page entière vers return_url après paiement
+      // (valeur par défaut "always"), et l'appli n'ayant aucun code pour gérer ce retour, la
+      // page se recharge silencieusement sans jamais appeler onComplete côté client — donc sans
+      // jamais écrire la réservation en base. "if_required" ne redirige que si le moyen de
+      // paiement l'exige (ex. certains virements) ; une carte bancaire reste dans la modale
+      // embarquée et déclenche onComplete normalement. Cause racine du bug du 12/08/2026.
+      redirect_on_completion: "if_required",
     });
 
     return new Response(JSON.stringify({ client_secret: session.client_secret, session_id: session.id }), {
