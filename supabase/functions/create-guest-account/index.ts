@@ -17,13 +17,19 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { email, first_name, last_name, phone, password }: Payload = await req.json();
-    if (!email) {
+    const { email: rawEmail, first_name, last_name, phone, password }: Payload = await req.json();
+    if (!rawEmail) {
       return new Response(JSON.stringify({ error: "email requis" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // Normalisé en minuscules : "Jean@Mail.com" et "jean@mail.com" doivent rester la même
+    // personne, sinon on lui recrée un 2e compte vide à chaque casse différente saisie.
+    const email = rawEmail.trim().toLowerCase();
+    // ilike traite % et _ comme des jokers : un email les contenant (rare mais valide,
+    // ex. "a_b@mail.com") ne doit pas se comporter comme un motif de recherche.
+    const emailLikeSafe = email.replace(/[%_\\]/g, (c) => "\\" + c);
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -39,7 +45,7 @@ Deno.serve(async (req) => {
     const { data: existing } = await admin
       .from("client_profiles")
       .select("id")
-      .eq("email", email)
+      .ilike("email", emailLikeSafe)
       .maybeSingle();
 
     if (existing) {
