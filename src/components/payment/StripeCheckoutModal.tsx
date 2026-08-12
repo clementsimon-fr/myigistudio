@@ -61,17 +61,30 @@ export default function StripeCheckoutModal({ open, onClose, onSuccess, amount, 
     return {
       clientSecret,
       onComplete: async () => {
+        // eslint-disable-next-line no-console
+        console.log("[RESA] stripe:onComplete:fired", { sessionId: sessionIdRef.current, alreadyVerifying: verifyingRef.current });
         if (verifyingRef.current) return;
         verifyingRef.current = true;
         const sessionId = sessionIdRef.current;
-        const { data } = await supabase.functions.invoke("verify-checkout-session", {
-          body: { session_id: sessionId },
-        });
-        verifyingRef.current = false;
-        if (data?.paid) {
-          onSuccess();
-        } else {
-          toast({ title: "Paiement non confirmé", description: "Merci de réessayer.", variant: "destructive" });
+        try {
+          const { data, error } = await supabase.functions.invoke("verify-checkout-session", {
+            body: { session_id: sessionId },
+          });
+          // eslint-disable-next-line no-console
+          console.log("[RESA] stripe:verify-checkout-session:result", { data, error: error?.message });
+          verifyingRef.current = false;
+          if (data?.paid) {
+            // eslint-disable-next-line no-console
+            console.log("[RESA] stripe:calling onSuccess");
+            onSuccess();
+          } else {
+            toast({ title: "Paiement non confirmé", description: "Merci de réessayer.", variant: "destructive" });
+          }
+        } catch (err) {
+          verifyingRef.current = false;
+          // eslint-disable-next-line no-console
+          console.error("[RESA] stripe:onComplete:threw", err);
+          toast({ title: "Paiement non confirmé", description: "Une erreur est survenue pendant la vérification du paiement. Merci de réessayer.", variant: "destructive" });
         }
       },
     };

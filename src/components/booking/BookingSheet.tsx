@@ -362,8 +362,17 @@ export default function BookingSheet({
   });
 
   // ---- Finalize ----
+  // Traçabilité temporaire (à retirer une fois le bug de réservation confirmé résolu) : chaque
+  // checkpoint logue dans la console pour savoir précisément où l'exécution s'arrête si un
+  // paiement Stripe n'aboutit pas à une réservation visible en admin.
+  const trace = (step: string, extra?: unknown) => {
+    // eslint-disable-next-line no-console
+    console.log(`[RESA] ${step}`, extra ?? "");
+  };
+
   const finalize = async () => {
-    if (!selected || finalizing) return;
+    trace("finalize:start", { hasSelected: !!selected, finalizing });
+    if (!selected || finalizing) { trace("finalize:abort-guard"); return; }
     setFinalizing(true);
     try {
     // Garde-fou : une date passée ne doit jamais pouvoir être réservée, même si la liste des
@@ -374,10 +383,12 @@ export default function BookingSheet({
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     })();
     if (selected.date < todayStr) {
+      trace("finalize:date-passed", { selectedDate: selected.date, todayStr });
       toast({ title: "Cette date n'est plus disponible", description: "Merci de choisir une date à venir.", variant: "destructive" });
       setStep(1);
       return;
     }
+    trace("finalize:date-ok");
 
     // Vérification des places au moment du paiement — le nombre affiché à l'étape 1 peut être
     // périmé si quelqu'un d'autre a réservé entre-temps ; on relit spots_left en base juste
@@ -404,6 +415,7 @@ export default function BookingSheet({
       }
       for (const w of wsRows as { id: string; spots_left: number }[]) workshopSpotsLeftById[w.id] = w.spots_left;
     }
+    trace("finalize:spots-ok", { requiredSpots, courseSchedSpotsLeft, workshopSpotsLeftById });
 
     // Revalidation des bons cadeaux juste avant paiement : la vérification faite à l'ajout au
     // panier peut être périmée (code utilisé ailleurs entre-temps, ou expiré pendant que la
@@ -426,6 +438,8 @@ export default function BookingSheet({
       }
     }
 
+    trace("finalize:vouchers-ok", { count: cart.filter((ci) => ci.method.kind === "voucher").length });
+
     const name = course?.name || workshop?.name || "";
 
     // Invitée sans session : le compte se crée silencieusement au moment du paiement,
@@ -434,6 +448,7 @@ export default function BookingSheet({
     const clientName = session ? connectedName : makeDisplayName(participants[0]?.name || "", guestLastName) || participants[0]?.name || "Invité";
     const accountEmail = guestEmail.trim();
     let accountCreationFailed = false;
+    trace("finalize:account-check", { hasUserId: !!userId, accountEmail });
     if (!userId && accountEmail) {
       try {
         const { data, error } = await supabase.functions.invoke("create-guest-account", {
@@ -442,6 +457,7 @@ export default function BookingSheet({
             phone: guestPhone.trim(), password: guestPassword.trim() || undefined,
           },
         });
+        trace("finalize:create-guest-account:result", { error: error?.message, hasUserId: !!data?.user_id });
         if (!error && data?.user_id) {
           userId = data.user_id;
           // Le compte vient d'être créé : on connecte la cliente tout de suite avec le mot de
@@ -449,13 +465,15 @@ export default function BookingSheet({
           // réservations dans la foulée.
           const passwordToUse = guestPassword.trim() || data.password;
           if (passwordToUse) {
-            await supabase.auth.signInWithPassword({ email: accountEmail, password: passwordToUse });
+            const { error: signInErr } = await supabase.auth.signInWithPassword({ email: accountEmail, password: passwordToUse });
+            trace("finalize:auto-signin:result", { error: signInErr?.message });
           }
         } else if (error) {
           accountCreationFailed = true;
         }
-      } catch {
+      } catch (err) {
         // Edge function indisponible : la réservation continue quand même, sans compte lié.
+        trace("finalize:create-guest-account:threw", String(err));
         accountCreationFailed = true;
       }
     }
@@ -465,6 +483,7 @@ export default function BookingSheet({
         description: "Votre réservation continue, mais nous n'avons pas pu créer votre compte. Contactez-nous si besoin.",
       });
     }
+    trace("finalize:account-ok", { userId });
 
     // Cartes existantes utilisées : décrémenter la carte dont la validité expire le plus tôt
     // en premier, pour ne pas laisser une cliente perdre des séances sur une carte qui va
@@ -486,6 +505,7 @@ export default function BookingSheet({
         remainingToConsume -= consume;
       }
     }
+    trace("finalize:existing-cards-ok", { existingCardUses });
 
     // Formules achetées : créditer une nouvelle carte, déjà partiellement utilisée par les participants assignés.
     for (const ci of cart) {
@@ -505,6 +525,7 @@ export default function BookingSheet({
         expires_at: formatLocalDateStr(expiresAt),
       } as any);
     }
+    trace("finalize:formulas-ok");
 
     // Un même identifiant relie toutes les lignes d'un même paiement (une ou plusieurs dates
     // liées, un ou plusieurs participants) — permet de retrouver la liste complète des
@@ -554,6 +575,7 @@ export default function BookingSheet({
     // succès — sans ça elle repart persuadée d'être inscrite alors que rien n'a été enregistré,
     // et la réservation n'apparaît nulle part côté admin (notifications, agenda, clients).
     let reservationError: string | null = null;
+    trace("finalize:insert-attempt", { branch: course ? "course" : (selected.linkedWorkshopIds && selected.linkedWorkshopIds.length > 1) ? "multi-workshop" : "workshop" });
     if (course) {
       const { error } = await supabase.from("reservations").insert(participantRows(selected.date, null) as any);
       reservationError = error?.message || null;
@@ -580,6 +602,7 @@ export default function BookingSheet({
         if (left != null) await supabase.from("workshops").update({ spots_left: Math.max(0, left - requiredSpots) }).eq("id", selected.scheduleId);
       }
     }
+    trace("finalize:insert-result", { reservationError });
 
     if (reservationError) {
       toast({
@@ -603,8 +626,9 @@ export default function BookingSheet({
         dates: bookingDates,
         participants_count: participants.length,
       },
-    }).catch(() => { /* échec d'envoi non bloquant, voir logs de la fonction si besoin */ });
+    }).catch((err) => { trace("finalize:notification-invoke:threw", String(err)); /* échec d'envoi non bloquant, voir logs de la fonction si besoin */ });
 
+    trace("finalize:success");
     setSuccessOpen(true);
     } catch (err) {
       // Filet de sécurité : sans ce catch, toute exception inattendue ici (réseau, bug) était
