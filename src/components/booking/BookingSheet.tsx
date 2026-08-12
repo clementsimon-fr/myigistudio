@@ -606,6 +606,18 @@ export default function BookingSheet({
     }).catch(() => { /* échec d'envoi non bloquant, voir logs de la fonction si besoin */ });
 
     setSuccessOpen(true);
+    } catch (err) {
+      // Filet de sécurité : sans ce catch, toute exception inattendue ici (réseau, bug) était
+      // avalée en silence — le paiement Stripe venait d'être confirmé et la modale fermée, donc
+      // la cliente ne voyait plus RIEN se passer, sans réservation en base ni message d'erreur.
+      // Voir l'incident du 12/08/2026 : paiements test Stripe passés, aucune réservation créée,
+      // aucun email, aucune trace — cause racine probable de ce bug.
+      console.error("[BookingSheet.finalize] Échec inattendu après paiement :", err);
+      toast({
+        title: "La réservation n'a pas pu être finalisée",
+        description: "Le paiement a peut-être été accepté mais la réservation n'a pas été enregistrée. Merci de nous contacter avec l'heure de votre tentative pour qu'on vérifie.",
+        variant: "destructive",
+      });
     } finally {
       setFinalizing(false);
     }

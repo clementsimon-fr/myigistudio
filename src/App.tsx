@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import RequireAdmin from "@/components/auth/RequireAdmin";
 import FeedbackButton from "@/components/FeedbackButton";
+import TesterGuideBanner from "@/components/TesterGuideBanner";
 import ScrollToTop from "@/components/ScrollToTop";
 import Discover from "./pages/Discover";
 import Login from "./pages/Login";
@@ -37,6 +38,7 @@ const App = () => (
       <AuthProvider>
         <BrowserRouter>
           <ScrollToTop />
+          <TesterGuideBanner />
           <FeedbackButton />
           <Routes>
             <Route path="/" element={<Discover />} />
