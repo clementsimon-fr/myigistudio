@@ -590,6 +590,21 @@ export default function BookingSheet({
       return;
     }
 
+    // Notification email (client + admin) : best-effort, jamais bloquant — la réservation est
+    // déjà actée en base à ce stade, un souci d'envoi ne doit jamais remettre ça en cause.
+    const bookingDates = selected.linkedDates && selected.linkedDates.length > 1
+      ? selected.linkedDates.map((d) => ({ date: d, time: selected.time }))
+      : [{ date: selected.date, time: selected.time }];
+    supabase.functions.invoke("send-booking-notification", {
+      body: {
+        client_email: accountEmail || clientProfile?.email || user?.email || null,
+        client_name: clientName,
+        activity_name: name,
+        dates: bookingDates,
+        participants_count: participants.length,
+      },
+    }).catch(() => { /* échec d'envoi non bloquant, voir logs de la fonction si besoin */ });
+
     setSuccessOpen(true);
     } finally {
       setFinalizing(false);
