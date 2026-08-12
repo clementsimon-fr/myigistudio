@@ -26,6 +26,7 @@ const TARGET_FIELDS: Record<ImportType, { key: string; label: string; required?:
     { key: "date", label: "Date (AAAA-MM-JJ)", required: true },
     { key: "time", label: "Heure (HH:MM)", required: true },
     { key: "status", label: "Statut (confirmé/annulé)" },
+    { key: "instructor_name", label: "Intervenant (ajouté aux notes)" },
   ],
   cartes: [
     { key: "client_name", label: "Nom du client", required: true },
@@ -42,19 +43,27 @@ const TYPE_LABELS: Record<ImportType, string> = {
   cartes: "Cartes Yoga",
 };
 
-type WizardStep = "type" | "upload" | "mapping" | "preview" | "done";
+type WizardStep = "type" | "activityKind" | "upload" | "mapping" | "preview" | "done";
+type ActivityKind = "course" | "workshop";
+
+// Normalise un libellé pour le rapprochement avec les fiches cours/ateliers existantes
+// (accents/espaces/casse varient selon l'export d'origine).
+const DIACRITICS_RE = new RegExp("[̀-ͯ]", "g");
+const normalizeName = (s: string) => s.trim().toLowerCase().normalize("NFD").replace(DIACRITICS_RE, "").replace(/\s+/g, " ");
 
 export default function ImportWizard() {
   const { toast } = useToast();
   const [step, setStep] = useState<WizardStep>("type");
   const [importType, setImportType] = useState<ImportType | null>(null);
+  const [activityKind, setActivityKind] = useState<ActivityKind | null>(null);
   const [fileName, setFileName] = useState("");
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<string[][]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [importing, setImporting] = useState(false);
-  const [report, setReport] = useState<{ created: number; skipped: number; errors: number } | null>(null);
+  const [report, setReport] = useState<{ created: number; skipped: number; errors: number; linked?: number } | null>(null);
   const [existingKeys, setExistingKeys] = useState<Set<string>>(new Set());
+  const [catalogMap, setCatalogMap] = useState<Map<string, string>>(new Map());
 
   const fields = importType ? TARGET_FIELDS[importType] : [];
 
@@ -98,20 +107,32 @@ export default function ImportWizard() {
       });
       setExistingKeys(keys);
     }
+    if (importType === "reservations" && activityKind) {
+      // Rapproche l'intitulé importé ("activity_name") des fiches cours/ateliers déjà en base,
+      // pour rattacher la réservation (course_id / workshop_id) au lieu de rester en texte libre.
+      const table = activityKind === "course" ? "courses" : "workshops";
+      const { data } = await supabase.from(table).select("id, name");
+      const map = new Map<string, string>();
+      (data || []).forEach((c: { id: string; name: string }) => map.set(normalizeName(c.name), c.id));
+      setCatalogMap(map);
+    }
     setStep("preview");
   };
 
   const isRowValid = (row: Record<string, string>) => fields.every((f) => !f.required || (row[f.key] && row[f.key].length > 0));
   const isDuplicate = (row: Record<string, string>) =>
     importType === "clients" && ((row.email && existingKeys.has(row.email.toLowerCase())) || (row.phone && existingKeys.has(row.phone)));
+  const catalogMatch = (row: Record<string, string>) =>
+    importType === "reservations" && row.activity_name ? catalogMap.get(normalizeName(row.activity_name)) : undefined;
 
   const rowsMapped = mappedRows();
   const validCount = rowsMapped.filter(isRowValid).length;
   const duplicateCount = rowsMapped.filter((r) => isRowValid(r) && isDuplicate(r)).length;
+  const linkedCount = rowsMapped.filter((r) => isRowValid(r) && !isDuplicate(r) && catalogMatch(r)).length;
 
   const runImport = async () => {
     setImporting(true);
-    let created = 0, skipped = 0, errors = 0;
+    let created = 0, skipped = 0, errors = 0, linked = 0;
     const toInsert = rowsMapped.filter((r) => isRowValid(r) && !isDuplicate(r));
     skipped = rowsMapped.length - toInsert.length;
 
@@ -129,14 +150,20 @@ export default function ImportWizard() {
           };
         }
         if (importType === "reservations") {
+          const matchedId = catalogMatch(row);
+          if (matchedId) linked++;
+          const notes = row.instructor_name ? `Intervenant (import) : ${row.instructor_name}` : "";
           return {
             client_name: row.client_name,
             activity_name: row.activity_name,
-            activity_type: "course",
+            activity_type: activityKind || "course",
+            course_id: activityKind === "course" ? matchedId || null : null,
+            workshop_id: activityKind === "workshop" ? matchedId || null : null,
             date: row.date,
             time: row.time,
             participants: 1,
             status: row.status || "confirmé",
+            notes,
           };
         }
         return {
@@ -154,7 +181,7 @@ export default function ImportWizard() {
     }
 
     setImporting(false);
-    setReport({ created, skipped, errors });
+    setReport({ created, skipped, errors, linked });
     setStep("done");
     toast({ title: "Import terminé", description: `${created} ligne(s) importée(s)` });
   };
@@ -162,11 +189,13 @@ export default function ImportWizard() {
   const reset = () => {
     setStep("type");
     setImportType(null);
+    setActivityKind(null);
     setFileName("");
     setHeaders([]);
     setRows([]);
     setMapping({});
     setReport(null);
+    setCatalogMap(new Map());
   };
 
   return (
@@ -179,7 +208,7 @@ export default function ImportWizard() {
             {(Object.keys(TYPE_LABELS) as ImportType[]).map((t) => (
               <button
                 key={t}
-                onClick={() => { setImportType(t); setStep("upload"); }}
+                onClick={() => { setImportType(t); setStep(t === "reservations" ? "activityKind" : "upload"); }}
                 className="rounded-xl border bg-card p-4 text-left hover:border-primary/40 hover:bg-accent/40 transition-colors"
               >
                 <p className="font-medium text-sm">{TYPE_LABELS[t]}</p>
@@ -189,10 +218,44 @@ export default function ImportWizard() {
         </div>
       )}
 
+      {/* Step: activity kind (reservations only) — détermine activity_type + la table à rapprocher */}
+      {step === "activityKind" && importType === "reservations" && (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Ces réservations concernent des cours récurrents ou des ateliers ponctuels ? (un fichier = un seul type ; si votre export
+            mélange les deux, séparez-le d'abord en deux fichiers)
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              onClick={() => { setActivityKind("course"); setStep("upload"); }}
+              className="rounded-xl border bg-card p-4 text-left hover:border-primary/40 hover:bg-accent/40 transition-colors"
+            >
+              <p className="font-medium text-sm">Cours récurrent</p>
+              <p className="text-xs text-muted-foreground mt-1">Yoga, Pilates… (ex. export SimplyBook)</p>
+            </button>
+            <button
+              onClick={() => { setActivityKind("workshop"); setStep("upload"); }}
+              className="rounded-xl border bg-card p-4 text-left hover:border-primary/40 hover:bg-accent/40 transition-colors"
+            >
+              <p className="font-medium text-sm">Atelier ponctuel</p>
+              <p className="text-xs text-muted-foreground mt-1">Poterie, peinture sur céramique… (ex. export Calendly)</p>
+            </button>
+          </div>
+          <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setStep("type")}>
+            <ArrowLeft className="h-4 w-4" /> Retour
+          </Button>
+        </div>
+      )}
+
       {/* Step: upload */}
       {step === "upload" && importType && (
         <div className="space-y-4">
-          <Badge variant="outline">{TYPE_LABELS[importType]}</Badge>
+          <div className="flex gap-2">
+            <Badge variant="outline">{TYPE_LABELS[importType]}</Badge>
+            {importType === "reservations" && activityKind && (
+              <Badge variant="outline">{activityKind === "course" ? "Cours récurrent" : "Atelier ponctuel"}</Badge>
+            )}
+          </div>
           <div className="rounded-xl border border-dashed bg-muted/20 p-8 text-center space-y-3">
             <Upload className="h-6 w-6 text-muted-foreground mx-auto" />
             <p className="text-sm text-muted-foreground">Sélectionnez un fichier CSV exporté (Calendly, SimplyBook, ou autre).</p>
@@ -203,7 +266,12 @@ export default function ImportWizard() {
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
             />
           </div>
-          <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setStep("type")}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setStep(importType === "reservations" ? "activityKind" : "type")}
+          >
             <ArrowLeft className="h-4 w-4" /> Retour
           </Button>
         </div>
@@ -254,6 +322,11 @@ export default function ImportWizard() {
             {duplicateCount > 0 && (
               <Badge className="bg-accent/20 text-accent-foreground border-accent/30">{duplicateCount} doublon(s) détecté(s)</Badge>
             )}
+            {importType === "reservations" && (
+              <Badge variant="outline">
+                {linkedCount} rattachée(s) à {activityKind === "course" ? "un cours" : "un atelier"} existant · {validCount - duplicateCount - linkedCount} en texte libre
+              </Badge>
+            )}
           </div>
           <div className="rounded-xl border bg-card overflow-x-auto max-h-80 overflow-y-auto">
             <Table>
@@ -300,8 +373,9 @@ export default function ImportWizard() {
         <div className="rounded-xl border bg-card p-6 text-center space-y-3">
           <CheckCircle2 className="h-8 w-8 text-primary-dark mx-auto" />
           <p className="font-medium">Import terminé</p>
-          <div className="flex justify-center gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
             <span>{report.created} créée(s)</span>
+            {typeof report.linked === "number" && <span>{report.linked} rattachée(s) au catalogue</span>}
             <span>{report.skipped} ignorée(s)</span>
             {report.errors > 0 && (
               <span className="text-destructive flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5" /> {report.errors} erreur(s)</span>
