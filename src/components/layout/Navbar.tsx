@@ -80,11 +80,9 @@ export default function Navbar() {
                   <Settings className="h-4 w-4" /> Espace Admin
                 </button>
               )}
-              {!isAdminLike && (
-                <button onClick={handleLogout} className="p-2 text-destructive" aria-label="Déconnexion">
-                  <LogOut className="h-4 w-4" />
-                </button>
-              )}
+              {/* Déconnexion volontairement absente d'ici : sur mobile elle doit toujours être
+                  tout en bas de l'écran, jamais dans la barre du haut — voir le bouton flottant
+                  fixé en bas de page, plus bas dans ce composant. */}
             </div>
           </>
         ) : (
@@ -97,6 +95,17 @@ export default function Navbar() {
           </Link>
         )}
       </div>
+
+      {/* Déconnexion (client, mobile) : bouton discret fixé tout en bas de l'écran — jamais en
+          haut. Placé à gauche pour ne pas chevaucher le bouton Feedback (fixé en bas à droite). */}
+      {isLoggedIn && isClient && (
+        <button
+          onClick={handleLogout}
+          className="md:hidden fixed bottom-4 left-4 z-30 flex items-center gap-1.5 bg-card border text-destructive rounded-full px-3 py-2.5 shadow-lg text-xs font-medium"
+        >
+          <LogOut className="h-3.5 w-3.5" /> Déconnexion
+        </button>
+      )}
     </nav>
   );
 }

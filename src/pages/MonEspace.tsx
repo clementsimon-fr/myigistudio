@@ -9,7 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { CalendarDays, CreditCard, Clock, Loader2, User, XCircle, ArrowRight, Bell, MapPin, ShoppingCart, LogOut, ChevronDown, RefreshCw, Gift, Receipt } from "lucide-react";
+import { CalendarDays, CalendarPlus, CreditCard, Clock, Loader2, User, XCircle, ArrowRight, Bell, MapPin, ShoppingCart, LogOut, ChevronDown, RefreshCw, Gift, Receipt } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -109,6 +109,8 @@ export default function MonEspace() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
   const [resFilter, setResFilter] = useState("all");
+  const [reservationsListOpen, setReservationsListOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [buySheetOpen, setBuySheetOpen] = useState(false);
   const [buyStep, setBuyStep] = useState<1 | 2>(1);
   const [viewingReservation, setViewingReservation] = useState<Reservation | null>(null);
@@ -199,6 +201,12 @@ export default function MonEspace() {
   const potteryRes = confirmedRes.filter(r => r.activity_type === "workshop" && isPotteryActivity(r.activity_name));
   const atelierRes = confirmedRes.filter(r => r.activity_type === "workshop" && !potteryRes.includes(r));
   const filteredRes = resFilter === "all" ? confirmedRes : resFilter === "yoga" ? yogaRes : resFilter === "poterie" ? potteryRes : atelierRes;
+
+  // Réservation la plus proche à venir — reservations est trié desc, donc on prend le minimum
+  // parmi les dates futures plutôt que reservations[0].
+  const nextReservation = confirmedRes
+    .filter(r => r.date >= todayLocalStr())
+    .sort((a, b) => a.date.localeCompare(b.date))[0] || null;
 
   const saveProfile = async () => {
     if (!user) return;
@@ -402,87 +410,94 @@ export default function MonEspace() {
         <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
       ) : (
         <>
-          {/* ─── BONJOUR + KPI ─── */}
+          {/* ─── BONJOUR ─── */}
           <div className="max-w-3xl mb-6">
             <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-accent/10 border p-5 md:p-6">
               <div className="flex items-center gap-3">
                 <div className="h-14 w-14 rounded-full bg-white/70 backdrop-blur flex items-center justify-center">
                   <User className="h-7 w-7 text-primary-dark" />
                 </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Bonjour</p>
-                  <h2 className="text-xl font-display font-semibold text-primary-dark">{CLIENT_NAME}</h2>
-                </div>
-              </div>
-
-              {/* 2 stats */}
-              <div className="grid grid-cols-2 gap-2 md:gap-3 mt-5">
-                <div className="rounded-xl bg-white/70 backdrop-blur p-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Cours Yoga</p>
-                  <p className="text-2xl font-bold text-primary-dark mt-0.5">{totalCredits}</p>
-                  <p className="text-[10px] text-muted-foreground">restant{totalCredits > 1 ? "s" : ""}</p>
-                </div>
-                <div className="rounded-xl bg-white/70 backdrop-blur p-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">À venir</p>
-                  <p className="text-2xl font-bold text-primary-dark mt-0.5">
-                    {confirmedRes.filter(r => r.date >= todayLocalStr()).length}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">réservation(s)</p>
-                </div>
+                <p className="text-xl font-display font-semibold text-primary-dark">Bonjour</p>
               </div>
             </div>
           </div>
 
           {/* ─── RÉSERVATIONS ─── */}
-          <div className="max-w-3xl space-y-4 mb-8">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-display font-semibold text-primary-dark">Mes réservations</h2>
+          <div className="max-w-3xl rounded-xl border bg-card p-5 space-y-4 mb-8">
+              <h2 className="text-lg font-display font-semibold text-primary-dark">Mes réservations</h2>
+              <p className="text-sm text-muted-foreground">
+                {nextReservation ? (
+                  <>Prochaine réservation : <strong className="text-foreground">{new Date(nextReservation.date + "T00:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</strong></>
+                ) : (
+                  "Aucune réservation à venir."
+                )}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  className="flex-1 gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90"
+                  onClick={() => navigate("/")}
+                >
+                  <CalendarPlus className="h-4 w-4" /> Faire une réservation
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-1.5"
+                  onClick={() => setReservationsListOpen(v => !v)}
+                >
+                  <ChevronDown className={`h-4 w-4 transition-transform ${reservationsListOpen ? "rotate-180" : ""}`} />
+                  Voir mes réservations
+                </Button>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  { v: "all", l: `Toutes (${confirmedRes.length})` },
-                  { v: "yoga", l: `Yoga (${yogaRes.length})` },
-                  { v: "poterie", l: `Poterie (${potteryRes.length})` },
-                ].map(f => (
-                  <Button key={f.v} size="sm" variant={resFilter === f.v ? "default" : "outline"} className="rounded-full text-xs" onClick={() => setResFilter(f.v)}>{f.l}</Button>
-                ))}
-              </div>
-              {filteredRes.length === 0 ? (
-                <div className="text-center py-12 space-y-3">
-                  <CalendarDays className="h-10 w-10 text-muted-foreground/40 mx-auto" />
-                  <p className="text-sm text-muted-foreground">Aucune réservation dans cette catégorie.</p>
-                  <Button variant="outline" size="sm" onClick={() => navigate("/?view=planning")}>Voir le planning</Button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {filteredRes.map(r => {
-                    const isConfirmed = r.status === "confirmé";
-                    const todayStr = todayLocalStr();
-                    const isFuture = r.date >= todayStr;
-                    return (
-                      <div key={r.id} className="flex items-center gap-3 rounded-lg border bg-card p-3">
-                        <div className="text-center min-w-[40px]">
-                          <p className="text-base font-bold text-primary-dark">{new Date(r.date + "T00:00:00").getDate()}</p>
-                          <p className="text-[10px] text-muted-foreground uppercase">{new Date(r.date + "T00:00:00").toLocaleDateString("fr-FR", { month: "short" })}</p>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm">{r.activity_name}</p>
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" /> {r.time}{r.end_time ? ` - ${r.end_time}` : ""}
-                            {r.participants > 1 && <span>· {r.participants} pers.</span>}
+
+              {reservationsListOpen && (
+                <div className="space-y-3 pt-2 border-t">
+                  <div className="flex flex-wrap gap-1.5 pt-3">
+                    {[
+                      { v: "all", l: `Toutes (${confirmedRes.length})` },
+                      { v: "yoga", l: `Yoga (${yogaRes.length})` },
+                      { v: "poterie", l: `Poterie (${potteryRes.length})` },
+                    ].map(f => (
+                      <Button key={f.v} size="sm" variant={resFilter === f.v ? "default" : "outline"} className="rounded-full text-xs" onClick={() => setResFilter(f.v)}>{f.l}</Button>
+                    ))}
+                  </div>
+                  {filteredRes.length === 0 ? (
+                    <div className="text-center py-12 space-y-3">
+                      <CalendarDays className="h-10 w-10 text-muted-foreground/40 mx-auto" />
+                      <p className="text-sm text-muted-foreground">Aucune réservation dans cette catégorie.</p>
+                      <Button variant="outline" size="sm" onClick={() => navigate("/?view=planning")}>Voir le planning</Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {filteredRes.map(r => {
+                        const isConfirmed = r.status === "confirmé";
+                        const todayStr = todayLocalStr();
+                        const isFuture = r.date >= todayStr;
+                        return (
+                          <div key={r.id} className={`flex items-center gap-3 rounded-lg border p-3 ${isFuture ? "bg-card" : "bg-muted/50"}`}>
+                            <div className="text-center min-w-[40px]">
+                              <p className={`text-base font-bold ${isFuture ? "text-primary-dark" : "text-muted-foreground"}`}>{new Date(r.date + "T00:00:00").getDate()}</p>
+                              <p className="text-[10px] text-muted-foreground uppercase">{new Date(r.date + "T00:00:00").toLocaleDateString("fr-FR", { month: "short" })}</p>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm">{r.activity_name}</p>
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3" /> {r.time}{r.end_time ? ` - ${r.end_time}` : ""}
+                                {r.participants > 1 && <span>· {r.participants} pers.</span>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {isConfirmed && isFuture && (
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] gap-1" onClick={() => setViewingReservation(r)}>
+                                  <ArrowRight className="h-3 w-3" /> Accéder
+                                </Button>
+                              )}
+                              <Badge variant="outline" className={`text-[10px] ${statusColors[r.status] || ""}`}>{r.status}</Badge>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {isConfirmed && isFuture && (
-                            <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] gap-1" onClick={() => setViewingReservation(r)}>
-                              <ArrowRight className="h-3 w-3" /> Accéder
-                            </Button>
-                          )}
-                          <Badge variant="outline" className={`text-[10px] ${statusColors[r.status] || ""}`}>{r.status}</Badge>
-                        </div>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
           </div>
@@ -490,7 +505,7 @@ export default function MonEspace() {
           {/* ─── CARTES YOGA (méta-bloc unique) ─── */}
           <div className="max-w-3xl rounded-xl border bg-card p-5 space-y-6 mb-8">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-display font-semibold text-primary-dark">Mes cartes Yoga</h2>
+                <h2 className="text-lg font-display font-semibold text-primary-dark">Cartes de Yoga</h2>
                 <div className="h-14 w-14 rounded-full bg-[hsl(210,60%,55%)]/10 flex items-center justify-center">
                   <CreditCard className="h-7 w-7 text-[hsl(210,60%,55%)]" />
                 </div>
@@ -530,62 +545,58 @@ export default function MonEspace() {
                 )}
               </div>
 
-              {/* Achat via assistant en bas d'écran */}
-              <Button variant="outline" className="w-full gap-2" onClick={() => { setBuyStep(1); setBuySheetOpen(true); }}>
-                <ShoppingCart className="h-4 w-4" /> Ajouter cartes yoga
-              </Button>
+              {/* Achat via assistant en bas d'écran + historique regroupé (cartes passées + achats) */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button variant="outline" className="flex-1 gap-2" onClick={() => { setBuyStep(1); setBuySheetOpen(true); }}>
+                  <ShoppingCart className="h-4 w-4" /> Ajouter cartes yoga
+                </Button>
+                {(oldCards.length > 0 || purchaseEntries.length > 0) && (
+                  <Button variant="outline" className="flex-1 gap-2" onClick={() => setHistoryOpen(v => !v)}>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${historyOpen ? "rotate-180" : ""}`} />
+                    Voir historique
+                  </Button>
+                )}
+              </div>
 
-              {/* Anciennes cartes (rollup) */}
-              {oldCards.length > 0 && (
-                <Collapsible>
-                  <CollapsibleTrigger asChild>
-                    <button type="button" className="w-full flex items-center justify-between rounded-lg border bg-background/60 p-3 hover:bg-muted/30 transition-colors group">
-                      <span className="text-sm font-medium text-muted-foreground">Anciennes cartes ({oldCards.length})</span>
-                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-                    </button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-2 pt-2">
-                    {oldCards.map(card => (
-                      <div key={card.id} className="rounded-lg border bg-background/60 p-3 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium">{card.card_name}</p>
-                          <p className="text-[11px] text-muted-foreground">Expirée le {new Date(card.expires_at).toLocaleDateString("fr-FR")}</p>
+              {historyOpen && (
+                <div className="space-y-4 pt-1">
+                  {oldCards.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">Anciennes cartes ({oldCards.length})</p>
+                      {oldCards.map(card => (
+                        <div key={card.id} className="rounded-lg border bg-background/60 p-3 flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">{card.card_name}</p>
+                            <p className="text-[11px] text-muted-foreground">Expirée le {new Date(card.expires_at).toLocaleDateString("fr-FR")}</p>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{card.used_sessions}/{card.total_sessions} cours utilisés</span>
                         </div>
-                        <span className="text-xs text-muted-foreground">{card.used_sessions}/{card.total_sessions} cours utilisés</span>
-                      </div>
-                    ))}
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
+                      ))}
+                    </div>
+                  )}
 
-              {/* Purchase history — l'ensemble des transactions, pas que les cartes — en roll up */}
-              {purchaseEntries.length > 0 && (
-                <Collapsible>
-                  <CollapsibleTrigger asChild>
-                    <button type="button" className="w-full flex items-center justify-between rounded-lg border bg-background/60 p-3 hover:bg-muted/30 transition-colors group">
-                      <span className="text-sm font-medium text-primary-dark">Historique des achats ({purchaseEntries.length})</span>
-                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-                    </button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-2 pt-2">
-                    {purchaseEntries.map(entry => (
-                      <div key={entry.id} className="flex items-center gap-3 rounded-lg border bg-background p-3">
-                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                          {entry.icon === "card" && <CreditCard className="h-4 w-4 text-primary-dark" />}
-                          {entry.icon === "reservation" && <Receipt className="h-4 w-4 text-primary-dark" />}
-                          {entry.icon === "voucher" && <Gift className="h-4 w-4 text-primary-dark" />}
+                  {purchaseEntries.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-primary-dark">Achats ({purchaseEntries.length})</p>
+                      {purchaseEntries.map(entry => (
+                        <div key={entry.id} className="flex items-center gap-3 rounded-lg border bg-background p-3">
+                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                            {entry.icon === "card" && <CreditCard className="h-4 w-4 text-primary-dark" />}
+                            {entry.icon === "reservation" && <Receipt className="h-4 w-4 text-primary-dark" />}
+                            {entry.icon === "voucher" && <Gift className="h-4 w-4 text-primary-dark" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{entry.label}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">
+                              {entry.date ? new Date(entry.date).toLocaleDateString("fr-FR") : ""} · {entry.detail}
+                            </p>
+                          </div>
+                          {entry.amount > 0 && <span className="text-sm font-semibold shrink-0">{entry.amount} €</span>}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{entry.label}</p>
-                          <p className="text-[11px] text-muted-foreground truncate">
-                            {entry.date ? new Date(entry.date).toLocaleDateString("fr-FR") : ""} · {entry.detail}
-                          </p>
-                        </div>
-                        {entry.amount > 0 && <span className="text-sm font-semibold shrink-0">{entry.amount} €</span>}
-                      </div>
-                    ))}
-                  </CollapsibleContent>
-                </Collapsible>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
           </div>
 
@@ -702,15 +713,6 @@ export default function MonEspace() {
                   </Button>
                 </div>
 
-                {/* Déconnexion */}
-                <Button
-                  variant="outline"
-                  className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
-                  onClick={async () => { await signOut(); navigate("/"); }}
-                >
-                  <LogOut className="h-4 w-4" />
-                  Se déconnecter
-                </Button>
               </CollapsibleContent>
             </Collapsible>
           </div>
@@ -722,6 +724,19 @@ export default function MonEspace() {
               <p className="text-xs text-muted-foreground">Contactez Élodie pour toute demande personnalisée.</p>
             </div>
             <ContactElodieButton variant="outline" className="text-xs" />
+          </div>
+
+          {/* Déconnexion — toujours tout en bas de l'écran sur mobile, jamais en haut
+              (déplacée depuis l'en-tête de ClientLayout et depuis le bloc Profil replié). */}
+          <div className="max-w-3xl mt-4 mb-4">
+            <Button
+              variant="outline"
+              className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+              onClick={async () => { await signOut(); navigate("/"); }}
+            >
+              <LogOut className="h-4 w-4" />
+              Se déconnecter
+            </Button>
           </div>
         </>
 

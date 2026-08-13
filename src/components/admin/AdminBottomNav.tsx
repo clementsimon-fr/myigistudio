@@ -1,69 +1,39 @@
 import { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
-import { CalendarDays, Pencil, Users, ClipboardList, CreditCard, Gift, ScrollText, UserCircle, Settings2, Upload, Bell } from "lucide-react";
+import { Pencil, LogOut } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-
-const EDITION_GROUPS = [
-  {
-    label: "Organisation",
-    links: [
-      { title: "Fiches activités", url: "/admin/activites", icon: ClipboardList },
-      { title: "Intervenants", url: "/admin/intervenants", icon: UserCircle },
-    ],
-  },
-  {
-    label: "Offres",
-    links: [
-      { title: "Tarifs Yoga", url: "/admin/tarifs", icon: CreditCard },
-      { title: "Bons Cadeaux", url: "/admin/bons-cadeaux", icon: Gift },
-      { title: "Conditions", url: "/admin/conditions", icon: ScrollText },
-    ],
-  },
-  {
-    label: "Paramètres",
-    links: [
-      { title: "Paramètres", url: "/admin/parametres", icon: Settings2 },
-      { title: "Import de données", url: "/admin/import", icon: Upload },
-    ],
-  },
-];
-
-const EDITION_LINKS = EDITION_GROUPS.flatMap((g) => g.links);
+import { useAuth } from "@/contexts/AuthContext";
+import { MAIN_LINKS, EDITION_GROUPS, EDITION_LINKS } from "./adminNavConfig";
 
 export default function AdminBottomNav() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [editionOpen, setEditionOpen] = useState(false);
   const editionActive = EDITION_LINKS.some((l) => location.pathname.startsWith(l.url));
+
+  const handleLogout = async () => {
+    setEditionOpen(false);
+    await signOut();
+    navigate("/");
+  };
 
   return (
     <>
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch border-t bg-card">
-        <NavLink
-          to="/admin/planning"
-          className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-xs text-muted-foreground"
-          activeClassName="text-primary-dark font-medium"
-        >
-          <CalendarDays className="h-5 w-5" />
-          Mon agenda
-        </NavLink>
-        <NavLink
-          to="/admin"
-          end
-          className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-xs text-muted-foreground"
-          activeClassName="text-primary-dark font-medium"
-        >
-          <Bell className="h-5 w-5" />
-          Notifications
-        </NavLink>
-        <NavLink
-          to="/admin/clients"
-          className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-xs text-muted-foreground"
-          activeClassName="text-primary-dark font-medium"
-        >
-          <Users className="h-5 w-5" />
-          Clients
-        </NavLink>
+        {MAIN_LINKS.map((l) => (
+          <NavLink
+            key={l.url}
+            to={l.url}
+            end={l.url === "/admin"}
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-xs text-muted-foreground"
+            activeClassName="text-primary-dark font-medium"
+          >
+            <l.icon className="h-5 w-5" />
+            {l.title}
+          </NavLink>
+        ))}
         <button
           type="button"
           onClick={() => setEditionOpen(true)}
@@ -101,6 +71,20 @@ export default function AdminBottomNav() {
                 </div>
               </div>
             ))}
+
+            <div>
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5 px-0.5">
+                Compte
+              </p>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2 rounded-lg border p-3 text-sm text-destructive hover:bg-destructive/10"
+              >
+                <LogOut className="h-4 w-4 shrink-0" />
+                Déconnexion
+              </button>
+            </div>
           </div>
         </SheetContent>
       </Sheet>
