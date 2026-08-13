@@ -80,6 +80,76 @@ interface PurchaseEntry {
   icon: "card" | "reservation" | "voucher";
 }
 
+// Corps partagé des deux rollups "Voir les futures réservations" / "Anciennes réservations" :
+// filtres Toutes/Yoga/Poterie + liste. `list` sert aux compteurs des filtres (sur l'ensemble
+// à venir OU passé, pas les deux mélangés), `filtered` est déjà réduit à la catégorie choisie.
+function ReservationRollup({
+  list, filtered, filter, setFilter, onAccess, emptyLabel,
+}: {
+  list: Reservation[];
+  filtered: Reservation[];
+  filter: string;
+  setFilter: (v: string) => void;
+  onAccess: (r: Reservation) => void;
+  emptyLabel: string;
+}) {
+  const navigate = useNavigate();
+  const todayStr = todayLocalStr();
+  const yoga = list.filter(r => r.activity_type === "course");
+  const poterie = list.filter(r => r.activity_type === "workshop" && isPotteryActivity(r.activity_name));
+
+  return (
+    <div className="space-y-3 pt-2 border-t">
+      <div className="flex flex-wrap gap-1.5 pt-3">
+        {[
+          { v: "all", l: `Toutes (${list.length})` },
+          { v: "yoga", l: `Yoga (${yoga.length})` },
+          { v: "poterie", l: `Poterie (${poterie.length})` },
+        ].map(f => (
+          <Button key={f.v} size="sm" variant={filter === f.v ? "default" : "outline"} className="rounded-full text-xs" onClick={() => setFilter(f.v)}>{f.l}</Button>
+        ))}
+      </div>
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 space-y-3">
+          <CalendarDays className="h-10 w-10 text-muted-foreground/40 mx-auto" />
+          <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+          <Button variant="outline" size="sm" onClick={() => navigate("/?view=planning")}>Voir le planning</Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(r => {
+            const isConfirmed = r.status === "confirmé";
+            const isFuture = r.date >= todayStr;
+            return (
+              <div key={r.id} className={`flex items-center gap-3 rounded-lg border p-3 ${isFuture ? "bg-card" : "bg-muted/50"}`}>
+                <div className="text-center min-w-[40px]">
+                  <p className={`text-base font-bold ${isFuture ? "text-primary-dark" : "text-muted-foreground"}`}>{new Date(r.date + "T00:00:00").getDate()}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase">{new Date(r.date + "T00:00:00").toLocaleDateString("fr-FR", { month: "short" })}</p>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm">{r.activity_name}</p>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" /> {r.time}{r.end_time ? ` - ${r.end_time}` : ""}
+                    {r.participants > 1 && <span>· {r.participants} pers.</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {isConfirmed && isFuture && (
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] gap-1" onClick={() => onAccess(r)}>
+                      <ArrowRight className="h-3 w-3" /> Accéder
+                    </Button>
+                  )}
+                  <Badge variant="outline" className={`text-[10px] ${statusColors[r.status] || ""}`}>{r.status}</Badge>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MonEspace() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -108,8 +178,12 @@ export default function MonEspace() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
-  const [resFilter, setResFilter] = useState("all");
-  const [reservationsListOpen, setReservationsListOpen] = useState(false);
+  // Filtres/rollups indépendants pour les réservations à venir et les anciennes — deux sections
+  // distinctes, chacune avec ses propres filtres Toutes/Yoga/Poterie.
+  const [futureFilter, setFutureFilter] = useState("all");
+  const [futureListOpen, setFutureListOpen] = useState(false);
+  const [pastFilter, setPastFilter] = useState("all");
+  const [pastListOpen, setPastListOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [buySheetOpen, setBuySheetOpen] = useState(false);
   const [buyStep, setBuyStep] = useState<1 | 2>(1);
@@ -197,15 +271,26 @@ export default function MonEspace() {
 
   // 1.11: Only count confirmed reservations (exclude cancelled)
   const confirmedRes = reservations.filter(r => r.status !== "annulé");
+  const byCategory = (list: Reservation[], filter: string) => {
+    if (filter === "yoga") return list.filter(r => r.activity_type === "course");
+    if (filter === "poterie") return list.filter(r => r.activity_type === "workshop" && isPotteryActivity(r.activity_name));
+    return list;
+  };
+
+  // Deux ensembles indépendants (à venir / anciennes), chacun avec son propre filtre de
+  // catégorie — voir le bloc "Mes réservations" plus bas.
+  const futureConfirmed = confirmedRes.filter(r => r.date >= todayLocalStr());
+  const pastConfirmed = confirmedRes.filter(r => r.date < todayLocalStr());
+  const filteredFuture = byCategory(futureConfirmed, futureFilter);
+  const filteredPast = byCategory(pastConfirmed, pastFilter);
+  // Pour les compteurs des filtres (yoga/poterie) utilisés côté "Cartes Yoga" et l'historique.
   const yogaRes = confirmedRes.filter(r => r.activity_type === "course");
   const potteryRes = confirmedRes.filter(r => r.activity_type === "workshop" && isPotteryActivity(r.activity_name));
-  const atelierRes = confirmedRes.filter(r => r.activity_type === "workshop" && !potteryRes.includes(r));
-  const filteredRes = resFilter === "all" ? confirmedRes : resFilter === "yoga" ? yogaRes : resFilter === "poterie" ? potteryRes : atelierRes;
 
   // Réservation la plus proche à venir — reservations est trié desc, donc on prend le minimum
   // parmi les dates futures plutôt que reservations[0].
-  const nextReservation = confirmedRes
-    .filter(r => r.date >= todayLocalStr())
+  const nextReservation = futureConfirmed
+    .slice()
     .sort((a, b) => a.date.localeCompare(b.date))[0] || null;
 
   const saveProfile = async () => {
@@ -417,7 +502,7 @@ export default function MonEspace() {
                 <div className="h-14 w-14 rounded-full bg-white/70 backdrop-blur flex items-center justify-center">
                   <User className="h-7 w-7 text-primary-dark" />
                 </div>
-                <p className="text-xl font-display font-semibold text-primary-dark">Bonjour</p>
+                <p className="text-xl font-display font-semibold text-primary-dark">Bonjour {clientProfile?.first_name || ""}</p>
               </div>
             </div>
           </div>
@@ -442,63 +527,44 @@ export default function MonEspace() {
                 <Button
                   variant="outline"
                   className="flex-1 gap-1.5"
-                  onClick={() => setReservationsListOpen(v => !v)}
+                  onClick={() => setFutureListOpen(v => !v)}
                 >
-                  <ChevronDown className={`h-4 w-4 transition-transform ${reservationsListOpen ? "rotate-180" : ""}`} />
-                  Voir mes réservations
+                  <ChevronDown className={`h-4 w-4 transition-transform ${futureListOpen ? "rotate-180" : ""}`} />
+                  Voir les futures réservations
                 </Button>
               </div>
 
-              {reservationsListOpen && (
-                <div className="space-y-3 pt-2 border-t">
-                  <div className="flex flex-wrap gap-1.5 pt-3">
-                    {[
-                      { v: "all", l: `Toutes (${confirmedRes.length})` },
-                      { v: "yoga", l: `Yoga (${yogaRes.length})` },
-                      { v: "poterie", l: `Poterie (${potteryRes.length})` },
-                    ].map(f => (
-                      <Button key={f.v} size="sm" variant={resFilter === f.v ? "default" : "outline"} className="rounded-full text-xs" onClick={() => setResFilter(f.v)}>{f.l}</Button>
-                    ))}
-                  </div>
-                  {filteredRes.length === 0 ? (
-                    <div className="text-center py-12 space-y-3">
-                      <CalendarDays className="h-10 w-10 text-muted-foreground/40 mx-auto" />
-                      <p className="text-sm text-muted-foreground">Aucune réservation dans cette catégorie.</p>
-                      <Button variant="outline" size="sm" onClick={() => navigate("/?view=planning")}>Voir le planning</Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {filteredRes.map(r => {
-                        const isConfirmed = r.status === "confirmé";
-                        const todayStr = todayLocalStr();
-                        const isFuture = r.date >= todayStr;
-                        return (
-                          <div key={r.id} className={`flex items-center gap-3 rounded-lg border p-3 ${isFuture ? "bg-card" : "bg-muted/50"}`}>
-                            <div className="text-center min-w-[40px]">
-                              <p className={`text-base font-bold ${isFuture ? "text-primary-dark" : "text-muted-foreground"}`}>{new Date(r.date + "T00:00:00").getDate()}</p>
-                              <p className="text-[10px] text-muted-foreground uppercase">{new Date(r.date + "T00:00:00").toLocaleDateString("fr-FR", { month: "short" })}</p>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm">{r.activity_name}</p>
-                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <Clock className="h-3 w-3" /> {r.time}{r.end_time ? ` - ${r.end_time}` : ""}
-                                {r.participants > 1 && <span>· {r.participants} pers.</span>}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {isConfirmed && isFuture && (
-                                <Button size="sm" variant="outline" className="h-7 px-2 text-[10px] gap-1" onClick={() => setViewingReservation(r)}>
-                                  <ArrowRight className="h-3 w-3" /> Accéder
-                                </Button>
-                              )}
-                              <Badge variant="outline" className={`text-[10px] ${statusColors[r.status] || ""}`}>{r.status}</Badge>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+              {futureListOpen && (
+                <ReservationRollup
+                  list={futureConfirmed}
+                  filtered={filteredFuture}
+                  filter={futureFilter}
+                  setFilter={setFutureFilter}
+                  onAccess={setViewingReservation}
+                  emptyLabel="Aucune réservation à venir dans cette catégorie."
+                />
+              )}
+
+              {/* Anciennes réservations : rollup séparé, fond gris pour bien le distinguer du
+                  bouton "à venir" au-dessus. */}
+              <Button
+                variant="outline"
+                className="w-full gap-1.5 bg-muted text-muted-foreground hover:bg-muted/80 border-muted"
+                onClick={() => setPastListOpen(v => !v)}
+              >
+                <ChevronDown className={`h-4 w-4 transition-transform ${pastListOpen ? "rotate-180" : ""}`} />
+                Anciennes réservations
+              </Button>
+
+              {pastListOpen && (
+                <ReservationRollup
+                  list={pastConfirmed}
+                  filtered={filteredPast}
+                  filter={pastFilter}
+                  setFilter={setPastFilter}
+                  onAccess={setViewingReservation}
+                  emptyLabel="Aucune ancienne réservation dans cette catégorie."
+                />
               )}
           </div>
 

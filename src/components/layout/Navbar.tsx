@@ -16,6 +16,7 @@ export default function Navbar() {
   };
 
   return (
+    <>
     <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
@@ -95,17 +96,22 @@ export default function Navbar() {
           </Link>
         )}
       </div>
-
-      {/* Déconnexion (client, mobile) : bouton discret fixé tout en bas de l'écran — jamais en
-          haut. Placé à gauche pour ne pas chevaucher le bouton Feedback (fixé en bas à droite). */}
-      {isLoggedIn && isClient && (
-        <button
-          onClick={handleLogout}
-          className="md:hidden fixed bottom-4 left-4 z-30 flex items-center gap-1.5 bg-card border text-destructive rounded-full px-3 py-2.5 shadow-lg text-xs font-medium"
-        >
-          <LogOut className="h-3.5 w-3.5" /> Déconnexion
-        </button>
-      )}
     </nav>
+
+    {/* Déconnexion (client, mobile) : bouton discret fixé tout en bas de l'écran — jamais en
+        haut. Placé à gauche pour ne pas chevaucher le bouton Feedback (fixé en bas à droite).
+        Volontairement SIBLING de <nav>, pas descendant : <nav> a backdrop-blur-md, et un
+        ancêtre avec backdrop-filter/filter devient le containing block des enfants position:
+        fixed dans Chrome — le bouton se retrouvait ancré au bas de la barre du haut (~64px)
+        au lieu du bas du viewport. Bug vu en prod le 13/08/2026 (bouton flottant en haut). */}
+    {isLoggedIn && isClient && (
+      <button
+        onClick={handleLogout}
+        className="md:hidden fixed bottom-4 left-4 z-30 flex items-center gap-1.5 bg-card border text-destructive rounded-full px-3 py-2.5 shadow-lg text-xs font-medium"
+      >
+        <LogOut className="h-3.5 w-3.5" /> Déconnexion
+      </button>
+    )}
+    </>
   );
 }
