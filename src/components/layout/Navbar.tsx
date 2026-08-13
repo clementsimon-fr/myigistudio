@@ -65,12 +65,15 @@ export default function Navbar() {
               {isClient && (
                 <button
                   onClick={() => navigate("/mon-espace")}
-                  className="flex items-center gap-1.5 bg-primary/15 text-primary-dark font-semibold px-3 py-2 rounded-full border-2 border-primary/30 text-xs min-h-[44px]"
+                  className="flex items-center gap-1.5 bg-primary/15 text-primary-dark font-semibold px-2.5 py-1.5 rounded-xl border-2 border-primary/30 min-h-[44px] max-w-[38vw]"
                 >
-                  <User className="h-4 w-4" />
-                  {displayName}
-                  <ChevronRight className="h-3.5 w-3.5" />
-                  <span className="text-[11px] font-medium">Mon espace</span>
+                  <User className="h-4 w-4 shrink-0" />
+                  {/* Prénom et "Mon espace" sur 2 lignes : à l'horizontale (comme sur desktop),
+                      le bouton devenait trop large sur mobile et débordait à côté du logo. */}
+                  <span className="flex flex-col items-start leading-tight min-w-0">
+                    <span className="text-xs truncate max-w-full">{displayName}</span>
+                    <span className="text-[10px] font-medium opacity-80">Mon espace</span>
+                  </span>
                 </button>
               )}
               {isAdminLike && (

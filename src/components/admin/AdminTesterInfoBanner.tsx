@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Info, Copy, Check, Mail, BellRing, ListChecks } from "lucide-react";
+import { Info, Copy, Check, Mail, BellRing, ListChecks, Smartphone } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import InstallAppGuide from "@/components/InstallAppGuide";
+import StepHeader from "@/components/StepHeader";
 
 const DISMISS_KEY = "myigistudio_admin_tester_info_dismissed";
 
@@ -32,23 +34,11 @@ Un bug, une remarque ? Utilisez le bouton "Feedback" en bas de l'écran sur le s
 
 Merci pour votre aide précieuse !`;
 
-// En-tête numéroté partagé par les 3 étapes — matérialise visuellement que c'est une séquence
-// à suivre dans l'ordre, pas 3 blocs d'info indépendants (même principe que TesterGuideBanner).
-function StepHeader({ n, icon: Icon, title }: { n: number; icon: any; title: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary-dark text-primary-dark-foreground text-xs font-bold shrink-0">
-        {n}
-      </span>
-      <Icon className="h-4 w-4 text-primary-dark shrink-0" />
-      <p className="text-sm font-semibold">{title}</p>
-    </div>
-  );
-}
-
 // Bandeau d'information pour Élodie (et tout futur admin) : explique son rôle pendant la phase
-// de test, comment elle reçoit les notifications, fournit le message à transmettre aux
-// testeurs, et les prochaines étapes. Temporaire — à retirer une fois le lancement réel fait.
+// de test, comment installer l'appli et recevoir les notifications, fournit le message à
+// transmettre aux testeurs, et les prochaines étapes. Temporaire — à retirer une fois le
+// lancement réel fait. Même structure et même contenu que TesterGuideBanner (InstallAppGuide,
+// StepHeader partagés) pour que la qualité d'explication soit identique des deux côtés.
 export default function AdminTesterInfoBanner() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -98,13 +88,18 @@ export default function AdminTesterInfoBanner() {
               Le studio prépare le lancement de cette nouvelle application de réservation, et
               des testeurs vont commencer à réserver dès maintenant. Votre rôle pendant cette
               phase : surveiller que les réservations arrivent bien, et faire remonter tout ce
-              qui vous semble bizarre. Voici comment ça se passe, en 3 étapes.
+              qui vous semble bizarre. Voici comment ça se passe, en 4 étapes.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 text-sm">
+            <div className="rounded-lg border p-3 space-y-3">
+              <StepHeader n={1} icon={Smartphone} title="Téléchargez l'application (facultatif)" />
+              <InstallAppGuide />
+            </div>
+
             <div className="rounded-lg border p-3 space-y-2">
-              <StepHeader n={1} icon={Mail} title="Vous recevez une notification à chaque réservation" />
+              <StepHeader n={2} icon={Mail} title="Vous recevez une notification à chaque réservation" />
               <p className="text-xs text-muted-foreground">
                 Chaque réservation déclenche automatiquement un email de confirmation au client
                 et un email d'alerte à l'adresse admin configurée (Paramètres → « Notifications
@@ -112,14 +107,14 @@ export default function AdminTesterInfoBanner() {
               </p>
               <p className="text-xs text-muted-foreground flex items-start gap-1.5">
                 <BellRing className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                Vous pouvez aussi recevoir une notification directement sur votre téléphone si
-                vous avez installé l'application : allez dans <strong>Paramètres →
+                Si vous avez installé l'application (étape 1), vous pouvez aussi recevoir une
+                notification directement sur votre téléphone : allez dans <strong>Paramètres →
                 Notifications sur cet appareil</strong> et appuyez sur « Activer ».
               </p>
             </div>
 
             <div className="rounded-lg border p-3 space-y-2">
-              <StepHeader n={2} icon={Copy} title="Invitez vos testeurs" />
+              <StepHeader n={3} icon={Copy} title="Invitez vos testeurs" />
               <p className="text-xs text-muted-foreground">Message prêt à copier-coller :</p>
               <div className="rounded-lg border bg-muted/30 p-3 text-xs whitespace-pre-line font-mono max-h-40 overflow-y-auto">
                 {TESTER_MESSAGE}
@@ -131,7 +126,7 @@ export default function AdminTesterInfoBanner() {
             </div>
 
             <div className="rounded-lg border p-3 space-y-2">
-              <StepHeader n={3} icon={ListChecks} title="Ce qui arrive ensuite" />
+              <StepHeader n={4} icon={ListChecks} title="Ce qui arrive ensuite" />
               <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4">
                 <li>Vous recevrez bientôt vos identifiants complets une fois le nom de domaine officiel en place.</li>
                 <li>L'historique des clients et réservations (Calendly, SimplyBook) sera importé dans l'application.</li>
