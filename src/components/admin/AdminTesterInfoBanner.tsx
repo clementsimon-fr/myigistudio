@@ -21,7 +21,7 @@ const TESTER_MESSAGE = `Bonjour !
 
 Vous êtes invité·e à tester la nouvelle application de réservation MyIgiStudio avant son lancement officiel.
 
-Lien : https://myigistudio.vercel.app
+Lien : https://myigistudio.fr
 
 Faites une réservation comme vous le feriez normalement (cours ou atelier), et payez avec cette carte bancaire fictive — aucun argent n'est prélevé :
 Numéro : 4242 4242 4242 4242
