@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Info, Copy, Check, Mail, BellRing, ListChecks, Smartphone } from "lucide-react";
+import { Info, Copy, Check, Mail, BellRing, ListChecks, Smartphone, MessageCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -88,7 +88,7 @@ export default function AdminTesterInfoBanner() {
               Le studio prépare le lancement de cette nouvelle application de réservation, et
               des testeurs vont commencer à réserver dès maintenant. Votre rôle pendant cette
               phase : surveiller que les réservations arrivent bien, et faire remonter tout ce
-              qui vous semble bizarre. Voici comment ça se passe, en 4 étapes.
+              qui vous semble bizarre. Voici comment ça se passe, en 5 étapes.
             </DialogDescription>
           </DialogHeader>
 
@@ -126,7 +126,20 @@ export default function AdminTesterInfoBanner() {
             </div>
 
             <div className="rounded-lg border p-3 space-y-2">
-              <StepHeader n={4} icon={ListChecks} title="Ce qui arrive ensuite" />
+              <StepHeader n={4} icon={MessageCircle} title="Créez un groupe WhatsApp" />
+              <p className="text-xs text-muted-foreground">
+                Créez un groupe WhatsApp réunissant Clément, vous-même et les testeurs — un seul
+                endroit pour échanger sur ce qui se passe pendant le test (questions, retours à
+                chaud, photos d'un bug), en complément du bouton Feedback intégré au site.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Ajoutez-y les testeurs au fur et à mesure que vous leur envoyez le message
+                de l'étape 3 (ou avec leur invitation, si vous préférez).
+              </p>
+            </div>
+
+            <div className="rounded-lg border p-3 space-y-2">
+              <StepHeader n={5} icon={ListChecks} title="Ce qui arrive ensuite" />
               <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4">
                 <li>Vous recevrez bientôt vos identifiants complets une fois le nom de domaine officiel en place.</li>
                 <li>L'historique des clients et réservations (Calendly, SimplyBook) sera importé dans l'application.</li>
