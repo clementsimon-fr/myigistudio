@@ -442,6 +442,24 @@ export default function BookingSheet({
 
     const name = course?.name || workshop?.name || "";
 
+    // Consignes de la fiche activité (champ "modalities", saisi en admin) : à inclure dans le
+    // mail de confirmation envoyé au client, en plus de leur affichage déjà existant dans Mon
+    // Espace — même texte brut dans les deux cas, pas de substitution de variables ici (Mon
+    // Espace ne le fait pas non plus aujourd'hui).
+    let activityModalitiesForEmail = "";
+    try {
+      if (course?.id) {
+        const { data } = await supabase.from("courses").select("modalities").eq("id", course.id).maybeSingle();
+        activityModalitiesForEmail = (data as any)?.modalities || "";
+      } else if (workshop) {
+        const wsId = (selected.linkedWorkshopIds && selected.linkedWorkshopIds[0]) || selected.scheduleId;
+        const { data } = await supabase.from("workshops").select("modalities").eq("id", wsId).maybeSingle();
+        activityModalitiesForEmail = (data as any)?.modalities || "";
+      }
+    } catch {
+      // Non bloquant : au pire le mail de confirmation part sans les consignes.
+    }
+
     // Invitée sans session : le compte se crée silencieusement au moment du paiement,
     // sans bloquer la réservation en cours sur un lien email à cliquer.
     let userId = user?.id || null;
@@ -625,6 +643,7 @@ export default function BookingSheet({
         activity_name: name,
         dates: bookingDates,
         participants_count: participants.length,
+        activity_modalities: activityModalitiesForEmail || null,
       },
     }).catch((err) => { trace("finalize:notification-invoke:threw", String(err)); /* échec d'envoi non bloquant, voir logs de la fonction si besoin */ });
 
@@ -1153,10 +1172,10 @@ export default function BookingSheet({
           </div>
           <div className="flex flex-col gap-2 pt-2">
             <Button className="w-full" onClick={() => { setSuccessOpen(false); onClose(); navigate("/mon-espace"); }}>
-              Accéder à votre compte
+              Accéder à ma réservation
             </Button>
             <Button variant="outline" className="w-full" onClick={() => { setSuccessOpen(false); onClose(); }}>
-              Fermer la fenêtre
+              Revenir au site
             </Button>
           </div>
         </DialogContent>

@@ -7,7 +7,12 @@ export default function Navbar() {
   const navigate = useNavigate();
   const { session, clientProfile, isAdmin: isAdminLike, signOut } = useAuth();
   const isLoggedIn = !!session;
-  const isClient = !!clientProfile && !isAdminLike;
+  // Ne PAS exiger clientProfile ici : un profil manquant ou pas encore chargé (latence réseau,
+  // ou trigger de création de profil qui a raté une fois — voir l'incident du 13/08/2026où 3
+  // comptes s'étaient retrouvés sans fiche client_profiles) ne doit jamais faire disparaître
+  // toute la navigation. Dès qu'une session existe et n'est pas identifiée comme staff, on
+  // affiche le badge client (avec un nom de repli, voir displayName) plutôt que rien du tout.
+  const isClient = isLoggedIn && !isAdminLike;
   const displayName = clientProfile?.first_name || clientProfile?.email || "Mon compte";
 
   const handleLogout = async () => {

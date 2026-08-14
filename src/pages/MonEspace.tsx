@@ -217,7 +217,16 @@ export default function MonEspace() {
   }, [authLoading, session]);
 
   useEffect(() => {
-    if (!CLIENT_NAME) return;
+    // Attendre la résolution de l'auth avant de décider quoi que ce soit : CLIENT_NAME est vide
+    // tant que clientProfile n'a pas encore chargé, pas seulement quand il manque vraiment.
+    if (authLoading) return;
+    if (!CLIENT_NAME) {
+      // Session valide mais pas de profil exploitable (bug de trigger de création de profil vu
+      // le 13/08/2026, ou profil réellement vide) : ne JAMAIS laisser `loading` bloqué à `true`
+      // pour toujours — c'est ce qui donnait l'impression que la page "tourne dans le vide".
+      setLoading(false);
+      return;
+    }
     const load = async () => {
       setLoading(true);
       const [resR, resC, resPC, resV] = await Promise.all([
@@ -233,7 +242,7 @@ export default function MonEspace() {
       setLoading(false);
     };
     load();
-  }, [CLIENT_NAME]);
+  }, [CLIENT_NAME, authLoading]);
 
   useEffect(() => {
     if (clientProfile) {

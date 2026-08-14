@@ -17,6 +17,9 @@ interface Payload {
   activity_name: string;
   dates: BookingDate[];
   participants_count: number;
+  // Champ "Les consignes" de la fiche activité (courses/workshops.modalities, saisi en admin) —
+  // à inclure dans le mail de confirmation client, pas dans l'alerte admin.
+  activity_modalities?: string | null;
 }
 
 function formatDateFR(dateStr: string): string {
@@ -27,6 +30,12 @@ function formatDateFR(dateStr: string): string {
 
 function datesListHtml(dates: BookingDate[]): string {
   return dates.map((d) => `${formatDateFR(d.date)} à ${d.time?.slice(0, 5)}`).join("<br>");
+}
+
+// Texte saisi par l'admin injecté tel quel dans le HTML de l'email : on échappe les caractères
+// spéciaux pour ne jamais casser la mise en page ni introduire de balises non voulues.
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 // Envoie un email transactionnel via l'API Brevo (ex-Sendinblue). Ne lève jamais — un échec
@@ -114,7 +123,7 @@ Deno.serve(async (req) => {
 
   try {
     const payload: Payload = await req.json();
-    const { client_email, client_name, activity_name, dates, participants_count } = payload;
+    const { client_email, client_name, activity_name, dates, participants_count, activity_modalities } = payload;
     if (!activity_name || !dates || dates.length === 0) {
       return new Response(JSON.stringify({ error: "Données de réservation incomplètes" }), {
         status: 400,
@@ -153,6 +162,12 @@ Deno.serve(async (req) => {
     };
 
     if (client_email) {
+      const modalitiesHtml = activity_modalities?.trim()
+        ? `<div style="margin-top:16px; padding:12px 14px; background:#f6f5f1; border-radius:8px;">
+             <p style="margin:0 0 4px; font-weight:600;">Modalités &amp; consignes</p>
+             <p style="margin:0; white-space:pre-line;">${escapeHtml(activity_modalities.trim())}</p>
+           </div>`
+        : "";
       results.client = await sendBrevoEmail(apiKey, {
         to: [{ email: client_email, name: client_name }],
         subject: `Réservation confirmée — ${activity_name}`,
@@ -162,6 +177,7 @@ Deno.serve(async (req) => {
             <p>Bonjour ${client_name},</p>
             <p>Votre réservation est bien enregistrée :</p>
             <p><strong>${activity_name}</strong><br>${datesHtml}<br>${participantsLabel}</p>
+            ${modalitiesHtml}
             <p>À très bientôt au studio !</p>
             <p style="color:#888; font-size: 12px;">MyIgiStudio</p>
           </div>
