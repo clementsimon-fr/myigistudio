@@ -411,6 +411,17 @@ export default function MonthlyView({ categoryFilter = "all" }: { categoryFilter
                       <CalendarRange className="h-4 w-4" /> Multi-sessions — plusieurs dates liées
                     </Button>
                   </div>
+                  {/* "Yoga dodo" (12/08/2026) : une fiche cours yoga sans AUCUN horaire créée en
+                      "Ponctuel" restait invisible côté client (la carte "Découvrir" n'affiche
+                      aucune date pour un cours sans schedule, et l'événement ponctuel isolé ne
+                      se rattache pas à cette fiche). On avertit avant que ça se reproduise. */}
+                  {isWYoga && wType === "ponctuel" && !(wActivity?.schedules?.length) && (
+                    <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-lg p-2.5">
+                      "{wActivity?.name}" n'a encore aucun horaire récurrent — un événement
+                      ponctuel restera invisible depuis sa fiche "Découvrir" côté client. Pour un
+                      cours hebdomadaire, choisissez plutôt <strong>« Récurrent »</strong>.
+                    </p>
+                  )}
                 </div>
               )}
 
